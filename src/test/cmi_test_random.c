@@ -59,8 +59,8 @@ static double uniform_raw_moment(const int k, double a, double b) {
 static const uint16_t line_length = 80u;
 
 static void print_line(char *str) {
-    uint16_t len = strlen(str);
-    uint16_t repeats = line_length / len;
+    const uint16_t len = strlen(str);
+    const uint16_t repeats = line_length / len;
     for (uint16_t ui = 0; ui < repeats; ui++) {
         printf("%s", str);
     }

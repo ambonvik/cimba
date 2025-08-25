@@ -208,7 +208,7 @@ void test_dataset() {
    cmb_summary_clear(&dsum);
    (void)cmb_dataset_summarize(dsp, &dsum);
    cmb_summary_print(&dsum, stdout, true);
-   cmb_dataset_print_histogram(dsp, stdout, 20u, -4.0, 4.0);
+   cmb_dataset_print_histogram(dsp, stdout, 20u, 0, 0);
 
    printf("\nAutocorrelation coefficients:\n");
    cmb_dataset_ACF(dsp, max_lag, acf);

@@ -78,7 +78,7 @@ int main() {
             const char *subjects[] = {"this", "self", "me"};
             cmb_event_schedule(test_action, (void *)subjects[i], (void *)objects[j],
                                cmb_random_exponential(60.0),
-                               cmb_random_dice(1, 5));
+                               (int16_t)cmb_random_dice(1, 5));
         }
     }
 
@@ -88,5 +88,5 @@ int main() {
     cmb_error(stdout, "We seemed to run out of time here. (This was a test.)");
     /* Not reached */
     cmb_fatal(stdout, "How did this happen?");
-    assert(false);
+    cmb_assert_release(false);
 }

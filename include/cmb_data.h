@@ -30,6 +30,7 @@
 #include <stdint.h>
 
 #include "cmi_memutils.h"
+#include "cmb_logger.h"
 
 /******************************************************************************
  * The cmb_summary maintains a running tally of key statistics,
@@ -47,7 +48,7 @@ struct cmb_summary {
 
 /* Initialize a given data summary, not necessarily allocated on the heap */
 inline void cmb_summary_init(struct cmb_summary *sup) {
-    assert(sup != NULL);
+    cmb_assert_release(sup != NULL);
     sup->cnt = 0u;
     sup->max = -DBL_MAX;
     sup->min = DBL_MAX;
@@ -97,28 +98,28 @@ extern uint64_t cmb_summary_merge(struct cmb_summary *tgt,
 
 /* Access methods returning the various summary statistics, starting with the sample count */
 inline uint64_t cmb_summary_count(const struct cmb_summary *sup) {
-    assert(sup != NULL);
+    cmb_assert_release(sup != NULL);
     return sup->cnt;
 }
 
 inline double cmb_summary_max(const struct cmb_summary *sup) {
-    assert(sup != NULL);
+    cmb_assert_release(sup != NULL);
     return sup->max;
 }
 
 inline double cmb_summary_min(const struct cmb_summary *sup) {
-    assert(sup != NULL);
+    cmb_assert_release(sup != NULL);
     return sup->min;
 }
 
 inline double cmb_summary_mean(const struct cmb_summary *sup) {
-    assert(sup != NULL);
+    cmb_assert_release(sup != NULL);
     return sup->m1;
 }
 
 /* Sample variance */
 inline double cmb_summary_variance(const struct cmb_summary *sup) {
-    assert(sup != NULL);
+    cmb_assert_release(sup != NULL);
     double r = 0.0;
     if (sup->cnt > 1) {
         r = sup->m2 / (double)(sup->cnt - 1u);
@@ -127,7 +128,7 @@ inline double cmb_summary_variance(const struct cmb_summary *sup) {
 }
 
 inline double cmb_summary_stddev(const struct cmb_summary *sup) {
-    assert(sup != NULL);
+    cmb_assert_release(sup != NULL);
     return sqrt(cmb_summary_variance(sup));
 }
 

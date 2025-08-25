@@ -125,6 +125,6 @@ void cmb_info(FILE *fp, char *fmtstr, ...) {
 
 #ifndef NDEBUG
 void cmi_assert_failed(const char *sourcefile, const char *func, const int line, const char *condition) {
-    cmb_error(stderr, "Assert failed: %s source file %s function %s line %d ", condition, sourcefile, func, line);
+    cmb_fatal(stderr, "Assert failed: %s source file %s function %s line %d ", condition, sourcefile, func, line);
 }
 #endif
