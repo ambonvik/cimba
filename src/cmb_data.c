@@ -630,9 +630,6 @@ void cmb_dataset_print_data(const struct cmb_dataset *dsp, FILE *fp) {
 /*
  * Print simple character-based histogram of the data.
  */
-static const uint16_t max_stars = 50u;
-static const uint16_t line_length = 80u;
-static const double min_rem_plus = 0.5;
 
 static void print_stars(FILE *fp, const double scale, const uint64_t nbin) {
     uint64_t nstars = (uint64_t)((double)nbin / scale);
@@ -643,6 +640,7 @@ static void print_stars(FILE *fp, const double scale, const uint64_t nbin) {
         cmb_assert_release(r > 0);
     }
 
+    const double min_rem_plus = 0.5;
     if (rem >= min_rem_plus) {
         const int r = fprintf(fp, "+");
         cmb_assert_release(r > 0);
@@ -656,7 +654,7 @@ static void print_stars(FILE *fp, const double scale, const uint64_t nbin) {
     cmb_assert_release(r > 0);
 }
 
-static void print_chars(FILE *fp, const char *str, uint16_t repeats) {
+static void print_chars(FILE *fp, const char *str, const uint16_t repeats) {
     cmb_assert_release(str != NULL);
     for (uint16_t ui = 0; ui < repeats; ui++) {
         const int r = fprintf(fp, "%s", str);
@@ -664,9 +662,9 @@ static void print_chars(FILE *fp, const char *str, uint16_t repeats) {
     }
 }
 
-static void print_line(FILE *fp) {
-    print_chars(fp, "-", line_length);
-    const int r = fprintf(fp, "\n");
+static void print_line(FILE *fp, const char *str, const uint16_t repeats) {
+    print_chars(fp, str, repeats);
+    int r = fprintf(fp, "\n");
     cmb_assert_release(r > 0);
 }
 
@@ -715,10 +713,15 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
         }
     }
 
+    /* Length of separator lines */
+    static const uint16_t line_length = 80u;
+
+    /* Max width of the histogram bars */
+    const uint16_t max_stars = 50u;
     const double scale = (double)m / (double)max_stars;
 
     /* Print the histogram */
-    print_line(fp);
+    print_line(fp, "-", line_length);
     int r = fprintf(fp, "( -Infinity, %#10.4g)   |", low_lim);
     cmb_assert_release(r > 0);
     print_stars(fp, scale, h[0u]);
@@ -733,7 +736,7 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
     r = fprintf(fp, "[%#10.4g,  Infinity )   |", high_lim);
     cmb_assert_release(r > 0);
     print_stars(fp, scale, h[num_bins - 1u]);
-    print_line(fp);
+    print_line(fp, "-", line_length);
 
     /* Clean up */
     cmi_free(h);
@@ -742,8 +745,6 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
 /*
  * Calculate the first max_lag autocorrelation coefficients.
  */
-
-static const double min_acf_variance = 1e-9;
 
 void cmb_dataset_ACF(const struct cmb_dataset *dsp, const uint16_t max_lag, double acf[max_lag + 1u])
 {
@@ -764,6 +765,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp, const uint16_t max_lag, doub
     const double var = m2 / ((double)(dsp->cnt - 1u));
 
     acf[0] = 1.0;
+    const double min_acf_variance = 1e-9;
     if (var < min_acf_variance) {
         /* Would be numerically unstable to divide by that */
         cmb_warning(stderr, "Dataset nearly constant (variance %g), ACFs rounded to zero", var);
@@ -847,15 +849,17 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp, const uint16_t max_lag,
     }
 }
 
-static const uint16_t max_bar_width = (line_length - 14u) / 2u;
-
-static void print_bar(FILE *fp, const double acfval) {
+static void print_bar(FILE *fp, const double acfval, uint16_t max_bar_width) {
     cmb_assert_release((acfval >= -1.0) && (acfval <= 1.0));
+
     const double bar_width = (double)max_bar_width * fabs(acfval);
     const uint16_t num_stars = (uint16_t)floor(bar_width);
     cmb_assert_debug(num_stars <= max_bar_width);
     const double rem = bar_width - num_stars;
     cmb_assert_debug((rem >= 0.0) && (rem < 1.0));
+
+    /* Smallest remainder to qualify for a plus sign */
+    const double min_rem_plus = 0.5;
 
     if (acfval < 0.0) {
         const uint16_t num_spaces = max_bar_width - num_stars - 1;
@@ -910,6 +914,12 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
         cmb_dataset_ACF(dsp, max_lag, acf);
     }
 
+    /* Length of separator lines / axes */
+    static const uint16_t line_length = 80u;
+
+    /* Max width of the bar either side of zero */
+    const uint16_t max_bar_width = (line_length - 14u) / 2u;
+
     print_chars(fp, " ", 11);
     int r = fprintf(fp, "-1.0");
     cmb_assert_release(r > 0);
@@ -920,16 +930,16 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
     r = fprintf(fp, "1.0\n");
     cmb_assert_release(r > 0);
 
-    print_line(fp);
+    print_line(fp, "-", line_length);
     for (uint16_t ui = 1; ui <= max_lag; ui++) {
         r = fprintf(fp, "%4u  %#6.3f ", ui, acf[ui]);
         cmb_assert_release(r > 0);
-        print_bar(fp, acf[ui]);
+        print_bar(fp, acf[ui], max_bar_width);
         r = fprintf(fp, "\n");
         cmb_assert_release(r > 0);
     }
 
-    print_line(fp);
+    print_line(fp, "-", line_length);
     if (free_acf) {
         cmi_free(acf);
     }

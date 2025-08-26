@@ -33,9 +33,7 @@ CMB_THREAD_LOCAL uint32_t cmi_logger_mask = 0xFFFFFFFF;
 CMB_THREAD_LOCAL static char timestrbuf[TSTRBUF_SZ];
 
 static char *time_to_string(double t) {
-    const int r = snprintf(timestrbuf, TSTRBUF_SZ, "%#10.5g", t);
-    assert(r > 0);
-    assert(r < TSTRBUF_SZ);
+    (void)snprintf(timestrbuf, TSTRBUF_SZ, "%#10.5g", t);
     timestrbuf[TSTRBUF_SZ - 1] = '\0';
 
     return timestrbuf;
@@ -123,7 +121,7 @@ void cmb_info(FILE *fp, char *fmtstr, ...) {
     va_end(args);
 }
 
-#ifndef NDEBUG
+#ifndef NASSERT
 void cmi_assert_failed(const char *sourcefile, const char *func, const int line, const char *condition) {
     cmb_fatal(stderr, "Assert failed: %s source file %s function %s line %d ", condition, sourcefile, func, line);
 }
