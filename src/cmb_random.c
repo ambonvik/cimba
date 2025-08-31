@@ -21,6 +21,7 @@
  */
 
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "cmb_config.h"
@@ -30,11 +31,11 @@
 
 /* Declarations of inlined functions from cmb_random.h */
 extern double cmb_random(void);
-extern double cmb_random_uniform(double l, double r);
+extern double cmb_random_uniform(double a, double b);
 extern double cmb_random_std_exponential(void);
 extern double cmb_random_exponential(double mean);
 extern double cmb_random_erlang(unsigned k, double m);
-extern double cmb_random_hypoexponential(unsigned n, const double m_arr[n]);
+extern double cmb_random_hypoexponential(unsigned n, const double ma[n]);
 extern double cmb_random_std_normal(void);
 extern double cmb_random_normal(double mu, double sigma);
 extern double cmb_random_gamma(double shape, double scale);
@@ -43,11 +44,11 @@ extern double cmb_random_logistic(double m, double s);
 extern double cmb_random_cauchy(double mode, double scale);
 extern double cmb_random_PERT(double l, double m, double r);
 extern double cmb_random_weibull(double shape, double scale);
-extern double cmb_random_pareto(double shape, double scale);
-extern double cmb_random_chisquare(double v);
-extern double cmb_random_std_t_dist(double v);
-extern double cmb_random_t_dist(double m, double s, double v);
-extern double cmb_random_f_dist(double a, double b);
+extern double cmb_random_pareto(double shape, double mode);
+extern double cmb_random_chisquare(unsigned k);
+extern double cmb_random_std_t_dist(unsigned v);
+extern double cmb_random_t_dist(double m, double s, unsigned v);
+extern double cmb_random_f_dist(unsigned a, unsigned b);
 extern unsigned cmb_random_bernoulli(double p);
 extern double cmb_random_std_beta(double a, double b);
 extern double cmb_random_beta(double a, double b, double l, double r);
@@ -70,11 +71,11 @@ static CMB_THREAD_LOCAL struct {
 
 /*
  * Main pseudo-random number generator - 64 bits output, 256 bits state.
- * An implementation of Chris Doty-Humphrey's sfc64. Fast and really good.
+ * An implementation of Chris Doty-Humphrey's sfc64. Fast and high quality.
  * Public domain, see https://pracrand.sourceforge.net
  */
 uint64_t cmb_random_sfc64(void) {
-    uint64_t tmp = prng_state.a + prng_state.b + prng_state.d++;
+    const uint64_t tmp = prng_state.a + prng_state.b + prng_state.d++;
     prng_state.a = prng_state.b ^ (prng_state.b >> 11);
     prng_state.b = prng_state.c + (prng_state.c << 3);
     prng_state.c = ((prng_state.c << 24) | (prng_state.c >> 40)) + tmp;
@@ -94,7 +95,7 @@ static void splitmix_init(const uint64_t seed) {
     splitmix_state = seed;
 }
 
-static uint64_t splitmix64() {
+static uint64_t splitmix64(void) {
 	uint64_t z = (splitmix_state += 0x9e3779b97f4a7c15);
 	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
 	z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
@@ -121,26 +122,37 @@ void cmb_random_init(uint64_t seed) {
 }
 
 /* Triangular distribution */
-double cmb_random_triangular(double left, double mode, double right) {
-    cmb_assert((right > left) && (mode >= left) && (mode <= right));
+double cmb_random_triangular(const double left, const double mode, const double right) {
+    cmb_assert_release(left <= mode);
+    cmb_assert_release(mode <= right);
+
     const double u = cmb_random();
 
-    double r;
-    if ((u < (mode - left) / (right - left)))
-        r = (left + sqrt(u * (right - left) * (mode - left)));
-    else
-        r = (right - sqrt((1.0 - u) * (right- left) * (right - mode)));
+    double x;
+    if ((u < (mode - left) / (right - left))) {
+        x = (left + sqrt(u * (right - left) * (mode - left)));
+    }
+    else {
+        x = (right - sqrt((1.0 - u) * (right- left) * (right - mode)));
+    }
 
-    return r;
+    cmb_assert_debug((x >= left) && (x <= right));
+    return x;
 }
 
 /* Modified PERT distribution */
  double cmb_random_PERT_mod(const double left, const double mode, const double right, const double lambda) {
-     const double r = right - left;
-     const double a = 1.0 + lambda * (mode - left) / r;
-     const double b = 1.0 + lambda * (right - mode) / r;
+    cmb_assert_release(left < mode);
+    cmb_assert_release(mode < right);
+    cmb_assert_release(lambda > 0.0);
 
-    return left + r * cmb_random_std_beta(a, b);
+    const double rng = right - left;
+    const double a = 1.0 + lambda * (mode - left) / rng;
+    const double b = 1.0 + lambda * (right - mode) / rng;
+    const double x = left + rng * cmb_random_std_beta(a, b);
+
+    cmb_assert_debug((x >= left) && ( x <= right));
+    return x;
 }
 
 /*
@@ -158,7 +170,7 @@ double cmb_random_triangular(double left, double mode, double right) {
  * transcendental functions of the pdf, both likely to be computationally expensive.
  *
  * This code implements a further optimized algorithm by Chris McFarland. It covers
- * the pdf outside the ziggurat in a tight set of right triangles. It rejection
+ * the pdf outside the ziggurat in a tight set of right triangles and rejection
  * samples along the edge only, minimizing the need to calculate the exact pdf.
  * This works correctly because it uses the exact probability for selecting this
  * overhang, and we can then isolate the rejection sampling to this overhang only
@@ -224,7 +236,8 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x) {
                     /* Surely inside, scale and return the candidate X value */
                     double x = zig_exp_convert_x(&(cmi_random_exp_zig_pdf_x[jdx]), u_cand_x);
                     return x + x_offset;
-                } else {
+                }
+                else {
                     /* Maybe inside, need to do exact pdf calculation to decide */
                     double x = zig_exp_convert_x(&(cmi_random_exp_zig_pdf_x[jdx]), u_cand_x);
                     double y = zig_exp_convert_y(&(cmi_random_exp_zig_pdf_y[jdx]), u_cand_y);
@@ -251,14 +264,10 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x) {
             /* Lucky path: Candidate X value is in ziggurat, scale to length of layer idx and return */
             return cmi_random_exp_zig_pdf_x[idx] * (double) u_cand_x + x_offset;
         }
-        else {
-            /* Not so lucky, back to top of _not_hot() */
-            continue;
-        }
     }
 
     /* Not reached */
-    cmb_assert(0);
+    cmb_assert_debug(0);
 }
 
 /*
@@ -273,7 +282,16 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x) {
  * select the distribution instead of using this function.
  */
 double cmb_random_hyperexponential(const unsigned n, const double m_arr[n], const double p_arr[n]) {
-    return cmb_random_exponential(m_arr[cmb_random_loaded_dice(n, p_arr)]);
+    cmb_assert_release(n > 0u);
+    cmb_assert_release(m_arr != NULL);
+    cmb_assert_release(p_arr != NULL);
+
+    const unsigned ui = cmb_random_loaded_dice(n, p_arr);
+    cmb_assert_debug(ui < n);
+    const double x = cmb_random_exponential(m_arr[ui]);
+
+    cmb_assert_debug(x >= 0.0);
+    return x;
 }
 
 /*
@@ -294,7 +312,7 @@ static double zig_nor_convert_y(const double *dpy, const uint64_t uy) {
 }
 
 /* Pull 64 bits of randomness, convert to signed and clear the sign bit */
-static int64_t zig_sample63() {
+static int64_t zig_sample63(void) {
     uint64_t bits = cmb_random_sfc64();
     return (*(int64_t *)&bits) & INT64_MAX;
 }
@@ -404,7 +422,7 @@ double cmi_random_nor_not_hot(int64_t i_cand_x) {
 /*
  * Gamma distribution
  *
- * Rejection sampling with a easy-to-check squeeze underneath the pdf.
+ * Rejection sampling with an easy-to-check squeeze underneath the pdf.
  * In principle similar to the ziggurat method, except that the covering
  * function is a power of a normal distribution, and that the squeezing
  * function underneath the pdf is a continuous function instead of a ziggurat.
@@ -412,16 +430,16 @@ double cmi_random_nor_not_hot(int64_t i_cand_x) {
  * See Marsaglia & Tsang (2000): "A Simple Method for Generating Gamma Variables",
  *  https://dl.acm.org/doi/10.1145/358407.358414
  */
-double cmb_random_std_gamma(const double a) {
+double cmb_random_std_gamma(const double shape) {
+    cmb_assert_release(shape > 0.0);
+
     static CMB_THREAD_LOCAL double a_prev = 0.0;
     static CMB_THREAD_LOCAL double c = 0.0;
     static CMB_THREAD_LOCAL double d = 0.0;
-
-    cmb_assert(a > 0.0);
-    if (a != a_prev) {
-        d = a - 1.0 / 3.0;
+    if (shape != a_prev) {
+        d = shape - 1.0 / 3.0;
         c = 1.0 / sqrt(9.0 * d);
-        a_prev = a;
+        a_prev = shape;
     }
 
     double x, v;
@@ -434,17 +452,19 @@ double cmb_random_std_gamma(const double a) {
         double w = v * v * v;
         double u = cmb_random();
         if ((u < 1.0 - 0.331 * (x * x) * (x * x))
-        || (log(u) < (0.5 * x * x) + (d * (1.0 - w + log(w))))) {
-            return d * w;
+            || (log(u) < (0.5 * x * x) + (d * (1.0 - w + log(w))))) {
+            const double ret = d * w;
+            cmb_assert_debug(ret >= 0.0);
+            return ret;
         }
     }
 
     /* not reached */
-    cmb_assert(0);
+    cmb_assert_debug(0);
 }
 
 /* Simple flip of a fair unbiased coin, caching bits for efficiency */
-int cmb_random_flip() {
+int cmb_random_flip(void) {
     static CMB_THREAD_LOCAL uint64_t bits;
     static CMB_THREAD_LOCAL uint8_t bitpos = 0;
 
@@ -456,55 +476,70 @@ int cmb_random_flip() {
     return ((bits >> --bitpos) & 1) ? 1 : 0;
 }
 
-/* Geometric distribution, the number of trials until the first success */
+/* Geometric distribution, the number of trials until and including the first success. */
 unsigned cmb_random_geometric(const double p) {
     cmb_assert((p > 0.0) && (p <= 1.0));
+
     static CMB_THREAD_LOCAL double prev = 0.0;
     static CMB_THREAD_LOCAL double denom = 0.0;
-
     if (p != prev) {
         denom = -log(1.0 - p);
     }
 
-    return (unsigned)ceil(cmb_random_std_exponential() / denom);
+    unsigned x = (unsigned)ceil(cmb_random_std_exponential() / denom);
+
+    cmb_assert_debug(x >= 1u);
+    return x;
 }
 
 /* Binomial distribution, the number of successes in n trials */
 unsigned cmb_random_binomial(const unsigned n, const double p) {
-    cmb_assert((p > 0.0) && (p <= 1.0) && (n > 0));
+    cmb_assert_release(n > 0);
+    cmb_assert_release((p > 0.0) && (p <= 1.0));
+
     unsigned sctr = 0;
-    for (unsigned i = 0; i < n; i++) {
+    for (unsigned ui = 0u; ui < n; ui++) {
         sctr += cmb_random_bernoulli(p);
     }
 
+    cmb_assert_debug(sctr <= n);
     return sctr;
 }
 
-/* Negative binomial distribution, number of failures until m'th success */
+/*
+ * Negative binomial distribution, number of failures until m'th success,
+ * where p > 0 is the probability of success in each trial.
+ */
 unsigned cmb_random_negative_binomial(const unsigned m, const double p) {
-    cmb_assert((p > 0.0) && (p <= 1.0) && (m > 0));
-    unsigned r = 0;
-    for (unsigned i = 0; i < m; i++) {
-        r += cmb_random_geometric(p);
+    cmb_assert_release(m > 0);
+    cmb_assert((p > 0.0) && (p <= 1.0));
+
+    unsigned fctr = 0;
+    for (unsigned ui = 0u; ui < m; ui++) {
+        fctr += cmb_random_geometric(p);
     }
 
-    return r;
+    return fctr;
 }
 
 /*
  * Poisson distribution, number of arrivals with rate r in unit time,
- * using our fast exponential distribution to simulate it, arrival by arrival.
+ * using our fast exponential distribution to simulate it arrival by arrival.
  */
 unsigned cmb_random_poisson(const double r) {
-    double m = 1.0 / r;
+    cmb_assert_release(r > 0.0);
+
+    const double m = 1.0 / r;
     double t = 0.0;
     unsigned ctr = 0;
     for (;;) {
         t += cmb_random_exponential(m);
         if (t <= 1.0) {
+            /* Still within time window */
             ctr++;
         }
         else {
+            /* Unit time elapsed */
             break;
         }
     }
@@ -512,19 +547,38 @@ unsigned cmb_random_poisson(const double r) {
     return ctr;
 }
 
-/* Non-uniform discrete distribution, simple cdf inversion method */
-unsigned cmb_random_loaded_dice(const unsigned n, const double p[n]) {
-    double x = cmb_random();
-    unsigned i;
+/*
+ * Non-uniform discrete distribution, simple cdf inversion method.
+ */
+#ifndef NASSERT
+static double sum_tolerance = 1.0e-3;
+static bool sums_to_one(const unsigned n, const double p[n]) {
+    double sum = 0.0;
+    for (unsigned ui = 0u; ui < n; ui++) {
+        sum += p[ui];
+    }
+
+    return (fabs(sum - 1.0) <= sum_tolerance) ? true : false;
+}
+#endif /* ifndef NASSERT */
+
+unsigned cmb_random_loaded_dice(const unsigned n, const double pa[n]) {
+    cmb_assert_release(n > 0);
+    cmb_assert_release(pa != NULL);
+    cmb_assert_release(sums_to_one(n, pa));
+
+    const double x = cmb_random();
     double q = 0.0;
-    for (i = 0; i < n; i++) {
-        q += p[i];
+    unsigned ui;
+    for (ui = 0; ui < n; ui++) {
+        q += pa[ui];
         if (x < q) {
             break;
         }
     }
 
-    return i;
+    cmb_assert_debug(ui < n);
+    return ui;
 }
 
 /* 
@@ -538,37 +592,43 @@ unsigned cmb_random_loaded_dice(const unsigned n, const double p[n]) {
 /* Helper function to make sure the table index never wraps around */
 static inline uint64_t cmi_random_alias_secure(const double p) {
     uint64_t ur;
-    if (p <= 0.0)
+    if (p <= 0.0) {
         ur = 0;
-    else if (p >= 1.0)
+    }
+    else if (p >= 1.0) {
         ur = UINT64_MAX;
-    else
+    }
+    else {
         ur = (uint64_t)(p * (double)UINT64_MAX);
+    }
 
     return ur;
 }
 
 /* Create alias lookup table before sampling */
-struct cmb_random_alias *cmb_random_alias_create(const unsigned n, const double p[n]) {
-    cmb_assert(n > 0);
+struct cmb_random_alias *cmb_random_alias_create(const unsigned n, const double pa[n]) {
+    cmb_assert_release(n > 0);
+    cmb_assert_release(sums_to_one(n, pa));
+
     struct cmb_random_alias *alp = NULL;
     double *work = cmi_calloc(n, sizeof(double));
     double psum = 0.0;
-    for (unsigned i = 0; i < n; i++) {
-        psum += p[i];
+    for (unsigned ai = 0; ai < n; ai++) {
+        psum += pa[ai];
     }
+    cmb_assert_debug(fabs(psum - 1.0) <= sum_tolerance);
 
     unsigned *small = cmi_calloc(n, sizeof(unsigned));
     unsigned *large = cmi_calloc(n, sizeof(unsigned));
     unsigned idxs = 0;
     unsigned idxl = 0;
-    for (unsigned i = 0; i < n; i++) {
-        work[i] = p[i] * n  / psum;
-        if (work[i] < 1.0) {
-            small[idxs++] = i;
+    for (unsigned ui = 0; ui < n; ui++) {
+        work[ui] = pa[ui] * n  / psum;
+        if (work[ui] < 1.0) {
+            small[idxs++] = ui;
         }
         else {
-            large[idxl++] = i;
+            large[idxl++] = ui;
         }
     }
 
@@ -578,8 +638,8 @@ struct cmb_random_alias *cmb_random_alias_create(const unsigned n, const double 
     alp->alias = cmi_calloc(n, sizeof(unsigned));
 
     while ((idxs > 0) && (idxl > 0)) {
-        unsigned l = small[--idxs];
-        unsigned g = large[--idxl];
+        const unsigned l = small[--idxs];
+        const unsigned g = large[--idxl];
         alp->uprob[l] = cmi_random_alias_secure(work[l]);
         alp->alias[l] = g;
         work[g] = (work[g] + work[l]) - 1.0;
@@ -610,9 +670,11 @@ struct cmb_random_alias *cmb_random_alias_create(const unsigned n, const double 
 
 /* Deallocate the alias lookup table when done sampling */
 void cmb_random_alias_destroy(struct cmb_random_alias *pa) {
-    if (pa != NULL) {
-        cmi_free(pa->uprob);
-        cmi_free(pa->alias);
-        cmi_free(pa);
-    }
+    cmb_assert_release(pa != NULL);
+    cmb_assert_release(pa->uprob != NULL);
+    cmb_assert_release(pa->alias != NULL);
+
+    cmi_free(pa->uprob);
+    cmi_free(pa->alias);
+    cmi_free(pa);
 }
