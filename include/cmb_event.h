@@ -52,6 +52,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "cmb_assert.h"
 #include "cmb_config.h"
 
 /* The generic event type */

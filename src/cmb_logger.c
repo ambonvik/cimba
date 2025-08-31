@@ -120,9 +120,3 @@ void cmb_info(FILE *fp, char *fmtstr, ...) {
     (void)cmb_vfprintf(CMI_LOGGER_INFO, fp, fmtstr, args);
     va_end(args);
 }
-
-#ifndef NASSERT
-void cmi_assert_failed(const char *sourcefile, const char *func, const int line, const char *condition) {
-    cmb_fatal(stderr, "Assert failed: %s source file %s function %s line %d ", condition, sourcefile, func, line);
-}
-#endif

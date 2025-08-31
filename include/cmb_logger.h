@@ -2,7 +2,7 @@
  * cmb_logger.h - centralized logging functions with simulation timestamps
  * Each call to the logger tags the message with a logging flag value.
  * The flag value  is matched against the simulation logging mask. If a
- * bitwise or of the curent mask and the provided flags is non-zero, the
+ * bitwise or of the current mask and the provided flags is non-zero, the
  * message gets printed. This allows more combinations of system and user
  * logging levels than a simple linear logging verbosity level.
  *
@@ -70,33 +70,4 @@ extern void cmb_set_timeformatter(char *(*fp)(double));
     extern void cmb_warning(FILE *fp, char *fmtstr, ...);
     extern void cmb_info(FILE *fp, char *fmtstr, ...);
 #endif
-
-/*
- * Custom assert() with some more info when failing. Failed asserts call cmb_fatal().
- * cmb_assert_release() remains if NDEBUG is defined, but goes away if NASSERT is defined.
- * cmb_assert_debug() goes away if NDEBUG is defined (like standard assert()) or if NASSERT is defined.
- * cmb_assert() is shorthand for cmb_assert_debug()
- */
-#ifndef NASSERT
-    #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
-        extern void cmi_assert_failed(const char *sourcefile, const char *func, int line, const char *condition) __attribute__((noreturn));
-    #elif CMB_COMPILER == MSVC
-        extern __declspec(noreturn) void cmi_assert_failed(const char *sourcefile, const char *func, int line, const char *condition) __attribute__((noreturn));
-    #else
-        extern void cmi_assert_failed(const char *sourcefile, const char *func, int line, const char *condition);
-    #endif
-
-    #ifndef NDEBUG
-        #define cmb_assert_debug(x) ((x) ? (void)(0) : (cmi_assert_failed(__FILE_NAME__, __func__, __LINE__, #x)))
-    #else
-        #define cmb_assert_debug(x) ((void)(0))
-    #endif /* ifndef NDEBUG */
-    #define cmb_assert_release(x) ((x) ? (void)(0) : (cmi_assert_failed(__FILE_NAME__, __func__, __LINE__, #x)))
-    #define cmb_assert(x) cmb_assert_debug(x)
-#else
-    #define cmb_assert_debug(x) ((void)(0))
-    #define cmb_assert_release(x) ((void)(0))
-    #define cmb_assert(x) cmb_assert_debug(x)
-#endif
-
 #endif /* CIMBA_CMB_LOGGER_H */

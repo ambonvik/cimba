@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <math.h>
 
+#include "cmb_assert.h"
 #include "cmb_config.h"
 #include "cmb_logger.h"
 

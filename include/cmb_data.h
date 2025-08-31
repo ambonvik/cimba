@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "cmb_assert.h"
 #include "cmi_memutils.h"
 #include "cmb_logger.h"
 
