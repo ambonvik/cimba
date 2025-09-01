@@ -45,10 +45,10 @@ extern double cmb_random_cauchy(double mode, double scale);
 extern double cmb_random_PERT(double l, double m, double r);
 extern double cmb_random_weibull(double shape, double scale);
 extern double cmb_random_pareto(double shape, double mode);
-extern double cmb_random_chisquare(unsigned k);
-extern double cmb_random_std_t_dist(unsigned v);
-extern double cmb_random_t_dist(double m, double s, unsigned v);
-extern double cmb_random_f_dist(unsigned a, unsigned b);
+extern double cmb_random_chisquare(double k);
+extern double cmb_random_std_t_dist(double v);
+extern double cmb_random_t_dist(double m, double s, double v);
+extern double cmb_random_f_dist(double a, double b);
 extern unsigned cmb_random_bernoulli(double p);
 extern double cmb_random_std_beta(double a, double b);
 extern double cmb_random_beta(double a, double b, double l, double r);
@@ -242,6 +242,7 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x) {
                     double x = zig_exp_convert_x(&(cmi_random_exp_zig_pdf_x[jdx]), u_cand_x);
                     double y = zig_exp_convert_y(&(cmi_random_exp_zig_pdf_y[jdx]), u_cand_y);
                     if (y <= exp(-x)) {
+                        /* Indeed inside */
                         return x + x_offset;
                     }
                 }
@@ -252,7 +253,7 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x) {
             }
         }
         else {
-            /* In the tail, exploit the memoryless property to right-shift and try again*/
+            /* In the tail, exploit the memoryless property to right-shift and try again */
             x_offset += exp_zig_x_tail_start;
         }
 

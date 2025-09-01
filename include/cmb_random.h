@@ -337,9 +337,10 @@ inline double cmb_random_pareto(const double shape, const double mode) {
  * Chi-square distribution on [0, oo), modeling the sum of k squared standard
  * normal distributions N(0, 1). Mean k, variance 2 k. Used to model sample
  * variances for normally distributed samples.
+ * Generalized by permitting real-valued k, not just integer values.
  */
-inline double cmb_random_chisquare(const unsigned k) {
-    cmb_assert_release(k > 0u);
+inline double cmb_random_chisquare(const double k) {
+    cmb_assert_release(k > 0.0);
 
     const double x = cmb_random_gamma(k / 2.0, 2.0);
 
@@ -351,10 +352,11 @@ inline double cmb_random_chisquare(const unsigned k) {
  * f distribution for ratios of sample variances, parameters a and b for
  * numerator and denominator degrees of freedom, respectively. Probably not very
  * useful in a discrete event simulation context, included for completeness.
+ * Generalized by allowing real-valued a and b, not just integer values.
  */
-inline double cmb_random_f_dist(const unsigned a, const unsigned b) {
-    cmb_assert_release(a > 0u);
-    cmb_assert_release(b > 0u);
+inline double cmb_random_f_dist(const double a, const double b) {
+    cmb_assert_release(a > 0.0);
+    cmb_assert_release(b > 0.0);
 
     const double x = cmb_random_chisquare(a) / a;
     double y;
@@ -374,14 +376,14 @@ inline double cmb_random_f_dist(const unsigned a, const unsigned b) {
  * distribution as v -> oo.
  * Mean 0.0 for v > 1, variance v / (v - 2) for v > 2, otherwise undefined.
  */
-inline double cmb_random_std_t_dist(const unsigned v) {
-    cmb_assert_release(v > 0u);
+inline double cmb_random_std_t_dist(const double v) {
+    cmb_assert_release(v > 0.0);
 
     const double x = cmb_random_std_normal();
     double y;
     while ((y = cmb_random_chisquare(v)) == 0.0) {}
 
-    const double r = x / sqrt( y / (double)v);
+    const double r = x / sqrt( y / v);
     return r;
 }
 
@@ -392,9 +394,9 @@ inline double cmb_random_std_t_dist(const unsigned v) {
  * normal distributions if fatter tails are needed. Converges to
  * a normal distribution N(m, s) for v -> oo.
  */
-inline double cmb_random_t_dist(const double m, const double s, const unsigned v) {
+inline double cmb_random_t_dist(const double m, const double s, const double v) {
     cmb_assert_release(s > 0.0);
-    cmb_assert_release(v > 0u);
+    cmb_assert_release(v > 0.0);
 
     const double x = m + s * cmb_random_std_t_dist(v);
     return x;
