@@ -20,8 +20,8 @@
  * limitations under the License.
  */
 
- #ifndef CIMBA_CMB_DATA_H
- #define CIMBA_CMB_DATA_H
+#ifndef CIMBA_CMB_DATA_H
+#define CIMBA_CMB_DATA_H
 
 #include <float.h>
 #include <math.h>
@@ -31,7 +31,6 @@
 
 #include "cmb_assert.h"
 #include "cmi_memutils.h"
-#include "cmb_logger.h"
 
 /******************************************************************************
  * The cmb_summary maintains a running tally of key statistics,
@@ -50,6 +49,7 @@ struct cmb_summary {
 /* Initialize a given data summary, not necessarily allocated on the heap */
 inline void cmb_summary_init(struct cmb_summary *sup) {
     cmb_assert_release(sup != NULL);
+
     sup->cnt = 0u;
     sup->max = -DBL_MAX;
     sup->min = DBL_MAX;
@@ -57,6 +57,7 @@ inline void cmb_summary_init(struct cmb_summary *sup) {
 }
 
 inline void cmb_summary_clear(struct cmb_summary *sup) {
+    cmb_assert_release(sup != NULL);
     cmb_summary_init(sup);
 }
 
@@ -75,6 +76,7 @@ inline struct cmb_summary *cmb_summary_create(void) {
  * A matching function to free the heap area again if created there.
  */
 inline void cmb_summary_destroy(struct cmb_summary *sup) {
+    cmb_assert_release(sup != NULL);
     cmi_free(sup);
 }
 
@@ -121,10 +123,13 @@ inline double cmb_summary_mean(const struct cmb_summary *sup) {
 /* Sample variance */
 inline double cmb_summary_variance(const struct cmb_summary *sup) {
     cmb_assert_release(sup != NULL);
+
     double r = 0.0;
     if (sup->cnt > 1) {
         r = sup->m2 / (double)(sup->cnt - 1u);
     }
+
+    cmb_assert_debug(r >= 0.0);
     return r;
 }
 
@@ -158,11 +163,13 @@ struct cmb_wsummary {
 };
 
 inline void cmb_wsummary_init(struct cmb_wsummary *wsup) {
+    cmb_assert_release(wsup != NULL);
     cmb_summary_init((struct cmb_summary *)wsup);
     wsup->wsum = 0.0;
 }
 
 inline void cmb_wsummary_clear(struct cmb_wsummary *wsup) {
+    cmb_assert_release(wsup != NULL);
     cmb_wsummary_init(wsup);
 }
 
@@ -173,6 +180,7 @@ inline struct cmb_wsummary *cmb_wsummary_create(void) {
 }
 
 inline void cmb_wsummary_destroy(struct cmb_wsummary *wsup) {
+    cmb_assert_release(wsup != NULL);
     cmi_free(wsup);
 }
 
@@ -267,14 +275,17 @@ extern uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
                                   struct cmb_summary *dsump);
 
 inline uint64_t cmb_dataset_count(const struct cmb_dataset *dsp) {
+    cmb_assert_release(dsp != NULL);
     return dsp->cnt;
 }
 
 inline double cmb_dataset_min(const struct cmb_dataset *dsp) {
+    cmb_assert_release(dsp != NULL);
     return dsp->min;
 }
 
 inline double cmb_dataset_max(const struct cmb_dataset *dsp) {
+    cmb_assert_release(dsp != NULL);
     return dsp->max;
 }
 

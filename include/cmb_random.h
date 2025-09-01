@@ -472,7 +472,11 @@ static inline long cmb_random_dice(const long a, const long b) {
  * The probabilities in pa[] should sum to 1.0, collectively exhaustive.
  *
  * Very simple O(n) implementation. For anything larger than ~15 values,
- * use the alias sampling method below instead.
+ * use the alias sampling method below instead. Both can easily be extended
+ * to arbitrary discrete values by letting the result be an index into
+ * an array of whatever values need to be selected. See the normal and
+ * exponential distributions above for an example of alias sampling from
+ * a table of values.
  */
 extern unsigned cmb_random_loaded_dice(unsigned n, const double pa[n]);
 

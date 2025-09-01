@@ -151,31 +151,31 @@ void cmb_summary_print(const struct cmb_summary *sup, FILE *fp, const bool lead_
         r = fprintf(fp, "%s%#8.4g",
                 ((lead_ins) ? "  Mean " : "\t"), mean);
         cmb_assert_release(r > 0);
+    }
 
-        if (sup->cnt > 1u) {
-            const double var = cmb_summary_variance(sup);
-            const double std = sqrt(var);
-            r = fprintf(fp, "%s%#8.4g",
-                    ((lead_ins) ? "  StdDev " : "\t"), std);
-            cmb_assert_release(r > 0);
-            r = fprintf(fp, "%s%#8.4g",
-                    ((lead_ins) ? "  Variance " : "\t"), var);
-            cmb_assert_release(r > 0);
+    if (sup->cnt > 1u) {
+        const double var = cmb_summary_variance(sup);
+        const double std = sqrt(var);
+        r = fprintf(fp, "%s%#8.4g",
+                ((lead_ins) ? "  StdDev " : "\t"), std);
+        cmb_assert_release(r > 0);
+        r = fprintf(fp, "%s%#8.4g",
+                ((lead_ins) ? "  Variance " : "\t"), var);
+        cmb_assert_release(r > 0);
+    }
 
-            if (sup->cnt > 2u) {
-                const double skew = cmb_summary_skewness(sup);
-                r = fprintf(fp, "%s%#8.4g",
-                    ((lead_ins) ? "  Skewness " : "\t"), skew);
-                cmb_assert_release(r > 0);
+    if (sup->cnt > 2u) {
+        const double skew = cmb_summary_skewness(sup);
+        r = fprintf(fp, "%s%#8.4g",
+            ((lead_ins) ? "  Skewness " : "\t"), skew);
+        cmb_assert_release(r > 0);
+    }
 
-                if (sup->cnt > 3u) {
-                    const double kurt = cmb_summary_kurtosis(sup);
-                    r = fprintf(fp, "%s%#8.4g",
-                        ((lead_ins) ? "  Kurtosis " : "\t"), kurt);
-                    cmb_assert_release(r > 0);
-                }
-            }
-        }
+    if (sup->cnt > 3u) {
+        const double kurt = cmb_summary_kurtosis(sup);
+        r = fprintf(fp, "%s%#8.4g",
+            ((lead_ins) ? "  Kurtosis " : "\t"), kurt);
+        cmb_assert_release(r > 0);
     }
 
     r = fprintf(fp, "\n");
@@ -242,6 +242,7 @@ double cmb_summary_skewness(const struct cmb_summary *sup) {
         r = sqrt(dn * (dn - 1.0)) * g / (dn - 2.0);
     }
 
+    cmb_assert_debug(r >= 0.0);
     return r;
 }
 
@@ -259,6 +260,7 @@ double cmb_summary_kurtosis(const struct cmb_summary *sup) {
         r = (dn - 1.0) / ((dn - 2.0) * (dn - 3.0)) * ((dn + 1.0) * g + 6.0);
     }
 
+    cmb_assert_debug(r >= 0.0);
     return r;
 }
 
@@ -313,10 +315,11 @@ struct cmb_dataset *cmb_dataset_create(void) {
 void cmb_dataset_init(struct cmb_dataset *dsp) {
     cmb_assert_release(dsp != NULL);
 
-    dsp->cursize = dsp->cnt = 0;
-    dsp->xv = NULL;
-    dsp->max = -DBL_MAX;
+    dsp->cursize = 0u;
+    dsp->cnt = 0u;
     dsp->min = DBL_MAX;
+    dsp->max = -DBL_MAX;
+    dsp->xv = NULL;
 }
 
 void cmb_dataset_clear(struct cmb_dataset *dsp) {
@@ -331,16 +334,14 @@ void cmb_dataset_clear(struct cmb_dataset *dsp) {
 
 void cmb_dataset_destroy(struct cmb_dataset *dsp) {
     cmb_assert_release(dsp != NULL);
+
     cmb_dataset_clear(dsp);
     cmi_free(dsp);
 }
 
 static void cmi_dataset_expand(struct cmb_dataset *dsp) {
     cmb_assert_release(dsp != NULL);
-
-    if (dsp->cursize > UINT64_MAX / 2u) {
-        cmb_error(stderr, "Too large dataset, would overflow.");
-    }
+    cmb_assert_release(dsp->cursize < UINT64_MAX / 2u);
 
     if (dsp->cursize == 0) {
         cmb_assert_release(dsp->xv == NULL);
@@ -369,6 +370,7 @@ void cmb_dataset_add(struct cmb_dataset *dsp, const double x) {
         cmi_dataset_expand(dsp);
     }
 
+    /* May have null data array on entry, but not by here */
     cmb_assert_release(dsp->xv != NULL);
     cmb_assert_release(dsp->cnt < dsp->cursize);
 
@@ -393,6 +395,8 @@ static void dataset_swap(double *a, double *b) {
     *b = tmp;
 }
 
+#ifndef NASSERT
+/* Code only used for checking invariants */
 static bool is_sorted(const double arr[], const uint64_t un) {
     if ((arr == NULL) || (un < 2)) {
         return true;
@@ -408,7 +412,7 @@ static bool is_sorted(const double arr[], const uint64_t un) {
     return true;
 }
 
-/* Check for heap condition starting from root ui, testing this sub-tree only */
+/* Check for heap condition starting from root ui, testing this subtree only */
 static bool is_max_heap(const uint64_t un, const double arr[un], const uint64_t uroot) {
     cmb_assert_release(arr != NULL);
     if ((un > 1) && (uroot <= un)) {
@@ -445,6 +449,8 @@ static bool is_max_heap(const uint64_t un, const double arr[un], const uint64_t 
     /* No evidence to the contrary */
     return true;
 }
+
+#endif /* ifndef NASSERT */
 
 /* Establish max heap condition in dataset array starting from uroot */
 static void dataset_heapify(const uint64_t un, double arr[un], uint64_t uroot) {
@@ -486,7 +492,7 @@ void cmb_dataset_sort(const struct cmb_dataset *dsp) {
     if (NULL != dsp->xv) {
         const uint64_t un = dsp->cnt;
         double *arr = dsp->xv;
-        static_assert(INT64_MAX >= UINT64_MAX / 2);
+        cmb_assert_debug(INT64_MAX >= UINT64_MAX / 2);
         for (int64_t root = (int64_t)(un / 2) - 1; root >= 0; root--) {
             dataset_heapify(un, arr, root);
         }

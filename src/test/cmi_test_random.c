@@ -29,13 +29,15 @@
 #include "cmb_data.h"
 #include "cmb_random.h"
 
-/* First some utilities for the testing */
+/* Utilities for the testing */
 #include "cmi_test.h"
 
+/* Inline functions from cmi_test.h */
 extern uint64_t create_seed(void);
 extern void print_chars(const char *str, uint16_t repeats);
 extern void print_line(const char *str);
 
+/* Test macros */
 #define MOMENTS 15
 #define ACFS 15
 #define MAX_ITER 100000000ull
@@ -44,7 +46,7 @@ extern void print_line(const char *str);
 #define QTEST_PREPARE() \
     const uint64_t seed = create_seed(); \
     cmb_random_init(seed); \
-    struct cmb_dataset ds;  \
+    struct cmb_dataset ds; \
     cmb_dataset_init(&ds)
 
 #define QTEST_EXECUTE(DUT) \
@@ -74,41 +76,28 @@ extern void print_line(const char *str);
     cmb_dataset_clear(&ds); \
     print_line("=")
 
+static void print_single(const char *lead, const bool has_val, const double val) {
+    printf("  %s ", lead);
+    if (has_val) {
+        printf("%#8.4g", val);
+    }
+    else {
+        printf("   ---  ");
+    }
+}
+
 static void print_expected(const uint64_t n,
                            const bool has_mean, const double mean,
                            const bool has_var, const double var,
                            const bool has_skew, const double skew,
                            const bool has_kurt, const double kurt) {
     printf("\nExpected: N %8llu", n);
-    if (has_mean) {
-        printf("  Mean %#8.4g", mean);
-    }
-    else {
-        printf("  Mean    ---  ");
-    }
-
-    if (has_var) {
-        printf("  StdDev %#8.4g", sqrt(var));
-        printf("  Variance %#8.4g", var);
-    }
-    else {
-        printf("  StdDev    ---  ");
-        printf("  Variance    ---  ");
-    }
-
-    if (has_skew) {
-        printf("  Skewness %#8.4g", skew);
-    }
-    else {
-        printf("  Skewness    ---  ");
-    }
-
-    if (has_kurt) {
-        printf("  Kurtosis %#8.4g\n", kurt);
-    }
-    else {
-        printf("  Kurtosis    ---\n");
-    }
+    print_single("Mean", has_mean, mean);
+    print_single("StdDev", has_var, sqrt(var));
+    print_single("Variance", has_var, var);
+    print_single("Skewness", has_skew, skew);
+    print_single("Kurtosis", has_kurt, kurt);
+    printf("\n");
 }
 
 /**** Start of test scripts ****/
@@ -117,6 +106,7 @@ static void test_quality_random(void) {
     printf("\nQuality testing basic random number generator cmb_random(), uniform on [0,1]\n");
     QTEST_PREPARE();
 
+    /* Handle test execution outside macro to capture moments as well */
     printf("Seed = %#llx, drawing %llu samples...\n", seed, MAX_ITER);
     double moment_r[MOMENTS] = { 0.0 };
     for (uint64_t ui = 0; ui < MAX_ITER; ui++) {
@@ -135,6 +125,7 @@ static void test_quality_random(void) {
     QTEST_REPORT();
     QTEST_REPORT_ACFS();
 
+    /* Report moments */
     printf("\nRaw moment:   Expected:   Actual:   Error:\n");
     print_line("-");
     for (uint16_t ui = 0; ui < MOMENTS; ui++) {
@@ -614,230 +605,204 @@ static void test_quality_t_dist(const double m, const double s, const double v) 
 }
 
 
-#if 0
-static void test_quality_bernoulli(double p) {
-    uint64_t seed = create_seed();
-    printf("\nQuality testing unbiased coin flip, seed = %#llx.\n", seed);
-    struct cmb_dataset *dsp = cmb_dataset_create(2048);
-    printf("Drawing %d samples....\n", MAX_ITER);
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
-        double x = (double)cmb_random_flip();
-        cmb_dataset_add(dsp, x);
-    }
+static void test_quality_flip(void) {
+    printf("\nQuality testing unbiased coin flip, p = 0.5\n");
+    QTEST_PREPARE();
+    QTEST_EXECUTE(cmb_random_flip());
 
-    printf("Expected values: avg %g, std dev %g\n",0.5, 0.5);
-    cmb_dataset_print_summary(stdout, dsp, true);
-    cmb_dataset_print_histogram(stdout, dsp, 10, 0, 0);
-    cmb_dataset_clear(dsp);
+    const double p = 0.5;
+    const double q = 1.0 - p;
+    const double skew = (q - p) / sqrt(p * q);
+    const double kurt = (1.0 - 6.0 * p * q) / (p * q);
+    print_expected(MAX_ITER, true, 0.5, true,0.5,true, skew, true, kurt);
 
-
-    seed = create_seed();
-    printf("\nQuality testing biased Bernoulli trials, p = %g, seed = %#llx.\n", p, seed);
-    printf("Drawing %d samples....\n", MAX_ITER);
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
-        double x = (double)cmb_random_bernoulli(p);
-        cmb_dataset_add(dsp, x);
-    }
-
-    printf("Expected values: avg %g, std dev %g\n",p, sqrt(p * ( 1.0 - p)));
-    cmb_dataset_print_summary(stdout, dsp, true);
-    cmb_dataset_print_histogram(stdout, dsp, 10, 0, 0);
-    cmb_dataset_destroy(dsp);
+    QTEST_REPORT();
+    QTEST_FINISH();
 }
 
+static void test_quality_bernoulli(const double p) {
+    printf("\nQuality testing biased Bernoulli trials, p = %g\n", p);
+    QTEST_PREPARE();
+    QTEST_EXECUTE(cmb_random_flip());
 
+    const double q = 1.0 - p;
+    const double skew = (q - p) / sqrt(p * q);
+    const double kurt = (1.0 - 6.0 * p * q) / (p * q);
+    print_expected(MAX_ITER, true, 0.5, true,0.5,true, skew, true, kurt);
 
-static void test_quality_geometric(double p) {
-    uint64_t seed = create_seed();
-    cmb_random_init(seed);
-    printf("\nQuality testing geometric distribution, p = %g, seed = %#llx.\n", p, seed);
-    struct cmb_dataset *dsp = cmb_dataset_create(2048);
-    printf("Drawing %d samples....\n", MAX_ITER);
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
-        double x = (double)cmb_random_geometric(p);
-        cmb_dataset_add(dsp, x);
-    }
-
-    printf("Expected values: avg %g, std dev %g\n", 1.0/p, sqrt((1.0 - p) / (p * p)));
-    cmb_dataset_print_summary(stdout, dsp, true);
-    cmb_dataset_print_histogram(stdout, dsp, 25, 0.0, 0.0);
-    cmb_dataset_destroy(dsp);
+    QTEST_REPORT();
+    QTEST_FINISH();
 }
 
-static void test_quality_binomial(unsigned n, double p) {
-    uint64_t seed = create_seed();
-    cmb_random_init(seed);
-    printf("\nQuality testing binomial distribution, n = %d, p = %g, seed = %#llx.\n", n, p, seed);
-    struct cmb_dataset *dsp = cmb_dataset_create(2048);
-    printf("Drawing %d samples....\n", MAX_ITER);
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
-        double x = (double)cmb_random_binomial(n, p);
-        cmb_dataset_add(dsp, x);
-    }
+static void test_quality_geometric(const double p) {
+    printf("\nQuality testing geometric distribution, p = %g\n", p);
+    QTEST_PREPARE();
+    QTEST_EXECUTE(cmb_random_geometric(p));
 
-    printf("Expected values: avg %g, std dev %g\n", n * p, sqrt(n * p * (1.0 - p)));
-    cmb_dataset_print_summary(stdout, dsp, true);
-    cmb_dataset_print_histogram(stdout, dsp, 25, 0.0, 0.0);
-    cmb_dataset_destroy(dsp);
+    const double mean = 1.0 / p;
+    const double q = 1.0 - p;
+    const double var = q / (p * p);
+    const double skew = (q - p) / sqrt(p * q);
+    const double kurt = (1.0 - 6.0 * p * q) / (p * q);
+    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
+
+    QTEST_REPORT();
+    QTEST_FINISH();
 }
 
-static void test_quality_pascal(unsigned m, double p) {
-    uint64_t seed = create_seed();
-    cmb_random_init(seed);
-    printf("\nQuality testing negative binomial (pascal) distribution, m = %d, p = %g, seed = %#llx.\n", m, p, seed);
-    struct cmb_dataset *dsp = cmb_dataset_create(2048);
-    printf("Drawing %d samples....\n", MAX_ITER);
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
-        double x = (double)cmb_random_pascal(m, p);
-        cmb_dataset_add(dsp, x);
-    }
+static void test_quality_binomial(const unsigned n, const double p) {
+    printf("\nQuality testing binomial distribution, n = %d, p = %g\n", n, p);
+    QTEST_PREPARE();
+    QTEST_EXECUTE((double)cmb_random_binomial(n, p));
 
-    printf("Expected values: avg %g, std dev %g\n", m * (1.0 - p) / p, sqrt(m * (1.0 - p) / (p * p)));
-    cmb_dataset_print_summary(stdout, dsp, true);
-    cmb_dataset_print_histogram(stdout, dsp, 25, 0.0, 0.0);
-    cmb_dataset_destroy(dsp);
+    const double mean = n * p;
+    const double q = 1.0 - p;
+    const double var = n * p * q;
+    const double skew = (q - p) / sqrt(n * p * q);
+    const double kurt = (1.0 - 6.0 * p * q) / (n * p * q);
+    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
+
+    QTEST_REPORT();
+    QTEST_FINISH();
 }
 
-static void test_quality_poisson(double r) {
-    uint64_t seed = create_seed();
-    cmb_random_init(seed);
-    printf("\nQuality testing poisson distribution, r = %g, seed = %#llx.\n", r, seed);
-    struct cmb_dataset *dsp = cmb_dataset_create(2048);
-    printf("Drawing %d samples....\n", MAX_ITER);
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
-        double x = (double)cmb_random_poisson(r);
-        cmb_dataset_add(dsp, x);
-    }
+static void test_quality_pascal(const unsigned m, const double p) {
+    printf("\nQuality testing negative binomial (pascal) distribution, m = %d, p = %g\n", m, p);
+    QTEST_PREPARE();
+    QTEST_EXECUTE((double)cmb_random_pascal(m, p));
 
-    printf("Expected values: avg %g, std dev %g\n", r, sqrt(r));
-    cmb_dataset_print_summary(stdout, dsp, true);
-    cmb_dataset_print_histogram(stdout, dsp, 25, 0.0, 0.0);
-    cmb_dataset_destroy(dsp);
+    const double q = 1.0 - p;
+    const double mean = (double)m * q / p;
+    const double var = (double)m * q / (p * p);
+    const double skew = (2.0 - p) / sqrt(q * (double)m);
+    const double kurt = 6.0 / (double)m + (p * p) / (q * (double)m);
+    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
+
+    QTEST_REPORT();
+    QTEST_FINISH();
 }
 
-static void test_quality_dice(long a, long b) {
-    uint64_t seed = create_seed();
-    cmb_random_init(seed);
-    printf("\nQuality testing dice (discrete uniform) distribution, a = %ld, b = %ld, seed = %#llx.\n", a, b, seed);
-    struct cmb_dataset *dsp = cmb_dataset_create(2048);
-    printf("Drawing %d samples....\n", MAX_ITER);
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
-        double x = (double)cmb_random_dice(a, b);
-        cmb_dataset_add(dsp, x);
-    }
+static void test_quality_poisson(const double r) {
+    printf("\nQuality testing poisson distribution, r = %g\n", r);
+    QTEST_PREPARE();
+    QTEST_EXECUTE((double)cmb_random_poisson(r));
 
-    printf("Expected values: avg %g, std dev %g\n", (double)(a + b) / 2.0,
-           sqrt(((b - a + 1) * (b - a + 1) - 1.0) / 12.0));
-    cmb_dataset_print_summary(stdout, dsp, true);
-    cmb_dataset_print_histogram(stdout, dsp, 25, 0.0, 0.0);
-    cmb_dataset_destroy(dsp);
+    print_expected(MAX_ITER, true, r, true,r,true, 1.0 / sqrt(r), true, 1.0 / r);
+
+    QTEST_REPORT();
+    QTEST_FINISH();
 }
 
-static void test_quality_loaded_dice(long n, double p_arr[n]) {
-    uint64_t seed = create_seed();
-    cmb_random_init(seed);
-    printf("\nQuality testing loaded dice distribution, n = %ld, seed = %#llx.\n", n, seed);
-    struct cmb_dataset *dsp = cmb_dataset_create(2048);
-    printf("Drawing %d samples....\n", MAX_ITER);
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
-        double x = (double)cmb_random_loaded_dice(n, p_arr);
-        cmb_dataset_add(dsp, x);
-    }
+static void test_quality_dice(const long a, const long b) {
+    printf("\nQuality testing dice (discrete uniform) distribution, a = %ld, b = %ld\n", a, b);
+    QTEST_PREPARE();
+    QTEST_EXECUTE((double)cmb_random_dice(a, b));
 
-    double mean = 0.0;
-    double variance = 0.0;
-    for (unsigned i = 0; i < n; i++) {
-        mean += i * p_arr[i];
-    }
-    for (unsigned i = 0; i < n; i++) {
-        variance += (i - mean) * (i - mean) * p_arr[i];
-    }
+    const double mean = (a + b) / 2.0;
+    const double var = ((b - a + 1) * (b - a + 1) - 1.0) / 12.0;
+    const double skew = 0.0;
+    const double n = (double)(b - a + 1);
+    const double kurt = - (6.0 *(n * n  + 1.0)) / (5.0 * ((n * n - 1.0)));
+    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
 
-    printf("Expected values: avg %g, std dev %g\n", mean, sqrt(variance));
-    cmb_dataset_print_summary(stdout, dsp, true);
-    cmb_dataset_print_histogram(stdout, dsp, 25, 0.0, 0.0);
-    cmb_dataset_destroy(dsp);
+    QTEST_REPORT();
+    QTEST_FINISH();
 }
 
-static void test_quality_vose_alias(long n, double p_arr[n]) {
-    uint64_t seed = create_seed();
-    cmb_random_init(seed);
-    printf("\nQuality testing vose alias sampling, n = %ld, seed = %#llx.\n", n, seed);
-    struct cmb_random_alias *alp = cmb_random_alias_create(n, p_arr);
-    struct cmb_dataset *dsp = cmb_dataset_create(2048);
-    printf("Drawing %d samples....\n", MAX_ITER);
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
-        unsigned u = cmb_random_alias_sample(alp);
-        double x = (double)u;
-        cmb_dataset_add(dsp, x);
+static void print_discrete_expects(const unsigned n, const double pa[n]) {
+    double m1 = 0.0;
+    double m2 = 0.0;
+    double m3 = 0.0;
+    double m4 = 0.0;
+
+    for (unsigned ui = 0; ui < n; ui++) {
+        const double iv = (double)ui;
+        const double p = pa[ui];
+        m1 += iv * p;
+        const double iv2 = iv * iv;
+        m2 += iv2 * p;
+        m3 = iv * iv2 * p;
+        m4 = iv2 * iv2 * p;
     }
 
-    double mean = 0.0;
-    double variance = 0.0;
-    for (unsigned i = 0; i < n; i++) {
-        mean += i * p_arr[i];
+    const double mean = m1;
+    const double var = m2 - m1 * m1;
+    const bool has_skew = (var > 1e-12);
+    const bool has_kurt = has_skew;
+    double skew = 0.0;
+    double kurt = 0.0;
+    if (has_skew) {
+        const double mu3 = m3 - 3.0 * m1 * m2 + 2.0 * m1 * m1 * m1;
+        skew = mu3 / pow(var, 3.0 / 2.0);
+        const double mu4 = m4 - 4.0 * m1 * m3 + 6.0 * m1 * m1 * m2 - 3.0 * m1 * m1 * m1 * m1;
+        kurt = mu4 / (var * var) - 3.0;
     }
-    for (unsigned i = 0; i < n; i++) {
-        variance += (i - mean) * (i - mean) * p_arr[i];
-    }
+    print_expected(MAX_ITER, true, mean, true, var, has_skew, skew, has_kurt, kurt);
+}
 
-    printf("Expected values: avg %g, std dev %g\n", mean, sqrt(variance));
-    cmb_dataset_print_summary(stdout, dsp, true);
-    cmb_dataset_print_histogram(stdout, dsp, 25, 0.0, 0.0);
+static void test_quality_loaded_dice(const unsigned n, double pa[n]) {
+    printf("\nQuality testing loaded dice distribution, n = %u\n", n);
+    QTEST_PREPARE();
+    QTEST_EXECUTE((double)cmb_random_loaded_dice(n, pa));
 
+    print_discrete_expects(n, pa);
+
+    QTEST_REPORT();
+    QTEST_FINISH();
+}
+
+static void test_quality_vose_alias(const unsigned n, const double pa[n]) {
+    printf("\nQuality testing vose alias sampling, n = %u\n", n);
+    QTEST_PREPARE();
+    struct cmb_random_alias *alp = cmb_random_alias_create(n, pa);
+    QTEST_EXECUTE((double)cmb_random_alias_sample(alp));
+
+    print_discrete_expects(n, pa);
+
+    QTEST_REPORT();
     cmb_random_alias_destroy(alp);
-    cmb_dataset_destroy(dsp);
+    QTEST_FINISH();
 }
 
-static void test_speed_vose_alias(unsigned init, unsigned end, unsigned step) {
-    uint64_t seed = create_seed();
+static void test_speed_vose_alias(const unsigned init, const unsigned end, const unsigned step) {
+    const uint64_t seed = create_seed();
     cmb_random_init(seed);
-    printf("\nSpeed testing vose alias sampling, %d samples, seed = %#llx.\n", MAX_ITER, seed);
+    printf("\nSpeed testing vose alias sampling, %llu samples, seed = %#llx.\n", MAX_ITER, seed);
     printf("n\tips simple\tips alias\tspeedup\n");
-    unsigned last_neg = 0;
-    double last_neg_val = 0.0;
-    unsigned first_pos = 0;
-    double first_pos_val = 0.0;
     for (unsigned n = init; n <= end; n += step) {
-        double *p_arr = cmi_calloc(n, sizeof *p_arr);
+        double *pa = cmi_calloc(n, sizeof *pa);
         double sum = 0.0;
-        for (unsigned i = 0; i < n; i++) {
-            p_arr[i] = cmb_random();
-            sum += p_arr[i];
+        for (unsigned ui = 0; ui < n; ui++) {
+            pa[ui] = cmb_random();
+            sum += pa[ui];
         }
 
-        for (unsigned i = 0; i < n; i++)
-            p_arr[i] /= sum;
+        for (unsigned ui = 0; ui < n; ui++) {
+            pa[ui] /= sum;
+        }
 
-        clock_t cs_simple = clock();
-        for (unsigned i = 0; i < MAX_ITER; i++)
-            (void)cmb_random_loaded_dice(n, p_arr);
-        clock_t ce_simple = clock();
+        const clock_t cs_simple = clock();
+        for (unsigned ui = 0; ui < MAX_ITER; ui++) {
+            (void)cmb_random_loaded_dice(n, pa);
+        }
 
-        clock_t cs_alias = clock();
-        struct cmb_random_alias *alp = cmb_random_alias_create(n, p_arr);
+        const clock_t ce_simple = clock();
+
+        const clock_t cs_alias = clock();
+        struct cmb_random_alias *alp = cmb_random_alias_create(n, pa);
         for (unsigned i = 0; i < MAX_ITER; i++)
             (void)cmb_random_alias_sample(alp);
         cmb_random_alias_destroy(alp);
-        clock_t ce_alias = clock();
+        const clock_t ce_alias = clock();
 
-        double t_simple = (double)(ce_simple - cs_simple) / CLOCKS_PER_SEC;
-        double ips_simple = MAX_ITER / t_simple;
-        double t_alias = (double)(ce_alias - cs_alias) / CLOCKS_PER_SEC;
-        double ips_alias = MAX_ITER / t_alias;
-        double speedup = (ips_alias - ips_simple) / ips_simple;
-        if (speedup < 0.0) {
-            last_neg = n;
-            last_neg_val = speedup;
-        }
-        else if (first_pos == 0) {
-            first_pos = n;
-            first_pos_val = speedup;
-        }
-        printf("%d\t%9.4g\t%9.4g\t%+5.2g%%\n", n, ips_simple, ips_alias, 100.0 * speedup);
+        const double t_simple = (double)(ce_simple - cs_simple) / CLOCKS_PER_SEC;
+        const double ips_simple = MAX_ITER / t_simple;
+        const double t_alias = (double)(ce_alias - cs_alias) / CLOCKS_PER_SEC;
+        const double ips_alias = MAX_ITER / t_alias;
+        const double speedup = (ips_alias - ips_simple) / ips_simple;
+        printf("%u\t%9.4g\t%9.4g\t%+5.2g%%\n", n, ips_simple, ips_alias, 100.0 * speedup);
     }
 }
-#endif
 
 int main(void) {
     print_line("*");
@@ -884,8 +849,9 @@ int main(void) {
     test_quality_std_t_dist(3.0);
     test_quality_t_dist(1.0, 2.0, 3.0);
 
-#if 0
+    printf("************************* Integer-valued distributions *************************\n");
 
+    test_quality_flip();
     test_quality_bernoulli(0.6);
     test_quality_geometric(0.1);
     test_quality_binomial(100, 0.1);
@@ -898,6 +864,6 @@ int main(void) {
     test_quality_loaded_dice(7, q);
     test_quality_vose_alias(7, q);
     test_speed_vose_alias(5, 50, 5);
-#endif
+
     return 0;
 }
