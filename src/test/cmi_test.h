@@ -20,34 +20,35 @@
 #ifndef CIMBA_CMI_TEST_H
 #define CIMBA_CMI_TEST_H
 
-#include <time.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <time.h>
 
-#include "cmb_logger.h"
+#include "cmb_assert.h"
 
-inline uint64_t create_seed(void) {
+static inline uint64_t create_seed(void) {
     struct timespec ts;
     (void) clock_gettime(CLOCK_REALTIME, &ts);
 
     return (uint64_t)(ts.tv_nsec ^ ts.tv_sec);
 }
 
-inline void print_chars(const char *str, const uint16_t repeats) {
+static inline void print_chars(const char *str, const uint16_t repeats) {
     cmb_assert_release(str != NULL);
+
     for (uint16_t ui = 0; ui < repeats; ui++) {
         printf("%s", str);
     }
 }
 
-inline void print_line(const char *str) {
+static inline void print_line(const char *str) {
+    cmb_assert_release(str != NULL);
+
     const uint16_t len = strlen(str);
     const uint16_t line_length = 80u;
     const uint16_t repeats = line_length / len;
     print_chars(str, repeats);
     printf("\n");
 }
-
-
 
 #endif /* CIMBA_CMI_TEST_H */

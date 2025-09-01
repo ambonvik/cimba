@@ -22,19 +22,12 @@
 
 #include "cmb_data.h"
 #include "cmb_random.h"
+#include "cmi_test.h"
 
 static const uint32_t max_iter = 1000000u;
 static const uint32_t max_lag = 25;
 
-static uint64_t create_seed(void) {
-   struct timespec ts;
-   (void) clock_gettime(CLOCK_REALTIME, &ts);
-
-   return (uint64_t)(ts.tv_nsec ^ ts.tv_sec);
-}
-
-static void test_summary(void)
-{
+static void test_summary(void) {
    const uint64_t seed = create_seed();
    cmb_random_init(seed);
 
@@ -82,8 +75,7 @@ static void test_summary(void)
    cmb_summary_destroy(dsp);
 }
 
-static void test_wsummary(void)
-{
+static void test_wsummary(void) {
    const uint64_t seed = create_seed();
    cmb_random_init(seed);
 
@@ -146,8 +138,8 @@ static void test_wsummary(void)
    cmb_wsummary_print(&dws, stdout, true);
 }
 
-void test_dataset() {
-   uint64_t seed = create_seed();
+void test_dataset(void) {
+   const uint64_t seed = create_seed();
    cmb_random_init(seed);
 
    printf("\nTesting datasets\n");

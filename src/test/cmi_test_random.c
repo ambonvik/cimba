@@ -32,11 +32,6 @@
 /* Utilities for the testing */
 #include "cmi_test.h"
 
-/* Inline functions from cmi_test.h */
-extern uint64_t create_seed(void);
-extern void print_chars(const char *str, uint16_t repeats);
-extern void print_line(const char *str);
-
 /* Test macros */
 #define MOMENTS 15
 #define ACFS 15
