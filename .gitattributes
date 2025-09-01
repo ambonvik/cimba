@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+# Force C language recognition for .inc files
+*.inc linguist-language=C
+

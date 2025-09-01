@@ -1,5 +1,5 @@
 /*
- * cmi_random_exp_zig.inc - local file to be included in sm_random.c,
+ * cmi_random_exp_zig.inc - local file to be included in cmb_random.c,
  * hiding the lookup table from view in main code
  */
 

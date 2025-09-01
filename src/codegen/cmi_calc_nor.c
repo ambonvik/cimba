@@ -191,7 +191,7 @@ void calculate_alias_table() {
 void print_c_code() {
     /* We have all we need, now write the C code to be #included in the actual code */
     printf("/*\n");
-    printf(" * cmi_random_nor_zig.inc - local file to be included in sm_random.c,\n");
+    printf(" * cmi_random_nor_zig.inc - local file to be included in cmb_random.c,\n");
     printf(" * hiding the lookup table from view in main code\n");
     printf(" */\n");
 
