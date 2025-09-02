@@ -28,7 +28,7 @@ static const uint32_t max_iter = 1000000u;
 static const uint32_t max_lag = 25;
 
 static void test_summary(void) {
-   const uint64_t seed = create_seed();
+   const uint64_t seed = cmi_test_create_seed();
    cmb_random_init(seed);
 
    printf("Testing data summaries\n");
@@ -76,7 +76,7 @@ static void test_summary(void) {
 }
 
 static void test_wsummary(void) {
-   const uint64_t seed = create_seed();
+   const uint64_t seed = cmi_test_create_seed();
    cmb_random_init(seed);
 
    printf("Testing weighted data summaries\n");
@@ -139,7 +139,7 @@ static void test_wsummary(void) {
 }
 
 void test_dataset(void) {
-   const uint64_t seed = create_seed();
+   const uint64_t seed = cmi_test_create_seed();
    cmb_random_init(seed);
 
    printf("\nTesting datasets\n");

@@ -17,6 +17,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "cmb_data.h"
 #include "cmb_logger.h"
@@ -637,7 +638,7 @@ void cmb_dataset_print_data(const struct cmb_dataset *dsp, FILE *fp) {
  * Print simple character-based histogram of the data.
  */
 
-static void print_stars(FILE *fp, const double scale, const uint64_t nbin) {
+static void cmi_data_print_stars(FILE *fp, const double scale, const uint64_t nbin) {
     uint64_t nstars = (uint64_t)((double)nbin / scale);
     const double rem = (double)nbin / scale - (double)nstars;
 
@@ -660,7 +661,7 @@ static void print_stars(FILE *fp, const double scale, const uint64_t nbin) {
     cmb_assert_release(r > 0);
 }
 
-static void print_chars(FILE *fp, const char *str, const uint16_t repeats) {
+static void cmi_data_print_chars(FILE *fp, const char *str, const uint16_t repeats) {
     cmb_assert_release(str != NULL);
     for (uint16_t ui = 0; ui < repeats; ui++) {
         const int r = fprintf(fp, "%s", str);
@@ -668,8 +669,8 @@ static void print_chars(FILE *fp, const char *str, const uint16_t repeats) {
     }
 }
 
-static void print_line(FILE *fp, const char *str, const uint16_t repeats) {
-    print_chars(fp, str, repeats);
+static void cmi_data_print_line(FILE *fp, const char *str, const uint16_t repeats) {
+    cmi_data_print_chars(fp, str, repeats);
     int r = fprintf(fp, "\n");
     cmb_assert_release(r > 0);
 }
@@ -727,22 +728,22 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
     const double scale = (double)m / (double)max_stars;
 
     /* Print the histogram */
-    print_line(fp, "-", line_length);
+    cmi_data_print_line(fp, "-", line_length);
     int r = fprintf(fp, "( -Infinity, %#10.4g)   |", low_lim);
     cmb_assert_release(r > 0);
-    print_stars(fp, scale, h[0u]);
+    cmi_data_print_stars(fp, scale, h[0u]);
     for (uint16_t ui = 1u; ui < num_bins - 1u; ui++) {
         r = fprintf(fp, "[%#10.4g, %#10.4g)   |",
                 low_lim + (ui - 1u) * binsize,
                 low_lim + ui * binsize);
         cmb_assert_release(r > 0);
-        print_stars(fp, scale, h[ui]);
+        cmi_data_print_stars(fp, scale, h[ui]);
     }
   
     r = fprintf(fp, "[%#10.4g,  Infinity )   |", high_lim);
     cmb_assert_release(r > 0);
-    print_stars(fp, scale, h[num_bins - 1u]);
-    print_line(fp, "-", line_length);
+    cmi_data_print_stars(fp, scale, h[num_bins - 1u]);
+    cmi_data_print_line(fp, "-", line_length);
 
     /* Clean up */
     cmi_free(h);
@@ -855,7 +856,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp, const uint16_t max_lag,
     }
 }
 
-static void print_bar(FILE *fp, const double acfval, uint16_t max_bar_width) {
+static void cmi_data_print_bar(FILE *fp, const double acfval, uint16_t max_bar_width) {
     cmb_assert_release((acfval >= -1.0) && (acfval <= 1.0));
 
     const double bar_width = (double)max_bar_width * fabs(acfval);
@@ -869,7 +870,7 @@ static void print_bar(FILE *fp, const double acfval, uint16_t max_bar_width) {
 
     if (acfval < 0.0) {
         const uint16_t num_spaces = max_bar_width - num_stars - 1;
-        print_chars(fp, " ", num_spaces);
+        cmi_data_print_chars(fp, " ", num_spaces);
 
         if (rem > min_rem_plus) {
             const int r = fprintf(fp, "+");
@@ -884,16 +885,16 @@ static void print_bar(FILE *fp, const double acfval, uint16_t max_bar_width) {
             cmb_assert_release(r > 0);
         }
 
-        print_chars(fp, "*", num_stars);
+        cmi_data_print_chars(fp, "*", num_stars);
         const int r = fprintf(fp, "|");
         cmb_assert_release(r > 0);
     }
     else {
         const uint16_t num_spaces = max_bar_width;
-        print_chars(fp, " ", num_spaces);
+        cmi_data_print_chars(fp, " ", num_spaces);
         int r = fprintf(fp, "|");
         cmb_assert_release(r > 0);
-        print_chars(fp, "*", num_stars);
+        cmi_data_print_chars(fp, "*", num_stars);
 
         if (rem > min_rem_plus) {
             r = fprintf(fp, "+");
@@ -926,26 +927,26 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
     /* Max width of the bar either side of zero */
     const uint16_t max_bar_width = (line_length - 14u) / 2u;
 
-    print_chars(fp, " ", 11);
+    cmi_data_print_chars(fp, " ", 11);
     int r = fprintf(fp, "-1.0");
     cmb_assert_release(r > 0);
-    print_chars(fp, " ", max_bar_width - 3u);
+    cmi_data_print_chars(fp, " ", max_bar_width - 3u);
     r = fprintf(fp, "0.0");
     cmb_assert_release(r > 0);
-    print_chars(fp, " ", max_bar_width - 3u);
+    cmi_data_print_chars(fp, " ", max_bar_width - 3u);
     r = fprintf(fp, "1.0\n");
     cmb_assert_release(r > 0);
 
-    print_line(fp, "-", line_length);
+    cmi_data_print_line(fp, "-", line_length);
     for (uint16_t ui = 1; ui <= max_lag; ui++) {
         r = fprintf(fp, "%4u  %#6.3f ", ui, acf[ui]);
         cmb_assert_release(r > 0);
-        print_bar(fp, acf[ui], max_bar_width);
+        cmi_data_print_bar(fp, acf[ui], max_bar_width);
         r = fprintf(fp, "\n");
         cmb_assert_release(r > 0);
     }
 
-    print_line(fp, "-", line_length);
+    cmi_data_print_line(fp, "-", line_length);
     if (free_acf) {
         cmi_free(acf);
     }

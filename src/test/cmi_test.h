@@ -26,14 +26,14 @@
 
 #include "cmb_assert.h"
 
-static inline uint64_t create_seed(void) {
+static inline uint64_t cmi_test_create_seed(void) {
     struct timespec ts;
     (void) clock_gettime(CLOCK_REALTIME, &ts);
 
     return (uint64_t)(ts.tv_nsec ^ ts.tv_sec);
 }
 
-static inline void print_chars(const char *str, const uint16_t repeats) {
+static inline void cmi_test_print_chars(const char *str, const uint16_t repeats) {
     cmb_assert_release(str != NULL);
 
     for (uint16_t ui = 0; ui < repeats; ui++) {
@@ -41,13 +41,13 @@ static inline void print_chars(const char *str, const uint16_t repeats) {
     }
 }
 
-static inline void print_line(const char *str) {
+static inline void cmi_test_print_line(const char *str) {
     cmb_assert_release(str != NULL);
 
     const uint16_t len = strlen(str);
     const uint16_t line_length = 80u;
     const uint16_t repeats = line_length / len;
-    print_chars(str, repeats);
+    cmi_test_print_chars(str, repeats);
     printf("\n");
 }
 

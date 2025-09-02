@@ -23,6 +23,7 @@
 #include "cmb_event.h"
 #include "cmb_random.h"
 #include "cmb_logger.h"
+#include "cmi_test.h"
 
 /* An event, prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object) {
@@ -39,18 +40,11 @@ static void end_sim(void *subject, void *object) {
     cmb_event_queue_destroy();
 }
 
-static uint64_t create_seed(void) {
-    struct timespec ts;
-    (void) clock_gettime(CLOCK_REALTIME, &ts);
-
-    return (uint64_t)(ts.tv_nsec ^ ts.tv_sec);
-}
-
 static const char *subjects[] = {"this", "self", "me"};
 static const char *objects[] = {"that thing", "some thing", "the other thing"};
 
-int main() {
-    cmb_random_init(create_seed());
+int main(void) {
+    cmb_random_init(cmi_test_create_seed());
 
     printf("Testing event queue\n");
     double start_time = 3.0;

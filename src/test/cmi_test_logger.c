@@ -67,7 +67,7 @@ static char *myformatter(double t) {
     return mybuf;
 }
 
-int main() {
+int main(void) {
     cmb_random_init(create_seed());
     cmb_event_queue_init(0.0);
     cmb_set_timeformatter(myformatter);

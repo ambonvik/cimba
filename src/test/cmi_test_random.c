@@ -39,7 +39,7 @@
 #define LEADINS true
 
 #define QTEST_PREPARE() \
-    const uint64_t seed = create_seed(); \
+    const uint64_t seed = cmi_test_create_seed(); \
     cmb_random_init(seed); \
     struct cmb_dataset ds; \
     cmb_dataset_init(&ds)
@@ -69,7 +69,7 @@
 
 #define QTEST_FINISH() \
     cmb_dataset_clear(&ds); \
-    print_line("=")
+    cmi_test_print_line("=")
 
 static void print_single(const char *lead, const bool has_val, const double val) {
     printf("  %s ", lead);
@@ -122,14 +122,14 @@ static void test_quality_random(void) {
 
     /* Report moments */
     printf("\nRaw moment:   Expected:   Actual:   Error:\n");
-    print_line("-");
+    cmi_test_print_line("-");
     for (uint16_t ui = 0; ui < MOMENTS; ui++) {
         const double expmom = 1.0 / (double)(ui + 2u);
         const double avgmom = moment_r[ui] / (double)MAX_ITER;
         printf("%5d        %8.5g    %8.5g   %6.3f %%\n", ui + 1u,
                expmom, avgmom, 100.0 * (avgmom - expmom) / expmom);
     }
-    print_line("-");
+    cmi_test_print_line("-");
 
     QTEST_FINISH();
 }
@@ -170,7 +170,7 @@ static double smi_exponential_inv(const double m) {
 }
 
 static void test_speed_exponential(double m) {
-    const uint64_t seed = create_seed();
+    const uint64_t seed = cmi_test_create_seed();
     printf("\nSpeed testing standard exponential distribution, seed = %#llx\n", seed);
     cmb_random_init(seed);
     printf("\nInversion method, drawing %llu samples...", MAX_ITER);
@@ -196,7 +196,7 @@ static void test_speed_exponential(double m) {
     printf("\nSpeedup for ziggurat vs inversion method %.1fx, %4.1f %% less time per sample.\n",
            ti / tz, 100.0 * (ti - tz) / ti);
 
-    print_line("=");
+    cmi_test_print_line("=");
 }
 
 static void test_quality_exponential(const double m) {
@@ -279,7 +279,7 @@ static void test_quality_std_normal(void) {
 
     printf("\n                              Cimba ziggurat method:    Box Muller method:\n");
     printf("Raw moment:     Expected:     Actual:     Error:        Actual:     Error:\n");
-    print_line("-");
+    cmi_test_print_line("-");
     for (uint16_t ui = 0; ui < MOMENTS; ui++) {
         const double expmom = normal_raw_moment(ui + 1u, 0.0, 1.0);
         const double avgmom = moment_r[ui] / (double)MAX_ITER;
@@ -317,7 +317,7 @@ static void test_quality_normal(double m, double s) {
 }
 
 static void test_speed_normal(double m, double s) {
-    const uint64_t seed = create_seed();
+    const uint64_t seed = cmi_test_create_seed();
     printf("\nSpeed testing normal distribution, seed = %#llx\n", seed);
     cmb_random_init(seed);
     printf("\nBox Muller method, drawing %llu samples...", MAX_ITER);
@@ -343,7 +343,7 @@ static void test_speed_normal(double m, double s) {
     printf("\nSpeedup for ziggurat vs Box Muller method %.1fx, %4.1f %% less time per sample\n",
            ti / tz, 100.0 * (ti - tz) / ti);
 
-    print_line("=");
+    cmi_test_print_line("=");
 }
 
 static void test_quality_triangular(const double a, const double b, const double c) {
@@ -760,7 +760,7 @@ static void test_quality_vose_alias(const unsigned n, const double pa[n]) {
 }
 
 static void test_speed_vose_alias(const unsigned init, const unsigned end, const unsigned step) {
-    const uint64_t seed = create_seed();
+    const uint64_t seed = cmi_test_create_seed();
     cmb_random_init(seed);
     printf("\nSpeed testing vose alias sampling, %llu samples, seed = %#llx.\n", MAX_ITER, seed);
     printf("n\tips simple\tips alias\tspeedup\n");
@@ -800,9 +800,9 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
 }
 
 int main(void) {
-    print_line("*");
+    cmi_test_print_line("*");
     printf("************** Testing random number generators and distributions **************\n");
-    print_line("*");
+    cmi_test_print_line("*");
 
     test_quality_random();
     test_quality_uniform(-1.0, 2.0);
