@@ -264,8 +264,11 @@ extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
 /* Sort v[] in ascending order */
 extern void cmb_dataset_sort(const struct cmb_dataset *dsp);
 
-/* Add a single value to a dataset, resizing the array as needed */
-extern void cmb_dataset_add(struct cmb_dataset *dsp, double x);
+/*
+ * Add a single value to a dataset, resizing the array as needed.
+ * Returns the new number of data values in the array.
+ */
+extern uint64_t cmb_dataset_add(struct cmb_dataset *dsp, double x);
 
 /*
  * Calculate summary statistics of the data series
@@ -330,5 +333,105 @@ extern void cmb_dataset_PACF(const struct cmb_dataset *dsp, uint16_t max_lag,
  */
 extern void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
                                           uint16_t max_lag, double acf[max_lag + 1u]);
+
+/******************************************************************************
+ * cmb_timeseries - a similarly resizing array for keeping (x, t) value tuples.
+ * The use case is that states change only at the discrete event times in a
+ * discrete event simulation. Between events, everything is constant. If sample
+ * values only are recorded at event times, the statistics will be badly biased.
+ * For example, collecting length data of a queue that is mostly empty with
+ * long time intervals of zero length.
+ * It does not keep a running tally, use cmb_timeseries_summarize() to compute
+ * the statistics into a weighted data summary when needed. Implemented as a
+ * child class of cmb_dataset, all dataset methods available by casting the
+ * type from cmb_timeseries to cmb_dataset. Wrapper functions given below.
+ */
+
+struct cmb_timeseries {
+    struct cmb_dataset ds;
+    double *tv;
+};
+
+/* Manage the timeseries themselves */
+extern struct cmb_timeseries *cmb_timeseries_create(void);
+extern void cmb_timeseries_init(struct cmb_timeseries *tsp);
+extern uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
+                                 const struct cmb_timeseries *src);
+extern uint64_t cmb_timeseries_merge(struct cmb_timeseries *tgt,
+                                  const struct cmb_timeseries *s1,
+                                  const struct cmb_timeseries *s2);
+extern void cmb_timeseries_clear(struct cmb_timeseries *tsp);
+extern void cmb_timeseries_destroy(struct cmb_timeseries *tsp);
+
+/* Sort v[] in ascending order */
+extern void cmb_timeseries_sort(const struct cmb_timeseries *tsp);
+
+/* Add a single value to a timeseries, resizing the array as needed */
+extern uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp, double x, double t);
+
+/*
+ * Calculate summary statistics of the data series
+ * Returns the number of data points in the summary.
+ */
+extern uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp,
+                                  struct cmb_summary *dsump);
+
+inline uint64_t cmb_timeseries_count(const struct cmb_timeseries *tsp) {
+    cmb_assert_release(tsp != NULL);
+    return cmb_dataset_count((struct cmb_dataset *)tsp);
+}
+
+inline double cmb_timeseries_min(const struct cmb_timeseries *tsp) {
+    cmb_assert_release(tsp != NULL);
+    return cmb_dataset_min((struct cmb_dataset *)tsp);
+}
+
+inline double cmb_timeseries_max(const struct cmb_timeseries *tsp) {
+    cmb_assert_release(tsp != NULL);
+    return cmb_dataset_max((struct cmb_dataset *)tsp);
+}
+
+/* Calculate and return the median of the data series */
+extern double cmb_timeseries_median(const struct cmb_timeseries *tsp);
+
+/* Calculate and print the "five-number" summary of timeseries quantiles */
+extern void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp,
+                                      FILE *fp, bool lead_ins);
+
+/*
+ *  Print a simple character-based histogram.
+ *  Will autoscale to the timeseries range if LowerLimit == UpperLimit.
+ *  Adds overflow bins to the ends of the range to catch anything outside.
+ *  Will print symbol '*' for a full "pixel",  *  '+' for one that is more
+ *  than half full, and '-' for one that is less than half full.
+ */
+extern void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp, FILE *fp,
+                                        uint16_t num_bins, double low_lim, double high_lim);
+
+/* Print the raw data in the timeseries. */
+extern void cmb_timeseries_print_data(const struct cmb_timeseries *tsp, FILE *fp);
+
+/* Calculate the n first autocorrelation coefficients. */
+extern void cmb_timeseries_ACF(const struct cmb_timeseries *tsp, uint16_t max_lag,
+                                double acf[max_lag + 1u]);
+
+/*
+ * Calculate the n first partial autocorrelation coefficients.
+ * The first step in the algorithm is to calculate the ACFs. If these already
+ * have been calculated, they can be given as the last argument acf[].
+ * If this argument is NULL, they will be calculated directly from the timeseries.
+ */
+extern void cmb_timeseries_PACF(const struct cmb_timeseries *tsp, uint16_t max_lag,
+                                 double pacf[max_lag + 1u], double acf[max_lag + 1u]);
+
+/*
+ * Print a simple correlogram of the autocorrelation coefficients previously calculated,
+ * either ACFs or PACFs. If the data vector acf[] is NULL, ACFs will be calculated
+ * directly from the timeseries by calling cmb_timeseries_ACF. To print PACFs, simply give
+ * a vector of PACFs as the acf argument.
+ */
+extern void cmb_timeseries_print_correlogram(const struct cmb_timeseries *tsp, FILE *fp,
+                                          uint16_t max_lag, double acf[max_lag + 1u]);
+
 
 #endif /* CIMBA_CMB_DATA_H */

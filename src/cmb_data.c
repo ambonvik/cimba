@@ -17,7 +17,6 @@
  */
 
 #include <stdio.h>
-#include <string.h>
 
 #include "cmb_data.h"
 #include "cmb_logger.h"
@@ -59,6 +58,7 @@ extern void cmi_free(void *p);
 
 static const uint64_t cmb_dataset_init_size = 1024;
 
+/**************************** Data summary methods ****************************/
 /*
  * Merge two data summaries, updating the statistics. Used e.g. for merging across pthreads.
  *
@@ -265,7 +265,7 @@ double cmb_summary_kurtosis(const struct cmb_summary *sup) {
     return r;
 }
 
-
+/************************** Weighted summary methods **************************/
 /*
  * Add a weighted sample value to the data summary, updating the statistics. See Petay (2008).
  * Adding a single sample is a special case of the merge described there, with n2 = 1.
@@ -305,6 +305,8 @@ uint64_t cmb_wsummary_add(struct cmb_wsummary *wsup, const double y, const doubl
 
     return dsp->cnt;
 }
+
+/****************************** Data set methods ******************************/
 
 struct cmb_dataset *cmb_dataset_create(void) {
     struct cmb_dataset *dsp = cmi_malloc(sizeof *dsp);
@@ -356,7 +358,7 @@ static void cmi_dataset_expand(struct cmb_dataset *dsp) {
     }
 }
 
-void cmb_dataset_add(struct cmb_dataset *dsp, const double x) {
+uint64_t cmb_dataset_add(struct cmb_dataset *dsp, const double x) {
     cmb_assert_release(dsp != NULL);
 
     if (x > dsp->max) {
@@ -377,8 +379,9 @@ void cmb_dataset_add(struct cmb_dataset *dsp, const double x) {
 
     dsp->xv[dsp->cnt] = x;
     dsp->cnt++;
-}
 
+    return dsp->cnt;
+}
 
 /*
  * Sorting function for data array, sorting from smallest to largest value.
@@ -950,4 +953,78 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
     if (free_acf) {
         cmi_free(acf);
     }
+}
+
+/**************************** Time series methods ****************************/
+
+struct cmb_timeseries *cmb_timeseries_create(void) {
+    struct cmb_timeseries *tsp = cmi_malloc(sizeof *tsp);
+    cmb_timeseries_init(tsp);
+
+    return tsp;
+}
+
+void cmb_timeseries_init(struct cmb_timeseries *tsp) {
+    cmb_assert_release(tsp != NULL);
+
+    cmb_dataset_init((struct cmb_dataset *)tsp);
+    tsp->tv = NULL;
+}
+
+void cmb_timeseries_clear(struct cmb_timeseries *tsp) {
+    cmb_assert_release(tsp != NULL);
+
+    cmb_dataset_clear((struct cmb_dataset *)tsp);
+    if (NULL != tsp->tv) {
+        cmi_free(tsp->tv);
+        tsp->tv = NULL;
+    }
+}
+
+void cmb_timeseries_destroy(struct cmb_timeseries *tsp) {
+    cmb_assert_release(tsp != NULL);
+
+    cmb_timeseries_clear(tsp);
+    cmi_free(tsp);
+}
+
+static void cmi_timeseries_expand(struct cmb_timeseries *tsp) {
+    cmb_assert_release(tsp != NULL);
+
+    /* First expand x-vector and increment cursize */
+    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    cmi_dataset_expand(dsp);
+
+    if (tsp->tv == NULL) {
+        /* Just allocated the first chunk of xv array, do same for tv */
+        cmb_assert_release(dsp->cursize == cmb_dataset_init_size);
+        tsp->tv = cmi_malloc((size_t)(cmb_dataset_init_size * sizeof(*(tsp->tv))));
+    }
+    else {
+         tsp->tv = cmi_realloc(tsp->tv, (size_t)(dsp->cursize * sizeof(*(tsp->tv))));
+    }
+}
+
+uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp, const double x, const double t) {
+    cmb_assert_release(tsp != NULL);
+
+    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    if (dsp->cnt == dsp->cursize) {
+        /* Full, resize both xv and tv */
+        cmi_timeseries_expand(tsp);
+    }
+
+#ifndef NDEBUG
+    const uint64_t presize = dsp->cursize;
+#endif
+
+    (void)cmb_dataset_add(dsp, x);
+    /* Should not need to trigger a new expand here */
+    cmb_assert_debug(dsp->cursize == presize);
+
+    /* May have null data array on entry, but not by here */
+    cmb_assert_release(tsp->tv != NULL);
+    tsp->tv[dsp->cnt - 1] = t;
+
+    return dsp->cnt;
 }
