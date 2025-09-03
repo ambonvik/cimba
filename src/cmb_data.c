@@ -234,7 +234,7 @@ double cmb_summary_skewness(const struct cmb_summary *sup) {
     cmb_assert_release(sup != NULL);
 
     double r = 0.0;
-    if (2u < sup->cnt) {
+    if (sup->cnt > 2u) {
         /* Estimate population skewness */
         const double dn = (double)sup->cnt;
         const double g = sqrt(dn) * sup->m3 / pow(sup->m2, 1.5);
@@ -243,7 +243,6 @@ double cmb_summary_skewness(const struct cmb_summary *sup) {
         r = sqrt(dn * (dn - 1.0)) * g / (dn - 2.0);
     }
 
-    cmb_assert_debug(r >= 0.0);
     return r;
 }
 
@@ -252,7 +251,7 @@ double cmb_summary_kurtosis(const struct cmb_summary *sup) {
     cmb_assert_release(sup != NULL);
 
     double r = 0.0;
-    if (3u < sup->cnt) {
+    if (sup->cnt > 3u) {
         /* Estimate population excess kurtosis */
         const double dn = (double)sup->cnt;
         const double g = dn * sup->m4 / (sup->m2 * sup->m2) - 3.0;
@@ -261,7 +260,6 @@ double cmb_summary_kurtosis(const struct cmb_summary *sup) {
         r = (dn - 1.0) / ((dn - 2.0) * (dn - 3.0)) * ((dn + 1.0) * g + 6.0);
     }
 
-    cmb_assert_debug(r >= 0.0);
     return r;
 }
 
@@ -638,12 +636,14 @@ void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp) {
 }
 
 /*
- * Print simple character-based histogram of the data.
+ * Print a simple character-based histogram of the data.
+ * The only external callable function is cmb_dataset_print_histogram,
+ * the rest are internal helper functions.
  */
 
-static void cmi_data_print_stars(FILE *fp, const double scale, const uint64_t nbin) {
-    uint64_t nstars = (uint64_t)((double)nbin / scale);
-    const double rem = (double)nbin / scale - (double)nstars;
+static void cmi_data_print_stars(FILE *fp, const double scale, const double binval) {
+    uint64_t nstars = (uint64_t)(binval / scale);
+    const double rem = binval / scale - (double)nstars;
 
     while (nstars-- > 0) {
         const int r = fprintf(fp, "*");
@@ -678,14 +678,108 @@ static void cmi_data_print_line(FILE *fp, const char *str, const uint16_t repeat
     cmb_assert_release(r > 0);
 }
 
-/* TODO : generalize to real-valued bins to allow for timeseries data */
+struct cmi_data_histogram {
+    unsigned num_bins;
+    double binsize;
+    double low_lim;
+    double high_lim;
+    double binmax;
+    double *hbins;
+};
 
+static struct cmi_data_histogram *cmi_data_create_histogram(const unsigned num_bins, const double low_lim, const double high_lim) {
+    cmb_assert_debug(num_bins > 0u);
+    const double range = high_lim - low_lim;
+    cmb_assert_debug(range > 0.0);
+
+    struct cmi_data_histogram *h = cmi_malloc(sizeof(*h));
+    h->num_bins = num_bins + 2u;
+    h->binsize = range / (double)(num_bins);
+    h->low_lim = low_lim;
+    h->high_lim = high_lim;
+    h->hbins = cmi_calloc(h->num_bins, sizeof(*(h->hbins)));
+
+    return h;
+}
+
+static void cmi_data_fill_histogram(struct cmi_data_histogram *hp, const uint64_t n, const double xa[n]) {
+    cmb_assert_debug(hp != NULL);
+    cmb_assert_debug(n > 0u);
+    cmb_assert_debug(xa != NULL);
+
+    /* Distribute x-values to bins */
+    for (uint64_t ui = 0u; ui < n; ui++) {
+        uint16_t bin = 0u;
+        if (xa[ui] < hp->low_lim) {
+            bin = 0u;
+        }
+        else if (xa[ui] > hp->high_lim) {
+            bin = hp->num_bins - 1u;
+        }
+        else {
+            bin = 1u + (uint16_t)((xa[ui] - hp->low_lim) / hp->binsize);
+        }
+
+        /* Add it to that bin */
+        hp->hbins[bin] += 1.0;
+    }
+
+    /* Record the maximum value in a bin */
+    hp->binmax = 0.0;
+    for (unsigned ui = 0u; ui < hp->num_bins; ui++) {
+        if (hp->hbins[ui] > hp->binmax) {
+            hp->binmax = hp->hbins[ui];
+        }
+    }
+}
+
+static void cmi_data_print_histogram(const struct cmi_data_histogram *hp, FILE *fp) {
+    cmb_assert_debug(hp != NULL);
+    cmb_assert_debug(fp != NULL);
+
+    /* Length of separator lines */
+    static const uint16_t line_length = 80u;
+
+    /* Max width of the histogram bars */
+    const uint16_t max_stars = 50u;
+    const double scale = hp->binmax / (double)max_stars;
+
+    /* Print the histogram */
+    cmi_data_print_line(fp, "-", line_length);
+    int r = fprintf(fp, "( -Infinity, %#10.4g)   |", hp->low_lim);
+    cmb_assert_release(r > 0);
+    cmi_data_print_stars(fp, scale, hp->hbins[0u]);
+    for (unsigned ui = 1u; ui < hp->num_bins - 1u; ui++) {
+        r = fprintf(fp, "[%#10.4g, %#10.4g)   |",
+                hp->low_lim + (ui - 1u) * hp->binsize,
+                hp->low_lim + ui * hp->binsize);
+        cmb_assert_release(r > 0);
+        cmi_data_print_stars(fp, scale, hp->hbins[ui]);
+    }
+
+    r = fprintf(fp, "[%#10.4g,  Infinity )   |", hp->high_lim);
+    cmb_assert_release(r > 0);
+    cmi_data_print_stars(fp, scale, hp->hbins[hp->num_bins - 1u]);
+    cmi_data_print_line(fp, "-", line_length);
+}
+
+static void cmi_data_destroy_histogram(struct cmi_data_histogram *hp) {
+    cmb_assert_release(hp != NULL);
+    cmi_free(hp->hbins);
+    cmi_free(hp);
+}
+
+/* The external callable function to print a histogram */
 void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
                                  FILE *fp, unsigned num_bins,
                                  double low_lim, double high_lim) {
-    if (dsp->xa == NULL) {
-        cmb_warning(fp, "No data to display in histogram");
-        return;
+     cmb_assert_release(dsp != NULL);
+     cmb_assert_release(num_bins > 0u);
+
+     if (dsp->xa == NULL) {
+         assert(dsp->cnt == 0u);
+         cmb_warning(fp, "No data to display in histogram");
+         return;
     }
 
     if (low_lim == high_lim) {
@@ -693,65 +787,10 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
         high_lim = dsp->max;
     }
 
-    /* Set up the histogram array of bins */
-    const double range = high_lim - low_lim;
-    const double binsize = range / (double)(num_bins);
-    num_bins += 2;
-    uint64_t *h = cmi_calloc(num_bins, sizeof(uint64_t));
-
-    /* Distribute the x-values to their bins */
-    uint16_t bin = 0u;
-    for (uint64_t ui = 0u; ui < dsp->cnt; ui++) {
-        /* Into which bin does this x-value go? */
-        if (dsp->xa[ui] < low_lim) {
-            bin = 0u;
-        }
-        else if (dsp->xa[ui] > high_lim) {
-            bin = num_bins - 1u;
-        }
-        else {
-            bin = 1u + (uint16_t)((dsp->xa[ui] - low_lim) / binsize);
-        }
-
-        /* Add it to that bin */
-        h[bin]++;
-    }
-
-    /* Calculate scaling */
-    uint64_t m = 0llu;
-    for (unsigned ui = 0u; ui < num_bins; ui++) {
-        if (h[ui] > m) {
-            m = h[ui];
-        }
-    }
-
-    /* Length of separator lines */
-    static const uint16_t line_length = 80u;
-
-    /* Max width of the histogram bars */
-    const uint16_t max_stars = 50u;
-    const double scale = (double)m / (double)max_stars;
-
-    /* Print the histogram */
-    cmi_data_print_line(fp, "-", line_length);
-    int r = fprintf(fp, "( -Infinity, %#10.4g)   |", low_lim);
-    cmb_assert_release(r > 0);
-    cmi_data_print_stars(fp, scale, h[0u]);
-    for (unsigned ui = 1u; ui < num_bins - 1u; ui++) {
-        r = fprintf(fp, "[%#10.4g, %#10.4g)   |",
-                low_lim + (ui - 1u) * binsize,
-                low_lim + ui * binsize);
-        cmb_assert_release(r > 0);
-        cmi_data_print_stars(fp, scale, h[ui]);
-    }
-  
-    r = fprintf(fp, "[%#10.4g,  Infinity )   |", high_lim);
-    cmb_assert_release(r > 0);
-    cmi_data_print_stars(fp, scale, h[num_bins - 1u]);
-    cmi_data_print_line(fp, "-", line_length);
-
-    /* Clean up */
-    cmi_free(h);
+    struct cmi_data_histogram *hp = cmi_data_create_histogram(num_bins, low_lim, high_lim);
+    cmi_data_fill_histogram(hp, dsp->cnt, dsp->xa);
+    cmi_data_print_histogram(hp, fp);
+    cmi_data_destroy_histogram(hp);
 }
 
 /*

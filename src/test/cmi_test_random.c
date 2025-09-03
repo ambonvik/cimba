@@ -520,7 +520,24 @@ static void test_quality_beta(const double a, const double b, const double l, co
     const double skew = 2.0 * ((b - a) * sqrt(a + b + 1.0)) / ((a + b + 2.0) * sqrt(a * b));
     const double kurt = 6.0 * ((a - b) * (a - b) * (a + b + 1.0) - a * b * (a + b + 2.0))
                             / (a * b * (a + b + 2.0) * (a + b + 3.0));
-    print_expected(MAX_ITER, (a > 1.0), mean, (a > 2.0),var,(a > 3.0), skew, (a > 3.0), kurt);
+    print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
+
+
+    QTEST_REPORT();
+    QTEST_FINISH();
+}
+
+static void test_quality_std_beta(const double a, const double b) {
+    printf("\nQuality testing beta distribution, shape %g, scale %g\n", a, b);
+    QTEST_PREPARE();
+    QTEST_EXECUTE(cmb_random_std_beta(a, b));
+
+    const double mean = a / (a + b);
+    const double var = (a * b) / ((a + b) * (a + b) * (a + b + 1));
+    const double skew = 2.0 * ((b - a) * sqrt(a + b + 1.0)) / ((a + b + 2.0) * sqrt(a * b));
+    const double kurt = 6.0 * ((a - b) * (a - b) * (a + b + 1.0) - a * b * (a + b + 2.0))
+                            / (a * b * (a + b + 2.0) * (a + b + 3.0));
+    print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -605,11 +622,11 @@ static void test_quality_flip(void) {
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_flip());
 
-    const double p = 0.5;
-    const double q = 1.0 - p;
-    const double skew = (q - p) / sqrt(p * q);
-    const double kurt = (1.0 - 6.0 * p * q) / (p * q);
-    print_expected(MAX_ITER, true, 0.5, true,0.5,true, skew, true, kurt);
+    const double mean = 0.5;
+    const double var = 0.5 * 0.5;
+    const double skew = 0.0;
+    const double kurt = (1.0 - 6.0 * 0.5 * 0.5) / (0.5 * 0.5);
+    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -618,12 +635,14 @@ static void test_quality_flip(void) {
 static void test_quality_bernoulli(const double p) {
     printf("\nQuality testing biased Bernoulli trials, p = %g\n", p);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_flip());
+    QTEST_EXECUTE(cmb_random_bernoulli(p));
 
+    const double mean = p;
     const double q = 1.0 - p;
+    const double var = p * q;
     const double skew = (q - p) / sqrt(p * q);
     const double kurt = (1.0 - 6.0 * p * q) / (p * q);
-    print_expected(MAX_ITER, true, 0.5, true,0.5,true, skew, true, kurt);
+    print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -655,7 +674,7 @@ static void test_quality_binomial(const unsigned n, const double p) {
     const double var = n * p * q;
     const double skew = (q - p) / sqrt(n * p * q);
     const double kurt = (1.0 - 6.0 * p * q) / (n * p * q);
-    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
+    print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -833,6 +852,7 @@ int main(void) {
     test_quality_logistic(1.0, 0.5);
     test_quality_cauchy(1.0, 0.5);
 
+    test_quality_std_beta(2.0, 5.0);
     test_quality_beta(2.0, 5.0, 0.0, 1.0);
     test_quality_beta(0.5, 2.0, 0.0, 1.0);
     test_quality_beta(0.5, 0.5, 2.0, 5.0);
