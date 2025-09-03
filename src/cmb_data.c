@@ -678,8 +678,10 @@ static void cmi_data_print_line(FILE *fp, const char *str, const uint16_t repeat
     cmb_assert_release(r > 0);
 }
 
+/* TODO : generalize to real-valued bins to allow for timeseries data */
+
 void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
-                                 FILE *fp, uint16_t num_bins,
+                                 FILE *fp, unsigned num_bins,
                                  double low_lim, double high_lim) {
     if (dsp->xa == NULL) {
         cmb_warning(fp, "No data to display in histogram");
@@ -717,7 +719,7 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
 
     /* Calculate scaling */
     uint64_t m = 0llu;
-    for (uint16_t ui = 0u; ui < num_bins; ui++) {
+    for (unsigned ui = 0u; ui < num_bins; ui++) {
         if (h[ui] > m) {
             m = h[ui];
         }
@@ -735,7 +737,7 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
     int r = fprintf(fp, "( -Infinity, %#10.4g)   |", low_lim);
     cmb_assert_release(r > 0);
     cmi_data_print_stars(fp, scale, h[0u]);
-    for (uint16_t ui = 1u; ui < num_bins - 1u; ui++) {
+    for (unsigned ui = 1u; ui < num_bins - 1u; ui++) {
         r = fprintf(fp, "[%#10.4g, %#10.4g)   |",
                 low_lim + (ui - 1u) * binsize,
                 low_lim + ui * binsize);
@@ -756,7 +758,7 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
  * Calculate the first max_lag autocorrelation coefficients.
  */
 
-void cmb_dataset_ACF(const struct cmb_dataset *dsp, const uint16_t max_lag, double acf[max_lag + 1u])
+void cmb_dataset_ACF(const struct cmb_dataset *dsp, const unsigned max_lag, double acf[max_lag + 1u])
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->xa != NULL);
@@ -779,12 +781,12 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp, const uint16_t max_lag, doub
     if (var < min_acf_variance) {
         /* Would be numerically unstable to divide by that */
         cmb_warning(stderr, "Dataset nearly constant (variance %g), ACFs rounded to zero", var);
-        for (uint16_t ui = 1; ui <= max_lag; ui++) {
+        for (unsigned ui = 1; ui <= max_lag; ui++) {
             acf[ui] = 0.0;
         }
     }
     else {
-        for (uint16_t ulag = 1; ulag <= max_lag; ulag++) {
+        for (unsigned ulag = 1; ulag <= max_lag; ulag++) {
             double dk = 0.0;
             const uint64_t ustop = dsp->cnt - ulag;
             for (uint64_t ui = 0; ui < ustop; ui++) {
@@ -802,7 +804,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp, const uint16_t max_lag, doub
  * algorithm, optionally using previously calculated ACFs to avoid repeating a
  * computationally expensive step.
  */
-void cmb_dataset_PACF(const struct cmb_dataset *dsp, const uint16_t max_lag,
+void cmb_dataset_PACF(const struct cmb_dataset *dsp, const unsigned max_lag,
                                  double pacf[max_lag + 1u], double acf[max_lag + 1u]) {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->xa != NULL);
@@ -820,7 +822,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp, const uint16_t max_lag,
     /* Create an intermediary un * un matrix */
     double **phi = cmi_malloc((max_lag + 1u) * sizeof(double *));
     phi[0] = cmi_calloc((max_lag + 1) * (max_lag + 1), sizeof(double));
-    for (uint16_t ui = 1u; ui <= max_lag; ui++) {
+    for (unsigned ui = 1u; ui <= max_lag; ui++) {
         phi[ui] = phi[0] + ui * max_lag;
     }
 
@@ -830,14 +832,14 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp, const uint16_t max_lag,
     phi[1][1] = pacf[1];
 
     /* Calculate phi[k][j], the j-th coefficient for a k-th order autoregression model */
-    for (uint16_t uk = 2u; uk <= max_lag; ++uk) {
+    for (unsigned uk = 2u; uk <= max_lag; ++uk) {
         double numsum = 0.0;
-        for (uint16_t uj = 1u; uj < uk; ++uj) {
+        for (unsigned uj = 1u; uj < uk; ++uj) {
             numsum += phi[uk - 1][uj] * acf[uk - uj];
         }
 
         double densum = 0.0;
-        for (uint16_t uj = 1u; uj < uk; ++uj) {
+        for (unsigned uj = 1u; uj < uk; ++uj) {
             densum += phi[uk - 1][uj] * acf[uj];
         }
 
@@ -847,7 +849,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp, const uint16_t max_lag,
         assert((pacf[uk] >= -1.0) && (pacf[uk] <= 1.0));
 
         /* Update everything else for the next iteration */
-        for (uint16_t uj = 1u; uj < uk; ++uj) {
+        for (unsigned uj = 1u; uj < uk; ++uj) {
             phi[uk][uj] = phi[uk - 1u][uj] - phi[uk][uk] * phi[uk - 1u][uk - uj];
         }
     }
@@ -859,7 +861,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp, const uint16_t max_lag,
     }
 }
 
-static void cmi_data_print_bar(FILE *fp, const double acfval, uint16_t max_bar_width) {
+static void cmi_data_print_bar(FILE *fp, const double acfval, const uint16_t max_bar_width) {
     cmb_assert_release((acfval >= -1.0) && (acfval <= 1.0));
 
     const double bar_width = (double)max_bar_width * fabs(acfval);
@@ -911,7 +913,7 @@ static void cmi_data_print_bar(FILE *fp, const double acfval, uint16_t max_bar_w
 }
 
 void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
-                                          const uint16_t max_lag, double acf[max_lag + 1u]) {
+                                          const unsigned max_lag, double acf[max_lag + 1u]) {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->cnt > 1u);
@@ -941,7 +943,7 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
     cmb_assert_release(r > 0);
 
     cmi_data_print_line(fp, "-", line_length);
-    for (uint16_t ui = 1; ui <= max_lag; ui++) {
+    for (unsigned ui = 1; ui <= max_lag; ui++) {
         r = fprintf(fp, "%4u  %#6.3f ", ui, acf[ui]);
         cmb_assert_release(r > 0);
         cmi_data_print_bar(fp, acf[ui], max_bar_width);

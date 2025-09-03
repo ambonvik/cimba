@@ -307,13 +307,13 @@ extern void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
  *  than half full, and '-' for one that is less than half full.
  */
 extern void cmb_dataset_print_histogram(const struct cmb_dataset *dsp, FILE *fp,
-                                        uint16_t num_bins, double low_lim, double high_lim);
+                                        unsigned num_bins, double low_lim, double high_lim);
 
 /* Print the raw data in the dataset. */
 extern void cmb_dataset_print_data(const struct cmb_dataset *dsp, FILE *fp);
 
 /* Calculate the n first autocorrelation coefficients. */
-extern void cmb_dataset_ACF(const struct cmb_dataset *dsp, uint16_t max_lag,
+extern void cmb_dataset_ACF(const struct cmb_dataset *dsp, unsigned max_lag,
                                 double acf[max_lag + 1u]);
 
 /*
@@ -322,7 +322,7 @@ extern void cmb_dataset_ACF(const struct cmb_dataset *dsp, uint16_t max_lag,
  * have been calculated, they can be given as the last argument acf[].
  * If this argument is NULL, they will be calculated directly from the dataset.
  */
-extern void cmb_dataset_PACF(const struct cmb_dataset *dsp, uint16_t max_lag,
+extern void cmb_dataset_PACF(const struct cmb_dataset *dsp, unsigned max_lag,
                                  double pacf[max_lag + 1u], double acf[max_lag + 1u]);
 
 /*
@@ -332,7 +332,7 @@ extern void cmb_dataset_PACF(const struct cmb_dataset *dsp, uint16_t max_lag,
  * a vector of PACFs as the acf argument.
  */
 extern void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
-                                          uint16_t max_lag, double acf[max_lag + 1u]);
+                                          unsigned max_lag, double acf[max_lag + 1u]);
 
 /******************************************************************************
  * cmb_timeseries - a similarly resizing array for keeping (x, t) value tuples.
