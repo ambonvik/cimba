@@ -409,7 +409,7 @@ extern void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp,
 
 /*
  *  Print a simple character-based histogram.
- *  Like cmb_dataset_histogram but weighted by the duration between samples.
+ *  Like cmb_dataset_histogram but weighted by the interval until next sample.
  *  Call cmb_dataset_histogram((struct cmb_dataset *)tsp, ...) for unweighted.
  */
 extern void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp, FILE *fp,

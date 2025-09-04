@@ -678,6 +678,12 @@ static void cmi_data_print_line(FILE *fp, const char *str, const uint16_t repeat
     cmb_assert_release(r > 0);
 }
 
+/*
+ * Histogram data structure. Note that the bins are real-valued (not integer) to
+ * work both with traditional histograms for cmb_dataset and for time-weighted
+ * ones for cmb_timeseries where each value is counted proportional to the time
+ * interval between it and the next value.
+ */
 struct cmi_data_histogram {
     unsigned num_bins;
     double binsize;
@@ -692,24 +698,26 @@ static struct cmi_data_histogram *cmi_data_create_histogram(const unsigned num_b
     const double range = high_lim - low_lim;
     cmb_assert_debug(range > 0.0);
 
-    struct cmi_data_histogram *h = cmi_malloc(sizeof(*h));
-    h->num_bins = num_bins + 2u;
-    h->binsize = range / (double)(num_bins);
-    h->low_lim = low_lim;
-    h->high_lim = high_lim;
-    h->hbins = cmi_calloc(h->num_bins, sizeof(*(h->hbins)));
+    struct cmi_data_histogram *hp = cmi_malloc(sizeof(*hp));
+    hp->num_bins = num_bins + 2u;
+    hp->binsize = range / (double)(num_bins);
+    hp->low_lim = low_lim;
+    hp->high_lim = high_lim;
+    hp->binmax = 0.0;
+    hp->hbins = cmi_calloc(hp->num_bins, sizeof(*(hp->hbins)));
 
-    return h;
+    return hp;
 }
 
-static void cmi_data_fill_histogram(struct cmi_data_histogram *hp, const uint64_t n, const double xa[n]) {
+static void cmi_dataset_fill_histogram(struct cmi_data_histogram *hp, const uint64_t n, const double xa[n]) {
     cmb_assert_debug(hp != NULL);
     cmb_assert_debug(n > 0u);
     cmb_assert_debug(xa != NULL);
 
     /* Distribute x-values to bins */
     for (uint64_t ui = 0u; ui < n; ui++) {
-        uint16_t bin = 0u;
+        /* In what bin does this x-value belong? */
+        uint16_t bin;
         if (xa[ui] < hp->low_lim) {
             bin = 0u;
         }
@@ -720,15 +728,10 @@ static void cmi_data_fill_histogram(struct cmi_data_histogram *hp, const uint64_
             bin = 1u + (uint16_t)((xa[ui] - hp->low_lim) / hp->binsize);
         }
 
-        /* Add it to that bin */
+        /* Add it to that bin and note the high-water mark */
         hp->hbins[bin] += 1.0;
-    }
-
-    /* Record the maximum value in a bin */
-    hp->binmax = 0.0;
-    for (unsigned ui = 0u; ui < hp->num_bins; ui++) {
-        if (hp->hbins[ui] > hp->binmax) {
-            hp->binmax = hp->hbins[ui];
+        if (hp->hbins[bin] > hp->binmax) {
+            hp->binmax = hp->hbins[bin];
         }
     }
 }
@@ -777,18 +780,20 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
      cmb_assert_release(num_bins > 0u);
 
      if (dsp->xa == NULL) {
-         assert(dsp->cnt == 0u);
+         cmb_assert_debug(dsp->cnt == 0u);
          cmb_warning(fp, "No data to display in histogram");
          return;
     }
 
     if (low_lim == high_lim) {
+        /* Autoscale to dataset range */
         low_lim = dsp->min;
         high_lim = dsp->max;
     }
 
-    struct cmi_data_histogram *hp = cmi_data_create_histogram(num_bins, low_lim, high_lim);
-    cmi_data_fill_histogram(hp, dsp->cnt, dsp->xa);
+    struct cmi_data_histogram *hp = NULL;
+    hp = cmi_data_create_histogram(num_bins, low_lim, high_lim);
+    cmi_dataset_fill_histogram(hp, dsp->cnt, dsp->xa);
     cmi_data_print_histogram(hp, fp);
     cmi_data_destroy_histogram(hp);
 }
@@ -1099,4 +1104,31 @@ void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp) {
     else {
         cmb_warning(fp, "No data to print");
     }
+}
+
+void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp, FILE *fp,
+                                        uint16_t num_bins, double low_lim, double high_lim) {
+    cmb_assert_release(tsp != NULL);
+    cmb_assert_release(fp != NULL);
+    cmb_assert_release(num_bins > 0u);
+
+    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    if (dsp->xa == NULL) {
+        cmb_assert_debug(dsp->cnt == 0u);
+        cmb_assert_debug(tsp->ta == NULL);
+        cmb_warning(fp, "No data to display in histogram");
+        return;
+    }
+
+    if (low_lim == high_lim) {
+        /* Autoscale to dataset range */
+        low_lim = dsp->min;
+        high_lim = dsp->max;
+    }
+
+    struct cmi_data_histogram *hp = NULL;
+    hp = cmi_data_create_histogram(num_bins, low_lim, high_lim);
+    cmi_timeseries_fill_histogram(hp, dsp->cnt, dsp->xa, tsp->ta);
+    cmi_data_print_histogram(hp, fp);
+    cmi_data_destroy_histogram(hp);
 }
