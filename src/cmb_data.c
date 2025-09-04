@@ -51,6 +51,10 @@ extern uint64_t cmb_dataset_count(const struct cmb_dataset *dsp);
 extern double cmb_dataset_min(const struct cmb_dataset *dsp);
 extern double cmb_dataset_max(const struct cmb_dataset *dsp);
 
+extern uint64_t cmb_timeseries_count(const struct cmb_timeseries *tsp);
+extern double cmb_timeseries_min(const struct cmb_timeseries *tsp);
+extern double cmb_timeseries_max(const struct cmb_timeseries *tsp);
+
 extern void *cmi_malloc(size_t sz);
 extern void *cmi_calloc(unsigned int n, size_t sz);
 extern void *cmi_realloc(void *p, size_t sz);
@@ -637,8 +641,8 @@ void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp) {
 
 /*
  * Print a simple character-based histogram of the data.
- * The only external callable function is cmb_dataset_print_histogram,
- * the rest are internal helper functions.
+ * The only external callable functions are cmb_dataset_print_histogram and
+ * cmb_timeseries_print_histogram, the rest are internal helper functions.
  */
 
 static void cmi_data_print_stars(FILE *fp, const double scale, const double binval) {
@@ -709,6 +713,7 @@ static struct cmi_data_histogram *cmi_data_create_histogram(const unsigned num_b
     return hp;
 }
 
+/* Calculate the histogram data for a dataset, weighting each x-value equally as 1.0. */
 static void cmi_dataset_fill_histogram(struct cmi_data_histogram *hp, const uint64_t n, const double xa[n]) {
     cmb_assert_debug(hp != NULL);
     cmb_assert_debug(n > 0u);
@@ -1089,6 +1094,27 @@ uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, const double t) {
     return r;
 }
 
+/*
+ * Summarize the timeseries into a weighted data set, using the time intervals between x-values as the weighing.
+ */
+uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp, struct cmb_wsummary *wsump) {
+    cmb_assert_release(tsp != NULL);
+    cmb_assert_release(tsp->ta != NULL);
+    cmb_assert_release(wsump != NULL);
+
+    const struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    cmb_assert_debug(dsp->xa != NULL);
+    const uint64_t n = dsp->cnt;
+    cmb_assert_debug(n > 0u);
+    for (uint64_t ui = 0; ui < n - 1; ui++) {
+        const double x = dsp->xa[ui];
+        const double dt = tsp->ta[ui + 1u] - tsp->ta[ui];
+        cmb_wsummary_add(wsump, x, dt);
+    }
+
+    return cmb_wsummary_count(wsump);
+}
+
 void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp) {
     cmb_assert_release(tsp != NULL);
     cmb_assert_release(fp != NULL);
@@ -1103,6 +1129,41 @@ void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp) {
     }
     else {
         cmb_warning(fp, "No data to print");
+    }
+}
+
+/*
+ * Calculate a histogram with time-weighed values, each x-value counted with
+ * the t-value interval to the next x-value, i.e. the holding time.
+ */
+static void cmi_timeseries_fill_histogram(struct cmi_data_histogram *hp, const uint64_t n,
+                                            const double xa[n], const double ta[n]) {
+    cmb_assert_debug(hp != NULL);
+    cmb_assert_debug(n > 0u);
+    cmb_assert_debug(xa != NULL);
+
+    /* Distribute x-values to bins */
+    for (uint64_t ui = 0u; ui < n - 1u; ui++) {
+        /* In what bin does this x-value belong? */
+        uint16_t bin;
+        if (xa[ui] < hp->low_lim) {
+            bin = 0u;
+        }
+        else if (xa[ui] > hp->high_lim) {
+            bin = hp->num_bins - 1u;
+        }
+        else {
+            bin = 1u + (uint16_t)((xa[ui] - hp->low_lim) / hp->binsize);
+        }
+
+        /* What weight should it get? */
+        const double w = ta[ui + 1u] - ta[ui];
+
+        /* Add it to that bin and note the high-water mark */
+        hp->hbins[bin] += w;
+        if (hp->hbins[bin] > hp->binmax) {
+            hp->binmax = hp->hbins[bin];
+        }
     }
 }
 

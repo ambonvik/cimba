@@ -735,8 +735,8 @@ static void print_discrete_expects(const unsigned n, const double pa[n]) {
         m1 += iv * p;
         const double iv2 = iv * iv;
         m2 += iv2 * p;
-        m3 = iv * iv2 * p;
-        m4 = iv2 * iv2 * p;
+        m3 += iv * iv2 * p;
+        m4 += iv2 * iv2 * p;
     }
 
     const double mean = m1;
@@ -804,8 +804,10 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
 
         const clock_t cs_alias = clock();
         struct cmb_random_alias *alp = cmb_random_alias_create(n, pa);
-        for (unsigned i = 0; i < MAX_ITER; i++)
+        for (unsigned i = 0; i < MAX_ITER; i++) {
             (void)cmb_random_alias_sample(alp);
+        }
+
         cmb_random_alias_destroy(alp);
         const clock_t ce_alias = clock();
 
@@ -814,7 +816,7 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
         const double t_alias = (double)(ce_alias - cs_alias) / CLOCKS_PER_SEC;
         const double ips_alias = MAX_ITER / t_alias;
         const double speedup = (ips_alias - ips_simple) / ips_simple;
-        printf("%u\t%9.4g\t%9.4g\t%+5.2g%%\n", n, ips_simple, ips_alias, 100.0 * speedup);
+        printf("%u\t%9.4g\t%9.4g\t%+8.4g%%\n", n, ips_simple, ips_alias, 100.0 * speedup);
     }
 }
 
