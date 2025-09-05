@@ -47,10 +47,12 @@ extern double cmb_wsummary_skewness(const struct cmb_wsummary *wsup);
 extern double cmb_wsummary_kurtosis(const struct cmb_wsummary *wsup);
 extern void cmb_wsummary_print(const struct cmb_wsummary *wsup, FILE *fp, bool lead_ins);
 
+extern void cmb_dataset_clear(struct cmb_dataset *dsp);
 extern uint64_t cmb_dataset_count(const struct cmb_dataset *dsp);
 extern double cmb_dataset_min(const struct cmb_dataset *dsp);
 extern double cmb_dataset_max(const struct cmb_dataset *dsp);
 
+extern void cmb_timeseries_clear(struct cmb_timeseries *tsp);
 extern uint64_t cmb_timeseries_count(const struct cmb_timeseries *tsp);
 extern double cmb_timeseries_min(const struct cmb_timeseries *tsp);
 extern double cmb_timeseries_max(const struct cmb_timeseries *tsp);
@@ -121,13 +123,8 @@ uint64_t cmb_summary_merge(struct cmb_summary *tgt,
 uint64_t cmb_summary_add(struct cmb_summary *sup, const double y) {
     cmb_assert_release(sup != NULL);
 
-    if (y > sup->max) {
-        sup->max = y;
-    }
-
-    if (y < sup->min) {
-        sup->min = y;
-    }
+    sup->max = (y > sup->max) ? y : sup->max;
+    sup->min = (y < sup->min) ? y : sup->min;
 
     const double d = y - sup->m1;
     const double d_2 = d * d;
@@ -187,9 +184,77 @@ void cmb_summary_print(const struct cmb_summary *sup, FILE *fp, const bool lead_
     cmb_assert_release(r > 0);
 }
 
+double cmb_summary_skewness(const struct cmb_summary *sup) {
+    cmb_assert_release(sup != NULL);
+
+    double r = 0.0;
+    if (sup->cnt > 2u) {
+        /* Estimate population skewness */
+        const double dn = (double)sup->cnt;
+        const double g = sqrt(dn) * sup->m3 / pow(sup->m2, 1.5);
+
+        /* Correction for finite sample */
+        r = sqrt(dn * (dn - 1.0)) * g / (dn - 2.0);
+    }
+
+    return r;
+}
+
+/* Sample excess kurtosis */
+double cmb_summary_kurtosis(const struct cmb_summary *sup) {
+    cmb_assert_release(sup != NULL);
+
+    double r = 0.0;
+    if (sup->cnt > 3u) {
+        /* Estimate population excess kurtosis */
+        const double dn = (double)sup->cnt;
+        const double g = dn * sup->m4 / (sup->m2 * sup->m2) - 3.0;
+
+        /* Correction for finite sample */
+        r = (dn - 1.0) / ((dn - 2.0) * (dn - 3.0)) * ((dn + 1.0) * g + 6.0);
+    }
+
+    return r;
+}
+
+/************************** Weighted summary methods **************************/
+/*
+ * Add a weighted sample value to the data summary, updating the statistics.
+ * See: Pébay & al, "Numerically stable, scalable formulas for parallel and
+ *      online computation of higher-order multivariate central moments with arbitrary weights",
+ *      Computational Statistics (2016) 31:1305–1325
+ * Adding a single sample is a special case of the merge described there, with n2 = 1.
+ *
+ * Returns the updated sample count.
+ */
+uint64_t cmb_wsummary_add(struct cmb_wsummary *wsup, const double y, const double w) {
+    cmb_assert_release(wsup != NULL);
+
+    struct cmb_summary *sup = (struct cmb_summary *)wsup;
+    sup->max = (y > sup->max) ? y : sup->max;
+    sup->min = (y < sup->min) ? y : sup->min;
+
+    const double d = y - sup->m1;
+    const double d_2 = d * d;
+    const double d_3 = d * d_2;
+    const double ws = wsup->wsum + w;
+    const double d_w = d / ws;
+    const double d_w_2 = d_w * d_w;
+    const double d_w_3 = d_w_2 * d_w;
+
+    sup->cnt++;
+    wsup->wsum = ws;
+    sup->m1 += w * d_w;
+    sup->m2 += d * (d - d_w);
+    sup->m3 += d * (d_2 - d_w_2) - 3.0 * d_w * sup->m2;
+    sup->m4 += d * (d_3 - d_w_3) - 6.0 * d_w_2 * sup->m2 - 4.0 * d_w * sup->m3;
+
+    return sup->cnt;
+}
+
 /*
  * Merge two weighted data summaries, updating the statistics. Used e.g. for merging across pthreads.
- * See: Pébay & al (2015) "Numerically stable, scalable formulas for parallel and
+ * See: Pébay & al, "Numerically stable, scalable formulas for parallel and
  *      online computation of higher-order multivariate central moments with arbitrary weights",
  *      Computational Statistics (2016) 31:1305–1325
  *
@@ -234,84 +299,11 @@ uint64_t cmb_wsummary_merge(struct cmb_wsummary *tgt,
     return ts->cnt;
 }
 
-double cmb_summary_skewness(const struct cmb_summary *sup) {
-    cmb_assert_release(sup != NULL);
-
-    double r = 0.0;
-    if (sup->cnt > 2u) {
-        /* Estimate population skewness */
-        const double dn = (double)sup->cnt;
-        const double g = sqrt(dn) * sup->m3 / pow(sup->m2, 1.5);
-
-        /* Correction for finite sample */
-        r = sqrt(dn * (dn - 1.0)) * g / (dn - 2.0);
-    }
-
-    return r;
-}
-
-/* Sample excess kurtosis */
-double cmb_summary_kurtosis(const struct cmb_summary *sup) {
-    cmb_assert_release(sup != NULL);
-
-    double r = 0.0;
-    if (sup->cnt > 3u) {
-        /* Estimate population excess kurtosis */
-        const double dn = (double)sup->cnt;
-        const double g = dn * sup->m4 / (sup->m2 * sup->m2) - 3.0;
-
-        /* Correction for finite sample */
-        r = (dn - 1.0) / ((dn - 2.0) * (dn - 3.0)) * ((dn + 1.0) * g + 6.0);
-    }
-
-    return r;
-}
-
-/************************** Weighted summary methods **************************/
-/*
- * Add a weighted sample value to the data summary, updating the statistics. See Petay (2008).
- * Adding a single sample is a special case of the merge described there, with n2 = 1.
- *
- * Optimized evaluation sequence as described in, adapted for use with weighted datasets.
- * Xiangrui Meng (2015), "Simpler Online Updates for Arbitrary-Order Central Moments"
- *     https://arxiv.org/pdf/1510.04923
- *
- * Returns the updated sample count.
- */
-uint64_t cmb_wsummary_add(struct cmb_wsummary *wsup, const double y, const double w) {
-    cmb_assert_release(wsup != NULL);
-
-    struct cmb_summary *dsp = (struct cmb_summary *)wsup;
-    if (y > dsp->max) {
-        dsp->max = y;
-    }
-
-    if (y < dsp->min) {
-        dsp->min = y;
-    }
-
-    const double d = y - dsp->m1;
-    const double d_2 = d * d;
-    const double d_3 = d * d_2;
-    const double ws = wsup->wsum + w;
-    const double d_w = d / ws;
-    const double d_w_2 = d_w * d_w;
-    const double d_w_3 = d_w_2 * d_w;
-
-    dsp->cnt++;
-    wsup->wsum = ws;
-    dsp->m1 += d_w;
-    dsp->m2 += d * (d - d_w);
-    dsp->m3 += d * (d_2 - d_w_2) - 3.0 * d_w * dsp->m2;
-    dsp->m4 += d * (d_3 - d_w_3) - 6.0 * d_w_2 * dsp->m2 - 4.0 * d_w * dsp->m3;
-
-    return dsp->cnt;
-}
-
 /****************************** Data set methods ******************************/
 
 struct cmb_dataset *cmb_dataset_create(void) {
     struct cmb_dataset *dsp = cmi_malloc(sizeof *dsp);
+    dsp->xa = NULL;
     cmb_dataset_init(dsp);
 
     return dsp;
@@ -324,13 +316,6 @@ void cmb_dataset_init(struct cmb_dataset *dsp) {
     dsp->cnt = 0u;
     dsp->min = DBL_MAX;
     dsp->max = -DBL_MAX;
-    dsp->xa = NULL;
-}
-
-void cmb_dataset_clear(struct cmb_dataset *dsp) {
-    cmb_assert_release(dsp != NULL);
-
-    dsp->cursize = dsp->cnt = 0;
     if (dsp->xa != NULL) {
         cmi_free(dsp->xa);
         dsp->xa = NULL;
@@ -363,13 +348,8 @@ static void cmi_dataset_expand(struct cmb_dataset *dsp) {
 uint64_t cmb_dataset_add(struct cmb_dataset *dsp, const double x) {
     cmb_assert_release(dsp != NULL);
 
-    if (x > dsp->max) {
-        dsp->max = x;
-    }
-
-    if (x < dsp->min) {
-        dsp->min = x;
-    }
+    dsp->max = (x > dsp->max) ? x : dsp->max;
+    dsp->min = (x < dsp->min) ? x : dsp->min;
 
     if (dsp->cnt == dsp->cursize) {
         cmi_dataset_expand(dsp);
@@ -395,7 +375,7 @@ uint64_t cmb_dataset_add(struct cmb_dataset *dsp, const double x) {
  * tradeoff for the stack space economy.
  */
 
-static void dataset_swap(double *a, double *b) {
+static void cmi_data_swap(double *a, double *b) {
     const double tmp = *a;
     *a = *b;
     *b = tmp;
@@ -403,7 +383,7 @@ static void dataset_swap(double *a, double *b) {
 
 #ifndef NASSERT
 /* Code only used for checking invariants */
-static bool is_sorted(const double arr[], const uint64_t un) {
+static bool cmi_data_is_sorted(const double arr[], const uint64_t un) {
     if ((arr == NULL) || (un < 2)) {
         return true;
     }
@@ -419,7 +399,7 @@ static bool is_sorted(const double arr[], const uint64_t un) {
 }
 
 /* Check for heap condition starting from root ui, testing this subtree only */
-static bool is_max_heap(const uint64_t un, const double arr[un], const uint64_t uroot) {
+static bool cmi_data_is_max_heap(const uint64_t un, const double arr[un], const uint64_t uroot) {
     cmb_assert_release(arr != NULL);
     if ((un > 1) && (uroot <= un)) {
         uint64_t *queue = cmi_malloc(un * sizeof(uint64_t));
@@ -459,7 +439,7 @@ static bool is_max_heap(const uint64_t un, const double arr[un], const uint64_t 
 #endif /* ifndef NASSERT */
 
 /* Establish max heap condition in dataset array starting from uroot */
-static void dataset_heapify(const uint64_t un, double arr[un], uint64_t uroot) {
+static void cmi_data_heapify(const uint64_t un, double arr[un], uint64_t uroot) {
     cmb_assert_release(arr != NULL);
     uint64_t ucl = 2 * uroot + 1;
     uint64_t ucr = 2 * uroot + 2;
@@ -477,7 +457,7 @@ static void dataset_heapify(const uint64_t un, double arr[un], uint64_t uroot) {
 
         if (ubig != uroot) {
             cmb_assert_debug((uroot < un) && (ubig < un));
-            dataset_swap(&arr[uroot], &arr[ubig]);
+            cmi_data_swap(&arr[uroot], &arr[ubig]);
             uroot = ubig;
             ucl = 2 * uroot + 1;
             ucr = 2 * uroot + 2;
@@ -488,7 +468,7 @@ static void dataset_heapify(const uint64_t un, double arr[un], uint64_t uroot) {
         }
     }
 
-    cmb_assert_debug(is_max_heap(un, arr, uroot));
+    cmb_assert_debug(cmi_data_is_max_heap(un, arr, uroot));
 }
 
 /* Heapsort from smallest to largest value */
@@ -500,17 +480,17 @@ void cmb_dataset_sort(const struct cmb_dataset *dsp) {
         double *arr = dsp->xa;
         cmb_assert_debug(INT64_MAX >= UINT64_MAX / 2);
         for (int64_t root = (int64_t)(un / 2) - 1; root >= 0; root--) {
-            dataset_heapify(un, arr, root);
+            cmi_data_heapify(un, arr, root);
         }
 
         for (uint64_t ui = un - 1; ui > 0; ui--) {
             cmb_assert_debug(ui < un);
-            dataset_swap(&arr[0], &arr[ui]);
-            dataset_heapify(ui, arr, 0);
+            cmi_data_swap(&arr[0], &arr[ui]);
+            cmi_data_heapify(ui, arr, 0);
         }
     }
 
-    cmb_assert_debug(is_sorted(dsp->xa, dsp->cnt));
+    cmb_assert_debug(cmi_data_is_sorted(dsp->xa, dsp->cnt));
 }
 
 uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
@@ -551,14 +531,14 @@ uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp, struct cmb_summary
 }
 
 /* Assumes that v is already sorted */
-static double array_median(const unsigned n, const double v[n]) {
-    cmb_assert_debug(is_sorted(v, n));
+static double cmi_data_array_median(const unsigned n, const double v[n]) {
+    cmb_assert_debug(cmi_data_is_sorted(v, n));
     double r;
-    if (0 == n % 2) {
-        r =  (v[n/2 - 1] + v[n/2]) / 2.0;
+    if (n % 2u == 0u) {
+        r =  (double)(v[n/2u - 1u] + v[n / 2u]) / 2.0;
     }
     else {
-        r = v[n/2];
+        r = (double)(v[n / 2u]);
     }
 
     return r;
@@ -572,7 +552,7 @@ double cmb_dataset_median(const struct cmb_dataset *dsp) {
         struct cmb_dataset dup = { 0 };
         cmb_dataset_copy(&dup, dsp);
         cmb_dataset_sort(&dup);
-        r = array_median(dup.cnt, dup.xa);
+        r = cmi_data_array_median(dup.cnt, dup.xa);
         cmb_dataset_clear(&dup);
     }
     else {
@@ -596,19 +576,19 @@ void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp, FILE *fp, const bo
 
         const double min = dsc.min;
         const double max = dsc.max;
-        const double med = array_median(dsc.cnt, dsc.xa);
+        const double med = cmi_data_array_median(dsc.cnt, dsc.xa);
 
         const unsigned lhsz = dsc.cnt / 2;
-        const double q1 = array_median(lhsz, dsc.xa);
+        const double q1 = cmi_data_array_median(lhsz, dsc.xa);
         double q3;
         const unsigned uhsz = dsc.cnt - lhsz;
         if ((dsc.cnt % 2) == 0) {
             /* Even number of entries */
-            q3 = array_median(uhsz, &(dsc.xa[lhsz]));
+            q3 = cmi_data_array_median(uhsz, &(dsc.xa[lhsz]));
         }
         else {
             /* Odd number of entries, exclude the median entry */
-            q3 = array_median(uhsz - 1, &(dsc.xa[lhsz + 1]));
+            q3 = cmi_data_array_median(uhsz - 1, &(dsc.xa[lhsz + 1]));
         }
 
         int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
@@ -800,13 +780,13 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
     hp = cmi_data_create_histogram(num_bins, low_lim, high_lim);
     cmi_dataset_fill_histogram(hp, dsp->cnt, dsp->xa);
     cmi_data_print_histogram(hp, fp);
+
     cmi_data_destroy_histogram(hp);
 }
 
 /*
  * Calculate the first max_lag autocorrelation coefficients.
  */
-
 void cmb_dataset_ACF(const struct cmb_dataset *dsp, const unsigned max_lag, double acf[max_lag + 1u])
 {
     cmb_assert_release(dsp != NULL);
@@ -1010,6 +990,10 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
 
 struct cmb_timeseries *cmb_timeseries_create(void) {
     struct cmb_timeseries *tsp = cmi_malloc(sizeof *tsp);
+    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    dsp->xa = NULL;
+    tsp->ta = NULL;
+    tsp->wa = NULL;
     cmb_timeseries_init(tsp);
 
     return tsp;
@@ -1019,16 +1003,14 @@ void cmb_timeseries_init(struct cmb_timeseries *tsp) {
     cmb_assert_release(tsp != NULL);
 
     cmb_dataset_init((struct cmb_dataset *)tsp);
-    tsp->ta = NULL;
-}
-
-void cmb_timeseries_clear(struct cmb_timeseries *tsp) {
-    cmb_assert_release(tsp != NULL);
-
-    cmb_dataset_clear((struct cmb_dataset *)tsp);
     if (tsp->ta != NULL) {
         cmi_free(tsp->ta);
         tsp->ta = NULL;
+    }
+
+    if (tsp->wa != NULL) {
+        cmi_free(tsp->wa);
+        tsp->wa = NULL;
     }
 }
 
@@ -1047,12 +1029,17 @@ static void cmi_timeseries_expand(struct cmb_timeseries *tsp) {
     cmi_dataset_expand(dsp);
 
     if (tsp->ta == NULL) {
-        /* Just allocated the first chunk of xa array, do same for ta */
-        cmb_assert_release(dsp->cursize == cmb_dataset_init_size);
+        /* Just allocated the first chunk of xa array, do same for ta and wa */
+        cmb_assert_debug(dsp->cursize == cmb_dataset_init_size);
+        cmb_assert_debug(tsp->wa == NULL);
         tsp->ta = cmi_malloc((size_t)(cmb_dataset_init_size * sizeof(*(tsp->ta))));
+        tsp->wa = cmi_malloc((size_t)(cmb_dataset_init_size * sizeof(*(tsp->wa))));
     }
     else {
-         tsp->ta = cmi_realloc(tsp->ta, (size_t)(dsp->cursize * sizeof(*(tsp->ta))));
+        /* Already exist, expand the xa and ta arrays */
+        cmb_assert_debug((tsp->ta != NULL) && (tsp->wa != NULL));
+        tsp->ta = cmi_realloc(tsp->ta, (size_t)(dsp->cursize * sizeof(*(tsp->ta))));
+        tsp->wa = cmi_realloc(tsp->wa, (size_t)(dsp->cursize * sizeof(*(tsp->wa))));
     }
 }
 
@@ -1060,23 +1047,28 @@ uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp, const double x, const do
     cmb_assert_release(tsp != NULL);
 
     struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
-    cmb_assert_release((dsp->cnt == 0u) || ((tsp->ta != NULL) && (tsp->ta[dsp->cnt - 1u] <= t)));
+    cmb_assert_debug((dsp->cnt == 0u) || ((tsp->ta != NULL) && (tsp->ta[dsp->cnt - 1u] <= t)));
     if (dsp->cnt == dsp->cursize) {
-        /* Full (or not even created) data arrays, resize both xa and ta */
+        /* Full (or not even created) data arrays, resize arrays xa, ta, and wa */
         cmi_timeseries_expand(tsp);
     }
 
-#ifndef NDEBUG
-    const uint64_t presize = dsp->cursize;
-#endif
-
+    const uint64_t ui_new = dsp->cnt;
     (void)cmb_dataset_add(dsp, x);
-    /* Should not need to trigger a new expand here */
-    cmb_assert_debug(dsp->cursize == presize);
+    cmb_assert_debug(tsp->ta != NULL);
+    tsp->ta[ui_new] = t;
+    /* Duration still unknown, weight at zero for now */
+    tsp->wa[ui_new] = 0.0;
 
-    /* May have null data array on entry, but not by here */
-    cmb_assert_release(tsp->ta != NULL);
-    tsp->ta[dsp->cnt - 1u] = t;
+    if (ui_new > 0u) {
+        /* Update previous duration */
+        const uint64_t ui_prev = ui_new - 1u;
+        const double t_prev = tsp->ta[ui_prev];
+        cmb_assert_debug(tsp->wa[ui_prev] == 0.0);
+        const double dt = t - t_prev;
+        cmb_assert_debug(dt >= 0.0);
+        tsp->wa[ui_prev] = dt;
+    }
 
     return dsp->cnt;
 }
@@ -1097,22 +1089,22 @@ uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, const double t) {
 /*
  * Summarize the timeseries into a weighted data set, using the time intervals between x-values as the weighing.
  */
-uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp, struct cmb_wsummary *wsump) {
+uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp, struct cmb_wsummary *wsp) {
     cmb_assert_release(tsp != NULL);
     cmb_assert_release(tsp->ta != NULL);
-    cmb_assert_release(wsump != NULL);
+    cmb_assert_release(wsp != NULL);
 
     const struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     cmb_assert_debug(dsp->xa != NULL);
     const uint64_t n = dsp->cnt;
     cmb_assert_debug(n > 0u);
-    for (uint64_t ui = 0; ui < n - 1; ui++) {
+    for (uint64_t ui = 0u; ui < n - 1u; ui++) {
         const double x = dsp->xa[ui];
-        const double dt = tsp->ta[ui + 1u] - tsp->ta[ui];
-        cmb_wsummary_add(wsump, x, dt);
+        const double w = tsp->wa[ui];
+        cmb_wsummary_add(wsp, x, w);
     }
 
-    return cmb_wsummary_count(wsump);
+    return cmb_wsummary_count(wsp);
 }
 
 void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp) {
@@ -1137,7 +1129,7 @@ void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp) {
  * the t-value interval to the next x-value, i.e. the holding time.
  */
 static void cmi_timeseries_fill_histogram(struct cmi_data_histogram *hp, const uint64_t n,
-                                            const double xa[n], const double ta[n]) {
+                                            const double xa[n], const double wa[n]) {
     cmb_assert_debug(hp != NULL);
     cmb_assert_debug(n > 0u);
     cmb_assert_debug(xa != NULL);
@@ -1146,21 +1138,19 @@ static void cmi_timeseries_fill_histogram(struct cmi_data_histogram *hp, const u
     for (uint64_t ui = 0u; ui < n - 1u; ui++) {
         /* In what bin does this x-value belong? */
         uint16_t bin;
-        if (xa[ui] < hp->low_lim) {
+        const double x = xa[ui];
+        if (x < hp->low_lim) {
             bin = 0u;
         }
-        else if (xa[ui] > hp->high_lim) {
+        else if (x > hp->high_lim) {
             bin = hp->num_bins - 1u;
         }
         else {
-            bin = 1u + (uint16_t)((xa[ui] - hp->low_lim) / hp->binsize);
+            bin = 1u + (uint16_t)((x - hp->low_lim) / hp->binsize);
         }
 
-        /* What weight should it get? */
-        const double w = ta[ui + 1u] - ta[ui];
-
         /* Add it to that bin and note the high-water mark */
-        hp->hbins[bin] += w;
+        hp->hbins[bin] += wa[ui];
         if (hp->hbins[bin] > hp->binmax) {
             hp->binmax = hp->hbins[bin];
         }
@@ -1189,7 +1179,7 @@ void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp, FILE *fp,
 
     struct cmi_data_histogram *hp = NULL;
     hp = cmi_data_create_histogram(num_bins, low_lim, high_lim);
-    cmi_timeseries_fill_histogram(hp, dsp->cnt, dsp->xa, tsp->ta);
+    cmi_timeseries_fill_histogram(hp, dsp->cnt, dsp->xa, tsp->wa);
     cmi_data_print_histogram(hp, fp);
     cmi_data_destroy_histogram(hp);
 }

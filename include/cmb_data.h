@@ -258,7 +258,10 @@ extern uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
 extern uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
                                   const struct cmb_dataset *s1,
                                   const struct cmb_dataset *s2);
-extern void cmb_dataset_clear(struct cmb_dataset *dsp);
+inline void cmb_dataset_clear(struct cmb_dataset *dsp) {
+    cmb_assert_release(dsp != NULL);
+    cmb_dataset_init(dsp);
+}
 extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
 
 /* Sort v[] in ascending order */
@@ -344,17 +347,22 @@ extern void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *f
  * correct weighting. Use cmb_timeseries_summarize() to compute the statistics
  * into a weighted data summary when needed.
  * Implemented by inheritance from cmb_dataset. Wrapper functions given below.
+ * The ta array are the time stamps, wa is used for calculated weights (intervals).
  */
 
 struct cmb_timeseries {
     struct cmb_dataset ds;
     double *ta;
+    double *wa;
 };
 
 /* Manage the timeseries themselves */
 extern struct cmb_timeseries *cmb_timeseries_create(void);
 extern void cmb_timeseries_init(struct cmb_timeseries *tsp);
-extern void cmb_timeseries_clear(struct cmb_timeseries *tsp);
+inline void cmb_timeseries_clear(struct cmb_timeseries *tsp) {
+    cmb_assert_release(tsp != NULL);
+    cmb_timeseries_init(tsp);
+}
 extern void cmb_timeseries_destroy(struct cmb_timeseries *tsp);
 
 /* Add a single value to a timeseries, resizing the array as needed */
@@ -376,7 +384,7 @@ extern uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, double t);
  * Returns the number of data points in the summary.
  */
 extern uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp,
-                                  struct cmb_wsummary *wsump);
+                                  struct cmb_wsummary *wsp);
 
 inline uint64_t cmb_timeseries_count(const struct cmb_timeseries *tsp) {
     cmb_assert_release(tsp != NULL);

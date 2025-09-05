@@ -123,20 +123,26 @@ static void test_wsummary(void) {
     cmb_wsummary_clear(&dws);
     cmi_test_print_line("-");
 
-    printf("\nDrawing %u new U(0,1) samples randomly weighted on U(1,5)\n", MAX_ITER);
+    printf("\nDrawing %u new x ~ U(0,1) samples weighted by 1.5 - x\n", MAX_ITER);
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
         const double x = cmb_random();
-        const double w = cmb_random_uniform(1.0, 5.0);
+        const double w = 1.5 - x;
         cmb_wsummary_add(&dws, x, w);
+        cmb_summary_add(&ds, x);
     }
 
-    printf("\nSum of weights: %#8.4g\n", dws.wsum);
-    printf("Summary: cmb_wsummary_print\n");
+    printf("Sum of weights: %#8.4g\n", dws.wsum);
+    printf("Weighted:   ");;
     cmb_wsummary_print(&dws, stdout, true);
+    printf("Unweighted: ");;
+    cmb_summary_print(&ds, stdout, true);
+    cmb_summary_clear(&ds);
+    cmi_test_print_line("-");
+
 
     printf("\nCreating another weighted data summary on the heap: cmb_wsummary_create\n");
     struct cmb_wsummary *dwp = cmb_wsummary_create();
-    printf("Drawing %u new U(0,1) samples randomly weighted on U(1,5)\n", MAX_ITER);
+    printf("Drawing %u new x ~ U(0,1) samples randomly weighted on U(1,5)\n", MAX_ITER);
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
         const double x = cmb_random();
         const double w = cmb_random_uniform(1.0, 5.0);
@@ -154,6 +160,9 @@ static void test_wsummary(void) {
     printf("Returned %llu\n", nm);
     printf("Merged summary: cmb_wsummary_print\n");
     cmb_wsummary_print(dwp, stdout, true);
+    printf("Cleaning up: cmb_wsummary_clear, cmb_wsummary_destroy\n");
+    cmb_wsummary_clear(&dws);
+    cmb_wsummary_destroy(dwp);
 
     cmi_test_print_line("=");
 }
@@ -255,12 +264,14 @@ void test_timeseries(void) {
     struct cmb_timeseries *tsp = cmb_timeseries_create();
     cmb_timeseries_init(tsp);
 
-    printf("Drawing %u U(0,1) samples at intervals Exp(1): cmb_timeseries_add\n", MAX_ITER);
+    printf("Drawing %u x = U(0,1) samples at intervals Exp(2 - x): cmb_timeseries_add\n", MAX_ITER);
     double t = 0.0;
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
         const double x = cmb_random();
-        t += cmb_random_exponential(1.0);
         cmb_timeseries_add(tsp, x, t);
+
+        /* Make holding time until next sample correlated with this sample value */
+        t += cmb_random_exponential(x + 1.0);
     }
 
     t += cmb_random_exponential(1.0);
@@ -280,6 +291,7 @@ void test_timeseries(void) {
     cmb_timeseries_summarize(tsp, &ws);
     cmb_wsummary_print(&ws, stdout, true);
 //    cmb_timeseries_print_fivenum(tsp, stdout, true);
+    printf("Histogram:\n");
     cmb_timeseries_print_histogram(tsp, stdout, NUM_BINS, 0.0, 0.0);
     cmi_test_print_line("=");
 
