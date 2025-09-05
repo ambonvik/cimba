@@ -383,13 +383,13 @@ static void cmi_data_swap(double *a, double *b) {
 
 #ifndef NASSERT
 /* Code only used for checking invariants */
-static bool cmi_data_is_sorted(const double arr[], const uint64_t un) {
-    if ((arr == NULL) || (un < 2)) {
+static bool cmi_data_is_sorted(const uint64_t un, const double arr[un]) {
+    if ((arr == NULL) || (un < 2u)) {
         return true;
     }
 
-    for (uint64_t ui = 0; ui < un - 1; ui++) {
-        if (arr[ui] > arr[ui + 1]) {
+    for (uint64_t ui = 0u; ui < un - 1u; ui++) {
+        if (arr[ui] > arr[ui + 1u]) {
             return false;
         }
     }
@@ -399,17 +399,17 @@ static bool cmi_data_is_sorted(const double arr[], const uint64_t un) {
 }
 
 /* Check for heap condition starting from root ui, testing this subtree only */
-static bool cmi_data_is_max_heap(const uint64_t un, const double arr[un], const uint64_t uroot) {
+static bool cmi_data_is_max_heap(const uint64_t un, double arr[un], const uint64_t uroot) {
     cmb_assert_release(arr != NULL);
-    if ((un > 1) && (uroot <= un)) {
+    if ((un > 1u) && (uroot <= un)) {
         uint64_t *queue = cmi_malloc(un * sizeof(uint64_t));
-        uint64_t uhead = 0;
-        uint64_t utail = 0;
+        uint64_t uhead = 0u;
+        uint64_t utail = 0u;
         queue[utail++] = uroot;
         while (uhead < utail) {
             const uint64_t ucur = queue[uhead++];
-            const uint64_t ucl = 2 * ucur + 1;
-            const uint64_t ucr = 2 * ucur + 2;
+            const uint64_t ucl = 2u * ucur + 1u;
+            const uint64_t ucr = 2u * ucur + 2u;
 
             if (ucl < un) {
                 if (arr[ucur] < arr[ucl]) {
@@ -439,10 +439,10 @@ static bool cmi_data_is_max_heap(const uint64_t un, const double arr[un], const 
 #endif /* ifndef NASSERT */
 
 /* Establish max heap condition in dataset array starting from uroot */
-static void cmi_data_heapify(const uint64_t un, double arr[un], uint64_t uroot) {
+static void cmi_dataset_heapify(const uint64_t un, double arr[un], uint64_t uroot) {
     cmb_assert_release(arr != NULL);
-    uint64_t ucl = 2 * uroot + 1;
-    uint64_t ucr = 2 * uroot + 2;
+    uint64_t ucl = 2u * uroot + 1u;
+    uint64_t ucr = 2u * uroot + 2u;
 
     for (;;) {
         uint64_t ubig = uroot;
@@ -459,8 +459,8 @@ static void cmi_data_heapify(const uint64_t un, double arr[un], uint64_t uroot) 
             cmb_assert_debug((uroot < un) && (ubig < un));
             cmi_data_swap(&arr[uroot], &arr[ubig]);
             uroot = ubig;
-            ucl = 2 * uroot + 1;
-            ucr = 2 * uroot + 2;
+            ucl = 2u * uroot + 1u;
+            ucr = 2u * uroot + 2u;
         }
         else {
             /* Heap property is satisfied */
@@ -472,25 +472,25 @@ static void cmi_data_heapify(const uint64_t un, double arr[un], uint64_t uroot) 
 }
 
 /* Heapsort from smallest to largest value */
-void cmb_dataset_sort(const struct cmb_dataset *dsp) {
+void cmb_dataset_sort(struct cmb_dataset *dsp) {
     cmb_assert_release(dsp != NULL);
 
     if (dsp->xa != NULL) {
         const uint64_t un = dsp->cnt;
         double *arr = dsp->xa;
         cmb_assert_debug(INT64_MAX >= UINT64_MAX / 2);
-        for (int64_t root = (int64_t)(un / 2) - 1; root >= 0; root--) {
-            cmi_data_heapify(un, arr, root);
+        for (int64_t root = (int64_t)(un / 2u) - 1u; root >= 0u; root--) {
+            cmi_dataset_heapify(un, arr, root);
         }
 
-        for (uint64_t ui = un - 1; ui > 0; ui--) {
+        for (uint64_t ui = un - 1u; ui > 0u; ui--) {
             cmb_assert_debug(ui < un);
             cmi_data_swap(&arr[0], &arr[ui]);
-            cmi_data_heapify(ui, arr, 0);
+            cmi_dataset_heapify(ui, arr, 0u);
         }
     }
 
-    cmb_assert_debug(cmi_data_is_sorted(dsp->xa, dsp->cnt));
+    cmb_assert_debug(cmi_data_is_sorted(dsp->cnt, dsp->xa));
 }
 
 uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
@@ -532,7 +532,7 @@ uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp, struct cmb_summary
 
 /* Assumes that v is already sorted */
 static double cmi_data_array_median(const unsigned n, const double v[n]) {
-    cmb_assert_debug(cmi_data_is_sorted(v, n));
+    cmb_assert_debug(cmi_data_is_sorted(n, v));
     double r;
     if (n % 2u == 0u) {
         r =  (double)(v[n/2u - 1u] + v[n / 2u]) / 2.0;
@@ -622,7 +622,7 @@ void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp) {
 /*
  * Print a simple character-based histogram of the data.
  * The only external callable functions are cmb_dataset_print_histogram and
- * cmb_timeseries_print_histogram, the rest are internal helper functions.
+ * cmb_timeseries_print_histogram, the rest (cmi_*) are internal helper functions.
  */
 
 static void cmi_data_print_stars(FILE *fp, const double scale, const double binval) {
@@ -961,7 +961,7 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
     /* Max width of the bar either side of zero */
     const uint16_t max_bar_width = (line_length - 14u) / 2u;
 
-    cmi_data_print_chars(fp, " ", 11);
+    cmi_data_print_chars(fp, " ", 11u);
     int r = fprintf(fp, "-1.0");
     cmb_assert_release(r > 0);
     cmi_data_print_chars(fp, " ", max_bar_width - 3u);
@@ -972,7 +972,7 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
     cmb_assert_release(r > 0);
 
     cmi_data_print_line(fp, "-", line_length);
-    for (unsigned ui = 1; ui <= max_lag; ui++) {
+    for (unsigned ui = 1u; ui <= max_lag; ui++) {
         r = fprintf(fp, "%4u  %#6.3f ", ui, acf[ui]);
         cmb_assert_release(r > 0);
         cmi_data_print_bar(fp, acf[ui], max_bar_width);
@@ -1121,8 +1121,9 @@ void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp) {
     const uint64_t n = dsp->cnt;
     if (dsp->xa != NULL) {
         cmb_assert_debug(tsp->ta != NULL);
+        cmb_assert_debug(tsp->wa != NULL);
         for (uint64_t ui = 0; ui < n; ui++) {
-            fprintf(fp, "%g\t%g\n", tsp->ta[ui], dsp->xa[ui]);
+            fprintf(fp, "%g\t%g\t%g\n", tsp->ta[ui], dsp->xa[ui], tsp->wa[ui]);
         }
     }
     else {
@@ -1223,4 +1224,97 @@ uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
     }
 
     return dsp_tgt->cnt;
+}
+
+/*
+ * Establish max heap condition in time series arrays starting from uroot.
+ * Uses keya as the sorting key, da1 and da2 just follow along for the ride.
+ * Normally called with the timeseries xa, ta, and wa as arguments.
+ * Caution: Changes the sequence of data points in the time series.
+ * To restablish time sequence, resort with ta as the key array.
+ */
+static void cmi_timeseries_heapify(const uint64_t un, double keya[un], double da1[un], double da2[un], uint64_t uroot) {
+    cmb_assert_release(keya != NULL);
+    cmb_assert_release(da1 != NULL);
+    cmb_assert_release(da2 != NULL);
+    cmb_assert_release(uroot < un);
+
+    uint64_t ucl = 2u * uroot + 1u;
+    uint64_t ucr = 2u * uroot + 2u;
+
+    for (;;) {
+        uint64_t ubig = uroot;
+        cmb_assert_debug(ubig < un);
+        if ((ucl < un) && (keya[ucl] > keya[ubig])) {
+            ubig = ucl;
+        }
+
+        if ((ucr < un) && (keya[ucr] > keya[ubig])) {
+            ubig = ucr;
+        }
+
+        if (ubig != uroot) {
+            cmb_assert_debug((uroot < un) && (ubig < un));
+            cmi_data_swap(&keya[uroot], &keya[ubig]);
+            cmi_data_swap(&da1[uroot], &da1[ubig]);
+            cmi_data_swap(&da2[uroot], &da2[ubig]);
+            uroot = ubig;
+            ucl = 2u * uroot + 1u;
+            ucr = 2u * uroot + 2u;
+        }
+        else {
+            /* Heap property is satisfied */
+            break;
+        }
+    }
+
+    cmb_assert_debug(cmi_data_is_max_heap(un, keya, uroot));
+}
+
+/* Heapsort from smallest to largest x-value */
+void cmb_timeseries_sort_x(struct cmb_timeseries *tsp) {
+    cmb_assert_release(tsp != NULL);
+
+    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    if (dsp->xa != NULL) {
+        const uint64_t un = dsp->cnt;
+        cmb_assert_debug(INT64_MAX >= UINT64_MAX / 2u);
+        for (int64_t root = (int64_t)(un / 2u) - 1u; root >= 0u; root--) {
+            cmi_timeseries_heapify(un, dsp->xa, tsp->ta, tsp->wa,  root);
+        }
+
+        for (uint64_t ui = un - 1u; ui > 0u; ui--) {
+            cmb_assert_debug(ui < un);
+            cmi_data_swap(&(dsp->xa[0]), &(dsp->xa[ui]));
+            cmi_data_swap(&(tsp->ta[0]), &(tsp->ta[ui]));
+            cmi_data_swap(&(tsp->wa[0]), &(tsp->wa[ui]));
+            cmi_timeseries_heapify(ui, dsp->xa, tsp->ta, tsp->wa, 0u);
+        }
+    }
+
+    cmb_assert_debug(cmi_data_is_sorted(dsp->cnt, dsp->xa));
+}
+
+/* Sort back in ascending order of time */
+void cmb_timeseries_sort_t(struct cmb_timeseries *tsp) {
+    cmb_assert_release(tsp != NULL);
+
+    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    if (tsp->ta != NULL) {
+        const uint64_t un = dsp->cnt;
+        cmb_assert_debug(INT64_MAX >= UINT64_MAX / 2u);
+        for (int64_t root = (int64_t)(un / 2u) - 1u; root >= 0u; root--) {
+            cmi_timeseries_heapify(un, tsp->ta, dsp->xa, tsp->wa,  root);
+        }
+
+        for (uint64_t ui = un - 1u; ui > 0u; ui--) {
+            cmb_assert_debug(ui < un);
+            cmi_data_swap(&(dsp->xa[0]), &(dsp->xa[ui]));
+            cmi_data_swap(&(tsp->ta[0]), &(tsp->ta[ui]));
+            cmi_data_swap(&(tsp->wa[0]), &(tsp->wa[ui]));
+            cmi_timeseries_heapify(ui, tsp->ta, dsp->xa, tsp->wa, 0u);
+        }
+    }
+
+    cmb_assert_debug(cmi_data_is_sorted(dsp->cnt, tsp->ta));
 }

@@ -294,7 +294,7 @@ void test_timeseries(void) {
     cmb_timeseries_print_histogram(tsp, stdout, NUM_BINS, 0.0, 0.0);
     cmi_test_print_line("=");
 
-    printf("\nDeclaring another timeseries on the stack; cmb_timeseries_init\n");
+    printf("\nDeclaring another timeseries on the stack: cmb_timeseries_init\n");
     struct cmb_timeseries ts = { 0 };
     cmb_timeseries_init(&ts);
     printf("Drawing %u x = U(1,2) samples at intervals Exp(1): cmb_timeseries_add\n", MAX_ITER);
@@ -328,6 +328,33 @@ void test_timeseries(void) {
     printf("\nCleaning up: cmb_timeseries_clear, cmb_timeseries_destroy\n");
     cmb_timeseries_clear(&ts);
     cmb_timeseries_destroy(tsp);
+    cmi_test_print_line("-");
+
+    printf("\nTesting sorting functions\n");
+    cmb_timeseries_init(&ts);
+    printf("Drawing %u x = U(1,2) samples at intervals Exp(1): cmb_timeseries_add\n", 25u);
+    t = 0.0;
+    for (uint32_t ui = 0; ui < 25u; ui++) {
+        const double x = cmb_random_uniform(1.0, 2.0);
+        cmb_timeseries_add(&ts, x, t);
+        t += cmb_random_std_exponential();
+    }
+
+    printf("Finalizing at time %g: cmb_timeseries_finalize\n", t);
+    cmb_timeseries_finalize(&ts, t);
+    printf("Content of timeseries: cmb_timeseries_print\n");
+    cmb_timeseries_print(&ts, stdout);
+    printf("\nSorting: cmb_timeseries_sort_x\n");
+    cmb_timeseries_sort_x(&ts);
+    printf("Content of timeseries: cmb_timeseries_print\n");
+    cmb_timeseries_print(&ts, stdout);
+    printf("\nUnsorting: cmb_timeseries_sort_t\n");
+    cmb_timeseries_sort_t(&ts);
+    printf("Content of timeseries: cmb_timeseries_print\n");
+    cmb_timeseries_print(&ts, stdout);
+
+    printf("\nCleaning up: cmb_timeseries_clear\n");
+    cmb_timeseries_clear(&ts);
 
     cmi_test_print_line("=");
 }

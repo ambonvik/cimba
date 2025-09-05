@@ -289,7 +289,7 @@ inline void cmb_dataset_clear(struct cmb_dataset *dsp) {
 extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
 
 /* Sort v[] in ascending order */
-extern void cmb_dataset_sort(const struct cmb_dataset *dsp);
+extern void cmb_dataset_sort(struct cmb_dataset *dsp);
 
 /*
  * Add a single value to a dataset, resizing the array as needed.
@@ -407,6 +407,16 @@ extern uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp, double x, double 
  * Cimba modules cmb_data and cmb_event.
  */
 extern uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, double t);
+
+/*
+ * Sort timeseries in ascending order by x-value. The time stamps and weights
+ * in the ta and wa arrays follow the xa values.
+ * Caution: Changes the sequence of data points, no longer a timeseries.
+ */
+extern void cmb_timeseries_sort_x(struct cmb_timeseries *tsp);
+
+/* An "undo" function, sorting it back to ascending time sequence */
+extern void cmb_timeseries_sort_t(struct cmb_timeseries *tsp);
 
 /*
  * Calculate summary statistics of the data series
