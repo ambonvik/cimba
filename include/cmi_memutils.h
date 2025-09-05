@@ -19,56 +19,56 @@
 #ifndef CIMBA_CMI_MEMUTILS_H
 #define CIMBA_CMI_MEMUTILS_H
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "cmb_assert.h"
 
 /*
   * Convenience functions to encapsulate repetitive error handling
   */
 inline void *cmi_malloc(const size_t sz) {
-    assert(0 < sz);
+    cmb_assert_debug(sz > 0);
 
     void *rp = malloc(sz);
-    assert(NULL != rp);
+    cmb_assert_release(rp != NULL);
 
     return rp;
 }
 
 inline void *cmi_calloc(const unsigned n, const size_t sz) {
-    assert(0 < n);
-    assert(0 < sz);
+    cmb_assert_debug(n > 0);
+    cmb_assert_debug(sz > 0);
 
     void *rp = calloc(n, sz);
-    assert(NULL != rp);
+    cmb_assert_release(rp != NULL);
 
     return rp;
 }
 
 inline void *cmi_realloc(void *p, const size_t sz) {
-    assert(NULL != p);
-    assert(0 < sz);
+    cmb_assert_debug(p != NULL);
+    cmb_assert_debug(sz > 0);
 
     void *rp = realloc(p, sz);
-    assert(NULL != rp);
+    cmb_assert_release(rp != NULL);
 
     return rp;
 }
 
 inline void cmi_free(void *p) {
-    assert(NULL != p);
+    cmb_assert_debug(p != NULL);
 
     free(p);
 }
 
 static inline void *cmi_memcpy(void* dest, const void* src, const size_t sz ) {
-    assert(NULL != dest);
-    assert(NULL != src);
-    assert(0 < sz);
+    cmb_assert_debug(dest != NULL);
+    cmb_assert_debug(src != NULL);
+    cmb_assert_debug(sz > 0);
 
     void *rp = memcpy(dest, src, sz);
-    assert(NULL != rp);
-    assert(NULL != rp);
+    cmb_assert_release(rp != NULL);
 
     return rp;
 }
