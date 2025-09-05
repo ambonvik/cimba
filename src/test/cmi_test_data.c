@@ -274,7 +274,6 @@ void test_timeseries(void) {
         t += cmb_random_exponential(x + 1.0);
     }
 
-    t += cmb_random_exponential(1.0);
     printf("Finalizing at time %g: cmb_timeseries_finalize\n", t);
     cmb_timeseries_finalize(tsp, t);
 
@@ -295,8 +294,42 @@ void test_timeseries(void) {
     cmb_timeseries_print_histogram(tsp, stdout, NUM_BINS, 0.0, 0.0);
     cmi_test_print_line("=");
 
+    printf("\nDeclaring another timeseries on the stack; cmb_timeseries_init\n");
+    struct cmb_timeseries ts = { 0 };
+    cmb_timeseries_init(&ts);
+    printf("Drawing %u x = U(1,2) samples at intervals Exp(1): cmb_timeseries_add\n", MAX_ITER);
+    t = 0.0;
+    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
+        const double x = cmb_random_uniform(1.0, 2.0);
+        cmb_timeseries_add(&ts, x, t);
+        t += cmb_random_std_exponential();
+    }
+
+    printf("Finalizing at time %g: cmb_timeseries_finalize\n", t);
+    cmb_timeseries_finalize(&ts, t);
+
+    printf("Src: ");
+    cmb_timeseries_summarize(&ts, &ws);
+    cmb_wsummary_print(&ws, stdout, true);
+    printf("Tgt: ");
+    cmb_timeseries_summarize(tsp, &ws);
+    cmb_wsummary_print(&ws, stdout, true);
+
+    printf("Copying src into tgt: cmb_timeseries_copy ... ");
+    uint64_t r = cmb_timeseries_copy(tsp, &ts);
+    printf("returned %llu\n", r);
+    printf("Tgt: ");
+    cmb_timeseries_summarize(tsp, &ws);
+    cmb_wsummary_print(&ws, stdout, true);
+    printf("Src: ");
+    cmb_timeseries_summarize(&ts, &ws);
+    cmb_wsummary_print(&ws, stdout, true);
+
     printf("\nCleaning up: cmb_timeseries_clear, cmb_timeseries_destroy\n");
+    cmb_timeseries_clear(&ts);
     cmb_timeseries_destroy(tsp);
+
+    cmi_test_print_line("=");
 }
 
 int main(void) {

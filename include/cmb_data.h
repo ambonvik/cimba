@@ -250,18 +250,42 @@ struct cmb_dataset {
     double *xa;
 };
 
-/* Manage the datasets themselves */
+/*
+ * Allocate memory for dataset.
+ * Remember to call a matching cmb_dataset_destroy to avoid memory leakage.
+ */
 extern struct cmb_dataset *cmb_dataset_create(void);
+
+/* Initialize the dataset, clearing any data values. */
 extern void cmb_dataset_init(struct cmb_dataset *dsp);
+
+/* Copy tgt into src, overwriting whatever was in tgt */
 extern uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
                                  const struct cmb_dataset *src);
+
+/*
+ * Merge s1 and s2 into tgt.
+ * tgt may or may not be one of the two sources, but not NULL.
+ */
 extern uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
                                   const struct cmb_dataset *s1,
                                   const struct cmb_dataset *s2);
+
+/*
+ * Clears (re-initializes) the dataset, frees memory automatically
+ * allocated for the data arrays, but does not free the memory allocated for
+ * the dataset itself.
+ */
 inline void cmb_dataset_clear(struct cmb_dataset *dsp) {
     cmb_assert_release(dsp != NULL);
     cmb_dataset_init(dsp);
 }
+
+/*
+ * Free memory allocated by cmb_dataset_create for the dataset and its arrays.
+ * Do not call for a dataset that was just declared on the stack without no
+ * cmb_dataset_create. Use cmb_dataset_clear instead to free the arrays only.
+ */
 extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
 
 /* Sort v[] in ascending order */
@@ -363,7 +387,12 @@ inline void cmb_timeseries_clear(struct cmb_timeseries *tsp) {
     cmb_assert_release(tsp != NULL);
     cmb_timeseries_init(tsp);
 }
+
 extern void cmb_timeseries_destroy(struct cmb_timeseries *tsp);
+
+/* Copy tgt into src, overwriting whatever was in tgt */
+extern uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
+                                     const struct cmb_timeseries *src);
 
 /* Add a single value to a timeseries, resizing the array as needed */
 extern uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp, double x, double t);

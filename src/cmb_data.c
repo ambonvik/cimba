@@ -1088,23 +1088,29 @@ uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, const double t) {
 
 /*
  * Summarize the timeseries into a weighted data set, using the time intervals between x-values as the weighing.
+ * The last x-value in the timeseries has no duration and is not included in the summary.
+ * Call cmb_timeseries_finalize() first to include the last x-value wit a non-zero duration.
  */
 uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp, struct cmb_wsummary *wsp) {
     cmb_assert_release(tsp != NULL);
     cmb_assert_release(tsp->ta != NULL);
     cmb_assert_release(wsp != NULL);
 
+    cmb_wsummary_clear(wsp);
+
     const struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     cmb_assert_debug(dsp->xa != NULL);
-    const uint64_t n = dsp->cnt;
-    cmb_assert_debug(n > 0u);
-    for (uint64_t ui = 0u; ui < n - 1u; ui++) {
+
+    const uint64_t un = cmb_timeseries_count(tsp);
+    cmb_assert_debug(un > 0u);
+    for (uint64_t ui = 0u; ui < un - 1u; ui++) {
         const double x = dsp->xa[ui];
         const double w = tsp->wa[ui];
         cmb_wsummary_add(wsp, x, w);
     }
 
-    return cmb_wsummary_count(wsp);
+    cmb_assert_debug(cmb_wsummary_count(wsp) == un - 1u);
+    return un - 1u;
 }
 
 void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp) {
@@ -1182,4 +1188,39 @@ void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp, FILE *fp,
     cmi_timeseries_fill_histogram(hp, dsp->cnt, dsp->xa, tsp->wa);
     cmi_data_print_histogram(hp, fp);
     cmi_data_destroy_histogram(hp);
+}
+
+uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
+                          const struct cmb_timeseries *src) {
+    cmb_assert_release(src != NULL);
+    cmb_assert_release(tgt != NULL);
+
+    struct cmb_dataset *dsp_tgt = (struct cmb_dataset *) tgt;
+    const struct cmb_dataset *dsp_src = (struct cmb_dataset *)src;
+    (void)cmb_dataset_copy(dsp_tgt, dsp_src);
+
+    if (tgt->ta != NULL) {
+        cmi_free(tgt->ta);
+        tgt->ta = NULL;
+    }
+
+    const uint64_t csz = dsp_src->cnt;
+    if (src->ta != NULL) {
+        cmb_assert_debug(csz > 0u);
+        tgt->ta = cmi_calloc(csz, sizeof *(tgt->ta));
+        cmi_memcpy(tgt->ta, src->ta, csz * sizeof *(tgt->ta));
+    }
+
+    if (tgt->wa != NULL) {
+        cmi_free(tgt->wa);
+        tgt->wa = NULL;
+    }
+
+    if (src->wa != NULL) {
+        cmb_assert_debug(csz > 0u);
+        tgt->wa = cmi_calloc(csz, sizeof *(tgt->wa));
+        cmi_memcpy(tgt->wa, src->wa, csz * sizeof *(tgt->wa));
+    }
+
+    return dsp_tgt->cnt;
 }
