@@ -337,7 +337,7 @@ extern void cmb_dataset_print_histogram(const struct cmb_dataset *dsp, FILE *fp,
                                         unsigned num_bins, double low_lim, double high_lim);
 
 /* Print the raw data in the dataset. */
-extern void cmb_dataset_print_data(const struct cmb_dataset *dsp, FILE *fp);
+extern void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp);
 
 /* Calculate the n first autocorrelation coefficients. */
 extern void cmb_dataset_ACF(const struct cmb_dataset *dsp, unsigned max_lag,
@@ -442,6 +442,7 @@ inline double cmb_timeseries_max(const struct cmb_timeseries *tsp) {
 
 /*
  * Calculate and return the median of the data series, weighted by duration.
+ * Uses linear interpolation to find the median value at 50 % of the summed weights.
  * Call cmb_dataset_median((struct cmb_dataset *)tsp, ...) for unweighted.
  */
 extern double cmb_timeseries_median(const struct cmb_timeseries *tsp);

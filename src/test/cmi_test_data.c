@@ -26,7 +26,8 @@
 
 /* Test macros */
 #define MAX_ITER 1000000u
-#define MAX_LAG 25u
+#define SORT_SAMPLES 25u
+#define MAX_LAG 20u
 #define NUM_BINS 20u
 
 static void test_summary(void) {
@@ -176,30 +177,45 @@ void test_dataset(void) {
     struct cmb_dataset ds = { 0 };
     cmb_dataset_init(&ds);
 
-    printf("Drawing %u U(0,1) samples: cmb_dataset_add\n", MAX_ITER);
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
+    printf("Drawing %u U(0,1) samples: cmb_dataset_add\n", SORT_SAMPLES);
+    for (uint32_t ui = 0; ui < SORT_SAMPLES; ui++) {
         cmb_dataset_add(&ds, cmb_random());
     }
 
+    printf("Content of dataset: cmb_dataset_print:\n");
+    cmb_dataset_print(&ds, stdout);
     printf("\nMaking a copy: cmb_dataset_copy ... ");
     struct cmb_dataset dsc = { 0 };
     const uint64_t un = cmb_dataset_copy(&dsc, &ds);
     printf("Returned %llu\n", un);
-    printf("Sorting the copy: cmb_dataset_sort ...\n");
+    printf("\nContent of copy: cmb_dataset_print:\n");
+    cmb_dataset_print(&dsc, stdout);
+    printf("\nSorting the copy: cmb_dataset_sort ...\n");
     cmb_dataset_sort(&dsc);
-    printf("Clearing the copy: cmb_dataset_clear\n");
+    printf("Content of copy: cmb_dataset_print:\n");
+    cmb_dataset_print(&dsc, stdout);
+    printf("\nClearing the copy: cmb_dataset_clear\n");
     cmb_dataset_clear(&dsc);
 
     printf("\nBasic dataset reporting functions:\n");
     cmi_test_print_line("-");
     printf("cmb_dataset_count:\t%llu\n", cmb_dataset_count(&ds));
     printf("cmb_dataset_min:\t%#8.4g\n", cmb_dataset_min(&ds));
-    printf("cmb_dataset_min:\t%#8.4g\n", cmb_dataset_min(&ds));
+    printf("cmb_dataset_max:\t%#8.4g\n", cmb_dataset_max(&ds));
     printf("cmb_dataset_median:\t%#8.4g\n", cmb_dataset_median(&ds));
     cmi_test_print_line("-");
 
     printf("Five number summary of dataset: cmb_dataset_print_fivenum ...\n");
     cmb_dataset_print_fivenum(&ds, stdout, true);
+
+    printf("\nClearing the dataset; cmb_dataset_clear\n");
+    cmb_dataset_clear(&ds);
+
+    printf("\nDrawing %u U(0,1) samples: cmb_dataset_add\n", MAX_ITER);
+    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
+        cmb_dataset_add(&ds, cmb_random());
+    }
+
     struct cmb_summary dsum = { 0 };
     printf("\nSummarizing the dataset: cmb_dataset_summarize ...");
     const uint64_t um = cmb_dataset_summarize(&ds, &dsum);
@@ -223,9 +239,9 @@ void test_dataset(void) {
     cmb_dataset_print_correlogram(&ds, stdout, MAX_LAG, pacf);
     cmi_test_print_line("-");
 
-    printf("\nCreating a new dataset, filling it with noisy sine curves...\n");
+    printf("\nCreating a new dataset on the heap: cmb_dataset_create\n");
     struct cmb_dataset *dsp = cmb_dataset_create();
-
+    printf("Filling it with noisy sine curves ...\n");
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
         const double period = 10.0;
         const double amp_signal = 2.0;
@@ -282,7 +298,6 @@ void test_timeseries(void) {
     printf("cmb_timeseries_count:\t%llu\n", cmb_timeseries_count(tsp));
     printf("cmb_timeseries_min:\t%#8.4g\n", cmb_timeseries_min(tsp));
     printf("cmb_timeseries_max:\t%#8.4g\n", cmb_timeseries_max(tsp));
-//    printf("cmb_dataset_median:\t%#8.4g\n", cmb_timeseries_median(tsp));
     cmi_test_print_line("-");
 
     printf("\nSummarizing: cmb_timeseries_summarize, cmb_wsummary_print\n");
@@ -332,9 +347,9 @@ void test_timeseries(void) {
 
     printf("\nTesting sorting functions\n");
     cmb_timeseries_init(&ts);
-    printf("Drawing %u x = U(1,2) samples at intervals Exp(1): cmb_timeseries_add\n", 25u);
+    printf("Drawing %u x = U(1,2) samples at intervals Exp(1): cmb_timeseries_add\n", SORT_SAMPLES);
     t = 0.0;
-    for (uint32_t ui = 0; ui < 25u; ui++) {
+    for (uint32_t ui = 0; ui < SORT_SAMPLES; ui++) {
         const double x = cmb_random_uniform(1.0, 2.0);
         cmb_timeseries_add(&ts, x, t);
         t += cmb_random_std_exponential();
@@ -344,6 +359,7 @@ void test_timeseries(void) {
     cmb_timeseries_finalize(&ts, t);
     printf("Content of timeseries: cmb_timeseries_print\n");
     cmb_timeseries_print(&ts, stdout);
+
     printf("\nSorting: cmb_timeseries_sort_x\n");
     cmb_timeseries_sort_x(&ts);
     printf("Content of timeseries: cmb_timeseries_print\n");
@@ -352,6 +368,8 @@ void test_timeseries(void) {
     cmb_timeseries_sort_t(&ts);
     printf("Content of timeseries: cmb_timeseries_print\n");
     cmb_timeseries_print(&ts, stdout);
+
+    printf("\ncmb_dataset_median:\t%#8.4g\n", cmb_timeseries_median(&ts));
 
     printf("\nCleaning up: cmb_timeseries_clear\n");
     cmb_timeseries_clear(&ts);

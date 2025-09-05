@@ -399,7 +399,7 @@ static bool cmi_data_is_sorted(const uint64_t un, const double arr[un]) {
 }
 
 /* Check for heap condition starting from root ui, testing this subtree only */
-static bool cmi_data_is_max_heap(const uint64_t un, double arr[un], const uint64_t uroot) {
+static bool cmi_data_is_max_heap(const uint64_t un, double const arr[un], const uint64_t uroot) {
     cmb_assert_release(arr != NULL);
     if ((un > 1u) && (uroot <= un)) {
         uint64_t *queue = cmi_malloc(un * sizeof(uint64_t));
@@ -792,7 +792,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp, const unsigned max_lag, doub
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->cnt > 1);
-    cmb_assert_release(max_lag <= dsp->cnt);
+    cmb_assert_release(max_lag < dsp->cnt);
 
     /* Calculate mean and variance in a single pass, similar to cmb_summary() above */
     double m1 = 0.0;
@@ -838,7 +838,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp, const unsigned max_lag,
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->cnt > 1u);
-    cmb_assert_release((max_lag > 0u) && (max_lag <= dsp->cnt) && (max_lag < UINT16_MAX));
+    cmb_assert_release((max_lag > 0u) && (max_lag < dsp->cnt - 1) && (max_lag < UINT16_MAX));
     cmb_assert_release(pacf != NULL);
 
     bool free_acf = false;
@@ -875,7 +875,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp, const unsigned max_lag,
         /* The k-th PACF coefficient is the k-th autoregression coefficient phi[k][k] */
         phi[uk][uk] = (acf[uk] - numsum) / (1.0 - densum);
         pacf[uk] = phi[uk][uk];
-        assert((pacf[uk] >= -1.0) && (pacf[uk] <= 1.0));
+        cmb_assert_debug((pacf[uk] >= -1.0) && (pacf[uk] <= 1.0));
 
         /* Update everything else for the next iteration */
         for (unsigned uj = 1u; uj < uk; ++uj) {
@@ -1317,4 +1317,41 @@ void cmb_timeseries_sort_t(struct cmb_timeseries *tsp) {
     }
 
     cmb_assert_debug(cmi_data_is_sorted(dsp->cnt, tsp->ta));
+}
+
+/*
+ * Takes a copy before sorting, leaving tsp unchanged.
+ */
+double cmb_timeseries_median(const struct cmb_timeseries *tsp) {
+    cmb_assert_release(tsp != NULL);
+    cmb_assert_release(tsp->wa != NULL);
+
+    struct cmb_timeseries tmp_ts = {0};
+    const uint64_t un = cmb_timeseries_copy(&tmp_ts, tsp);
+    cmb_timeseries_sort_x(&tmp_ts);
+
+    const struct cmb_dataset *dsp = (struct cmb_dataset *)(&tmp_ts);
+    cmb_assert_debug(dsp->xa != NULL);
+    cmb_assert_debug(dsp->cnt == un);
+
+    double wsum = 0.0;
+    double *wcum = cmi_calloc(un, sizeof(*wcum));
+    for (uint64_t ui = 0u; ui < un; ui++) {
+        wsum += tsp->wa[ui];
+        wcum[ui] = wsum;
+    }
+
+    const double wmid = 0.5 * wsum;
+    double r = 0.0;
+     for (uint64_t ui = 0u; ui < un - 1; ui++) {
+        if ((wcum[ui] <= wmid) && (wcum[ui + 1] > wmid)) {
+            cmb_assert_release(wcum[ui + 1] > wcum[ui]);
+            r = dsp->xa[ui] + (dsp->xa[ui + 1] - dsp->xa[ui]) * (wmid - wcum[ui]) / (wcum[ui + 1] - wcum[ui]);
+            break;
+        }
+    }
+
+    cmi_free(wcum);
+    cmb_timeseries_clear(&tmp_ts);
+    return r;
 }
