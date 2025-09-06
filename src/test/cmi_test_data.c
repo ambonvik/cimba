@@ -71,7 +71,7 @@ static void test_summary(void) {
 
     printf("\nSummary: cmb_summary_print\n");
     cmb_summary_print(dsp, stdout, true);
-    printf("Merging the two data summaries: cmb_summary_merge ... ");
+    printf("\nMerging the two data summaries: cmb_summary_merge ... ");
     const uint64_t nn = cmb_summary_merge(dsp, dsp, &ds);
     printf("Returned %llu samples\n", nn);
     printf("Merged summary: cmb_summary_print\n");
@@ -287,7 +287,7 @@ void test_timeseries(void) {
         cmb_timeseries_add(tsp, x, t);
 
         /* Make holding time until next sample correlated with this sample value */
-        t += cmb_random_exponential(x + 1.0);
+        t += cmb_random_exponential(2.0 - x);
     }
 
     printf("Finalizing at time %g: cmb_timeseries_finalize\n", t);
@@ -300,13 +300,17 @@ void test_timeseries(void) {
     printf("cmb_timeseries_max:\t%#8.4g\n", cmb_timeseries_max(tsp));
     cmi_test_print_line("-");
 
-    printf("\nSummarizing: cmb_timeseries_summarize, cmb_wsummary_print\n");
+    printf("\nSummarizing: cmb_timeseries_summarize, cmb_wsummary_print, cmb_timeseries_print_fivenum\n");
     struct cmb_wsummary ws = { 0 };
     cmb_timeseries_summarize(tsp, &ws);
     cmb_wsummary_print(&ws, stdout, true);
-//    cmb_timeseries_print_fivenum(tsp, stdout, true);
-    printf("Histogram:\n");
+    cmb_timeseries_print_fivenum(tsp, stdout, true);
+
+    printf("\nWeighted histogram:\n");
     cmb_timeseries_print_histogram(tsp, stdout, NUM_BINS, 0.0, 0.0);
+    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    printf("Unweighted histogram of same data:\n");
+    cmb_dataset_print_histogram(dsp, stdout, NUM_BINS, 0.0, 0.0);
     cmi_test_print_line("=");
 
     printf("\nDeclaring another timeseries on the stack: cmb_timeseries_init\n");

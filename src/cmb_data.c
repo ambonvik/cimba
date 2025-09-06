@@ -1338,7 +1338,7 @@ double cmb_timeseries_median(const struct cmb_timeseries *tsp) {
     double wsum = 0.0;
     double *wcum = cmi_calloc(un, sizeof(*wcum));
     for (uint64_t ui = 0u; ui < un; ui++) {
-        wsum += tsp->wa[ui];
+        wsum += tmp_ts.wa[ui];
         wcum[ui] = wsum;
     }
 
@@ -1375,7 +1375,7 @@ void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp, FILE *fp, bo
     double wsum = 0.0;
     double *wcum = cmi_calloc(un, sizeof(*wcum));
     for (uint64_t ui = 0u; ui < un; ui++) {
-        wsum += tsp->wa[ui];
+        wsum += tmp_ts.wa[ui];
         wcum[ui] = wsum;
     }
 
