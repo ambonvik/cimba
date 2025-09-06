@@ -8,13 +8,16 @@ set(SOURCES src/cmb_data.c src/cmb_random.c src/cmb_event.c src/cmb_logger.c src
 set(HEADERS include/cmb_data.h include/cmb_random.h include/cmb_event.h include/cmb_logger.h include/cmb_config.h include/cmi_memutils.h
         include/cmb_assert.h)
 
-add_executable(cmi_test_data src/test/cmi_test_data.c ${SOURCES} ${HEADERS} src/test/cmi_test.h
-        include/cmb_assert.h
-        src/cmb_assert.c)
-add_executable(cmi_test_random src/test/cmi_test_random.c ${SOURCES} ${HEADERS} src/test/cmi_test.h
-        include/cmb_assert.h)
-add_executable(cmi_test_event src/test/cmi_test_event.c ${SOURCES} ${HEADERS} src/test/cmi_test.h
-        include/cmb_assert.h)
-add_executable(cmi_test_logger src/test/cmi_test_logger.c ${SOURCES} ${HEADERS} src/test/cmi_test.h
-        include/cmb_assert.h)
+add_library(cimba STATIC ${SOURCES} ${HEADERS})
 
+add_executable(cmi_test_data test/cmi_test_data.c test/cmi_test.h)
+target_link_libraries(cmi_test_data PRIVATE cimba)
+
+add_executable(cmi_test_random test/cmi_test_random.c test/cmi_test.h)
+target_link_libraries(cmi_test_random PRIVATE cimba)
+
+add_executable(cmi_test_event test/cmi_test_event.c test/cmi_test.h)
+target_link_libraries(cmi_test_event PRIVATE cimba)
+
+add_executable(cmi_test_logger test/cmi_test_logger.c test/cmi_test.h)
+target_link_libraries(cmi_test_logger PRIVATE cimba)
