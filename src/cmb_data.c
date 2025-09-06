@@ -585,13 +585,12 @@ void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp, FILE *fp, const bo
         if ((dsc.cnt % 2) == 0) {
             /* Even number of entries */
             q3 = cmi_data_array_median(uhsz, &(dsc.xa[lhsz]));
-        }
-        else {
+        } else {
             /* Odd number of entries, exclude the median entry */
             q3 = cmi_data_array_median(uhsz - 1, &(dsc.xa[lhsz + 1]));
         }
 
-        int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
+        const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
                 ((lead_ins) ? "Min " : ""), min,
                 ((lead_ins) ? "  Quartile_1 " : "\t"), q1,
                 ((lead_ins) ? "  Median " : "\t"), med,
@@ -758,11 +757,11 @@ static void cmi_data_destroy_histogram(struct cmi_data_histogram *hp) {
 }
 
 /* The external callable function to print a histogram */
-void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
-                                 FILE *fp, unsigned num_bins,
-                                 double low_lim, double high_lim) {
+void cmb_dataset_print_histogram(const struct cmb_dataset *dsp, FILE *fp,
+                                 const unsigned num_bins, double low_lim, double high_lim) {
      cmb_assert_release(dsp != NULL);
      cmb_assert_release(num_bins > 0u);
+     cmb_assert_release(high_lim >= low_lim);
 
      if (dsp->xa == NULL) {
          cmb_assert_debug(dsp->cnt == 0u);
@@ -792,7 +791,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp, const unsigned max_lag, doub
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->cnt > 1);
-    cmb_assert_release(max_lag < dsp->cnt);
+    cmb_assert_release((max_lag > 0u) && (max_lag < dsp->cnt));
 
     /* Calculate mean and variance in a single pass, similar to cmb_summary() above */
     double m1 = 0.0;
@@ -838,7 +837,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp, const unsigned max_lag,
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->cnt > 1u);
-    cmb_assert_release((max_lag > 0u) && (max_lag < dsp->cnt - 1) && (max_lag < UINT16_MAX));
+    cmb_assert_release((max_lag > 0u) && (max_lag < dsp->cnt - 1u));
     cmb_assert_release(pacf != NULL);
 
     bool free_acf = false;
@@ -1165,12 +1164,13 @@ static void cmi_timeseries_fill_histogram(struct cmi_data_histogram *hp, const u
 }
 
 void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp, FILE *fp,
-                                        uint16_t num_bins, double low_lim, double high_lim) {
+                                    const uint16_t num_bins, double low_lim, double high_lim) {
     cmb_assert_release(tsp != NULL);
     cmb_assert_release(fp != NULL);
     cmb_assert_release(num_bins > 0u);
+    cmb_assert_release(high_lim >= low_lim);
 
-    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    const struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     if (dsp->xa == NULL) {
         cmb_assert_debug(dsp->cnt == 0u);
         cmb_assert_debug(tsp->ta == NULL);
@@ -1188,6 +1188,7 @@ void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp, FILE *fp,
     hp = cmi_data_create_histogram(num_bins, low_lim, high_lim);
     cmi_timeseries_fill_histogram(hp, dsp->cnt, dsp->xa, tsp->wa);
     cmi_data_print_histogram(hp, fp);
+
     cmi_data_destroy_histogram(hp);
 }
 
@@ -1326,7 +1327,7 @@ double cmb_timeseries_median(const struct cmb_timeseries *tsp) {
     cmb_assert_release(tsp != NULL);
     cmb_assert_release(tsp->wa != NULL);
 
-    struct cmb_timeseries tmp_ts = {0};
+    struct cmb_timeseries tmp_ts = { 0 };
     const uint64_t un = cmb_timeseries_copy(&tmp_ts, tsp);
     cmb_timeseries_sort_x(&tmp_ts);
 
@@ -1345,7 +1346,7 @@ double cmb_timeseries_median(const struct cmb_timeseries *tsp) {
     double r = 0.0;
      for (uint64_t ui = 0u; ui < un - 1; ui++) {
         if ((wcum[ui] <= wmid) && (wcum[ui + 1] > wmid)) {
-            cmb_assert_release(wcum[ui + 1] > wcum[ui]);
+            cmb_assert_debug(wcum[ui + 1] > wcum[ui]);
             r = dsp->xa[ui] + (dsp->xa[ui + 1] - dsp->xa[ui]) * (wmid - wcum[ui]) / (wcum[ui + 1] - wcum[ui]);
             break;
         }
@@ -1354,4 +1355,63 @@ double cmb_timeseries_median(const struct cmb_timeseries *tsp) {
     cmi_free(wcum);
     cmb_timeseries_clear(&tmp_ts);
     return r;
+}
+
+void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp, FILE *fp, bool lead_ins) {
+    cmb_assert_release(tsp != NULL);
+    cmb_assert_release(tsp->wa != NULL);
+    cmb_assert_release(fp != NULL);
+
+    struct cmb_timeseries tmp_ts = { 0 };
+    const uint64_t un = cmb_timeseries_copy(&tmp_ts, tsp);
+    cmb_timeseries_sort_x(&tmp_ts);
+
+    const struct cmb_dataset *dsp = (struct cmb_dataset *)(&tmp_ts);
+    cmb_assert_debug(dsp->xa != NULL);
+    cmb_assert_debug(dsp->cnt == un);
+    const double xmin = dsp->min;
+    const double xmax = dsp->max;
+
+    double wsum = 0.0;
+    double *wcum = cmi_calloc(un, sizeof(*wcum));
+    for (uint64_t ui = 0u; ui < un; ui++) {
+        wsum += tsp->wa[ui];
+        wcum[ui] = wsum;
+    }
+
+    const double w025 = 0.25 * wsum;
+    const double w050 = 0.50 * wsum;
+    const double w075 = 0.75 * wsum;
+
+    double x025 = 0.0;
+    double x050 = 0.0;
+    double x075 = 0.0;
+    for (uint64_t ui = 0u; ui < un - 1; ui++) {
+        if ((wcum[ui] <= w025) && (wcum[ui + 1] > w025)) {
+            cmb_assert_debug(wcum[ui + 1] > wcum[ui]);
+            x025 = dsp->xa[ui] + (dsp->xa[ui + 1] - dsp->xa[ui]) * (w025 - wcum[ui]) / (wcum[ui + 1] - wcum[ui]);
+        }
+
+        if ((wcum[ui] <= w050) && (wcum[ui + 1] > w050)) {
+            cmb_assert_debug(wcum[ui + 1] > wcum[ui]);
+            x050 = dsp->xa[ui] + (dsp->xa[ui + 1] - dsp->xa[ui]) * (w050 - wcum[ui]) / (wcum[ui + 1] - wcum[ui]);
+        }
+
+        if ((wcum[ui] <= w075) && (wcum[ui + 1] > w075)) {
+            cmb_assert_debug(wcum[ui + 1] > wcum[ui]);
+            x075 = dsp->xa[ui] + (dsp->xa[ui + 1] - dsp->xa[ui]) * (w075 - wcum[ui]) / (wcum[ui + 1] - wcum[ui]);
+        }
+    }
+
+    cmb_assert_debug((xmin <= x025) && (x025 <= x050) && (x050 <= x075) && (x075 <= xmax));
+    const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
+            ((lead_ins) ? "Min " : ""), xmin,
+            ((lead_ins) ? "  Quartile_1 " : "\t"), x025,
+            ((lead_ins) ? "  Median " : "\t"), x050,
+            ((lead_ins) ? "  Quartile_3 " : "\t"), x075,
+            ((lead_ins) ? "  Max " : "\t"), xmax);
+    cmb_assert_release(r > 0);
+
+    cmi_free(wcum);
+    cmb_timeseries_clear(&tmp_ts);
 }

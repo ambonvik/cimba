@@ -370,6 +370,8 @@ void test_timeseries(void) {
     cmb_timeseries_print(&ts, stdout);
 
     printf("\ncmb_dataset_median:\t%#8.4g\n", cmb_timeseries_median(&ts));
+    printf("cmb_timeseries_print_fivenum:\n");
+    cmb_timeseries_print_fivenum(&ts, stdout, true);
 
     printf("\nCleaning up: cmb_timeseries_clear\n");
     cmb_timeseries_clear(&ts);
