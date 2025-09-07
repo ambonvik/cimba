@@ -82,7 +82,7 @@ int main(void) {
 
     printf("\nWildcard search, cancelling test action events with subject %p, any object\n", subjects[2]);
     while ((idx = cmb_event_find(test_action, (void *)subjects[2], CMB_ANY_OBJECT))) {
-        printf("\tcancelling %d\n", idx);
+        printf("\tcanceling %d\n", idx);
         cmb_event_cancel(idx);
     }
 
@@ -103,7 +103,7 @@ int main(void) {
 
     printf("\nWildcard search, cancelling any events with subject %p, any object\n", subjects[1]);
     while ((idx = cmb_event_find(CMB_ANY_ACTION, (void *)subjects[1], CMB_ANY_OBJECT))) {
-        printf("\tcancelling %d\n", idx);
+        printf("\tcanceling %d\n", idx);
         cmb_event_cancel(idx);
     }
 
@@ -112,4 +112,5 @@ int main(void) {
     while (cmb_event_execute_next()) { }
 
     printf("\nDone\n");
+    return 0;
 }

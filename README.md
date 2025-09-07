@@ -1,2 +1,2 @@
 # Cimba
-Discrete event simulation library
+Discrete event simulation library in C
