@@ -5,7 +5,8 @@
  *
  * The normal and exponential distributions below are based on code at
  *      https://github.com/cd-mcfarland/fast_prng
- * Copyright (c) Chris D McFarland 2025. Used with permission by author.
+ *      Copyright (c) Chris D McFarland 2025.
+ *      Used with permission by author.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
