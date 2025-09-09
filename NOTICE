@@ -1,0 +1,69 @@
+Cimba discrete event simulation library
+Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Components adapted from materials under copyright by others:
+
+Fast PRNG by Chris McFarland
+    https://github.com/cd-mcfarland/fast_prng
+    See also https://arxiv.org/pdf/1403.6870
+    Used with permission by author
+    Released under MIT license:
+
+    Copyright (c) 2025 Christopher D McFarland
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+User Context Switcher by Hirbod Benham
+    https://github.com/HirbodBehnam/UserContextSwitcher
+    Released under MIT license:
+
+    Copyright (c) 2023 Hirbod Behnam
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+Components adapted from code in public domain but still deserves recognition:
+
+Chris Doty-Humphrey's sfc64 pseudo-random number generator
+    https://pracrand.sourceforge.net
+    Placed in public domain by its author.
+
+Sebastiano Vigna & Guy Steele's splitmix64 pseudo-random number generator
+    https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64#C
+    Placed in public domain by its author.
+
+Malte Skarupke (2013): "Handmade Coroutines for Windows",
+    https://probablydance.com/2013/02/20/handmade-coroutines-for-windows/,
+    All code examples in the linked page placed in public domain by its author.
