@@ -1,7 +1,6 @@
-/* 
+/*
  * cmb_config.h - preprocessor macros to identify architecture, compiler, and
- *               operating system, defining macros for portability. Should be
- *               included before system include files.
+ *                operating system, defining macros for portability.
  *
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
  *
@@ -26,21 +25,22 @@
 /*
  * Identify the processor architecture. So far, only AMD64/x86-64 supported.
  */
-#if defined (__amd64__) || defined (__amd64) || defined (__x86_64__) || defined (__x86_64) || defined (_M_X64) || defined (_M_AMD64)
- #define CMB_ARCH AMD64
+#if (defined (__amd64__) || defined (__amd64) || defined (__x86_64__) || \
+     defined (__x86_64) || defined (_M_X64) || defined (_M_AMD64))
+  #define CMB_ARCH AMD64
 #else
- #error "Platform architecture not yet supported."
+  #error "Platform architecture not yet supported."
 #endif
 
 /*
  * Identify the operating system. So far, only Linux and Windows supported.
  */
 #if defined (__linux__) || defined (__linux) || defined (linux)
- #define CMB_OS Linux
+  #define CMB_OS Linux
 #elif defined (_WIN64) || defined (_WIN32) || defined (__WIN32__)
- #define CMB_OS Windows
+  #define CMB_OS Windows
 #else
- #error "Platform operating system not yet supported."
+  #error "Platform operating system not yet supported."
 #endif
 
 /*
@@ -48,17 +48,17 @@
  */
 
 #if defined (__clang__)
- #define CMB_COMPILER CLANG
- #define CMB_THREAD_LOCAL _Thread_local
+  #define CMB_COMPILER CLANG
+  #define CMB_THREAD_LOCAL _Thread_local
 #elif defined (__GNUC__)
- #define CMB_COMPILER GCC
- #define CMB_THREAD_LOCAL _Thread_local
+  #define CMB_COMPILER GCC
+  #define CMB_THREAD_LOCAL _Thread_local
 #elif defined (_MSC_VER)
- #define CMB_COMPILER MSVC
- #define CMB_THREAD_LOCAL __declspec(thread)
- #define _USE_MATH_DEFINES
+  #define CMB_COMPILER MSVC
+  #define CMB_THREAD_LOCAL __declspec(thread)
+  #define _USE_MATH_DEFINES
 #else
- #error "Compiler not yet supported."
+  #error "Compiler not yet supported."
 #endif
 
 /*

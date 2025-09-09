@@ -1,7 +1,6 @@
 /*
  * Test script for coroutines.
  *
- *
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,16 +19,18 @@
 #include <time.h>
 
 #include "cmb_coroutine.h"
-extern int asm_test(int i);
+extern int asm_test(int i, int j, int k);
 
 int main(void) {
-    printf("Calls asm_test(17) ... ");
-    int r = asm_test(17);
+    printf("Calls asm_test(17, 18, 19) ... ");
+    int r = asm_test(17, 18, 19);
     printf("returned %d\n", r);
 
     int i = 42;
-    printf("Calls asm_test(%d) ... ", i);
-    r = asm_test(i);
+    int j = 43;
+    int k = 44;
+    printf("Calls asm_test(%d, %d, %d) ... ", i, j, k);
+    r = asm_test(i, j, k);
     printf("returned %d\n", r);
 
     return 0;

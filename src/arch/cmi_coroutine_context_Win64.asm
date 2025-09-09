@@ -6,9 +6,14 @@
 ;
 ; Copyright (c) Asbjørn M. Bonvik 2025.
 ;
-; Adapted from Malte Skarupke (2013): "Handmade Coroutines for Windows",
-;   https://probablydance.com/2013/02/20/handmade-coroutines-for-windows/,
-;   All code examples in link placed in public domain by author.
+; Adapted from:
+;   Hirbod Banham (2023): "User Context Switcher"
+;       https://github.com/HirbodBehnam/UserContextSwitcher
+;       Open source under MIT license.
+; and from:
+;   Malte Skarupke (2013): "Handmade Coroutines for Windows",
+;       https://probablydance.com/2013/02/20/handmade-coroutines-for-windows/,
+;       All code examples in the linked page placed in public domain by its author.
 ;
 ; Licensed under the Apache License, Version 2.0 (the "License");
 ; you may not use this file except in compliance with the License.
@@ -23,27 +28,36 @@
 ; limitations under the License.
 
 SECTION .text
-global switch_to_context
-global stack_switch_finish
-global callable_context_start
+global cmi_coroutine_context_switch
+global cmi_coroutine_launcher
 global asm_test
 
 section .text
 
 asm_test:
-    mov rax, rcx
+    push rbp
+    mov rbp, rsp
+    and rsp, -16
+    sub rsp, 32
+
+    mov rax, r8
+
+    mov rsp, rbp
+    pop rbp
     ret
 
-switch_to_context:
-    ; Store NT_TIB stack info members
-    push qword [gs:8]
-    push qword [gs:16]
+cmi_coroutine_context_switch:
+    ; Store NT_TIB stack info members. Needed for Windows _chkstk.
+    mov rax, [gs:8]
+    push rax
+    mov rax, [gs:16]
+    push rax
     ; Save flags register
     pushfq
-    ; Allocate space and save MXCSR
+    ; Allocate space and save MXCSR (SSE status register)
     sub rsp, 8
     stmxcsr [rsp + 4]
-    ; Store rbx and r12 to r15 on the stack
+    ; Store general purpose registers on the stack
     push rbx
     push rbp
     push rdi
@@ -52,8 +66,9 @@ switch_to_context:
     push r13
     push r14
     push r15
-    ; Align stack and allocate space for XMM registers
-    sub rsp, 176         ; Space for XMM6-XMM15 (16 bytes each, aligned)
+    ; Align stack and allocate space for XMM registers.
+    ; XMM6-15 : 10 registers, 16 bytes each, aligned to 16-byte boundary
+    sub rsp, 168
     ; Save XMM registers
     movaps [rsp + 144], xmm15
     movaps [rsp + 128], xmm14
@@ -65,15 +80,13 @@ switch_to_context:
     movaps [rsp + 32], xmm8
     movaps [rsp + 16], xmm7
     movaps [rsp + 0], xmm6
-    movaps [rsp + 144], xmm15
-    mov [rcx], rsp    ; store stack pointer
-    ret
+    ; Store stack pointer to address given as first argument
+    mov [rcx], rsp
 
-stack_switch_finish:
-    ; set up the other guy's stack pointers
+context_switch_finish:
+    ; Load the address given as second argument to new stack pointer
     mov rsp, rdx
-    ; and we are now in the other context
-    ; restore registers
+    ; Restore XMM registers to new context
     movaps xmm6, [rsp + 0]
     movaps xmm7, [rsp + 16]
     movaps xmm8, [rsp + 32]
@@ -84,7 +97,7 @@ stack_switch_finish:
     movaps xmm13, [rsp + 112]
     movaps xmm14, [rsp + 128]
     movaps xmm15, [rsp + 144]
-    add rsp, 176
+    add rsp, 168
     ; Restore MXCSR
     ldmxcsr [rsp + 4]
     add rsp, 8
@@ -99,15 +112,26 @@ stack_switch_finish:
     pop rdi
     pop rbp
     pop rbx
-    ; Restore NT_TIB stack info members. This is needed because _chkstk will
-    ; use these members to step the stack,S so we need to make sure that it, and
-    ; any other functions that use the stack information, get correct values
-    pop qword [gs:16]
-    pop qword [gs:8]
-    ret    ; go to whichever code is used by the other stack
+    ; Restore NT_TIB stack info members.
+    pop rax
+    mov [gs:16], rax
+    pop rax
+    mov [gs:8], rax
+    ; Load whatever was in the third argument as return value
+    mov rax, r8
+    ; Return to wherever the new context was calling from
+    ret
 
-callable_context_start:
-    mov rcx, rdi    ; function_argument
-    call rbp        ; function
-    mov rdx, [rbx]  ; caller_stack_top
-    jmp stack_switch_finish
+; Launch a new coroutine by calling its function and wait as
+; the return at the end of its stack, ready to catch it if
+; the coroutine function attempts to return. If so, set the
+; coroutine state to finished and store its return value in
+; the coroutine struct before yielding for the last time.
+cmi_coroutine_launcher:
+    ; Not a leaf function, needs to obey Win64 ABI calling convention
+    ; requiring the stack to be 16-byte aligned before a call
+    ; and requires 32 bytes of "shadow space" for the callee.
+    and rsp, -16
+    sub rsp, 32
+
+; TODO - work out the details here

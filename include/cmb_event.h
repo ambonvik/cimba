@@ -91,7 +91,11 @@ inline double cmb_time(void) {
  * reactivation time rel_time is relative to the current simulation time and is
  * non-negative.
  */
-extern void cmb_event_schedule(cmb_event_func *action, void *subject, void *object, double rel_time, int16_t priority);
+extern void cmb_event_schedule(cmb_event_func *action,
+                               void *subject,
+                               void *object,
+                               double rel_time,
+                               int16_t priority);
 
 /*
  *  cmb_event_next; Executes and removes the first event in the event queue.
@@ -99,6 +103,8 @@ extern void cmb_event_schedule(cmb_event_func *action, void *subject, void *obje
  *  Returns 1 for success, 0 for failure (e.g., empty event list)
  */
 extern int cmb_event_execute_next(void);
+
+/* TODO: Heavy rewrite to use hash table instead of direct index */
 
 /* cmb_event_cancel: Remove event from event list. */
 extern void cmb_event_cancel(uint64_t index);
@@ -111,7 +117,7 @@ inline double cmb_event_time(const uint64_t index) {
     return cmi_event_queue[index].time;
 }
 
-/* cmb_event_reprioritize: Reprioritizes event at index to another priority level */
+/* cmb_event_reprioritize: Reprioritizes event to another priority level */
 extern void cmb_event_reprioritize(uint64_t index, int16_t priority);
 
 /* The current priority for an event */
@@ -128,7 +134,9 @@ static_assert(sizeof(cmb_event_func *) == sizeof(void*));
 #define CMB_ANY_SUBJECT ((void *)0xFFFFFFFFFFFFFFFF)
 #define CMB_ANY_OBJECT ((void *)0xFFFFFFFFFFFFFFFF)
 
-extern uint64_t cmb_event_find(cmb_event_func *action, const void *subject, const void *object);
+extern uint64_t cmb_event_find(cmb_event_func *action,
+                               const void *subject,
+                               const void *object);
 
 /* Print the current content of the event queue, mostly for debugging use. */
 extern void cmb_event_queue_print(FILE *fp);

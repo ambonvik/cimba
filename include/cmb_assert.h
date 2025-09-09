@@ -30,11 +30,15 @@
  */
 #ifndef NASSERT
     #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
-        extern void cmi_assert_failed(const char *sourcefile, const char *func, int line, const char *condition) __attribute__((noreturn));
+        extern void cmi_assert_failed(const char *sourcefile, const char *func, int line,
+                                      const char *condition) __attribute__((noreturn));
 #elif CMB_COMPILER == MSVC
-extern __declspec(noreturn) void cmi_assert_failed(const char *sourcefile, const char *func, int line, const char *condition) __attribute__((noreturn));
+extern __declspec(noreturn) void cmi_assert_failed(const char *sourcefile,
+                                      const char *func, int line,
+                                      const char *condition) __attribute__((noreturn));
 #else
-extern void cmi_assert_failed(const char *sourcefile, const char *func, int line, const char *condition);
+extern void cmi_assert_failed(const char *sourcefile, const char *func,
+                              int line, const char *condition);
 #endif
 
 #ifndef NDEBUG

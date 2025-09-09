@@ -1,4 +1,4 @@
-/* 
+/*
  * cmb_random.c - pseudo-random number generators and distributions
  *
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
@@ -56,8 +56,7 @@ extern unsigned cmb_random_pascal(unsigned m, double p);
 extern long cmb_random_dice(long a, long b);
 extern unsigned cmb_random_alias_sample(const struct cmb_random_alias *pa);
 
-/*
- * Thread-local pseudo-random generator state, i.e. each thread has its own 
+/* Thread-local pseudo-random generator state, i.e. each thread has its own
  * instance, but all coroutines within the thread share from the same stream
  * of numbers. Hence, multiple replications can run as separate threads in
  * the same program for coarse-grained parallelism on a multicore CPU.
@@ -69,8 +68,7 @@ static CMB_THREAD_LOCAL struct {
     uint64_t a, b, c, d;
 } prng_state = { DUMMY_SEED, DUMMY_SEED, DUMMY_SEED, DUMMY_SEED };
 
-/*
- * Main pseudo-random number generator - 64 bits output, 256 bits state.
+/* Main pseudo-random number generator - 64 bits output, 256 bits state.
  * An implementation of Chris Doty-Humphrey's sfc64. Fast and high quality.
  * Public domain, see https://pracrand.sourceforge.net
  */
@@ -83,11 +81,11 @@ uint64_t cmb_random_sfc64(void) {
     return tmp;
 }
 
-/*
- * Auxiliary pseudo-random number generator - 64 bits output, 64 bits state.
+/* Auxiliary pseudo-random number generator - 64 bits output, 64 bits state.
  * Only used internally to bootstrap the sfc64 generator state from a single
  * seed. It is an implementation of Sebastiano Vigna & Guy Steele's splitmix64.
- * Public domain, see https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64#C
+ * Public domain, see
+ *    https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64#C
  */
 static CMB_THREAD_LOCAL uint64_t splitmix_state = DUMMY_SEED;
 
@@ -103,9 +101,8 @@ static uint64_t splitmix64(void) {
 	return z ^ (z >> 31);
 }
 
-/*
- * Initializer for pseudo-random number state.
- * Bootstraps from one 64-bit seed to 256 bits of state using cmb_random_splitmix()
+/* Initializer for pseudo-random number state.
+ * Bootstraps one 64-bit seed to 256 bits of state using cmb_random_splitmix()
  * Intentionally randomizes the counter (.d) to start at random place in cycle.
  * Pulls a few samples from the generator to get rid of any initial transient.
  */
@@ -122,7 +119,9 @@ void cmb_random_init(uint64_t seed) {
 }
 
 /* Triangular distribution */
-double cmb_random_triangular(const double left, const double mode, const double right) {
+double cmb_random_triangular(const double left,
+                             const double mode,
+                             const double right) {
     cmb_assert_release(left <= mode);
     cmb_assert_release(mode <= right);
 
@@ -141,7 +140,10 @@ double cmb_random_triangular(const double left, const double mode, const double 
 }
 
 /* Modified PERT distribution */
- double cmb_random_PERT_mod(const double left, const double mode, const double right, const double lambda) {
+ double cmb_random_PERT_mod(const double left,
+                            const double mode,
+                            const double right,
+                            const double lambda) {
     cmb_assert_release(left < mode);
     cmb_assert_release(mode < right);
     cmb_assert_release(lambda > 0.0);
@@ -158,35 +160,40 @@ double cmb_random_triangular(const double left, const double mode, const double 
 /*
  * Exponential distribution, fast ziggurat method.
  *
- * Basically, this is a rejection sampling algorithm. We want to generate a random
- * variable X along one dimension. We lay out the probability density function
- * along the axis and sample two random variables with known distributions, one
- * a candidate X and one independent Y. If the point (X, Y) is inside the pdf,
- * we accept and return the candidate X, otherwise we reject it and try again. The
- * result is a set of accepted X-values converging exactly to the pdf.
+ * Basically, this is a rejection sampling algorithm. We want to generate a
+ * random variable X along one dimension. We lay out the probability density
+ * function along the axis and sample two random variables with known
+ * distributions, one a candidate X and one independent Y.
+ * If the point (X, Y) is inside the pdf, we accept and return the candidate X,
+ * otherwise we reject it and try again. The result is a set of accepted
+ * X-values converging exactly to the pdf.
  *
- * The ziggurat method adds some extra cleverness by pre-computing areas that will
- * always be accepted with less need for sample generation and/or for computing the
- * transcendental functions of the pdf, both likely to be computationally expensive.
+ * The ziggurat method adds some extra cleverness by pre-computing areas that
+ * will always be accepted with less need for sample generation and/or for
+ * computing the transcendental functions of the pdf, both likely to be
+ * computationally expensive.
  *
- * This code implements a further optimized algorithm by Chris McFarland. It covers
- * the pdf outside the ziggurat in a tight set of right triangles and rejection
- * samples along the edge only, minimizing the need to calculate the exact pdf.
+ * This code implements a further optimized algorithm by Chris McFarland. It
+ * covers the pdf outside the ziggurat in a tight set of right triangles and
+ * rejection samples along the edge only, minimizing the need to calculate the
+ * exact pdf.
  * This works correctly because it uses the exact probability for selecting this
- * overhang, and we can then isolate the rejection sampling to this overhang only
- * without worrying about the overall distribution of (X, Y) values over the pdf.
+ * overhang, and we can then isolate the rejection sampling to this overhang
+ * only without worrying about the overall distribution of (X, Y) values over
+ * the pdf.
  *
- * This implementation also pre-computes a concavity value for each overhang for an
- * even tighter squeeze on the pdf. We found this to give a modest performance
- * improvement. It also uses the memoryless property of the exponential distribution
- * to generate tail values by iteration instead of recursion, to conserve stack space
- * in our coroutine context. The "hot path" is inlined in cmb_random.h, while
- * cmi_random_exp_not_hot() is called if that does not succeed.
+ * Our implementation also pre-computes a concavity value for each overhang for
+ * an even tighter squeeze on the pdf. We found this to give a modest
+ * performance improvement. It also uses the memoryless property of the
+ * exponential distribution to generate tail values by iteration instead of
+ * recursion, to conserve stack space in our coroutine context. The "hot path"
+ * is inlined in cmb_random.h, while cmi_random_exp_not_hot() is called if that
+ * does not succeed.
  *
- * Overall, it is 2.5 - 3 times faster than the inversion method, taking the direct
- * path in about 98.5 % of the samples, on average consuming 1.03 64-bit random
- * numbers per sample. It only needs to calculate the exact pdf in about 0.04 %
- * of the cases. It is the fastest known method, which is why it is here.
+ * Overall, it is 2.5 - 3 times faster than the inversion method, taking the \
+ * direct path in about 98.5 % of the samples, on average consuming 1.03 64-bit
+ * random numbers per sample. It only needs to calculate the exact pdf in about
+ * 0.04 % of the cases. It is the fastest known method, which is why it is here.
  *
  * See also:
  *      https://arxiv.org/pdf/1403.6870
@@ -197,7 +204,9 @@ double cmb_random_triangular(const double left, const double mode, const double 
  *      https://www.keithschwarz.com/darts-dice-coins/
  */
 
-/* Helper functions to map uint64_t x, y values to doubles on the correct scale */
+/* We do as many calculations as possible in unsigned integer for speed.
+ * Helper functions to map uint64_t values to doubles on the correct scale.
+ */
 static double zig_exp_convert_x(const double *dpx, const uint64_t u) {
     return ldexp((*dpx), 64) + (*(dpx - 1) - *dpx) * (double)u;
 }
@@ -211,49 +220,56 @@ static inline double zig_exp_convert_y(const double *dpy, const uint64_t u) {
 
 /* Fallback sampling function, called in about 1,5 % of cases */
 double cmi_random_exp_not_hot(uint64_t u_cand_x) {
-    /* Offset for tail sample generation, implemented as iteration for stack space efficiency */
+    /* Offset for tail sample generation, implemented as iteration */
     double x_offset = 0.0;
     for (;;) {
-        /* We are in one of the leftover pieces, alias sample to find which one. */
+        /* We are in one of the leftover pieces, alias sample for which one. */
         uint64_t u_cand_y = cmb_random_sfc64();
         uint8_t jdx = u_cand_y & 0xff;
-        jdx = (cmb_random_sfc64() >= exp_zig_u_prob[jdx]) ? exp_zig_alias[jdx] : jdx;
+        const bool aliased = (cmb_random_sfc64() >= exp_zig_u_prob[jdx]);
+        jdx = (aliased) ? exp_zig_alias[jdx] : jdx;
         if (jdx > 0) {
-            /* Not in tail, rejection sample from within this right triangular overhang only */
+            /* Not in tail, rejection sample from within this right triangular
+             * overhang only.
+             */
             for (;;) {
-                /* First time through we still have 56 bits of unused randomness in u_cand_x,
-                 * now re-interpreted as an X value along the base of the sampled overhang triangle.
-                 * Make sure the current X, Y pair belongs to the triangle, reflecting if necessary.
+                /* First time through we still have 56 bits of unused randomness
+                 * in u_cand_x, now re-interpreted as an X value along the base
+                 * of the sampled overhang triangle. Make sure the current X, Y
+                 * pair belongs to the triangle, reflecting if necessary.
                  */
                 if (u_cand_y > (UINT64_MAX - u_cand_x)) {
                     u_cand_y = UINT64_MAX - u_cand_y;
                     u_cand_x = UINT64_MAX - u_cand_x;
                 }
 
-                /* Are we sufficiently far from the pdf to avoid calculating it? */
+                /* Are we far enough from the pdf to avoid calculating it? */
                 uint64_t u_dist = (UINT64_MAX - u_cand_x) - u_cand_y;
                 if (u_dist >= exp_zig_u_concavity[jdx]) {
                     /* Surely inside, scale and return the candidate X value */
-                    double x = zig_exp_convert_x(&(cmi_random_exp_zig_pdf_x[jdx]), u_cand_x);
+                    const double *dpx = &(cmi_random_exp_zig_pdf_x[jdx]);
+                    const double x = zig_exp_convert_x(dpx, u_cand_x);
                     return x + x_offset;
                 }
                 else {
-                    /* Maybe inside, need to do exact pdf calculation to decide */
-                    double x = zig_exp_convert_x(&(cmi_random_exp_zig_pdf_x[jdx]), u_cand_x);
-                    double y = zig_exp_convert_y(&(cmi_random_exp_zig_pdf_y[jdx]), u_cand_y);
+                    /* Maybe inside, do exact pdf calculation to decide */
+                    const double *dpx = &(cmi_random_exp_zig_pdf_x[jdx]);
+                    const double x = zig_exp_convert_x(dpx, u_cand_x);
+                    const double *dpy = &(cmi_random_exp_zig_pdf_y[jdx]);
+                    const double y = zig_exp_convert_y(dpy, u_cand_y);
                     if (y <= exp(-x)) {
                         /* Indeed inside */
                         return x + x_offset;
                     }
                 }
 
-                /* No joy, try again with another X, Y pair within the same overhang piece */
+                /* No joy, try another X, Y pair in this overhang */
                 u_cand_y = cmb_random_sfc64();
                 u_cand_x = cmb_random_sfc64();
             }
         }
         else {
-            /* In the tail, exploit the memoryless property to right-shift and try again */
+            /* In the tail, right-shift and try again */
             x_offset += exp_zig_x_tail_start;
         }
 
@@ -262,8 +278,10 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x) {
         const uint8_t idx = u_cand_x & 0xff;
         /* Re-try the hot path before looping back to the top */
         if (idx <= cmi_random_exp_zig_max) {
-            /* Lucky path: Candidate X value is in ziggurat, scale to length of layer idx and return */
-            return cmi_random_exp_zig_pdf_x[idx] * (double) u_cand_x + x_offset;
+            /* Lucky path: Candidate X value is in ziggurat,
+             * scale to length of layer idx and return */
+            return cmi_random_exp_zig_pdf_x[idx]
+                   * (double) u_cand_x + x_offset;
         }
     }
 
@@ -276,20 +294,23 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x) {
  * distributions. The probability of selecting distribution i is p_arr[i],
  * the mean of that distribution is m_arr[i].
  * The overall mean is the sum of p_arr[i] * m_arr[i], the variance a more
- * complicated sum of terms, https://en.wikipedia.org/wiki/Hyperexponential_distribution
+ * complicated sum of terms, see
+ * https://en.wikipedia.org/wiki/Hyperexponential_distribution
  *
  * Assumes that p_arr sums to 1.0. Uses a simple O(n) implementation.
  * If n is large and speed is important, consider using O(1) alias sampling to
  * select the distribution instead of using this function.
  */
-double cmb_random_hyperexponential(const unsigned n, const double m_arr[n], const double p_arr[n]) {
+double cmb_random_hyperexponential(const unsigned n,
+                                   const double ma[n],
+                                   const double pa[n]) {
     cmb_assert_release(n > 0u);
-    cmb_assert_release(m_arr != NULL);
-    cmb_assert_release(p_arr != NULL);
+    cmb_assert_release(ma != NULL);
+    cmb_assert_release(pa != NULL);
 
-    const unsigned ui = cmb_random_loaded_dice(n, p_arr);
+    const unsigned ui = cmb_random_loaded_dice(n, pa);
     cmb_assert_debug(ui < n);
-    const double x = cmb_random_exponential(m_arr[ui]);
+    const double x = cmb_random_exponential(ma[ui]);
 
     cmb_assert_debug(x >= 0.0);
     return x;
@@ -298,12 +319,13 @@ double cmb_random_hyperexponential(const unsigned n, const double m_arr[n], cons
 /*
  * Normal distribution, fast Ziggurat method.
  *
- * Optimized algorithm from Chris McFarland, same source and method as described
- * for cmb_random_exponential_zig() above, except that the normal pdf is partly convex and
- * partly concave, giving additional cases for rejection sampling.
+ * Optimized algorithm from Chris McFarland, same source and method as
+ * described for cmb_random_exponential_zig() above, except that the normal pdf
+ * is partly convex and partly concave, giving additional cases for rejection
+ * sampling.
  */
 
-/* Helper functions to map int64_t x, y values to doubles on the correct scale */
+/* Helper functions to map int64_t values to doubles on the correct scale */
 static double zig_nor_convert_x(const double *dpx, const int64_t ix) {
     return ldexp((*dpx), 63) + (*(dpx - 1) - *dpx) * (double)ix;
 }
@@ -339,15 +361,17 @@ double cmi_random_nor_not_hot(int64_t i_cand_x) {
     if (jdx > nor_zig_inflection) {
         /* Convex overhang */
         for (;;) {
-            double x = zig_nor_convert_x(&(cmi_random_nor_zig_pdf_x[jdx]), i_cand_x);
-            int64_t i_dist = (INT64_MAX - i_cand_x) - i_cand_y;
+            const double *dpx = &(cmi_random_nor_zig_pdf_x[jdx]);
+            const double x = zig_nor_convert_x(dpx, i_cand_x);
+            const int64_t i_dist = (INT64_MAX - i_cand_x) - i_cand_y;
             if (i_dist >= 0) {
                 /* Surely inside */
                 return sign * x;
             }
             else if (i_dist + nor_zig_i_convexity[jdx] >= 0) {
                 /* Maybe inside, calculate pdf for precise rejection sampling */
-                double y = zig_nor_convert_y(&(cmi_random_nor_zig_pdf_y[jdx]), i_cand_y);
+                const double *dpy = &(cmi_random_nor_zig_pdf_y[jdx]);
+                const double y = zig_nor_convert_y(dpy, i_cand_y);
                 if (y < sc_nor_pdf(x)) {
                     return sign * x;
                 }
@@ -359,7 +383,8 @@ double cmi_random_nor_not_hot(int64_t i_cand_x) {
         }
     }
     else if (jdx == 0) {
-        /* Tail, rejection sample by exponential. See Marsaglia or the wikipedia article. */
+        /* Tail, rejection sample by exponential.
+         * See Marsaglia or the wikipedia article. */
         double x, z;
         do {
             x = nor_zig_inv_tail_start * cmb_random_exponential(1.0);
@@ -376,14 +401,16 @@ double cmi_random_nor_not_hot(int64_t i_cand_x) {
             }
 
             /* Are we sufficiently far from the pdf to avoid calculating it? */
-            double x = zig_nor_convert_x(&(cmi_random_nor_zig_pdf_x[jdx]), i_cand_x);
-            int64_t i_dist = (INT64_MAX - i_cand_x) - i_cand_y;
+            const double *dpx = &(cmi_random_nor_zig_pdf_x[jdx]);
+            const double x = zig_nor_convert_x(dpx, i_cand_x);
+            const int64_t i_dist = (INT64_MAX - i_cand_x) - i_cand_y;
             if (i_dist >= nor_zig_i_concavity[jdx]) {
                 return sign * x;
             }
             else {
                 /* Maybe inside, need to do exact pdf calculation to decide */
-                double y = zig_nor_convert_y(&(cmi_random_nor_zig_pdf_y[jdx]), i_cand_y);
+                const double *dpy = &(cmi_random_nor_zig_pdf_y[jdx]);
+                const double y = zig_nor_convert_y(dpy, i_cand_y);
                 if (y <= sc_nor_pdf(x)) {
                     return sign * x;
                 }
@@ -398,13 +425,15 @@ double cmi_random_nor_not_hot(int64_t i_cand_x) {
         /* At the inflection point */
         cmb_assert(jdx == nor_zig_inflection);
         for (;;) {
-            double x = zig_nor_convert_x(&(cmi_random_nor_zig_pdf_x[jdx]), i_cand_x);
-            int64_t i_dist = (INT64_MAX - i_cand_x) - i_cand_y;
+            const double *dpx = &(cmi_random_nor_zig_pdf_x[jdx]);
+            const double x = zig_nor_convert_x(dpx, i_cand_x);
+            const int64_t i_dist = (INT64_MAX - i_cand_x) - i_cand_y;
             if (i_dist >= nor_zig_i_concavity[jdx]) {
                 return sign * x;
             }
             else if (i_dist + nor_zig_i_convexity[jdx] > 0) {
-                double y = zig_nor_convert_y(&(cmi_random_nor_zig_pdf_y[jdx]), i_cand_y);
+                const double *dpy = &(cmi_random_nor_zig_pdf_y[jdx]);
+                const double y = zig_nor_convert_y(dpy, i_cand_y);
                 if (y < sc_nor_pdf(x)) {
                     return sign * x;
                 }
@@ -428,8 +457,9 @@ double cmi_random_nor_not_hot(int64_t i_cand_x) {
  * function is a power of a normal distribution, and that the squeezing
  * function underneath the pdf is a continuous function instead of a ziggurat.
  *
- * See Marsaglia & Tsang (2000): "A Simple Method for Generating Gamma Variables",
- *  https://dl.acm.org/doi/10.1145/358407.358414
+ * See:
+ *   Marsaglia & Tsang (2000): "A Simple Method for Generating Gamma Variables",
+ *   https://dl.acm.org/doi/10.1145/358407.358414
  */
 double cmb_random_std_gamma(const double shape) {
     cmb_assert_release(shape > 0.0);
@@ -473,11 +503,15 @@ int cmb_random_flip(void) {
         bits = cmb_random_sfc64();
         bitpos = 64;
     }
-    
+
     return ((bits >> --bitpos) & 1) ? 1 : 0;
 }
 
-/* Geometric distribution, the number of trials until and including the first success. */
+/*
+ * Geometric distribution, the number of trials until
+ * and including the first success.
+ *
+ */
 unsigned cmb_random_geometric(const double p) {
     cmb_assert((p > 0.0) && (p <= 1.0));
 
@@ -582,7 +616,7 @@ unsigned cmb_random_loaded_dice(const unsigned n, const double pa[n]) {
     return ui;
 }
 
-/* 
+/*
  * Non-uniform discrete distribution, efficient Vose alias sampling method.
  * Three-stage process:
  * 1. Call cmb_random_alias_create once to create lookup table before sampling.
@@ -607,7 +641,8 @@ static inline uint64_t cmi_random_alias_secure(const double p) {
 }
 
 /* Create alias lookup table before sampling */
-struct cmb_random_alias *cmb_random_alias_create(const unsigned n, const double pa[n]) {
+struct cmb_random_alias *cmb_random_alias_create(const unsigned n,
+                                                 const double pa[n]) {
     cmb_assert_release(n > 0);
     cmb_assert_release(sums_to_one(n, pa));
 

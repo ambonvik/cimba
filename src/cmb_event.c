@@ -34,7 +34,10 @@ CMB_THREAD_LOCAL double cmi_event_sim_time = 0.0;
 /* The event queue, a heap stored as a resizable array */
 CMB_THREAD_LOCAL struct cmb_event_tag *cmi_event_queue = NULL;
 
-/* Current size of the heap, the number of elements in use, and the allocation increment */
+/*
+ * Current size of the heap, the number of elements in use,
+ * and the allocation increment
+ */
 static CMB_THREAD_LOCAL uint64_t heap_size = 0;
 static CMB_THREAD_LOCAL uint64_t heap_count = 0;
 static CMB_THREAD_LOCAL const uint16_t heap_chunk = 128;
@@ -47,7 +50,10 @@ static bool heap_check(const uint64_t a, const uint64_t b) {
              (cmi_event_queue[a].priority > cmi_event_queue[b].priority)));
 }
 
-/* Increase heap size by a chunk, adding one for temp storage in cmi_event_queue[0] */
+/*
+ * Increase heap size by a chunk, adding one for temp storage
+ * in cmi_event_queue[0]
+ */
 static void heap_grow(void) {
     cmb_assert_release(cmi_event_queue != NULL);
     cmb_assert_release(heap_size < (UINT32_MAX - heap_chunk));
@@ -114,8 +120,15 @@ void cmb_event_queue_destroy(void) {
     heap_size = heap_count = 0;
 }
 
-/* Insert event in event queue as indicated by (relative) reactivation time t and priority p */
-void cmb_event_schedule(cmb_event_func *action, void *subject, void *object, double rel_time, int16_t priority) {
+/*
+ * Insert event in event queue as indicated by (relative)
+ * reactivation time t and priority p
+ */
+void cmb_event_schedule(cmb_event_func *action,
+                        void *subject,
+                        void *object,
+                        const double rel_time,
+                        const int16_t priority) {
     cmb_assert_release(rel_time >= 0.0);
     cmb_assert_release(heap_count <= heap_size);
     cmb_assert_release(cmi_event_queue != NULL);
@@ -135,10 +148,11 @@ void cmb_event_schedule(cmb_event_func *action, void *subject, void *object, dou
 
 /*
  * Remove and execute the next event, update simulation clock.
- * The next event is always in position 1, while position 0 is working space for the heap.
- * The event may schedule other events, needs to have a consistent heap state without itself.
- * Temporarily save the next event to workspace at the end of list before executing it.
- * Does not shrink the heap array even if unused chunks at end.
+ * The next event is always in position 1, while position 0 is working space for
+ * the heap. The event may schedule other events, needs to have a consistent
+ * heap state without itself. Temporarily saves the next event to workspace at
+ * the end of list before executing it. Does not shrink the heap array even if
+ * unused chunks at end.
  */
 int cmb_event_execute_next(void)
 {
@@ -156,7 +170,8 @@ int cmb_event_execute_next(void)
     heap_down(1);
 
     /* Execute next event */
-    (*cmi_event_queue[tmp].action)(cmi_event_queue[tmp].subject, cmi_event_queue[tmp].object);
+    (*cmi_event_queue[tmp].action)(cmi_event_queue[tmp].subject,
+                                   cmi_event_queue[tmp].object);
 
     return 1;
 }
@@ -204,11 +219,16 @@ void cmb_event_reprioritize(const uint64_t index, const int16_t priority) {
 }
 
 /* Locate a specific event, using CMB_EVENT_ANY as a wildcard */
-uint64_t cmb_event_find(cmb_event_func *action, const void *subject, const void *object) {
+uint64_t cmb_event_find(cmb_event_func *action,
+                        const void *subject,
+                        const void *object) {
     for (uint64_t i = 1; i <= heap_count; i++) {
-        if (((action == CMB_ANY_ACTION) || (action == cmi_event_queue[i].action)) &&
-            ((subject == CMB_ANY_SUBJECT) || (subject == cmi_event_queue[i].subject)) &&
-            ((object == CMB_ANY_OBJECT) || (object == cmi_event_queue[i].object))) {
+        if (((action == CMB_ANY_ACTION)
+                || (action == cmi_event_queue[i].action))
+            && ((subject == CMB_ANY_SUBJECT)
+                || (subject == cmi_event_queue[i].subject))
+            && ((object == CMB_ANY_OBJECT)
+                || (object == cmi_event_queue[i].object))) {
                 return i;
         }
     }
@@ -220,7 +240,10 @@ uint64_t cmb_event_find(cmb_event_func *action, const void *subject, const void 
 /* Print content of event queue for debugging purposes */
 void cmb_event_queue_print(FILE *fp) {
     for (uint64_t ui = 1; ui <= heap_count; ui++) {
-        /* Use a contrived cast to circumvent strict ban on conversion between function and object pointer */
+        /*
+         * Use a contrived cast to circumvent strict ban on conversion
+         * between function and object pointer
+         */
         static_assert(sizeof(cmi_event_queue[ui].action) == sizeof(void*));
         fprintf(fp, "%llu:\ttime %#8.4g\tpri %d:\t%p\t%p\t%p\n", ui,
                 cmi_event_queue[ui].time,

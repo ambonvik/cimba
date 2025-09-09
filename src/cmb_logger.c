@@ -48,10 +48,13 @@ void cmb_set_timeformatter(char *(*fp)(double)) {
 }
 
 /*
- * Core logger function, fprintf-style but with flags for matching with the mask.
- * Returns the number of characters written, in the off chance that anyone cares.
+ * Core logger function, fprintf-style with flags for matching with the mask.
+ * Returns the number of characters written, in case anyone cares.
  */
-int cmb_vfprintf(const uint32_t flags, FILE *fp, const char *fmtstr, const va_list args) {
+int cmb_vfprintf(const uint32_t flags,
+                 FILE *fp,
+                 const char *fmtstr,
+                 const va_list args) {
     int ret = 0;
     if ((flags & cmi_logger_mask) != 0) {
         int r = fprintf(fp, "%s\t", timeformatter(cmb_time()));

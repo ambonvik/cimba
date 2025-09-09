@@ -1,9 +1,15 @@
-/* 
+/*
  * cmb_data.h - basic data collector utilities, providing the three "classes":
- *      cmb_summary - a running tally of basic statistics, not keeping indivicual sample values.
+ *      cmb_summary - a running tally of basic statistics, not keeping
+ *                    individual sample values.
+ *
  *      cmb_wsummary - as above, but each sample also weighted by a double.
- *      cmb_dataset - an automatically resizing array of possibly unordered sample (x) values.
- *      cmb_data_timeseries - an automatically resizing array of sequential sample (t, x) pairs.
+ *
+ *      cmb_dataset - an automatically resizing array of possibly unordered
+ *                    sample (x) values.
+ *
+ *      cmb_data_timeseries - an automatically resizing array of sequential
+ *                    sample (x, t) pairs.
  *
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
  *
@@ -99,7 +105,7 @@ extern uint64_t cmb_summary_merge(struct cmb_summary *tgt,
                                         const struct cmb_summary *sup1,
                                         const struct cmb_summary *sup2);
 
-/* Access methods returning the various summary statistics, starting with the sample count */
+/* The various summary statistics, starting with the sample count */
 inline uint64_t cmb_summary_count(const struct cmb_summary *sup) {
     cmb_assert_release(sup != NULL);
     return sup->cnt;
@@ -149,7 +155,8 @@ extern double cmb_summary_kurtosis(const struct cmb_summary *sup);
  * The argument lead_ins controls if explanatory text is printed.
  * If false, only prints a tab-separated line of numeric values.
  */
-extern void cmb_summary_print(const struct cmb_summary *sup, FILE *fp, bool lead_ins);
+extern void cmb_summary_print(const struct cmb_summary *sup, FILE *fp,
+                              bool lead_ins);
 
 /******************************************************************************
  * The cmb_wsummary does the same thing as cmb_summary, but
@@ -226,18 +233,20 @@ inline double cmb_wsummary_kurtosis(const struct cmb_wsummary *wsup) {
     return cmb_summary_kurtosis((struct cmb_summary *)wsup);
 }
 
-inline void cmb_wsummary_print(const struct cmb_wsummary *wsup, FILE *fp, const bool lead_ins) {
+inline void cmb_wsummary_print(const struct cmb_wsummary *wsup, FILE *fp,
+                               const bool lead_ins) {
     cmb_summary_print((struct cmb_summary *)wsup, fp, lead_ins);
 }
 
 /******************************************************************************
  * cmb_dataset - a conveniently resizing array for keeping the sample values.
  * It does not keep a running tally, use cmb_dataset_summarize() to compute
- * the statistics when needed. The data array is allocated from the heap as needed
- * and free'd by either cmb_dataset_clear or cmb_dataset_destroy.
- * Use the init/clear pair for data series declared as local variables on the stack,
- * use create/destroy to allocate and free data series on the heap. The internal
- * data array will be created on the heap even if the data series is declared local.
+ * the statistics when needed. The data array is allocated from the heap as
+ * needed and free'd by either cmb_dataset_clear or cmb_dataset_destroy.
+ * Use the init/clear pair for data series declared as local variables on the
+ * stack, use create/destroy to allocate and free data series on the heap.
+ * The internal data array will be created on the heap even if the data series
+ * is declared as a local variable (on the stack).
  * The cmb_dataset keeps its own cache of the largest and smallest members,
  * for use in histograms without requiring a complete statistics calculation.
  */
@@ -302,7 +311,7 @@ extern uint64_t cmb_dataset_add(struct cmb_dataset *dsp, double x);
  * Returns the number of data points in the summary.
  */
 extern uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
-                                  struct cmb_summary *dsump);
+                                      struct cmb_summary *dsump);
 
 inline uint64_t cmb_dataset_count(const struct cmb_dataset *dsp) {
     cmb_assert_release(dsp != NULL);
@@ -324,7 +333,8 @@ extern double cmb_dataset_median(const struct cmb_dataset *dsp);
 
 /* Calculate and print the "five-number" summary of dataset quantiles */
 extern void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
-                                      FILE *fp, bool lead_ins);
+                                      FILE *fp,
+                                      bool lead_ins);
 
 /*
  *  Print a simple character-based histogram.
@@ -333,15 +343,19 @@ extern void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
  *  Will print symbol '*' for a full "pixel",  *  '+' for one that is more
  *  than half full, and '-' for one that is less than half full.
  */
-extern void cmb_dataset_print_histogram(const struct cmb_dataset *dsp, FILE *fp,
-                                        unsigned num_bins, double low_lim, double high_lim);
+extern void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
+                                        FILE *fp,
+                                        unsigned num_bins,
+                                        double low_lim,
+                                        double high_lim);
 
 /* Print the raw data in the dataset. */
 extern void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp);
 
 /* Calculate the n first autocorrelation coefficients. */
-extern void cmb_dataset_ACF(const struct cmb_dataset *dsp, unsigned max_lag,
-                                double acf[max_lag + 1u]);
+extern void cmb_dataset_ACF(const struct cmb_dataset *dsp,
+                            unsigned max_lag,
+                            double acf[max_lag + 1u]);
 
 /*
  * Calculate the n first partial autocorrelation coefficients.
@@ -349,17 +363,22 @@ extern void cmb_dataset_ACF(const struct cmb_dataset *dsp, unsigned max_lag,
  * have been calculated, they can be given as the last argument acf[].
  * If this argument is NULL, they will be calculated directly from the dataset.
  */
-extern void cmb_dataset_PACF(const struct cmb_dataset *dsp, unsigned max_lag,
-                                 double pacf[max_lag + 1u], double acf[max_lag + 1u]);
+extern void cmb_dataset_PACF(const struct cmb_dataset *dsp,
+                             unsigned max_lag,
+                             double pacf[max_lag + 1u],
+                             double acf[max_lag + 1u]);
 
 /*
- * Print a simple correlogram of the autocorrelation coefficients previously calculated,
- * either ACFs or PACFs. If the data vector acf[] is NULL, ACFs will be calculated
- * directly from the dataset by calling cmb_dataset_ACF. To print PACFs, simply give
- * a vector of PACFs as the acf argument.
+ * Print a simple correlogram of the autocorrelation coefficients previously
+ * calculated, either ACFs or PACFs.
+ * If the data vector acf[] is NULL, ACFs will be calculated directly from the
+ * dataset by calling cmb_dataset_ACF.
+ * To print PACFs, simply give a vector of PACFs as the acf argument.
  */
-extern void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *fp,
-                                          unsigned max_lag, double acf[max_lag + 1u]);
+extern void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
+                                          FILE *fp,
+                                          unsigned max_lag,
+                                          double acf[max_lag + 1u]);
 
 /******************************************************************************
  * cmb_timeseries - a similarly resizing array for keeping (x, t) value tuples.
@@ -371,7 +390,7 @@ extern void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp, FILE *f
  * correct weighting. Use cmb_timeseries_summarize() to compute the statistics
  * into a weighted data summary when needed.
  * Implemented by inheritance from cmb_dataset. Wrapper functions given below.
- * The ta array are the time stamps, wa is used for calculated weights (intervals).
+ * The ta array are the time stamps, wa is for calculated weights (intervals).
  */
 
 struct cmb_timeseries {
@@ -395,16 +414,18 @@ extern uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
                                      const struct cmb_timeseries *src);
 
 /* Add a single value to a timeseries, resizing the array as needed */
-extern uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp, double x, double t);
+extern uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp,
+                                   double x, double t);
 
 /*
  * Add a final data point at the given time t with the same x-value as
- * the last recorded value. Used to ensure that the last value gets weighted by its
- * correct duration from the event time to the end of the data collection period.
+ * the last recorded value. Used to ensure that the last value gets weighted
+ * by its correct duration from the event time to the end of the data
+ * collection period.
  * Typically called as cmb_timeseries_finalize(tsp, cmb_time()) during the
- * simulation closing ceremonies. The closing time is left as an explicit argument
- * for user flexibility in any other use cases and for better separation between
- * Cimba modules cmb_data and cmb_event.
+ * simulation closing ceremonies. The closing time is left as an explicit
+ * argument for user flexibility in any other use cases and for better
+ * separation between Cimba modules cmb_data and cmb_event.
  */
 extern uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, double t);
 
@@ -442,7 +463,7 @@ inline double cmb_timeseries_max(const struct cmb_timeseries *tsp) {
 
 /*
  * Calculate and return the median of the data series, weighted by duration.
- * Uses linear interpolation to find the median value at 50 % of the summed weights.
+ * Uses linear interpolation for the median value at 50 % of the summed weights.
  * Call cmb_dataset_median((struct cmb_dataset *)tsp, ...) for unweighted.
  */
 extern double cmb_timeseries_median(const struct cmb_timeseries *tsp);
@@ -450,28 +471,35 @@ extern double cmb_timeseries_median(const struct cmb_timeseries *tsp);
 /*
  * Calculate and print the "five-number" summary of timeseries quantiles,
  * weighted by duration (the holding time from one sample to the next).
- * Call cmb_dataset_print_fivenum((struct cmb_dataset *)tsp, ...) for unweighted.
+ * Call cmb_dataset_print_fivenum((struct cmb_dataset *)tsp, ...) to get
+ * unweighted quantiles.
  */
 extern void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp,
-                                      FILE *fp, bool lead_ins);
+                                         FILE *fp,
+                                         bool lead_ins);
 
 /*
  *  Print a simple character-based histogram.
  *  Like cmb_dataset_histogram but weighted by the interval until next sample.
  *  Call cmb_dataset_histogram((struct cmb_dataset *)tsp, ...) for unweighted.
  */
-extern void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp, FILE *fp,
-                                        uint16_t num_bins, double low_lim, double high_lim);
+extern void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp,
+                                           FILE *fp,
+                                           uint16_t num_bins,
+                                           double low_lim,
+                                           double high_lim);
 
 /* Print the raw data in the timeseries. */
 extern void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp);
 
 /*
- * Calculate the n first autocorrelation coefficients between individual samples,
- * only considering the sequence, disregarding the time duration between the samples.
+ * Calculate the n first autocorrelation coefficients between individual
+ * samples, only considering the sequence, disregarding the time duration
+ * between samples.
  */
-inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp, const uint16_t max_lag,
-                                double acf[max_lag + 1u]) {
+inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp,
+                               const uint16_t max_lag,
+                               double acf[max_lag + 1u]) {
     cmb_assert_release(tsp != NULL);
     cmb_dataset_ACF((struct cmb_dataset *)tsp, max_lag, acf);
 }
@@ -480,20 +508,24 @@ inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp, const uint16_t 
  * Calculate the n first partial autocorrelation coefficients, again only
  * considering sequence, not interval durations.
  */
-inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp, uint16_t max_lag,
-                                 double pacf[max_lag + 1u], double acf[max_lag + 1u]) {
+inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
+                                uint16_t max_lag,
+                                double pacf[max_lag + 1u],
+                                double acf[max_lag + 1u]) {
     cmb_assert_release(tsp != NULL);
     cmb_dataset_PACF((struct cmb_dataset *)tsp, max_lag, pacf, acf);
 }
 
 /*
- * Print a simple correlogram of the autocorrelation coefficients previously calculated.
+ * Print a simple correlogram of the autocorrelation coefficients previously
+ * calculated.
  */
-inline void cmb_timeseries_print_correlogram(const struct cmb_timeseries *tsp, FILE *fp,
-                                          uint16_t max_lag, double acf[max_lag + 1u]) {
+inline void cmb_timeseries_print_correlogram(const struct cmb_timeseries *tsp,
+                                             FILE *fp,
+                                             const uint16_t max_lag,
+                                             double acf[max_lag + 1u]) {
     cmb_assert_release(tsp != NULL);
     cmb_dataset_print_correlogram((struct cmb_dataset *)tsp, fp, max_lag, acf);
 }
-
 
 #endif /* CIMBA_CMB_DATA_H */

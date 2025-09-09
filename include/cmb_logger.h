@@ -28,7 +28,7 @@
 #include <stdarg.h>
 #include "cmb_config.h"
 
-/* Using a 32-bit unsigned for the flags, top four bits reserved for Cimba use. */
+/* Using 32-bit unsigned for the flags, top four bits reserved for Cimba use. */
 #define CMI_LOGGER_FATAL    0x80000000
 #define CMI_LOGGER_ERROR    0x40000000
 #define CMI_LOGGER_WARNING  0x20000000
@@ -37,28 +37,48 @@
 /* The current logging level. Initially everything on. */
 extern CMB_THREAD_LOCAL uint32_t cmi_logger_mask;
 
-/* Set callback function to format simulation times to character strings for output. */
+/*
+ * Set callback function to format simulation times to character
+ * strings for output.
+ */
 extern void cmb_set_timeformatter(char *(*fp)(double));
 
-/* The core logging function, like vfprintf but with logging flags in front of argument list. */
+/*
+ * The core logging function, like vfprintf but with logging flags in front
+ * of argument list.
+ */
 #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
-    /* Enlist the compiler's help in typechecking the arguments vs the format string. */
-    extern int cmb_vfprintf(uint32_t flags, FILE *fp, const char *fmtstr, va_list args) __attribute__((format(printf,3,0)));
+    /*
+     * Enlist the compiler's help in typechecking the arguments vs the
+     * format string.
+     */
+    extern int cmb_vfprintf(uint32_t flags,
+                            FILE *fp,
+                            const char *fmtstr, va_list args)
+                            __attribute__((format(printf, 3, 0)));
 #else
-    extern int cmb_vfprintf(uint32_t flags, FILE *fp, const char *fmtstr, va_list args);
+    extern int cmb_vfprintf(uint32_t flags,
+                            FILE *fp,
+                            const char *fmtstr,
+                            va_list args);
 #endif
 
 /*
  * Wrapper functions for predefined message levels.
- * cmb_fatal() terminates the entire simulation, cmb_error() terminates the current replication thread only.
- * Use appropriate function attributes to avoid spurious compiler warnings in unreachable code.
- * In C23 we can use [[noreturn]], but there is no elegant way to do this portably (yet).
+ * cmb_fatal() terminates the entire simulation, cmb_error() terminates the
+ * current replication thread only.
+ * Use appropriate function attributes to avoid spurious compiler warnings in
+ * unreachable code. No portable way to do this more elegantly, unfortunately.
  */
 #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
-    extern void cmb_fatal(FILE *fp, char *fmtstr, ...) __attribute__((noreturn, format(printf,2,3)));
-    extern void cmb_error(FILE *fp, char *fmtstr, ...) __attribute__((noreturn, format(printf,2,3)));
-    extern void cmb_warning(FILE *fp, char *fmtstr, ...) __attribute__((format(printf,2,3)));
-    extern void cmb_info(FILE *fp, char *fmtstr, ...) __attribute__((format(printf,2,3)));
+    extern void cmb_fatal(FILE *fp, char *fmtstr, ...)
+                          __attribute__((noreturn, format(printf,2,3)));
+    extern void cmb_error(FILE *fp, char *fmtstr, ...)
+                          __attribute__((noreturn, format(printf,2,3)));
+    extern void cmb_warning(FILE *fp, char *fmtstr, ...)
+                          __attribute__((format(printf,2,3)));
+    extern void cmb_info(FILE *fp, char *fmtstr, ...)
+                          __attribute__((format(printf,2,3)));
 #elif CMB_COMPILER == MSVC
     extern __declspec(noreturn) void cmb_fatal(FILE *fp, char *fmtstr, ...);
     extern __declspec(noreturn) void cmb_error(FILE *fp, char *fmtstr, ...);

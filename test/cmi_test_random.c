@@ -41,7 +41,7 @@
 #define QTEST_PREPARE() \
     const uint64_t seed = cmi_test_create_seed(); \
     cmb_random_init(seed); \
-    struct cmb_dataset ds; \
+    struct cmb_dataset ds = { 0 }; \
     cmb_dataset_init(&ds)
 
 #define QTEST_EXECUTE(DUT) \

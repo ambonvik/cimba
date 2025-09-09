@@ -1,4 +1,4 @@
-/* 
+/*
  * cmb_random.h - pseudo-random number generators and distributions.
  *
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
@@ -20,6 +20,7 @@
 #define CIMBA_CMB_RANDOM_H
 #include <inttypes.h>
 #include <math.h>
+#include <stdbool.h>
 
 #include "cmb_assert.h"
 #include "cmb_config.h"
@@ -101,7 +102,7 @@ inline double cmb_random_normal(const double mu, const double sigma) {
 
 /*
  * Lognormal distribution on [0, oo) with parameters m and s, where m > 0
- * and s > 0. Mean exp(m + 0.5 s^2), median exp(m). 
+ * and s > 0. Mean exp(m + 0.5 s^2), median exp(m).
  * Occurs naturally for effects that are the product of many small non-negative
  * sources of variation, including multiplicative measurement errors.
  */
@@ -129,7 +130,7 @@ inline double cmb_random_logistic(const double m, const double s) {
  * The mean, variance and all higher moments are undefined.
  * Occurs e.g. as the incidence of rays from a point source onto a line.
  * Substituting it for a normal distribution in some financial model gives
- * black swan events galore. Also known as the Lorentz distribution, or the 
+ * black swan events galore. Also known as the Lorentz distribution, or the
  * Witch of Agnesi. It is evil. Mostly useful as a practical joke, or as a
  * patological test case to break assumptions.
  */
@@ -147,7 +148,7 @@ inline double cmb_random_logistic(const double m, const double s) {
  * Exponential distribution on [0, oo) with mean m, where m > 0.
  * Corresponds to a rate r = 1/m (but avoids a division in each call).
  * Used for modeling time intervals between successive events, such as
- * customer inter-arrival times, service times, times to fail or repair, 
+ * customer inter-arrival times, service times, times to fail or repair,
  * state transition times in Markov chains. Uses an implementation of
  * McFarland's improved ziggurat method, with the hot path inlined here.
  */
@@ -228,7 +229,9 @@ inline double cmb_random_hypoexponential(const unsigned n, const double ma[n]) {
  * If n is large and speed is important, consider using O(1) alias sampling to
  * select the distribution instead of using this function.
  */
-extern double cmb_random_hyperexponential(unsigned n, const double ma[n], const double pa[n]);
+extern double cmb_random_hyperexponential(unsigned n,
+                                          const double ma[n],
+                                          const double pa[n]);
 
 /*
  * Gamma distribution on [0, oo) with shape parameter alpha and scale parameter
@@ -245,7 +248,8 @@ inline double cmb_random_gamma(const double shape, const double scale) {
 
     const double r = (shape >= 1.0) ?
         scale * cmb_random_std_gamma(shape) :
-        scale * (cmb_random_std_gamma(shape + 1.0) * pow(cmb_random(), 1.0 / shape));
+        scale * (cmb_random_std_gamma(shape + 1.0)
+                 * pow(cmb_random(), 1.0 / shape));
 
     cmb_assert_debug(r >= 0.0);
     return r;
@@ -269,7 +273,8 @@ inline double cmb_random_std_beta(const double a, const double b) {
 }
 
 /* Shifted and scaled beta to arbitrary interval [l, r] */
-inline double cmb_random_beta(const double a, const double b, const double l, const double r) {
+inline double cmb_random_beta(const double a, const double b,
+                              const double l, const double r) {
     cmb_assert_release(a > 0.0);
     cmb_assert_release(b > 0.0);
     cmb_assert_release(l < r);
@@ -285,9 +290,10 @@ inline double cmb_random_beta(const double a, const double b, const double l, co
  * Scaled and shifted beta distributions to get a mean at m.
  * Can be used as a heuristically determined distribution where the parameters
  * are "at least l", "most likely m", and "not more than r". The additional
- * parameter lambda determines the peakiness around m, with lambda = 4.0 the default.
+ * parameter lambda determines the peakiness around m, with lambda = 4.0 default.
  */
-extern double cmb_random_PERT_mod(double left, double mode, double right, double lambda);
+extern double cmb_random_PERT_mod(double left, double mode, double right,
+                                  double lambda);
 
 inline double cmb_random_PERT(const double l, const double m, const double r) {
     cmb_assert_release(l < m);
@@ -300,24 +306,27 @@ inline double cmb_random_PERT(const double l, const double m, const double r) {
 }
 
 /*
- * Weibull distribution on [0, oo) with parameters shape and scale, where shape > 0 and
- * scale > 0. Generalizes the exponential distribution, typically used for component
- * lifetimes and similar durations. Equal to exponential with mean scale when shape = 1.0.
- * Failure rates increase with time for shape < 1, decrease with time for shape > 1.
- * Looks like a normal distribution for shape around 4.
+ * Weibull distribution on [0, oo) with parameters shape and scale, where
+ * shape > 0 and scale > 0. Generalizes the exponential distribution, typically
+ * used for component lifetimes and similar durations. Equal to exponential with
+ * mean scale when shape = 1.0. Failure rates increase with time for shape < 1,
+ * decrease with time for shape > 1. Looks like a normal distribution for shape
+ * around 4.
   */
 inline double cmb_random_weibull(const double shape, const double scale) {
     cmb_assert_release(shape > 0.0);
     cmb_assert_release(scale > 0.0);
 
-    const double x = scale * pow(cmb_random_exponential(1.0), 1.0 / shape);
+    const double u = cmb_random_exponential(1.0);
+    const double x = scale * pow(u, 1.0 / shape);
 
     cmb_assert_debug(x >= 0.0);
     return x;
 }
 
 /*
- * Pareto distribution (power law) on [mode, oo) with parameters shape > 0 and mode > 0.
+ * Pareto distribution (power law) on [mode, oo) with parameters
+ * shape > 0 and mode > 0.
  * Used to model e.g. the size of human settlements (hamlets to cities),
  * size of (extreme) weather events, human income and wealth, etc.
  * Setting shape = log4(5) = ln(5)/ln(4) = 1.16 gives the 80:20 rule.
@@ -394,7 +403,8 @@ inline double cmb_random_std_t_dist(const double v) {
  * normal distributions if fatter tails are needed. Converges to
  * a normal distribution N(m, s) for v -> oo.
  */
-inline double cmb_random_t_dist(const double m, const double s, const double v) {
+inline double cmb_random_t_dist(const double m, const double s,
+                                const double v) {
     cmb_assert_release(s > 0.0);
     cmb_assert_release(v > 0.0);
 
@@ -404,8 +414,9 @@ inline double cmb_random_t_dist(const double m, const double s, const double v) 
 
 /*
  * A single flip of an unbiased coin. Returns 1 with p = 0.5, 0 with same.
- * Equivalent to cmb_random_bernoulli(0.5), but optimized for speed, only consuming
- * one bit of randomness for each trial by caching random bits every 64 calls.
+ * Equivalent to cmb_random_bernoulli(0.5), but optimized for speed, only
+ * consuming one bit of randomness for each trial by caching random bits
+ * every 64 calls.
  */
 extern int cmb_random_flip(void);
 
@@ -440,7 +451,7 @@ extern unsigned cmb_random_binomial(unsigned n, double p);
  * in independent Bernoulli trials each with probability p, sampled with
  * replacement. Equal to geometric distribution if m = 1. Used to model e.g. the
  * number of bits (or packets) that need to be sent to successfully transmit an
- * r-bit (or -packet) message. Also known as the Pascal distribution, aliased here.
+ * r-bit (or -packet) message. Also known as the Pascal distribution.
  * Mean m(1-p)/p, variance m(1-p)/p^2.
  */
 extern unsigned cmb_random_negative_binomial(unsigned m, double p);
@@ -482,12 +493,12 @@ extern unsigned cmb_random_loaded_dice(unsigned n, const double pa[n]);
 
 /*
  * Alias sampling, more efficient way of sampling a non-uniform discrete
- * distribution of n alternatives. Does the same thing as cmb_random_loaded_dice,
+ * distribution of n alternatives. Does the same as cmb_random_loaded_dice,
  * but at O(1) in each draw, at the cost of an initial O(n) initialization.
  * See, e.g., https://pbr-book.org/4ed/Sampling_Algorithms/The_Alias_Method
  * or (especially)  https://www.keithschwarz.com/darts-dice-coins/
  *
- * cmb_random_alias_create() allocates and returns an array of (prob, alias) pairs,
+ * cmb_random_alias_create() allocates and returns array of (prob, alias) pairs,
  * cmb_random_alias_draw() samples it efficiently as many times as needed,
  * cmb_random_alias_destroy() frees the memory when finished.
  */
@@ -501,20 +512,23 @@ struct cmb_random_alias {
 
 /*
  * Create alias lookup table, where n is the number of entries.
- * Allocates memory, remember to use a matching cmb_random_alias_destroy to free it
- * when the distribution is no longer needed.
+ * Allocates memory, remember to use a matching cmb_random_alias_destroy to
+ * free it when the distribution is no longer needed.
  */
-extern struct cmb_random_alias *cmb_random_alias_create(unsigned n, const double p_arr[n]);
+extern struct cmb_random_alias *cmb_random_alias_create(unsigned n,
+                                                        const double pa[n]);
 
 /*
- * Alias sampling, combining one fair die throw and one biased coin toss per sample.
- * Returns values on [0, (pa->n) - 1], typically used for array indices and the like.
+ * Alias sampling, combining one fair die throw and one biased coin toss per
+ * sample. Returns values on [0, (pa->n) - 1], typically used for array indices
+ * and the like.
  */
 inline unsigned cmb_random_alias_sample(const struct cmb_random_alias *pa) {
     cmb_assert_release(pa != NULL);
 
     const unsigned idx = (unsigned) (floor(pa->n * cmb_random()));
-    const unsigned r = (cmb_random_sfc64() >= pa->uprob[idx]) ? pa->alias[idx] : idx;
+    const bool c = (cmb_random_sfc64() >= pa->uprob[idx]);
+    const unsigned r = (c) ? pa->alias[idx] : idx;
 
     cmb_assert_debug(r < pa->n);
     return r;
