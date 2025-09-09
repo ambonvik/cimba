@@ -9,6 +9,7 @@
 ; Adapted from:
 ;   Hirbod Banham (2023): "User Context Switcher"
 ;       https://github.com/HirbodBehnam/UserContextSwitcher
+;       Copyright (c) 2023 Hirbod Behnam
 ;       Open source under MIT license.
 ; and from:
 ;   Malte Skarupke (2013): "Handmade Coroutines for Windows",
@@ -34,6 +35,7 @@ global asm_test
 
 section .text
 
+; Just a stub for testing calling convention and argument passing
 asm_test:
     push rbp
     mov rbp, rsp
@@ -46,10 +48,13 @@ asm_test:
     pop rbp
     ret
 
-cmi_coroutine_context_switch:
-    ; Store NT_TIB stack info members. Needed for Windows _chkstk.
+;-------------------------------------------------------------------------------
+; Macro to store relevant registers to current stack
+%macro save_context 0
+    ; Save NT_TIB StackBase, the start of the stack (highest address)
     mov rax, [gs:8]
     push rax
+    ; Save NT_TIB StackLimit, the end of the stack (lowest address)
     mov rax, [gs:16]
     push rax
     ; Save flags register
@@ -57,7 +62,7 @@ cmi_coroutine_context_switch:
     ; Allocate space and save MXCSR (SSE status register)
     sub rsp, 8
     stmxcsr [rsp + 4]
-    ; Store general purpose registers on the stack
+    ; Save general purpose registers
     push rbx
     push rbp
     push rdi
@@ -67,7 +72,9 @@ cmi_coroutine_context_switch:
     push r14
     push r15
     ; Align stack and allocate space for XMM registers.
-    ; XMM6-15 : 10 registers, 16 bytes each, aligned to 16-byte boundary
+    ; XMM6-15 : 10 registers, 16 bytes each, 160 bytes
+    ; We have pushed 12 8-byte registers so far, plus the
+    ; implicit return address, need 8 bytes extra to align
     sub rsp, 168
     ; Save XMM registers
     movaps [rsp + 144], xmm15
@@ -80,12 +87,11 @@ cmi_coroutine_context_switch:
     movaps [rsp + 32], xmm8
     movaps [rsp + 16], xmm7
     movaps [rsp + 0], xmm6
-    ; Store stack pointer to address given as first argument
-    mov [rcx], rsp
+%endmacro
 
-context_switch_finish:
-    ; Load the address given as second argument to new stack pointer
-    mov rsp, rdx
+;-------------------------------------------------------------------------------
+; Macro to load relevant registers from current stack
+%macro load_context 0
     ; Restore XMM registers to new context
     movaps xmm6, [rsp + 0]
     movaps xmm7, [rsp + 16]
@@ -117,6 +123,32 @@ context_switch_finish:
     mov [gs:16], rax
     pop rax
     mov [gs:8], rax
+%endmacro
+
+;-------------------------------------------------------------------------------
+; Callable function void *cmi_coroutine_context_switch(void **old,
+;                                                      void **new,
+;                                                      void *ret)
+; Arguments:
+;   void **old - address for storing current stack pointer
+;   void **new - address for reading new stack pointer
+;   void *ret  - return value passed from old to new context
+; Return value:
+;   void *     - whatever was given as the third argument
+; Error handling:
+;   None - the samurai returns victorious or not at all
+;
+cmi_coroutine_context_switch:
+    ; Push relevant registers to current stack
+    save_context
+    ; Store stack pointer to address given as first argument
+    mov [rcx], rsp
+    ; *** Fallthrough ***
+context_switch_finish:
+    ; Load the address given as second argument as new stack pointer
+    mov rsp, rdx
+    ; Restore relevant registers from new stack
+    load_context
     ; Load whatever was in the third argument as return value
     mov rax, r8
     ; Return to wherever the new context was calling from
