@@ -27,13 +27,6 @@
 
 #include "cmb_assert.h"
 
-static inline uint64_t cmi_test_create_seed(void) {
-    struct timespec ts;
-    (void) clock_gettime(CLOCK_REALTIME, &ts);
-
-    return (uint64_t)(ts.tv_nsec ^ ts.tv_sec);
-}
-
 static inline void cmi_test_print_chars(const char *str, const uint16_t repeats) {
     cmb_assert_release(str != NULL);
 

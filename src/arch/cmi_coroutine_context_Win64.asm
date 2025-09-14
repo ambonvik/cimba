@@ -50,6 +50,7 @@ asm_test:
 
 ;-------------------------------------------------------------------------------
 ; Macro to store relevant registers to current stack
+; In effect taking a (sub-)continuation right here.
 %macro save_context 0
     ; Save NT_TIB StackBase, the start of the stack (highest address)
     mov rax, [gs:8]
@@ -92,7 +93,7 @@ asm_test:
 ;-------------------------------------------------------------------------------
 ; Macro to load relevant registers from current stack
 %macro load_context 0
-    ; Restore XMM registers to new context
+    ; Restore XMM registers from stack
     movaps xmm6, [rsp + 0]
     movaps xmm7, [rsp + 16]
     movaps xmm8, [rsp + 32]

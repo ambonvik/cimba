@@ -39,13 +39,11 @@
 #define LEADINS true
 
 #define QTEST_PREPARE() \
-    const uint64_t seed = cmi_test_create_seed(); \
-    cmb_random_init(seed); \
     struct cmb_dataset ds = { 0 }; \
     cmb_dataset_init(&ds)
 
 #define QTEST_EXECUTE(DUT) \
-    printf("Seed = %#llx, drawing %llu samples...\n", seed, MAX_ITER); \
+    printf("Drawing %llu samples...\n", MAX_ITER); \
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) { \
         cmb_dataset_add(&ds, DUT); \
     }
@@ -97,12 +95,19 @@ static void print_expected(const uint64_t n,
 
 /**** Start of test scripts ****/
 
+static void test_getsetseed(void) {
+    printf("Getting hardware entropy seed ... ");
+    const uint64_t seed = cmb_get_hwseed();
+    printf("%#llx\n", seed);
+    cmb_random_init(seed);
+}
+
 static void test_quality_random(void) {
     printf("\nQuality testing basic random number generator cmb_random(), uniform on [0,1]\n");
     QTEST_PREPARE();
 
     /* Handle test execution outside macro to capture moments as well */
-    printf("Seed = %#llx, drawing %llu samples...\n", seed, MAX_ITER);
+    printf("Drawing %llu samples...\n", MAX_ITER);
     double moment_r[MOMENTS] = { 0.0 };
     for (uint64_t ui = 0; ui < MAX_ITER; ui++) {
         const double xi = cmb_random();
@@ -170,7 +175,7 @@ static double smi_exponential_inv(const double m) {
 }
 
 static void test_speed_exponential(double m) {
-    const uint64_t seed = cmi_test_create_seed();
+    const uint64_t seed = cmb_get_hwseed();
     printf("\nSpeed testing standard exponential distribution, seed = %#llx\n", seed);
     cmb_random_init(seed);
     printf("\nInversion method, drawing %llu samples...", MAX_ITER);
@@ -253,7 +258,7 @@ static void test_quality_std_normal(void) {
 
     double moment_r[MOMENTS] = { 0.0 };
     double moment_bm[MOMENTS] = { 0.0 };
-    printf("Seed = %#llx, drawing %llu samples...\n", seed, MAX_ITER);
+    printf("Drawing %llu samples...\n", MAX_ITER);
     for (uint64_t ui = 0; ui < MAX_ITER; ui++) {
         const double xi = cmb_random_std_normal();
         cmb_dataset_add(&ds, xi);
@@ -317,7 +322,7 @@ static void test_quality_normal(double m, double s) {
 }
 
 static void test_speed_normal(double m, double s) {
-    const uint64_t seed = cmi_test_create_seed();
+    const uint64_t seed = cmb_get_hwseed();
     printf("\nSpeed testing normal distribution, seed = %#llx\n", seed);
     cmb_random_init(seed);
     printf("\nBox Muller method, drawing %llu samples...", MAX_ITER);
@@ -779,7 +784,7 @@ static void test_quality_vose_alias(const unsigned n, const double pa[n]) {
 }
 
 static void test_speed_vose_alias(const unsigned init, const unsigned end, const unsigned step) {
-    const uint64_t seed = cmi_test_create_seed();
+    const uint64_t seed = cmb_get_hwseed();
     cmb_random_init(seed);
     printf("\nSpeed testing vose alias sampling, %llu samples, seed = %#llx.\n", MAX_ITER, seed);
     printf("n\tips simple\tips alias\tspeedup\n");
@@ -824,6 +829,8 @@ int main(void) {
     cmi_test_print_line("*");
     printf("************** Testing random number generators and distributions **************\n");
     cmi_test_print_line("*");
+
+    test_getsetseed();
 
     test_quality_random();
     test_quality_uniform(-1.0, 2.0);

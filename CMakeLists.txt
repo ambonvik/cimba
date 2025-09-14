@@ -5,12 +5,13 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Wall -Wextra -Wpedantic")
 enable_language(ASM_NASM)
 
 include_directories(include)
-set(SOURCES src/cmb_data.c src/cmb_random.c src/cmb_event.c src/cmb_logger.c src/cmb_assert.c src/cmi_random_exp_zig.inc src/cmi_random_nor_zig.inc
-        test/cmi_test_coroutine.c)
+set(SOURCES src/cmb_data.c src/cmb_random.c src/cmb_event.c src/cmb_logger.c src/cmb_assert.c
+        src/cmi_random_exp_zig.inc src/cmi_random_nor_zig.inc
+        src/arch/cmb_random_hwseed_Win64.c)
 set(HEADERS include/cmb_data.h include/cmb_random.h include/cmb_event.h include/cmb_logger.h include/cmb_config.h include/cmi_memutils.h
         include/cmb_assert.h)
 
-set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm)
+set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm src/arch/cmi_random_hwseed_Win64.asm)
 set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM_NASM)
 
 add_library(cimba STATIC ${SOURCES} ${ASM_SOURCES} ${HEADERS})
