@@ -57,7 +57,8 @@ extern unsigned cmb_random_pascal(unsigned m, double p);
 extern long cmb_random_dice(long a, long b);
 extern unsigned cmb_random_alias_sample(const struct cmb_random_alias *pa);
 
-/* Thread-local pseudo-random generator state, i.e. each thread has its own
+/*
+ * Thread-local pseudo-random generator state, i.e. each thread has its own
  * instance, but all coroutines within the thread share from the same stream
  * of numbers. Hence, multiple replications can run as separate threads in
  * the same program for coarse-grained parallelism on a multicore CPU.
@@ -69,7 +70,8 @@ static CMB_THREAD_LOCAL struct {
     uint64_t a, b, c, d;
 } prng_state = { DUMMY_SEED, DUMMY_SEED, DUMMY_SEED, DUMMY_SEED };
 
-/* Main pseudo-random number generator - 64 bits output, 256 bits state.
+/*
+ * Main pseudo-random number generator - 64 bits output, 256 bits state.
  * An implementation of Chris Doty-Humphrey's sfc64. Fast and high quality.
  * Public domain, see https://pracrand.sourceforge.net
  */
@@ -82,7 +84,8 @@ uint64_t cmb_random_sfc64(void) {
     return tmp;
 }
 
-/* Auxiliary pseudo-random number generator - 64 bits output, 64 bits state.
+/*
+ * Auxiliary pseudo-random number generator - 64 bits output, 64 bits state.
  * Only used internally to bootstrap the sfc64 generator state from a single
  * seed. It is an implementation of Sebastiano Vigna & Guy Steele's splitmix64.
  * Public domain, see
@@ -102,7 +105,8 @@ static uint64_t splitmix64(void) {
 	return z ^ (z >> 31);
 }
 
-/* Initializer for pseudo-random number state.
+/*
+ * Initializer for pseudo-random number state.
  * Bootstraps one 64-bit seed to 256 bits of state using cmb_random_splitmix()
  * Intentionally randomizes the counter (.d) to start at random place in cycle.
  * Pulls a few samples from the generator to get rid of any initial transient.
@@ -177,11 +181,10 @@ double cmb_random_triangular(const double left,
  * This code implements a further optimized algorithm by Chris McFarland. It
  * covers the pdf outside the ziggurat in a tight set of right triangles and
  * rejection samples along the edge only, minimizing the need to calculate the
- * exact pdf.
- * This works correctly because it uses the exact probability for selecting this
- * overhang, and we can then isolate the rejection sampling to this overhang
- * only without worrying about the overall distribution of (X, Y) values over
- * the pdf.
+ * exact pdf. This works correctly because it uses the exact probability for
+ * selecting this overhang, and we can then isolate the rejection sampling to
+ * this overhang only without worrying about the overall distribution of (X, Y)
+ * values over the pdf.
  *
  * Our implementation also pre-computes a concavity value for each overhang for
  * an even tighter squeeze on the pdf. We found this to give a modest
@@ -191,7 +194,7 @@ double cmb_random_triangular(const double left,
  * is inlined in cmb_random.h, while cmi_random_exp_not_hot() is called if that
  * does not succeed.
  *
- * Overall, it is 2.5 - 3 times faster than the inversion method, taking the \
+ * Overall, it is 2.5 - 3 times faster than the inversion method, taking the
  * direct path in about 98.5 % of the samples, on average consuming 1.03 64-bit
  * random numbers per sample. It only needs to calculate the exact pdf in about
  * 0.04 % of the cases. It is the fastest known method, which is why it is here.
@@ -205,7 +208,8 @@ double cmb_random_triangular(const double left,
  *      https://www.keithschwarz.com/darts-dice-coins/
  */
 
-/* We do as many calculations as possible in unsigned integer for speed.
+/*
+ * We do as many calculations as possible in unsigned integer for speed.
  * Helper functions to map uint64_t values to doubles on the correct scale.
  */
 static double zig_exp_convert_x(const double *dpx, const uint64_t u) {

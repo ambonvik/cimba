@@ -45,9 +45,7 @@ extern double cmb_wsummary_variance(const struct cmb_wsummary *wsup);
 extern double cmb_wsummary_stddev(const struct cmb_wsummary *wsup);
 extern double cmb_wsummary_skewness(const struct cmb_wsummary *wsup);
 extern double cmb_wsummary_kurtosis(const struct cmb_wsummary *wsup);
-extern void cmb_wsummary_print(const struct cmb_wsummary *wsup,
-                               FILE *fp,
-                               bool lead_ins);
+extern void cmb_wsummary_print(const struct cmb_wsummary *wsup, FILE *fp, bool lead_ins);
 
 extern void cmb_dataset_clear(struct cmb_dataset *dsp);
 extern uint64_t cmb_dataset_count(const struct cmb_dataset *dsp);
@@ -398,7 +396,6 @@ uint64_t cmb_dataset_add(struct cmb_dataset *dsp, const double x) {
  * in any inner loop, and the performance penalty (if any) is a worthwhile
  * tradeoff for the stack space economy.
  */
-
 static void cmi_data_swap(double *a, double *b) {
     const double tmp = *a;
     *a = *b;
@@ -654,7 +651,6 @@ void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp) {
  * The only external callable functions are cmb_dataset_print_histogram and
  * cmb_timeseries_print_histogram, the rest (cmi_*) are internal helper functions.
  */
-
 static void cmi_data_print_stars(FILE *fp,
                                  const double scale,
                                  const double binval) {
@@ -702,7 +698,8 @@ static void cmi_data_print_line(FILE *fp,
  * Histogram data structure. Note that the bins are real-valued (not integer) to
  * work both with traditional histograms for cmb_dataset and for time-weighted
  * ones for cmb_timeseries where each value is counted proportional to the time
- * interval between it and the next value.
+ * interval between it and the next value. Internal use only, hence declared
+ * here and not in the header file.
  */
 struct cmi_data_histogram {
     unsigned num_bins;
@@ -843,8 +840,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
     cmb_assert_release(dsp->cnt > 1);
     cmb_assert_release((max_lag > 0u) && (max_lag < dsp->cnt));
 
-    /*
-     * Calculate mean and variance in a single pass,
+    /* Calculate mean and variance in a single pass,
      * similar to cmb_summary() above
      */
     double m1 = 0.0;
@@ -916,8 +912,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
     pacf[1] = acf[1];
     phi[1][1] = pacf[1];
 
-    /*
-     * Calculate phi[k][j], the j-th coefficient for a k-th order
+    /* Calculate phi[k][j], the j-th coefficient for a k-th order
      * autoregression model
      */
     for (unsigned uk = 2u; uk <= max_lag; ++uk) {
@@ -931,8 +926,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
             densum += phi[uk - 1][uj] * acf[uj];
         }
 
-        /*
-         * The k-th PACF coefficient is the k-th autoregression
+        /* The k-th PACF coefficient is the k-th autoregression
          * coefficient phi[k][k]
          */
         phi[uk][uk] = (acf[uk] - numsum) / (1.0 - densum);

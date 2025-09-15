@@ -67,3 +67,8 @@ Sebastiano Vigna & Guy Steele's splitmix64 pseudo-random number generator
 Malte Skarupke (2013): "Handmade Coroutines for Windows",
     https://probablydance.com/2013/02/20/handmade-coroutines-for-windows/,
     All code examples in the linked page placed in public domain by its author.
+
+Philippe Pébay (2008), "Formulas for Robust, One-Pass Parallel Computation of
+     Covariances and Arbitrary-Order Statistical Moments",
+     https://www.osti.gov/servlets/purl/1028931
+     (Sandia report SAND2008-6212, U.S. Government work, hence public domain.)

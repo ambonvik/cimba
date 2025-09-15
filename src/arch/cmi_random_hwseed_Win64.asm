@@ -1,6 +1,6 @@
 ;
 ; cmi_random_hwseed_Win64.asm
-; Interface to CPU entropy source.
+; Interface to CPU entropy sources.
 ; For 64-bits Windows on AMD64/x86-64 architecture.
 ; Written in NASM syntax.
 ;
