@@ -24,9 +24,9 @@
 #ifndef CIMBA_CMB_LOGGER_H
 #define CIMBA_CMB_LOGGER_H
 
-#include <stdint.h>
 #include <stdarg.h>
-#include "cmb_config.h"
+#include <stdint.h>
+#include "cmi_config.h"
 
 /* Using 32-bit unsigned for the flags, top four bits reserved for Cimba use. */
 #define CMI_LOGGER_FATAL    0x80000000

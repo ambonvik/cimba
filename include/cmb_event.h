@@ -53,7 +53,7 @@
 #include <stdint.h>
 
 #include "cmb_assert.h"
-#include "cmb_config.h"
+#include "cmi_config.h"
 
 /* The generic event type */
 typedef void (cmb_event_func)(void*, void*);

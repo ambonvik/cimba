@@ -25,9 +25,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "cmb_config.h"
 #include "cmb_logger.h"
 #include "cmb_random.h"
+#include "cmi_config.h"
 #include "cmi_memutils.h"
 
 /* Declarations of inlined functions from cmb_random.h */

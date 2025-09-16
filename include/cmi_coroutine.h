@@ -91,13 +91,13 @@ extern void cmi_coroutine_destroy(struct cmi_coroutine *victim);
  * The currently executing coroutine, if any.
  * Returns NULL if currently executing on the main stack.
  */
-extern struct cmi_coroutine *cmi_coroutine_current(void);
+extern struct cmi_coroutine *cmi_coroutine_get_current(void);
 
 /* The state of the given coroutine */
-extern enum cmi_coroutine_state cmi_coroutine_state(struct cmi_coroutine *corp);
+extern enum cmi_coroutine_state cmi_coroutine_get_state(struct cmi_coroutine *corp);
 
 /* The exit value, if any. Will return NULL if the state is not _RETURNED */
-extern void *cmi_coroutine_exit_value(struct cmi_coroutine *corp);
+extern void *cmi_coroutine_get_exit_value(struct cmi_coroutine *corp);
 
 /* Symmetric coroutine pattern */
 extern void *cmi_coroutine_transfer(struct cmi_coroutine *from,

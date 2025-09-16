@@ -23,7 +23,7 @@
 #include <stdbool.h>
 
 #include "cmb_assert.h"
-#include "cmb_config.h"
+#include "cmi_config.h"
 
 /*
  * Initiate pseudo-random number distribution using a 64-bit seed. Will be

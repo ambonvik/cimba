@@ -1,5 +1,5 @@
 /*
- * cmb_config.h - preprocessor macros to identify architecture, compiler, and
+ * cmi_config.h - preprocessor macros to identify architecture, compiler, and
  *                operating system, defining macros for portability.
  *
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.

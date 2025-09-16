@@ -17,7 +17,15 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "cmi_config.h"
 #include "cmi_coroutine.h"
+
+/*
+ * cmi_coroutine_current : The currently executing coroutine, if any.
+ * NULL means that the main execution thread has the CPU, which always will be
+ * the case before any coroutines are created and started.
+ */
+static CMB_THREAD_LOCAL struct cmi_coroutine *cmi_coroutine_current = NULL;
 
 struct cmi_coroutine {
     void *parent_stack_pointer;
@@ -43,16 +51,16 @@ void cmi_coroutine_destroy(struct cmi_coroutine *victim) {
 
 }
 
-void *cmi_coroutine_exit_value(struct cmi_coroutine *corp) {
+void *cmi_coroutine_get_exit_value(struct cmi_coroutine *corp) {
     return corp->exit_value;
 }
 
-extern struct cmi_coroutine *cmi_coroutine_current(void) {
+extern struct cmi_coroutine *cmi_coroutine_get_current(void) {
     return NULL;
 }
 
 /* The state of the given coroutine */
-extern enum cmi_coroutine_state cmi_coroutine_state(struct cmi_coroutine *corp) {
+extern enum cmi_coroutine_state cmi_coroutine_get_state(struct cmi_coroutine *corp) {
     return corp->status;
 }
 
