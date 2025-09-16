@@ -31,6 +31,9 @@
 SECTION .text
 global cmi_coroutine_context_switch
 global cmi_coroutine_launcher
+global cmi_coroutine_get_rsp
+global cmi_coroutine_get_stackbase
+global cmi_coroutine_get_stacklimit
 global asm_test
 
 section .text
@@ -47,6 +50,22 @@ asm_test:
     mov rsp, rbp
     pop rbp
     ret
+
+; Return the current stack pointer
+cmi_coroutine_get_rsp:
+    mov rax, rsp
+    ret
+
+; Return the current StackBase (top of allocated stack)
+cmi_coroutine_get_stackbase:
+    mov rax, [gs:8]
+    ret
+
+; Return the current StackLimit (bottom of allocated stack)
+cmi_coroutine_get_stacklimit:
+    mov rax, [gs:16]
+    ret
+
 
 ;-------------------------------------------------------------------------------
 ; Macro to store relevant registers to current stack
