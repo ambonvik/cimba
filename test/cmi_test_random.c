@@ -556,11 +556,18 @@ static void test_quality_PERT(const double left, const double mode, const double
     const double a = left;
     const double b = mode;
     const double c = right;
-    const double mean = (a + 4.0 * b + c) / 6.0;
-    const double var = (mean - a) * (c - mean) / 7.0;
-    const double skew = 2.0 * ((b - a) * sqrt(a + b + 1.0)) / ((a + b + 2.0) * sqrt(a * b));
-    const double kurt = 6.0 * ((a - b) * (a - b) * (a + b + 1.0) - a * b * (a + b + 2.0))
-                            / (a * b * (a + b + 2.0) * (a + b + 3.0));
+
+    const double alpha = (4.0 * b + c - 5.0 * a) / (c - a);
+    const double beta = (5.0 * c - a - 4.0 * b) / (c - a);
+    const double mu = (a + 4.0 * b + c) / 6.0;
+
+    const double mean = mu;
+    const double var = (mu - a) * (c - mu) / 7.0;
+    const double skew = 2.0 * ((beta - alpha) * sqrt(alpha + beta + 1.0))
+                        / ((alpha + beta + 2.0) * sqrt(alpha * beta));
+    const double kurt = 6.0 * ((alpha - beta) * (alpha - beta) * (alpha + beta + 1.0)
+                                   - alpha * beta * (alpha + beta + 2.0))
+                            / (alpha * beta * (alpha + beta + 2.0) * (alpha + beta + 3.0));
     print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
@@ -622,7 +629,7 @@ static void test_quality_t_dist(const double m, const double s, const double v) 
 }
 
 static void test_quality_rayleigh(const double s) {
-    printf("\nQuality testing rayleigh distribution, s %g", s);
+    printf("\nQuality testing Rayleigh distribution, s %g\n", s);
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_rayleigh(s));
 
