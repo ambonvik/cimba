@@ -318,7 +318,7 @@ inline double cmb_random_PERT(const double l, const double m, const double r) {
  * mean scale when shape = 1.0. Failure rates increase with time for shape < 1,
  * decrease with time for shape > 1. Looks like a normal distribution for shape
  * around 4.
-  */
+ */
 inline double cmb_random_weibull(const double shape, const double scale) {
     cmb_assert_release(shape > 0.0);
     cmb_assert_release(scale > 0.0);

@@ -145,6 +145,7 @@ static void test_quality_uniform(const double a, const double b) {
     QTEST_EXECUTE(cmb_random_uniform(a, b));
 
     const double var = (b - a) * (b - a) / 12;
+
     print_expected(MAX_ITER, true, 0.5 * (a + b), true, var, true, 0.0, true, -6.0 / 5.0);
 
     QTEST_REPORT();
@@ -361,6 +362,7 @@ static void test_quality_triangular(const double a, const double b, const double
     const double var = g / 18.0;
     const double snum = ((sqrt(2.0) * (a + b - 2.0 * c) * (2.0 * a - b - c) * (a - 2.0 * b + c)));
     const double sden = 5.0 * pow(g, 1.5);
+
     print_expected(MAX_ITER, true, mean, true, var, true, snum / sden, true, -3.0 / 5.0);
 
     QTEST_REPORT();
@@ -396,6 +398,7 @@ static void test_quality_hypoexponential(const unsigned k, const double m[k]) {
         msumsq += m[i] * m[i];
         msumcube += m[i] * m[i] * m[i];
     }
+
     print_expected(MAX_ITER, true, msum, true, msumsq, true, 2.0 * msumcube / pow(msumsq, 1.5), false, 0.0);
 
     QTEST_REPORT();
@@ -424,6 +427,7 @@ static void test_quality_hyperexponential(const unsigned k, const double m[k], c
             msumsq += p[i] * p[j] * (m[i] - m[j]) * (m[i] - m[j]);
         }
     }
+
     print_expected(MAX_ITER, true, msum, true, msum * msum + msumsq, false,  0.0, false, 0.0);
 
     QTEST_REPORT();
@@ -438,10 +442,11 @@ static void test_quality_weibull(const double shape, const double scale) {
     const double z = tgamma(1.0 + 1.0 / shape);
     const double mean = scale * z;
     const double var = scale * scale * (tgamma(1.0 + 2.0 / shape) - z * z);
+
     /* Skewness exists in closed form but is complicated, left out for now */
     /* No closed form expression for kurtosis */
-    print_expected(MAX_ITER, true, mean, true, var,
-                                false, 0.0, false, 0.0);
+    print_expected(MAX_ITER, true, mean, true, var, false, 0.0, false, 0.0);
+
     QTEST_REPORT();
     QTEST_FINISH();
 }
@@ -455,6 +460,7 @@ static void test_quality_lognormal(const double m, const double s) {
     const double var = (exp(s * s) - 1.0) * exp(2 * m + s * s);
     const double skew = (exp(s * s) + 2.0) * sqrt(exp(s * s) - 1);
     const double kurt = exp(4.0 * s * s) + 2.0 * exp(3.0 * s * s) + 3.0 * exp (2.0 * s * s) - 6;
+
     print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
@@ -467,6 +473,7 @@ static void test_quality_logistic(const double m, const double s) {
     QTEST_EXECUTE(cmb_random_logistic(m, s));
 
     const double var = s * s * M_PI * M_PI / 3.0;
+
     print_expected(MAX_ITER, true, m, true,var,true, 0.0, true, 6.0 / 5.0);
 
     QTEST_REPORT();
@@ -493,6 +500,7 @@ static void test_quality_gamma(const double shape, const double scale) {
     const double var = shape * scale * scale;
     const double skew = 2.0 / sqrt(shape);
     const double kurt = 6.0 / shape;
+
     print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
@@ -500,7 +508,7 @@ static void test_quality_gamma(const double shape, const double scale) {
 }
 
 static void test_quality_pareto(const double a, const double b) {
-    printf("\nQuality testing pareto distribution, shape %g, scale %g\n", a, b);
+    printf("\nQuality testing Pareto distribution, shape %g, scale %g\n", a, b);
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_pareto(a, b));
 
@@ -509,6 +517,7 @@ static void test_quality_pareto(const double a, const double b) {
     const double skew = (a > 3.0) ? 2.0 * ((1.0 + a) / (a - 3.0)) * sqrt((a - 2.0) / a) : HUGE_VAL;
     const double kurt = (a > 3.0) ? 6.0 * ( a * a * a + a * a - 6.0 * a - 2.0)
                                         / (a * (a - 3.0) * (a - 4)) : HUGE_VAL;
+
     print_expected(MAX_ITER, (a > 1.0), mean, (a > 2.0),var,(a > 3.0), skew, (a > 3.0), kurt);
 
     QTEST_REPORT();
@@ -525,6 +534,7 @@ static void test_quality_beta(const double a, const double b, const double l, co
     const double skew = 2.0 * ((b - a) * sqrt(a + b + 1.0)) / ((a + b + 2.0) * sqrt(a * b));
     const double kurt = 6.0 * ((a - b) * (a - b) * (a + b + 1.0) - a * b * (a + b + 2.0))
                             / (a * b * (a + b + 2.0) * (a + b + 3.0));
+
     print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
 
 
@@ -542,6 +552,7 @@ static void test_quality_std_beta(const double a, const double b) {
     const double skew = 2.0 * ((b - a) * sqrt(a + b + 1.0)) / ((a + b + 2.0) * sqrt(a * b));
     const double kurt = 6.0 * ((a - b) * (a - b) * (a + b + 1.0) - a * b * (a + b + 2.0))
                             / (a * b * (a + b + 2.0) * (a + b + 3.0));
+
     print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
@@ -568,6 +579,7 @@ static void test_quality_PERT(const double left, const double mode, const double
     const double kurt = 6.0 * ((alpha - beta) * (alpha - beta) * (alpha + beta + 1.0)
                                    - alpha * beta * (alpha + beta + 2.0))
                             / (alpha * beta * (alpha + beta + 2.0) * (alpha + beta + 3.0));
+
     print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
@@ -594,6 +606,7 @@ static void test_quality_f_dist(const double a, const double b) {
     const double var = (b > 4.0) ? (2.0 * (b * b) * (a + b - 2.0)) / (a * (b - 2) * (b - 2) * (b - 4.0)) : HUGE_VAL;
     const double skew = (b > 6.0) ? ((2.0 * a + b - 2.0) * sqrt(8.0 * (b - 4.0)))
                                     / ((b - 6.0) * sqrt(a * (a + b - 2.0))) : HUGE_VAL;
+
     print_expected(MAX_ITER, (b > 2.0), mean, (b > 4.0),var,(b > 6.0), skew, false, 0.0);
 
     QTEST_REPORT();
@@ -609,6 +622,7 @@ static void test_quality_std_t_dist(const double v) {
     const double var = (v > 2.0) ? (v / (v - 2)) : HUGE_VAL;
     const double skew = (v > 3.0) ? 0.0 : HUGE_VAL;
     const double kurt = (v > 4.0) ? 6.0 / (v - 4.0) : HUGE_VAL;
+
     print_expected(MAX_ITER, (v > 1.0), mean, (v > 2.0),var,(v > 3.0), skew, (v > 4.0), kurt);
 
     QTEST_REPORT();
@@ -622,6 +636,7 @@ static void test_quality_t_dist(const double m, const double s, const double v) 
 
     const double mean = (v > 1.0) ? m : HUGE_VAL;
     const double var = (v > 2.0) ? (s * s * v) / (v - 2.0) : HUGE_VAL;
+
     print_expected(MAX_ITER, (v > 1.0), mean, (v > 2.0),var,false, 0.0, false, 0.0);
 
     QTEST_REPORT();
@@ -637,7 +652,9 @@ static void test_quality_rayleigh(const double s) {
     const double var = 0.5 * (4.0 - M_PI) * s * s;
     const double skew = 2.0 * sqrt(M_PI) * (M_PI - 3.0) / pow((4.0 - M_PI), 1.5);
     const double kurt = -(6.0 * M_PI * M_PI - 24.0 * M_PI + 16.0) / ((4.0 - M_PI) * (4.0 - M_PI));
+
     print_expected(MAX_ITER, true, mean, true, var, true, skew, true, kurt);
+
     QTEST_REPORT();
     QTEST_FINISH();
 }
@@ -652,6 +669,7 @@ static void test_quality_flip(void) {
     const double var = 0.5 * 0.5;
     const double skew = 0.0;
     const double kurt = (1.0 - 6.0 * 0.5 * 0.5) / (0.5 * 0.5);
+
     print_expected(MAX_ITER, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
@@ -668,6 +686,7 @@ static void test_quality_bernoulli(const double p) {
     const double var = p * q;
     const double skew = (q - p) / sqrt(p * q);
     const double kurt = (1.0 - 6.0 * p * q) / (p * q);
+
     print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
@@ -684,6 +703,7 @@ static void test_quality_geometric(const double p) {
     const double var = q / (p * p);
     const double skew = (q - p) / sqrt(p * q);
     const double kurt = (1.0 - 6.0 * p * q) / (p * q);
+
     print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
@@ -700,6 +720,7 @@ static void test_quality_binomial(const unsigned n, const double p) {
     const double var = n * p * q;
     const double skew = (q - p) / sqrt(n * p * q);
     const double kurt = (1.0 - 6.0 * p * q) / (n * p * q);
+
     print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
@@ -707,7 +728,7 @@ static void test_quality_binomial(const unsigned n, const double p) {
 }
 
 static void test_quality_pascal(const unsigned m, const double p) {
-    printf("\nQuality testing negative binomial (pascal) distribution, m = %d, p = %g\n", m, p);
+    printf("\nQuality testing negative binomial (Pascal) distribution, m = %d, p = %g\n", m, p);
     QTEST_PREPARE();
     QTEST_EXECUTE((double)cmb_random_pascal(m, p));
 
@@ -716,6 +737,7 @@ static void test_quality_pascal(const unsigned m, const double p) {
     const double var = (double)m * q / (p * p);
     const double skew = (2.0 - p) / sqrt(q * (double)m);
     const double kurt = 6.0 / (double)m + (p * p) / (q * (double)m);
+
     print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
@@ -723,7 +745,7 @@ static void test_quality_pascal(const unsigned m, const double p) {
 }
 
 static void test_quality_poisson(const double r) {
-    printf("\nQuality testing poisson distribution, r = %g\n", r);
+    printf("\nQuality testing Poisson distribution, r = %g\n", r);
     QTEST_PREPARE();
     QTEST_EXECUTE((double)cmb_random_poisson(r));
 
@@ -743,6 +765,7 @@ static void test_quality_dice(const long a, const long b) {
     const double skew = 0.0;
     const double n = (double)(b - a + 1);
     const double kurt = - (6.0 *(n * n  + 1.0)) / (5.0 * ((n * n - 1.0)));
+
     print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
@@ -777,6 +800,7 @@ static void print_discrete_expects(const unsigned n, const double pa[n]) {
         const double mu4 = m4 - 4.0 * m1 * m3 + 6.0 * m1 * m1 * m2 - 3.0 * m1 * m1 * m1 * m1;
         kurt = mu4 / (var * var) - 3.0;
     }
+
     print_expected(MAX_ITER, true, mean, true, var, has_skew, skew, has_kurt, kurt);
 }
 

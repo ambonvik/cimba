@@ -124,45 +124,6 @@ void cmb_random_init(uint64_t seed) {
     }
 }
 
-/* Triangular distribution */
-double cmb_random_triangular(const double left,
-                             const double mode,
-                             const double right) {
-    cmb_assert_release(left <= mode);
-    cmb_assert_release(mode <= right);
-
-    const double u = cmb_random();
-
-    double x;
-    if ((u < (mode - left) / (right - left))) {
-        x = (left + sqrt(u * (right - left) * (mode - left)));
-    }
-    else {
-        x = (right - sqrt((1.0 - u) * (right- left) * (right - mode)));
-    }
-
-    cmb_assert_debug((x >= left) && (x <= right));
-    return x;
-}
-
-/* Modified PERT distribution */
- double cmb_random_PERT_mod(const double left,
-                            const double mode,
-                            const double right,
-                            const double lambda) {
-    cmb_assert_release(left < mode);
-    cmb_assert_release(mode < right);
-    cmb_assert_release(lambda > 0.0);
-
-    const double rng = right - left;
-    const double a = 1.0 + lambda * (mode - left) / rng;
-    const double b = 1.0 + lambda * (right - mode) / rng;
-    const double x = left + rng * cmb_random_std_beta(a, b);
-
-    cmb_assert_debug((x >= left) && ( x <= right));
-    return x;
-}
-
 /*
  * Exponential distribution, fast ziggurat method.
  *
@@ -498,6 +459,45 @@ double cmb_random_std_gamma(const double shape) {
 
     /* not reached */
     cmb_assert_debug(0);
+}
+
+/* Triangular distribution */
+double cmb_random_triangular(const double left,
+                             const double mode,
+                             const double right) {
+    cmb_assert_release(left <= mode);
+    cmb_assert_release(mode <= right);
+
+    const double u = cmb_random();
+
+    double x;
+    if ((u < (mode - left) / (right - left))) {
+        x = (left + sqrt(u * (right - left) * (mode - left)));
+    }
+    else {
+        x = (right - sqrt((1.0 - u) * (right- left) * (right - mode)));
+    }
+
+    cmb_assert_debug((x >= left) && (x <= right));
+    return x;
+}
+
+/* Modified PERT distribution */
+double cmb_random_PERT_mod(const double left,
+                           const double mode,
+                           const double right,
+                           const double lambda) {
+    cmb_assert_release(left < mode);
+    cmb_assert_release(mode < right);
+    cmb_assert_release(lambda > 0.0);
+
+    const double rng = right - left;
+    const double a = 1.0 + lambda * (mode - left) / rng;
+    const double b = 1.0 + lambda * (right - mode) / rng;
+    const double x = left + rng * cmb_random_std_beta(a, b);
+
+    cmb_assert_debug((x >= left) && ( x <= right));
+    return x;
 }
 
 /* Simple flip of a fair unbiased coin, caching bits for efficiency */
