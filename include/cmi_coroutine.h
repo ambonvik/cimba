@@ -69,6 +69,9 @@
  */
 struct cmi_coroutine;
 
+/* The generic coroutine function type */
+typedef void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *arg);
+
 /*
  * Possible states of a coroutine
  * Running means that it has been started and has not yet ended, not necessarily
@@ -83,8 +86,10 @@ enum cmi_coroutine_state {
 
 /* General functions to create, start, stop, and destroy coroutines */
 extern struct cmi_coroutine *cmi_coroutine_create(void);
-extern void *cmi_coroutine_start(struct cmi_coroutine *new);
+extern void *cmi_coroutine_start(struct cmi_coroutine *cp, cmi_coroutine_func *foo, void *arg);
 extern void cmi_coroutine_stop(struct cmi_coroutine *victim);
+extern void cmi_coroutine_exit(struct cmi_coroutine *myself, void *retval);
+extern void cmi_coroutine_reset(struct cmi_coroutine *victim);
 extern void cmi_coroutine_destroy(struct cmi_coroutine *victim);
 
 /*
@@ -105,7 +110,7 @@ extern void *cmi_coroutine_transfer(struct cmi_coroutine *from,
                                     void *arg);
 
 /* Asymmetric coroutine pattern */
-extern void *cmi_coroutine_yield(struct cmi_coroutine from, void *arg);
-extern void *cmi_coroutine_resume(struct cmi_coroutine to, void *arg);
+extern void *cmi_coroutine_yield(struct cmi_coroutine *from, void *arg);
+extern void *cmi_coroutine_resume(struct cmi_coroutine *to, void *arg);
 
 #endif /* CIMBA_CMB_COROUTINE_H */

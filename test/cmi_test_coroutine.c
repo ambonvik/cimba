@@ -20,6 +20,7 @@
 #include <time.h>
 
 #include "cmi_coroutine.h"
+#include "cmi_test.h"
 
 /* Assembly functions, see arch/cmi_coroutine_context_*.asm */
 extern int asm_test(int i, int j, int k);
@@ -27,7 +28,8 @@ extern void *cmi_coroutine_get_rsp(void);
 extern void *cmi_coroutine_get_stackbase(void);
 extern void *cmi_coroutine_get_stacklimit(void);
 
-int main(void) {
+static void test_asm_calls() {
+    printf("Testing assembly calling conventions\n");
     printf("Calls asm_test(17, 18, 19) ... ");
     int r = asm_test(17, 18, 19);
     printf("returned %d\n", r);
@@ -46,6 +48,16 @@ int main(void) {
     void *slp = cmi_coroutine_get_stacklimit();
     printf("Current stack limit: %p\n", slp);
     printf("Stack size: %llu\n", (uintptr_t)sbp - (uintptr_t)slp);
+
+    cmi_test_print_line("=");
+}
+
+int main(void) {
+    cmi_test_print_line("*");
+    printf("**********************         Testing coroutines         **********************\n");
+    cmi_test_print_line("*");
+
+    test_asm_calls();
 
     return 0;
 }
