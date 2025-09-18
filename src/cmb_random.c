@@ -50,6 +50,7 @@ extern double cmb_random_chisquare(double k);
 extern double cmb_random_std_t_dist(double v);
 extern double cmb_random_t_dist(double m, double s, double v);
 extern double cmb_random_f_dist(double a, double b);
+extern double cmb_random_rayleigh(double s);
 extern unsigned cmb_random_bernoulli(double p);
 extern double cmb_random_std_beta(double a, double b);
 extern double cmb_random_beta(double a, double b, double l, double r);

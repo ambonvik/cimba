@@ -419,6 +419,27 @@ inline double cmb_random_t_dist(const double m, const double s,
 }
 
 /*
+ * Rayleigh distribution, equivalent to a chi distribution with k = 2
+ * Occurs in natural phenomena like the amplitude of wind or waves summing from
+ * several directions.
+ */
+inline double cmb_random_rayleigh(const double s) {
+    cmb_assert_release(s > 0.0);
+
+    const double x = cmb_random_normal(0.0, s);
+    const double y = cmb_random_normal(0.0, s);
+    const double r = sqrt(x * x + y * y);
+
+    cmb_assert_debug(r >= 0.0);
+    return r;
+}
+
+
+/**
+ *  Integer-valued distributions below
+ **/
+
+/*
  * A single flip of an unbiased coin. Returns 1 with p = 0.5, 0 with same.
  * Equivalent to cmb_random_bernoulli(0.5), but optimized for speed, only
  * consuming one bit of randomness for each trial by caching random bits
