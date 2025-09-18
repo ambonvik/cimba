@@ -567,12 +567,12 @@ static void test_quality_PERT(const double left, const double mode, const double
     QTEST_FINISH();
 }
 
-static void test_quality_chisquare(double v) {
+static void test_quality_chisquare(const double v) {
     printf("\nQuality testing chisquare distribution, v %g", v);
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_chisquare(v));
 
-    print_expected(MAX_ITER, true, v, true,2.0 * v,
+    print_expected(MAX_ITER, true, v, true, 2.0 * v,
                                  true, sqrt(8.0 / v), true, 12.0 / v);
     QTEST_REPORT();
     QTEST_FINISH();
@@ -621,6 +621,20 @@ static void test_quality_t_dist(const double m, const double s, const double v) 
     QTEST_FINISH();
 }
 
+static void test_quality_rayleigh(const double s) {
+    printf("\nQuality testing rayleigh distribution, s %g", s);
+    QTEST_PREPARE();
+    QTEST_EXECUTE(cmb_random_rayleigh(s));
+
+    const double mean = s * sqrt(0.5 * M_PI);
+    const double var = 0.5 * (4.0 - M_PI) * s * s;
+    const double skew = 2.0 * sqrt(M_PI) * (M_PI - 3.0) / pow((4.0 - M_PI), 1.5);
+    const double kurt = -(6.0 * M_PI * M_PI - 24.0 * M_PI + 16.0) / ((4.0 - M_PI) * (4.0 - M_PI));
+    print_expected(MAX_ITER, true, mean, true, var, true, skew, true, kurt);
+    QTEST_REPORT();
+    QTEST_FINISH();
+}
+
 
 static void test_quality_flip(void) {
     printf("\nQuality testing unbiased coin flip, p = 0.5\n");
@@ -631,7 +645,7 @@ static void test_quality_flip(void) {
     const double var = 0.5 * 0.5;
     const double skew = 0.0;
     const double kurt = (1.0 - 6.0 * 0.5 * 0.5) / (0.5 * 0.5);
-    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
+    print_expected(MAX_ITER, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -872,6 +886,7 @@ int main(void) {
     test_quality_f_dist(3.0, 5.0);
     test_quality_std_t_dist(3.0);
     test_quality_t_dist(1.0, 2.0, 3.0);
+    test_quality_rayleigh(1.5);
 
     printf("************************* Integer-valued distributions *************************\n");
 
