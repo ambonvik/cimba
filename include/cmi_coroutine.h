@@ -32,11 +32,10 @@
  * return from where it last transferred control out, not necessarily from the
  * call to start the daughther coroutine.
  *
- * If exploiting this fully, the control flow can get mightily confusing rather
- * fast. It should be considered low-level code not to be called directly by
- * user applications.
- *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * If exploiting this fully, the control flow can get mightily confusing fast.
+ * It should be considered low-level code not to be called directly by
+ * user applications, but can on the other hand be used as such independent of
+ * the rest of the Cimba library.
  *
  * See also:
  *      https://en.wikipedia.org/wiki/Coroutine
@@ -46,6 +45,8 @@
  *      https://github.com/edubart/minicoro
  *      https://github.com/tidwall/neco
  *      https://github.com/hnes/libaco
+ *
+ * Copyright (c) Asbjørn M. Bonvik 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
