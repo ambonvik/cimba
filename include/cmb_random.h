@@ -3,6 +3,11 @@
  *
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
  *
+ * The normal and exponential distributions below are based on code at
+ *      https://github.com/cd-mcfarland/fast_prng
+ *      Copyright (c) Chris D McFarland 2025.
+ *      Used with permission by author.
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,7 +28,6 @@
 #include <stdbool.h>
 
 #include "cmb_assert.h"
-#include "cmi_config.h"
 
 /*
  * Initiate pseudo-random number distribution using a 64-bit seed. Will be
@@ -55,32 +59,33 @@ inline double cmb_random(void) {
 }
 
 /*
- * Continuous uniform distribution on the open interval [l, r).
+ * Continuous uniform distribution on the open interval [min, max].
  * Often used in lack of any other information about a distribution than
  * the endpoints. Assuming uniform in between may then be reasonable.
  */
-inline double cmb_random_uniform(const double a, const double b) {
-    cmb_assert_release(a < b);
+inline double cmb_random_uniform(const double min, const double max) {
+    cmb_assert_release(min < max);
 
-    const double r = a + (b - a) * cmb_random();
-    cmb_assert_debug((r >= a) && (r <= b));
+    const double r = min + (max - min) * cmb_random();
+    cmb_assert_debug((r >= min) && (r <= max));
 
     return r;
 }
 
 /*
- * Triangular distribution on the interval [l, r) with mode m,
- * where l < m < r. The probability density function is zero at l and r,
- * and reaches a maximum of 2/(r-l) at m. The mean is (l + r + m)/3.
- * Another "I don't know much about the shape of this thing" distribution.
- * (See also the PERT distribution cmb_random_PERT()
+ * Triangular distribution on the interval [min, max] with peak at mode,
+ * where min < mode < max. The probability density function is zero at min
+ * and max, and reaches a maximum of 2 / (max - min) at mode.
+ * The mean is (min + mode + max) / 3.
+ * Used as an empirical "I don't know much about the shape of this thing"
+ * distribution. See also the PERT distribution cmb_random_PERT()
  */
-extern double cmb_random_triangular(double left, double mode, double right);
+extern double cmb_random_triangular(double min, double mode, double max);
 
 /*
- * Normal distribution on (-oo, oo) with mean m and standard deviation s
- * where s > 0. cmb_random_normal_std() is standard normal distribution N(0,1).
- * Often used to model measurement errors or process variation.
+ * Normal distribution on (-oo, oo) with mean mu and standard deviation sigma
+ * where sigma > 0. cmb_random_normal_std() is the standard normal distribution
+ * N(0,1). Often used to model measurement errors or process variation.
  * It tends to appear whenever the variation is caused by a sum (or average)
  * of many small effects, according to the Central Limit Theorem.
  * Uses an implementation of McFarland's improved ziggurat method,
@@ -278,16 +283,16 @@ inline double cmb_random_std_beta(const double a, const double b) {
     return r;
 }
 
-/* Shifted and scaled beta to arbitrary interval [l, r] */
+/* Shifted and scaled beta to arbitrary interval [min, max] */
 inline double cmb_random_beta(const double a, const double b,
-                              const double l, const double r) {
+                              const double min, const double max) {
     cmb_assert_release(a > 0.0);
     cmb_assert_release(b > 0.0);
-    cmb_assert_release(l < r);
+    cmb_assert_release(min < max);
 
-    const double x = l + (r - l) * cmb_random_std_beta(a, b);
+    const double x = min + (max - min) * cmb_random_std_beta(a, b);
 
-    cmb_assert_debug((x >= l) && (x <= r));
+    cmb_assert_debug((x >= min) && (x <= max));
     return x;
 }
 
@@ -295,19 +300,19 @@ inline double cmb_random_beta(const double a, const double b,
  * PERT and modified PERT distributions
  * Scaled and shifted beta distributions to get a mean at m.
  * Can be used as a heuristically determined distribution where the parameters
- * are "at least l", "most likely m", and "not more than r". The additional
- * parameter lambda determines the peakiness around m, with lambda = 4.0 default.
+ * are "at least minl", "most likely mode", and "not more than max". The additional
+ * parameter lambda determines the peakiness around mode, with lambda = 4.0 default.
  */
-extern double cmb_random_PERT_mod(double left, double mode, double right,
+extern double cmb_random_PERT_mod(double min, double mode, double max,
                                   double lambda);
 
-inline double cmb_random_PERT(const double l, const double m, const double r) {
-    cmb_assert_release(l < m);
-    cmb_assert_release(m < r);
+inline double cmb_random_PERT(const double min, const double mode, const double max) {
+    cmb_assert_release(min < mode);
+    cmb_assert_release(mode < max);
 
-    const double x = cmb_random_PERT_mod(l, m, r, 4.0);
+    const double x = cmb_random_PERT_mod(min, mode, max, 4.0);
 
-    cmb_assert_debug((x >= l) && (x <= r));
+    cmb_assert_debug((x >= min) && (x <= max));
     return x;
 }
 

@@ -32,7 +32,7 @@
 
 /* Declarations of inlined functions from cmb_random.h */
 extern double cmb_random(void);
-extern double cmb_random_uniform(double a, double b);
+extern double cmb_random_uniform(double min, double max);
 extern double cmb_random_std_exponential(void);
 extern double cmb_random_exponential(double mean);
 extern double cmb_random_erlang(unsigned k, double m);
@@ -43,7 +43,7 @@ extern double cmb_random_gamma(double shape, double scale);
 extern double cmb_random_lognormal(double m, double s);
 extern double cmb_random_logistic(double m, double s);
 extern double cmb_random_cauchy(double mode, double scale);
-extern double cmb_random_PERT(double l, double m, double r);
+extern double cmb_random_PERT(double min, double mode, double max);
 extern double cmb_random_weibull(double shape, double scale);
 extern double cmb_random_pareto(double shape, double mode);
 extern double cmb_random_chisquare(double k);
@@ -53,7 +53,7 @@ extern double cmb_random_f_dist(double a, double b);
 extern double cmb_random_rayleigh(double s);
 extern unsigned cmb_random_bernoulli(double p);
 extern double cmb_random_std_beta(double a, double b);
-extern double cmb_random_beta(double a, double b, double l, double r);
+extern double cmb_random_beta(double a, double b, double min, double max);
 extern unsigned cmb_random_pascal(unsigned m, double p);
 extern long cmb_random_dice(long a, long b);
 extern unsigned cmb_random_alias_sample(const struct cmb_random_alias *pa);
@@ -462,41 +462,41 @@ double cmb_random_std_gamma(const double shape) {
 }
 
 /* Triangular distribution */
-double cmb_random_triangular(const double left,
+double cmb_random_triangular(const double min,
                              const double mode,
-                             const double right) {
-    cmb_assert_release(left <= mode);
-    cmb_assert_release(mode <= right);
+                             const double max) {
+    cmb_assert_release(min <= mode);
+    cmb_assert_release(mode <= max);
 
     const double u = cmb_random();
 
     double x;
-    if ((u < (mode - left) / (right - left))) {
-        x = (left + sqrt(u * (right - left) * (mode - left)));
+    if ((u < (mode - min) / (max - min))) {
+        x = (min + sqrt(u * (max - min) * (mode - min)));
     }
     else {
-        x = (right - sqrt((1.0 - u) * (right- left) * (right - mode)));
+        x = (max - sqrt((1.0 - u) * (max- min) * (max - mode)));
     }
 
-    cmb_assert_debug((x >= left) && (x <= right));
+    cmb_assert_debug((x >= min) && (x <= max));
     return x;
 }
 
 /* Modified PERT distribution */
-double cmb_random_PERT_mod(const double left,
+double cmb_random_PERT_mod(const double min,
                            const double mode,
-                           const double right,
+                           const double max,
                            const double lambda) {
-    cmb_assert_release(left < mode);
-    cmb_assert_release(mode < right);
+    cmb_assert_release(min < mode);
+    cmb_assert_release(mode < max);
     cmb_assert_release(lambda > 0.0);
 
-    const double rng = right - left;
-    const double a = 1.0 + lambda * (mode - left) / rng;
-    const double b = 1.0 + lambda * (right - mode) / rng;
-    const double x = left + rng * cmb_random_std_beta(a, b);
+    const double rng = max - min;
+    const double a = 1.0 + lambda * (mode - min) / rng;
+    const double b = 1.0 + lambda * (max - mode) / rng;
+    const double x = min + rng * cmb_random_std_beta(a, b);
 
-    cmb_assert_debug((x >= left) && ( x <= right));
+    cmb_assert_debug((x >= min) && ( x <= max));
     return x;
 }
 
