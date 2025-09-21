@@ -65,15 +65,6 @@
 #define CIMBA_CMB_COROUTINE_H
 
 /*
- * The coroutine data structure.
- * Opaque struct, no user serviceable parts inside.
- */
-struct cmi_coroutine;
-
-/* The generic coroutine function type */
-typedef void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *arg);
-
-/*
  * Possible states of a coroutine
  * Running means that it has been started and has not yet ended, not necessarily
  * that it is the coroutine currently executing instructions.
@@ -85,9 +76,60 @@ enum cmi_coroutine_state {
     CMI_CORO_RETURNED = 3
 };
 
-/* General functions to create, start, stop, and destroy coroutines */
-extern struct cmi_coroutine *cmi_coroutine_create(void);
-extern void *cmi_coroutine_start(struct cmi_coroutine *cp, cmi_coroutine_func *foo, void *arg);
+/* Bit pattern for last 64 bits of valid stack. */
+#define CMI_STACK_LIMIT_UNTOUCHED 0xACE0FBA5Eull
+
+/*
+ * The coroutine struct contains data about current stack and where to return.
+ * Execution context (such as registers) are pushed to and popped from the
+ * coroutine's stack, pointed to from here. The *stack is the raw address of the
+ * allocated stack, *stack_base the top (growing down), *stack_limit the end as
+ * seen by the OS. Alignment requirements may cause minor differences, hence
+ * maintaining several pointers here for different purposes.
+ *
+ * Parent is the coroutine that first activated (started) this coroutine, and
+ * where control is passed when and if the coroutine function returns or exits.
+ * Hence, cmb_coroutine_exit(arg) => cmb_coroutine_transfer(this, parent, arg).
+ *
+ * Caller is the coroutine that last (re)activated this coroutine, and where
+ * control is passed when and if the coroutine yields.
+ * cmb_coroutine_yield(arg) => cmb_coroutine_transfer(this, caller, arg).
+ *
+ * Initially, caller and parent will be the same, only differing if the
+ * coroutine later gets reactivated by some other coroutine.
+ *
+ * Invariant: stack_base > stack_pointer > stack_limit >= stack.
+ * Using unsigned char * as raw byte addresses to have same offset calculation
+ * here as in the assembly code.
+ */
+struct cmi_coroutine {
+    unsigned char *parent_stack_pointer;
+    unsigned char *caller_stack_pointer;
+    unsigned char *stack;
+    unsigned char *stack_base;
+    unsigned char *stack_limit;
+    unsigned char *stack_pointer;
+    enum cmi_coroutine_state status;
+    void *exit_value;
+};
+
+/* The generic coroutine function type */
+typedef void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *arg);
+
+/*
+ * General functions to create, start, stop, and destroy coroutines
+ *
+ * cmi_coroutine_create allocates and initializes memory on the heap
+ * The first argument is the coroutine function to run, the second its argument.
+ * Coroutines only live on the heap, no separate _init function for local
+ * coroutine objects on the stack. Remember to call cmi_coroutine_destroy to
+ * free allocated memory.
+ */
+extern struct cmi_coroutine *cmi_coroutine_create(cmi_coroutine_func *foo,
+                                                  void *arg,
+                                                  size_t stack_size);
+
+extern void cmi_coroutine_start(struct cmi_coroutine *cp);
 extern void cmi_coroutine_stop(struct cmi_coroutine *victim);
 extern void cmi_coroutine_exit(struct cmi_coroutine *myself, void *retval);
 extern void cmi_coroutine_reset(struct cmi_coroutine *victim);

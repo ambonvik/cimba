@@ -30,7 +30,7 @@
 
 SECTION .text
 global cmi_coroutine_context_switch
-global cmi_coroutine_launcher
+global cmi_coroutine_trampoline
 global cmi_coroutine_get_rsp
 global cmi_coroutine_get_stackbase
 global cmi_coroutine_get_stacklimit
@@ -179,7 +179,7 @@ context_switch_finish:
 ; the coroutine function attempts to return. If so, set the
 ; coroutine state to finished and store its return value in
 ; the coroutine struct before yielding for the last time.
-cmi_coroutine_launcher:
+cmi_coroutine_trampoline:
     ; Not a leaf function, needs to obey Win64 ABI calling convention
     ; requiring the stack to be 16-byte aligned before a call
     ; and requires 32 bytes of "shadow space" for the callee.

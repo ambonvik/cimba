@@ -52,12 +52,20 @@ static void test_asm_calls() {
     cmi_test_print_line("=");
 }
 
+static void *corofunc_1(struct cmi_coroutine *myself, void *arg) {
+    printf("corofunc_1(%p, %p) running\n", (void *)myself, arg);
+    printf("corofunc_1 returning %p\n", arg);
+    return arg;
+}
+
 int main(void) {
     cmi_test_print_line("*");
     printf("**********************         Testing coroutines         **********************\n");
     cmi_test_print_line("*");
 
     test_asm_calls();
+
+    struct cmi_coroutine *cp = cmi_coroutine_create(corofunc_1, NULL, 24 * 1024);
 
     return 0;
 }

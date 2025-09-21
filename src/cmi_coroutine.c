@@ -17,35 +17,11 @@
  */
 
 #include <stdint.h>
-#include <stddef.h>
 
 #include "cmb_assert.h"
 #include "cmi_config.h"
 #include "cmi_coroutine.h"
-
-/*
- * The coroutine struct contains data about current stack and where to return.
- * Execution context (such as registers) are pushed to and popped from the
- * coroutine's stack, not stored here. The *stack is the raw address of the
- * allocated stack, *stack_base the top (growing down), *stack_limit the end as
- * seen by the OS. Alignment requirements may cause minor differences, hence
- * maintaining several pointers here for different purposes.
- * Parent is the coroutine that first activated this coroutine, and where
- * control is passed when and if the coroutine function returns or exits.
- * Caller is the coroutine that last (re)activated this coroutine, and where
- * control is passed when and if the coroutine yields = transfer(this, caller).
- * Invariant: stack_base > stack_pointer > stack_limit >= stack.
- */
-struct cmi_coroutine {
-    void *parent_stack_pointer;
-    void *caller_stack_pointer;
-    void *stack_pointer;
-    void *stack_base;
-    void *stack_limit;
-    void *stack;
-    enum cmi_coroutine_state status;
-    void *exit_value;
-};
+#include "cmi_memutils.h"
 
 /*
  * cmi_coroutine_main : A dummy coroutine to keep track of the main stack
@@ -64,35 +40,69 @@ static CMB_THREAD_LOCAL struct cmi_coroutine *cmi_coroutine_current = NULL;
 
 /* Assembly functions, see src/arch/cmi_coroutine_context_*.asm */
 extern void *cmi_coroutine_context_switch(void **old, void **new, void *ret);
-extern void cmi_coroutine_launcher(void);
 extern void *cmi_coroutine_get_rsp(void);
 extern void *cmi_coroutine_get_stackbase(void);
 extern void *cmi_coroutine_get_stacklimit(void);
 
-void *cmi_coroutine_stack_init(void *raw_stack, size_t stack_size) {
-    void *aligned_stack_base = NULL;
+/* OS specific C code, see src/arch/cmi_coroutine_context_*.c */
+extern void cmi_coroutine_context_init(struct cmi_coroutine *cp,
+                                       cmi_coroutine_func *foo,
+                                       void *arg,
+                                       size_t stack_size);
 
-    /* Ensure that the top of the stack is correctly aligned */
-    /* Write in the trampoline as return address post transfer */
-    /* Load the stack record with correct register values */
-    /* Parameters for call to trampoline */
-    /* parameters for call to exit (if returning from coroutine function) */
-    /* Stack pointers for this stack */
+/* Helper function to set up the dummy main coroutine */
+static void cmi_coroutine_create_main(void) {
+    cmb_assert_debug(cmi_coroutine_main == NULL);
 
-    return aligned_stack_base;
+    /* Allocate the coroutine struct, no parent or caller */
+    cmi_coroutine_main = cmi_malloc(sizeof(*cmi_coroutine_main));
+    cmi_coroutine_main->parent_stack_pointer = NULL;
+    cmi_coroutine_main->caller_stack_pointer = NULL;
+
+    /* Using system stack, no separate allocation */
+    cmi_coroutine_main->stack = NULL;
+
+    /* Get stack pointer and stack top / bottom from assembly */
+    cmi_coroutine_main->stack_base = cmi_coroutine_get_stackbase();
+    cmi_coroutine_main->stack_limit = cmi_coroutine_get_stacklimit();
+    cmi_coroutine_main->stack_pointer = cmi_coroutine_get_rsp();
+
+    /* I am running, therefore I am */
+    cmi_coroutine_main->status = CMI_CORO_RUNNING;
+    cmi_coroutine_main->exit_value = NULL;
+    cmi_coroutine_current = cmi_coroutine_main;
 }
 
-struct cmi_coroutine *cmi_coroutine_create(void) {
-    /* Create and set up stack */
+struct cmi_coroutine *cmi_coroutine_create(cmi_coroutine_func *foo,
+                                           void *arg,
+                                           const size_t stack_size) {
     /* Create a dummy main coroutine if not already existing */
-    /* ??? How to ensure that the main coroutine gets deleted when this pthread exits ??? */
-    /* Set coroutine stack pointers */
-    return NULL;
+    if (cmi_coroutine_main == NULL) {
+        cmi_coroutine_create_main();
+        cmb_assert_debug(cmi_coroutine_main != NULL);
+        cmb_assert_debug(cmi_coroutine_current == cmi_coroutine_main);
+     }
+
+    /* Create the new coroutine object and initialize */
+    struct cmi_coroutine *cp = cmi_malloc(sizeof(*cp));
+    cp->parent_stack_pointer = NULL;
+    cp->caller_stack_pointer = NULL;
+    cp->stack = NULL;
+    cp->stack_base = NULL;
+    cp->stack_limit = NULL;
+    cp->stack_pointer = NULL;
+    cp->status = CMI_CORO_CREATED;
+    cp->exit_value = NULL;
+
+    /* Create and initialize a stack for the new coroutine */
+    cmi_coroutine_context_init(cp, foo, arg, stack_size);
+
+    return cp;
 }
 
-void *cmi_coroutine_start(struct cmi_coroutine *cp, cmi_coroutine_func *foo, void *arg) {
-    /* start the thing by transferring into it for the first time, loading register values from new stack */
-    return NULL;
+void cmi_coroutine_start(struct cmi_coroutine *cp) {
+    /* start the thing by transferring into it for the first time,
+     * loading register values from new stack */
 }
 
 void cmi_coroutine_stop(struct cmi_coroutine *victim) {

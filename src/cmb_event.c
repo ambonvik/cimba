@@ -45,6 +45,7 @@ static CMB_THREAD_LOCAL const uint16_t heap_chunk = 128;
 /* Test if tag a should go before b. If so, return true */
 static bool heap_check(const uint64_t a, const uint64_t b) {
     cmb_assert_release(cmi_event_queue != NULL);
+
     return ((cmi_event_queue[a].time < cmi_event_queue[b].time) ||
             ((cmi_event_queue[a].time == cmi_event_queue[b].time) &&
              (cmi_event_queue[a].priority > cmi_event_queue[b].priority)));
@@ -57,6 +58,7 @@ static bool heap_check(const uint64_t a, const uint64_t b) {
 static void heap_grow(void) {
     cmb_assert_release(cmi_event_queue != NULL);
     cmb_assert_release(heap_size < (UINT32_MAX - heap_chunk));
+
     heap_size += heap_chunk;
     const size_t new_size = (heap_size + 1) * sizeof(struct cmb_event_tag);
     cmi_event_queue = cmi_realloc(cmi_event_queue, new_size);
@@ -105,6 +107,7 @@ static void heap_down(uint64_t k) {
 /* Manage the event queue itself, reserving two slots for working space */
 void cmb_event_queue_init(double start_time) {
     cmb_assert_release(cmi_event_queue == NULL);
+
     cmi_event_sim_time = start_time;
     heap_size = heap_chunk;
     const size_t new_size = (heap_size + 2) * sizeof(struct cmb_event_tag);
@@ -115,6 +118,7 @@ void cmb_event_queue_init(double start_time) {
 /* Clean up, deallocating space */
 void cmb_event_queue_destroy(void) {
     cmb_assert_release(cmi_event_queue != NULL);
+
     cmi_free(cmi_event_queue);
     cmi_event_queue = NULL;
     heap_size = heap_count = 0;
@@ -132,6 +136,7 @@ void cmb_event_schedule(cmb_event_func *action,
     cmb_assert_release(rel_time >= 0.0);
     cmb_assert_release(heap_count <= heap_size);
     cmb_assert_release(cmi_event_queue != NULL);
+
     if (heap_count == heap_size) {
        heap_grow();
     }
@@ -179,6 +184,7 @@ int cmb_event_execute_next(void)
 /* Cancel the event in position idx and reshuffle heap */
 void cmb_event_cancel(const uint64_t index) {
     cmb_assert_release(index <= heap_count);
+
     if (heap_check(index, heap_count)) {
         cmi_event_queue[index] = cmi_event_queue[heap_count];
         heap_count--;
@@ -195,7 +201,8 @@ void cmb_event_cancel(const uint64_t index) {
 void cmb_event_reschedule(const uint64_t index, const double time) {
     cmb_assert_release(index <= heap_count);
     cmb_assert_release(time >= cmi_event_sim_time);
-    double tmp = cmi_event_queue[index].time;
+
+    const double tmp = cmi_event_queue[index].time;
     cmi_event_queue[index].time = time;
     if (time > tmp) {
         heap_down(index);
@@ -208,7 +215,8 @@ void cmb_event_reschedule(const uint64_t index, const double time) {
 /* Reprioritize the event in position idx and reshuffle heap */
 void cmb_event_reprioritize(const uint64_t index, const int16_t priority) {
     cmb_assert_release(index <= heap_count);
-    int tmp = cmi_event_queue[index].priority;
+
+    const int tmp = cmi_event_queue[index].priority;
     cmi_event_queue[index].priority = priority;
     if (priority < tmp) {
         heap_down(index);

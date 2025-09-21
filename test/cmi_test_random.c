@@ -587,7 +587,7 @@ static void test_quality_PERT(const double left, const double mode, const double
 }
 
 static void test_quality_chisquare(const double v) {
-    printf("\nQuality testing chisquare distribution, v %g", v);
+    printf("\nQuality testing chisquare distribution, v %g\n", v);
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_chisquare(v));
 
