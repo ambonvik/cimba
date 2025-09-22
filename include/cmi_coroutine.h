@@ -77,7 +77,7 @@ enum cmi_coroutine_state {
 };
 
 /* Bit pattern for last 64 bits of valid stack. */
-#define CMI_STACK_LIMIT_UNTOUCHED 0xACE0FBA5Eull
+#define CMI_STACK_LIMIT_UNTOUCHED 0xFA151F1AB1Eull
 
 /*
  * The coroutine struct contains data about current stack and where to return.

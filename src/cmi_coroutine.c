@@ -118,7 +118,7 @@ void cmi_coroutine_start(struct cmi_coroutine *cp,
     /* Start it by transferring into it for the first time,
      * loading register values from the new stack */
     cp->status = CMI_CORO_RUNNING;
-    printf("  transferring, cp %p arg %p\n", (void *)cp, arg);
+    printf("  transferring to cp %p arg %p\n", (void *)cp, arg);
     cmi_coroutine_transfer(cp, arg);
 }
 
