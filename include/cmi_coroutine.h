@@ -103,8 +103,8 @@ enum cmi_coroutine_state {
  * here as in the assembly code.
  */
 struct cmi_coroutine {
-    unsigned char *parent_stack_pointer;
-    unsigned char *caller_stack_pointer;
+    struct cmi_coroutine *parent;
+    struct cmi_coroutine *caller;
     unsigned char *stack;
     unsigned char *stack_base;
     unsigned char *stack_limit;
@@ -118,42 +118,32 @@ typedef void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *arg);
 
 /*
  * General functions to create, start, stop, and destroy coroutines
- *
- * cmi_coroutine_create allocates and initializes memory on the heap
- * The first argument is the coroutine function to run, the second its argument.
- * Coroutines only live on the heap, no separate _init function for local
- * coroutine objects on the stack. Remember to call cmi_coroutine_destroy to
- * free allocated memory.
  */
-extern struct cmi_coroutine *cmi_coroutine_create(cmi_coroutine_func *foo,
-                                                  void *arg,
-                                                  size_t stack_size);
-
-extern void cmi_coroutine_start(struct cmi_coroutine *cp);
+extern struct cmi_coroutine *cmi_coroutine_create(size_t stack_size);
+extern void cmi_coroutine_start(struct cmi_coroutine *cp,
+                                cmi_coroutine_func foo,
+                                void *arg);
 extern void cmi_coroutine_stop(struct cmi_coroutine *victim);
-extern void cmi_coroutine_exit(struct cmi_coroutine *myself, void *retval);
+extern void cmi_coroutine_exit(void *retval);
 extern void cmi_coroutine_reset(struct cmi_coroutine *victim);
 extern void cmi_coroutine_destroy(struct cmi_coroutine *victim);
 
 /*
  * The currently executing coroutine, if any.
- * Returns NULL if currently executing on the main stack.
  */
 extern struct cmi_coroutine *cmi_coroutine_get_current(void);
 
 /* The state of the given coroutine */
-extern enum cmi_coroutine_state cmi_coroutine_get_state(struct cmi_coroutine *corp);
+extern enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp);
 
 /* The exit value, if any. Will return NULL if the state is not _RETURNED */
-extern void *cmi_coroutine_get_exit_value(struct cmi_coroutine *corp);
+extern void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *corp);
 
 /* Symmetric coroutine pattern */
-extern void *cmi_coroutine_transfer(struct cmi_coroutine *from,
-                                    struct cmi_coroutine *to,
-                                    void *arg);
+extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *arg);
 
 /* Asymmetric coroutine pattern */
-extern void *cmi_coroutine_yield(struct cmi_coroutine *from, void *arg);
-extern void *cmi_coroutine_resume(struct cmi_coroutine *to, void *arg);
+extern void *cmi_coroutine_yield(void *arg);
+extern void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *arg);
 
 #endif /* CIMBA_CMB_COROUTINE_H */

@@ -34,27 +34,8 @@ global cmi_coroutine_trampoline
 global cmi_coroutine_get_rsp
 global cmi_coroutine_get_stackbase
 global cmi_coroutine_get_stacklimit
-global asm_test
 
 section .text
-
-; Just a stub for testing calling convention and argument passing
-asm_test:
-    push rbp
-    mov rbp, rsp
-    and rsp, -16
-    sub rsp, 32
-
-    mov rax, r8
-
-    mov rsp, rbp
-    pop rbp
-    ret
-
-; Return the current stack pointer
-cmi_coroutine_get_rsp:
-    mov rax, rsp
-    ret
 
 ; Return the current StackBase (top of allocated stack)
 cmi_coroutine_get_stackbase:
@@ -66,7 +47,6 @@ cmi_coroutine_get_stacklimit:
     mov rax, [gs:16]
     ret
 
-
 ;-------------------------------------------------------------------------------
 ; Macro to store relevant registers to current stack
 ; In effect taking a (sub-)continuation right here.
@@ -75,7 +55,7 @@ cmi_coroutine_get_stacklimit:
     mov rax, [gs:8]
     push rax
     ; Save NT_TIB StackLimit, the end of the stack (lowest address)
-    mov rax, [gs:16]
+    mov [gs:16], rax
     push rax
     ; Save flags register
     pushfq
@@ -91,10 +71,10 @@ cmi_coroutine_get_stacklimit:
     push r13
     push r14
     push r15
-    ; Align stack and allocate space for XMM registers.
-    ; XMM6-15 : 10 registers, 16 bytes each, 160 bytes
+    ; XMM6-15 : 10 registers, 16 bytes each, 160 bytes needed.
     ; We have pushed 12 8-byte registers so far, plus the
-    ; implicit return address, need 8 bytes extra to align
+    ; implicit RIP return address. We need 8 bytes extra to align
+    ; to 16-byte boundary again.
     sub rsp, 168
     ; Save XMM registers
     movaps [rsp + 144], xmm15
@@ -124,11 +104,6 @@ cmi_coroutine_get_stacklimit:
     movaps xmm14, [rsp + 128]
     movaps xmm15, [rsp + 144]
     add rsp, 168
-    ; Restore MXCSR
-    ldmxcsr [rsp + 4]
-    add rsp, 8
-    ; Restore flags
-    popfq
     ; Restore general purpose registers
     pop r15
     pop r14
@@ -138,6 +113,11 @@ cmi_coroutine_get_stacklimit:
     pop rdi
     pop rbp
     pop rbx
+    ; Restore MXCSR
+    ldmxcsr [rsp + 4]
+    add rsp, 8
+    ; Restore flags
+    popfq
     ; Restore NT_TIB stack info members.
     pop rax
     mov [gs:16], rax
@@ -161,29 +141,39 @@ cmi_coroutine_get_stacklimit:
 cmi_coroutine_context_switch:
     ; Push relevant registers to current stack
     save_context
-    ; Store stack pointer to address given as first argument
+    ; Store old stack pointer to address given as first argument
     mov [rcx], rsp
-    ; *** Fallthrough ***
-context_switch_finish:
-    ; Load the address given as second argument as new stack pointer
-    mov rsp, rdx
-    ; Restore relevant registers from new stack
+    ; Load content of the address given as second argument as new stack pointer
+    mov rsp, [rdx]
+    ; We are now in the new context, restore relevant registers from new stack
     load_context
     ; Load whatever was in the third argument as return value
     mov rax, r8
-    ; Return to wherever the new context was calling from
+    ; Return to wherever the new context was transferring from earlier
     ret
 
-; Launch a new coroutine by calling its function and wait as
-; the return at the end of its stack, ready to catch it if
-; the coroutine function attempts to return. If so, set the
-; coroutine state to finished and store its return value in
-; the coroutine struct before yielding for the last time.
+; Launch a new coroutine by calling its function and waiting, ready to catch it
+; if the coroutine function attempts to return. If it does, transfer
+; control to the exit function loaded in R15 with the value returned from
+; the coroutine function as argument.
 cmi_coroutine_trampoline:
     ; Not a leaf function, needs to obey Win64 ABI calling convention
     ; requiring the stack to be 16-byte aligned before a call
-    ; and requires 32 bytes of "shadow space" for the callee.
+    ; and requiring 32 bytes of "shadow space" for the callee.
+    ; Ensure alignment...
     and rsp, -16
+    ; ...and the shadow space
     sub rsp, 32
-
-; TODO - work out the details here
+    ; Will soon call foo(cp, arg). foo is now in R12, cp in R13, and arg in R14.
+    ; The arguments for foo need to be in RCX and RDX
+    mov rcx, r13
+    mov rdx, r14
+    ; Clear the return register. Probably not necessary, just to be sure.
+    xor rax, rax
+    ; ... and off it goes. We'll be waiting here in case it returns.
+    call r12
+    ; It did, its return value (if any) is now in RAX.
+    push rcx
+    mov rcx, rax
+    ; Jump to whatever exit function was given when setting up the trampoline
+    jmp r15

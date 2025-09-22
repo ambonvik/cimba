@@ -23,28 +23,13 @@
 #include "cmi_test.h"
 
 /* Assembly functions, see arch/cmi_coroutine_context_*.asm */
-extern int asm_test(int i, int j, int k);
-extern void *cmi_coroutine_get_rsp(void);
 extern void *cmi_coroutine_get_stackbase(void);
 extern void *cmi_coroutine_get_stacklimit(void);
 
 static void test_asm_calls() {
-    printf("Testing assembly calling conventions\n");
-    printf("Calls asm_test(17, 18, 19) ... ");
-    int r = asm_test(17, 18, 19);
-    printf("returned %d\n", r);
-
-    const int i = 42;
-    const int j = 43;
-    const int k = 44;
-    printf("Calls asm_test(%d, %d, %d) ... ", i, j, k);
-    r = asm_test(i, j, k);
-    printf("returned %d\n", r);
-
+    printf("Testing assembly get functions\n");
     void *sbp = cmi_coroutine_get_stackbase();
     printf("Current stack base: %p\n", sbp);
-    void *rsp = cmi_coroutine_get_rsp();
-    printf("Current stack pointer: %p\n", rsp);
     void *slp = cmi_coroutine_get_stacklimit();
     printf("Current stack limit: %p\n", slp);
     printf("Stack size: %llu\n", (uintptr_t)sbp - (uintptr_t)slp);
@@ -65,7 +50,8 @@ int main(void) {
 
     test_asm_calls();
 
-    struct cmi_coroutine *cp = cmi_coroutine_create(corofunc_1, NULL, 24 * 1024);
+    struct cmi_coroutine *cp = cmi_coroutine_create(24 * 1024);
+    cmi_coroutine_start(cp, corofunc_1, NULL);
 
     return 0;
 }
