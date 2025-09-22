@@ -130,24 +130,24 @@ cmi_coroutine_get_stacklimit:
 ;                                                      void **new,
 ;                                                      void *ret)
 ; Arguments:
-;   void **old - address for storing current stack pointer
-;   void **new - address for reading new stack pointer
-;   void *ret  - return value passed from old to new context
+;   void **old - RCX - address for storing current stack pointer
+;   void **new - RDX - address for reading new stack pointer
+;   void *ret  - R8  - return value passed from old to new context
 ; Return value:
-;   void *     - whatever was given as the third argument
+;   void *     - RAX - whatever was given as the third argument
 ; Error handling:
 ;   None - the samurai returns victorious or not at all
 ;
 cmi_coroutine_context_switch:
-    ; Push relevant registers to current stack
+    ; Push all callee-saved registers to current stack
     save_context
-    ; Store old stack pointer to address given as first argument
+    ; Store old stack pointer to address given as first argument RCX
     mov [rcx], rsp
-    ; Load content of the address given as second argument as new stack pointer
+    ; Load content of the address in second argument RDX as new stack pointer
     mov rsp, [rdx]
-    ; We are now in the new context, restore relevant registers from new stack
+    ; We are now in the new context, restore registers from new stack
     load_context
-    ; Load whatever was in the third argument as return value
+    ; Load whatever was in the third argument R8 as return value in RAX
     mov rax, r8
     ; Return to wherever the new context was transferring from earlier
     ret
@@ -164,16 +164,19 @@ cmi_coroutine_trampoline:
     and rsp, -16
     ; ...and the shadow space
     sub rsp, 32
-    ; Will soon call foo(cp, arg). foo is now in R12, cp in R13, and arg in R14.
-    ; The arguments for foo need to be in RCX and RDX
+    ; Will soon call coroutine function foo(cp, arg).
+    ; The address of foo is now in R12, cp in R13, and arg in R14.
+    ; The arguments for foo need to be in RCX and RDX, move them there.
     mov rcx, r13
     mov rdx, r14
     ; Clear the return register. Probably not necessary, just to be sure.
     xor rax, rax
-    ; ... and off it goes. We'll be waiting here in case it returns.
+    ; And off it goes. We'll be waiting here in case it returns.
     call r12
-    ; It did, its return value (if any) is now in RAX.
+    ; If we arrive here, it did return. The return value is now in RAX.
+    ; Push RCX to (un)align stack to 16-byte boundary since the jmp will
+    ; not be storing a return pointer before the callee stack frame.
     push rcx
     mov rcx, rax
-    ; Jump to whatever exit function was given when setting up the trampoline
+    ; Jump to whatever exit function was given when setting up the trampoline.
     jmp r15
