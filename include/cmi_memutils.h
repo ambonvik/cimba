@@ -62,13 +62,24 @@ inline void cmi_free(void *p) {
     free(p);
 }
 
-static inline void *cmi_memcpy(void* dest, const void* src, const size_t sz ) {
+static inline void *cmi_memcpy(void* dest, const void* src, const size_t sz) {
     cmb_assert_debug(dest != NULL);
     cmb_assert_debug(src != NULL);
     cmb_assert_debug(sz > 0);
 
     void *rp = memcpy(dest, src, sz);
     cmb_assert_release(rp != NULL);
+
+    return rp;
+}
+
+static inline void *cmi_memset(void *ptr, const int c, const size_t n) {
+    cmb_assert_debug(ptr != NULL);
+    cmb_assert_debug(n > 0);
+
+    void *rp = memset(ptr, c, n);
+    cmb_assert_release(rp != NULL);
+    cmb_assert_debug(rp == ptr);
 
     return rp;
 }
