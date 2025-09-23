@@ -43,6 +43,11 @@ extern void cmi_coroutine_trampoline(void);
  *    more if the called function has more than four arguments (we don't).
  *  - The return instruction pointer (RIP) follows next, before the function's
  *    own stack frame for storing registers and local variables.
+ *  - When first entering a function, the stack is 8 bytes off the 16-byte
+ *    alignment, since the return instruction pointer is pushed to a previously
+ *    aligned stack.
+ *  - Before pushing 128-bit XMM registers to the stack, it needs to be 16-byte
+ *    aligned again.
  *
  * See also:
  *  https://en.wikipedia.org/wiki/X86_calling_conventions#Microsoft_x64_calling_convention
@@ -68,26 +73,40 @@ extern void cmi_coroutine_trampoline(void);
  * function as its argument if that function ever returns.
  */
 
-/* Stack sanity check, Win64-specific */
-bool cmi_coroutine_stack_valid(struct cmi_coroutine *cp) {
+/* Bit pattern for last 64 bits of valid stack. */
+#define CMI_STACK_LIMIT_UNTOUCHED 0xFA151F1AB1Eull
+
+#ifndef NASSERT
+
+ /* Stack sanity check, Win64-specific */
+ bool cmi_coroutine_stack_valid(struct cmi_coroutine *cp) {
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
     cmb_assert_debug(cp->stack_limit != NULL);
-    if (cp->stack != NULL) {
+
+    struct cmi_coroutine *cp_main = cmi_coroutine_get_main();
+    if (cp == cp_main) {
+        cmb_assert_debug(cp->status == CMI_CORO_RUNNING);
+        cmb_assert_debug(cp->stack == NULL);
+        if (cp->stack_pointer != NULL) {
+            cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
+            cmb_assert_debug((uintptr_t *)cp->stack_pointer < (uintptr_t *)cp->stack_base);
+            cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
+        }
+    }
+    else {
+        cmb_assert_debug(cp->stack != NULL);
         cmb_assert_debug(cp->stack_pointer != NULL);
         cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
         cmb_assert_debug((uintptr_t *)cp->stack_pointer < (uintptr_t *)cp->stack_base);
         cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
-    }
-    else if (cp->stack_pointer != NULL) {
-        /* Main coroutine with a stack pointer recorded already */
-        cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
-        cmb_assert_debug((uintptr_t *)cp->stack_pointer < (uintptr_t *)cp->stack_base);
-        cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
+        cmb_assert_debug(*((uint64_t *)cp->stack_limit) == CMI_STACK_LIMIT_UNTOUCHED);
     }
 
     return true;
-}
+ }
+
+#endif /* NASSERT */
 
 void cmi_coroutine_context_init(struct cmi_coroutine *cp,
                                 cmi_coroutine_func *foo,
@@ -95,6 +114,15 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp,
     cmb_assert_release(cp != NULL);
     cmb_assert_debug(cp->stack != NULL),
     cmb_assert_debug(cp->stack_base != NULL);
+
+    /* Make sure we can recognize if something overwrites the end of stack */
+    cp->stack_limit = cp->stack;
+    while (((uintptr_t)cp->stack_limit % 16u) != 0u) {
+        /* Counting up */
+        cp->stack_limit++;
+    }
+
+    *(uint64_t *)cp->stack_limit = CMI_STACK_LIMIT_UNTOUCHED;
 
     /* Top end of stack, ensure 16-byte alignment */
     while (((uintptr_t)cp->stack_base % 16u) != 0u) {
@@ -117,7 +145,7 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp,
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)(cp->stack_base);
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)(cp->stack);
+    *(uint64_t *)stkptr = (uintptr_t)(cp->stack_limit);
 
     /* Clear the flags register */
     stkptr -= 8u;
@@ -165,15 +193,5 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp,
 
     /* Store the stack pointer RSP */
     cp->stack_pointer = stkptr;
-    cmb_assert_debug(((uintptr_t)(cp->stack_pointer) % 16u) == 0u);
-
-    /* Make sure we can recognize if something overwrites the end of stack */
-    cp->stack_limit = cp->stack;
-    while (((uintptr_t)cp->stack_limit % 16u) != 0u) {
-        /* Counting up */
-        cp->stack_limit++;
-    }
-
-    *(uint64_t *)cp->stack_limit = CMI_STACK_LIMIT_UNTOUCHED;
-    cmb_assert_debug(*((uint64_t *)cp->stack_limit) == CMI_STACK_LIMIT_UNTOUCHED);
+    cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 }

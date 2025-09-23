@@ -74,6 +74,7 @@
 #include <stddef.h>
 
 #include "cmb_assert.h"
+#include "cmi_config.h"
 
 /*
  * Possible states of a coroutine
@@ -85,9 +86,6 @@ enum cmi_coroutine_state {
     CMI_CORO_RUNNING = 1,
     CMI_CORO_FINISHED = 2
 };
-
-/* Bit pattern for last 64 bits of valid stack. */
-#define CMI_STACK_LIMIT_UNTOUCHED 0xFA151F1AB1Eull
 
 /*
  * The coroutine struct contains data about current stack and where to return.
@@ -126,44 +124,21 @@ struct cmi_coroutine {
 /* The generic coroutine function type */
 typedef void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *arg);
 
-/*
- * General functions to create, start, stop, and destroy coroutines
- */
-extern struct cmi_coroutine *cmi_coroutine_create(size_t stack_size);
-extern void cmi_coroutine_start(struct cmi_coroutine *cp,
-                                cmi_coroutine_func foo,
-                                void *arg);
-extern void cmi_coroutine_exit(void *retval);
-extern void cmi_coroutine_destroy(struct cmi_coroutine *victim);
+extern CMB_THREAD_LOCAL struct cmi_coroutine *cmi_coroutine_current;
+extern CMB_THREAD_LOCAL struct cmi_coroutine *cmi_coroutine_main;
 
-extern struct cmi_coroutine *cmi_coroutine_get_current(void);
-extern struct cmi_coroutine *cmi_coroutine_get_main(void);
-
-/* Symmetric coroutine pattern */
-extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *arg);
-
-/* Asymmetric coroutine pattern */
-inline void *cmi_coroutine_yield(void *arg) {
-    const struct cmi_coroutine *cp = cmi_coroutine_get_current();
-    struct cmi_coroutine *to = cp->caller;
-    void *ret = cmi_coroutine_transfer(to, arg);
-    return ret;
+/* Simple getters */
+inline struct cmi_coroutine *cmi_coroutine_get_current(void) {
+    return cmi_coroutine_current;
 }
 
-inline void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *arg) {
+inline struct cmi_coroutine *cmi_coroutine_get_main(void) {
+    return cmi_coroutine_main;
+}
+
+inline enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp) {
     cmb_assert_release(cp != NULL);
-    void *ret = cmi_coroutine_transfer(cp, arg);
-    return ret;
-}
-
-inline void cmi_coroutine_stop(struct cmi_coroutine *victim) {
-    cmb_assert_release(victim != NULL);
-    if (victim == cmi_coroutine_get_current()) {
-        cmi_coroutine_exit(NULL);
-    }
-    else {
-        victim->status = CMI_CORO_FINISHED;
-    }
+    return cp->status;
 }
 
 inline void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp) {
@@ -171,9 +146,42 @@ inline void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp) {
     return cp->exit_value;
 }
 
-inline enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp) {
+/* Functions to manipulate (other) coroutines */
+extern struct cmi_coroutine *cmi_coroutine_create(size_t stack_size);
+extern void cmi_coroutine_start(struct cmi_coroutine *cp,
+                                cmi_coroutine_func foo,
+                                void *arg);
+extern void cmi_coroutine_stop(struct cmi_coroutine *victim);
+extern void cmi_coroutine_destroy(struct cmi_coroutine *victim);
+
+/* Equivalent to returning from the coroutine function. */
+extern void cmi_coroutine_exit(void *retval);
+
+/* Symmetric coroutine pattern, called from within coroutine */
+extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *arg);
+
+/* Asymmetric coroutine pattern yield/resume, called from within coroutine */
+inline void *cmi_coroutine_yield(void *arg) {
+    const struct cmi_coroutine *from = cmi_coroutine_current;
+    cmb_assert_release(from != NULL);
+
+    struct cmi_coroutine *to = from->caller;
+    cmb_assert_release(to != NULL);
+
+    void *ret = cmi_coroutine_transfer(to, arg);
+
+    /* Possibly much later */
+    return ret;
+}
+
+inline void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *arg) {
     cmb_assert_release(cp != NULL);
-    return cp->status;
+    cmb_assert_release(cp != cmi_coroutine_current);
+
+    void *ret = cmi_coroutine_transfer(cp, arg);
+
+    /* Possibly much later */
+    return ret;
 }
 
 #endif /* CIMBA_CMB_COROUTINE_H */

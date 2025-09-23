@@ -51,7 +51,7 @@ int main(void) {
     test_asm_calls();
 
     struct cmi_coroutine *cp = cmi_coroutine_create(24 * 1024);
-    cmi_coroutine_start(cp, corofunc_1, 0x5EAF00Dull);
+    cmi_coroutine_start(cp, corofunc_1, (void *)0x5EAF00Dull);
 
     return 0;
 }
