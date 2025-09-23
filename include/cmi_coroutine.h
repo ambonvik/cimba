@@ -8,27 +8,34 @@
  *
  * This "base class" covers both symmetric and asymmetric coroutine behavior:
  * - Symmetric coroutines can transfer control to any other coroutine in a
- *   peer-to-peer relationship, using the cmi_transfer(from, to, arg) function.
+ *   peer-to-peer relationship, using the cmi_transfer(to, arg) function.
+ *   A "from" argument is not necessary, since only one coroutine can have the
+ *   CPU execution thread at a time, and it will always be the currently
+ *   executing coroutine (cmi_coroutine_current) that is initiating the transfer.
  *   The argument will reappear as the return value of the cmi_transfer() on the
  *   receiving end.
  *
  * - Asymmetric coroutines only transfer control back to a caller coroutine,
  *   often on the main stack. This coroutine then selects the next one to
- *   be activated. This is done by cmi_yield(from, arg) / cmi_resume(to, arg)
- *   pairs. When yielding, control passes to the coroutine that last resumed the
- *   active coroutine. The argument passed through yield() appears as the return
- *   value of resume(), and vice versa, the argument given to resume() appears
- *   as the return value from yield().
+ *   be activated. This is done by cmi_yield(arg) / cmi_resume(to, arg)
+ *   pairs. Again, the "from" argument is not needed, since it can only be
+ *   called by the current coroutine at that point in time. When yielding,
+ *   control passes to the coroutine that last _resumed_ the active coroutine,
+ *   or that otherwise last transferred control into it.
+ *   The argument passed through yield() appears as the return value of
+ *   resume(), and vice versa, the argument given to resume() appears as the
+ *   return value from yield() on the other end of the implicit transfer.
  *
- * These coroutines can do both patterns, and can mix freely between them.
+ * The cmb_coroutines can do both patterns, and can mix freely between them.
  * E.g., the main execution thread can transfer control into some coroutine,
  * which can act in a yield/resume asymmetric producer/consumer relationship
  * with some other coroutine for a while, before transferring control to yet
  * another coroutine, which could abruptly decide to return to main.
+ * Transferring or yielding to a coroutine that is not running is an error.
  *
  * Coroutines can also be nested by creating and starting coroutines from other
  * coroutines. If the coroutine function returns, it will transfer control back
- * to the context it was started from. This will appear to the caller as a
+ * to the context it was _started_ from. This will appear to the caller as a
  * return from where it last transferred control out, not necessarily from the
  * call to start the daughther coroutine.
  *
@@ -64,6 +71,10 @@
 #ifndef CIMBA_CMB_COROUTINE_H
 #define CIMBA_CMB_COROUTINE_H
 
+#include <stddef.h>
+
+#include "cmb_assert.h"
+
 /*
  * Possible states of a coroutine
  * Running means that it has been started and has not yet ended, not necessarily
@@ -72,8 +83,7 @@
 enum cmi_coroutine_state {
     CMI_CORO_CREATED = 0,
     CMI_CORO_RUNNING = 1,
-    CMI_CORO_KILLED = 2,
-    CMI_CORO_RETURNED = 3
+    CMI_CORO_FINISHED = 2
 };
 
 /* Bit pattern for last 64 bits of valid stack. */
@@ -123,27 +133,47 @@ extern struct cmi_coroutine *cmi_coroutine_create(size_t stack_size);
 extern void cmi_coroutine_start(struct cmi_coroutine *cp,
                                 cmi_coroutine_func foo,
                                 void *arg);
-extern void cmi_coroutine_stop(struct cmi_coroutine *victim);
 extern void cmi_coroutine_exit(void *retval);
-extern void cmi_coroutine_reset(struct cmi_coroutine *victim);
 extern void cmi_coroutine_destroy(struct cmi_coroutine *victim);
 
-/*
- * The currently executing coroutine, if any.
- */
 extern struct cmi_coroutine *cmi_coroutine_get_current(void);
-
-/* The state of the given coroutine */
-extern enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp);
-
-/* The exit value, if any. Will return NULL if the state is not _RETURNED */
-extern void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *corp);
+extern struct cmi_coroutine *cmi_coroutine_get_main(void);
 
 /* Symmetric coroutine pattern */
 extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *arg);
 
 /* Asymmetric coroutine pattern */
-extern void *cmi_coroutine_yield(void *arg);
-extern void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *arg);
+inline void *cmi_coroutine_yield(void *arg) {
+    const struct cmi_coroutine *cp = cmi_coroutine_get_current();
+    struct cmi_coroutine *to = cp->caller;
+    void *ret = cmi_coroutine_transfer(to, arg);
+    return ret;
+}
+
+inline void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *arg) {
+    cmb_assert_release(cp != NULL);
+    void *ret = cmi_coroutine_transfer(cp, arg);
+    return ret;
+}
+
+inline void cmi_coroutine_stop(struct cmi_coroutine *victim) {
+    cmb_assert_release(victim != NULL);
+    if (victim == cmi_coroutine_get_current()) {
+        cmi_coroutine_exit(NULL);
+    }
+    else {
+        victim->status = CMI_CORO_FINISHED;
+    }
+}
+
+inline void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp) {
+    cmb_assert_release(cp != NULL);
+    return cp->exit_value;
+}
+
+inline enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp) {
+    cmb_assert_release(cp != NULL);
+    return cp->status;
+}
 
 #endif /* CIMBA_CMB_COROUTINE_H */
