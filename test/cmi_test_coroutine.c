@@ -42,17 +42,17 @@ static void test_simple_event(void) {
     struct cmb_coroutine *cp = cmb_coroutine_create(stksz);
     printf("Got %p, now start it\n", (void *)cp);
 
-    /* cmb_coroutine_start(cp) transfers control into the coroutine stack,
+    /* cmb_coroutine_start(cp) transfers control into the new coroutine,
      * saving the registers and stack pointer of the main continuation,
      * loading the prepared register values for the new coroutine,
-     * starts executing the coroutine function, and, since it
+     * starts executing the coroutine function, and, since this one
      * does not yield or resume, continues until the end where
      * the return is caught by the trampoline and control is
      * transferred back to its parent, i.e., here. It tests almost
-     * everything in the coroutine class right here.
+     * everything in the coroutine class in just these few lines.
      */
-    cmb_coroutine_start(cp, corofunc, (void *)0x5EAF00Dull);
-    printf("Survived, now back in main coroutine\n");
+    void *ret = cmb_coroutine_start(cp, corofunc, (void *)0x5EAF00Dull);
+    printf("Survived, now back in main coroutine, received %p\n", ret);
 
     /* Destroy the coroutine to free its memory allocation*/
     printf("Delete coroutine %p\n", (void *)cp);
@@ -88,11 +88,11 @@ static void *corofunc_2(struct cmb_coroutine *myself, void *arg) {
 /* A coroutine that transfers control to a partner coroutine and back */
 static void *corofunc_1(struct cmb_coroutine *myself, void *arg) {
     /* The arg is a disguised pointer to the other coroutine */
-    struct cmb_coroutine *buddy = (struct cmb_coroutine *)arg;
+    struct cmb_coroutine *buddy = arg;
     printf("corofunc_1(%p, %p) running\n", (void *)myself, (void *)buddy);
 
     /* We are evidently running, start the buddy as well. */
-    void *ret = cmb_coroutine_start(buddy, corofunc_2, myself);
+    void *ret = cmb_coroutine_start(buddy, corofunc_2, NULL);
     printf("corofunc_1: Back, now trade tickets for cookies\n");
 
     int cntr = 100;
@@ -118,6 +118,8 @@ static void test_asymmetric(void) {
     printf("Create two coroutines, stack size %llu\n", stksz);
     struct cmb_coroutine *cp1 = cmb_coroutine_create(stksz);
     struct cmb_coroutine *cp2 = cmb_coroutine_create(stksz);
+
+    /* Start cp1 and hence the entire circus */
     printf("Start %p\n", (void *)cp1);
     cmb_coroutine_start(cp1, corofunc_1, (void *)cp2);
     printf("Survived, now back in main coroutine\n");
