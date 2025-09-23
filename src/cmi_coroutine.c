@@ -108,7 +108,7 @@ struct cmi_coroutine *cmi_coroutine_create(const size_t stack_size) {
     return cp;
 }
 
-void cmi_coroutine_start(struct cmi_coroutine *cp,
+void *cmi_coroutine_start(struct cmi_coroutine *cp,
                          cmi_coroutine_func *foo,
                          void *arg) {
     cmb_assert_release(cp != NULL);
@@ -129,7 +129,8 @@ void cmi_coroutine_start(struct cmi_coroutine *cp,
      * loading register values from the new stack */
     cp->status = CMI_CORO_RUNNING;
     printf("  transferring to cp %p arg %p\n", (void *)cp, arg);
-    cmi_coroutine_transfer(cp, arg);
+    void *ret = cmi_coroutine_transfer(cp, arg);
+    return ret;
 }
 
 void cmi_coroutine_destroy(struct cmi_coroutine *victim) {

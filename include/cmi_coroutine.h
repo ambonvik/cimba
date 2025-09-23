@@ -148,7 +148,7 @@ inline void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp) {
 
 /* Functions to manipulate (other) coroutines */
 extern struct cmi_coroutine *cmi_coroutine_create(size_t stack_size);
-extern void cmi_coroutine_start(struct cmi_coroutine *cp,
+extern void *cmi_coroutine_start(struct cmi_coroutine *cp,
                                 cmi_coroutine_func foo,
                                 void *arg);
 extern void cmi_coroutine_stop(struct cmi_coroutine *victim);
@@ -177,6 +177,7 @@ inline void *cmi_coroutine_yield(void *arg) {
 inline void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *arg) {
     cmb_assert_release(cp != NULL);
     cmb_assert_release(cp != cmi_coroutine_current);
+    cmb_assert_release(cp->status == CMI_CORO_RUNNING);
 
     void *ret = cmi_coroutine_transfer(cp, arg);
 
