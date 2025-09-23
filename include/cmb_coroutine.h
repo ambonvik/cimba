@@ -1,10 +1,5 @@
 /*
- * cmi_coroutine.h - general stackful coroutines
- *
- * Considered an internal (cmi_*) class since the complete semantics of
- * coroutines are a bit too general for simulation purposes, but we will
- * build the cmb_process class of asymmetric coroutines for direct use in
- * the simulation on top of these.
+ * cmb_coroutine.h - general stackful coroutines
  *
  * This "base class" covers both symmetric and asymmetric coroutine behavior:
  * - Symmetric coroutines can transfer control to any other coroutine in a
@@ -12,7 +7,7 @@
  *   A "from" argument is not necessary, since only one coroutine can have the
  *   CPU execution thread at a time, and it will always be the currently
  *   executing coroutine (cmi_coroutine_current) that is initiating the transfer.
- *   The argument will reappear as the return value of the cmi_transfer() on the
+ *   The argument will reappear as the return value of the cmb_transfer() on the
  *   receiving end.
  *
  * - Asymmetric coroutines only transfer control back to a caller coroutine,
@@ -81,10 +76,10 @@
  * Running means that it has been started and has not yet ended, not necessarily
  * that it is the coroutine currently executing instructions.
  */
-enum cmi_coroutine_state {
-    CMI_CORO_CREATED = 0,
-    CMI_CORO_RUNNING = 1,
-    CMI_CORO_FINISHED = 2
+enum cmb_coroutine_state {
+    CMB_CORO_CREATED = 0,
+    CMB_CORO_RUNNING = 1,
+    CMB_CORO_FINISHED = 2
 };
 
 /*
@@ -110,76 +105,76 @@ enum cmi_coroutine_state {
  * Using unsigned char * as raw byte addresses to have same offset calculation
  * here as in the assembly code.
  */
-struct cmi_coroutine {
-    struct cmi_coroutine *parent;
-    struct cmi_coroutine *caller;
+struct cmb_coroutine {
+    struct cmb_coroutine *parent;
+    struct cmb_coroutine *caller;
     unsigned char *stack;
     unsigned char *stack_base;
     unsigned char *stack_limit;
     unsigned char *stack_pointer;
-    enum cmi_coroutine_state status;
+    enum cmb_coroutine_state status;
     void *exit_value;
 };
 
 /* The generic coroutine function type */
-typedef void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *arg);
+typedef void *(cmi_coroutine_func)(struct cmb_coroutine *cp, void *arg);
 
-extern CMB_THREAD_LOCAL struct cmi_coroutine *cmi_coroutine_current;
-extern CMB_THREAD_LOCAL struct cmi_coroutine *cmi_coroutine_main;
+extern CMB_THREAD_LOCAL struct cmb_coroutine *cmi_coroutine_current;
+extern CMB_THREAD_LOCAL struct cmb_coroutine *cmi_coroutine_main;
 
 /* Simple getters */
-inline struct cmi_coroutine *cmi_coroutine_get_current(void) {
+inline struct cmb_coroutine *cmb_coroutine_get_current(void) {
     return cmi_coroutine_current;
 }
 
-inline struct cmi_coroutine *cmi_coroutine_get_main(void) {
+inline struct cmb_coroutine *cmb_coroutine_get_main(void) {
     return cmi_coroutine_main;
 }
 
-inline enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp) {
+inline enum cmb_coroutine_state cmb_coroutine_get_status(const struct cmb_coroutine *cp) {
     cmb_assert_release(cp != NULL);
     return cp->status;
 }
 
-inline void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp) {
+inline void *cmb_coroutine_get_exit_value(const struct cmb_coroutine *cp) {
     cmb_assert_release(cp != NULL);
     return cp->exit_value;
 }
 
 /* Functions to manipulate (other) coroutines */
-extern struct cmi_coroutine *cmi_coroutine_create(size_t stack_size);
-extern void *cmi_coroutine_start(struct cmi_coroutine *cp,
+extern struct cmb_coroutine *cmb_coroutine_create(size_t stack_size);
+extern void *cmb_coroutine_start(struct cmb_coroutine *cp,
                                 cmi_coroutine_func foo,
                                 void *arg);
-extern void cmi_coroutine_stop(struct cmi_coroutine *victim);
-extern void cmi_coroutine_destroy(struct cmi_coroutine *victim);
+extern void cmb_coroutine_stop(struct cmb_coroutine *victim);
+extern void cmb_coroutine_destroy(struct cmb_coroutine *victim);
 
 /* Equivalent to returning from the coroutine function. */
-extern void cmi_coroutine_exit(void *retval);
+extern void cmb_coroutine_exit(void *retval);
 
 /* Symmetric coroutine pattern, called from within coroutine */
-extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *arg);
+extern void *cmb_coroutine_transfer(struct cmb_coroutine *to, void *arg);
 
 /* Asymmetric coroutine pattern yield/resume, called from within coroutine */
-inline void *cmi_coroutine_yield(void *arg) {
-    const struct cmi_coroutine *from = cmi_coroutine_current;
+inline void *cmb_coroutine_yield(void *arg) {
+    const struct cmb_coroutine *from = cmi_coroutine_current;
     cmb_assert_release(from != NULL);
 
-    struct cmi_coroutine *to = from->caller;
+    struct cmb_coroutine *to = from->caller;
     cmb_assert_release(to != NULL);
 
-    void *ret = cmi_coroutine_transfer(to, arg);
+    void *ret = cmb_coroutine_transfer(to, arg);
 
     /* Possibly much later */
     return ret;
 }
 
-inline void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *arg) {
+inline void *cmb_coroutine_resume(struct cmb_coroutine *cp, void *arg) {
     cmb_assert_release(cp != NULL);
     cmb_assert_release(cp != cmi_coroutine_current);
-    cmb_assert_release(cp->status == CMI_CORO_RUNNING);
+    cmb_assert_release(cp->status == CMB_CORO_RUNNING);
 
-    void *ret = cmi_coroutine_transfer(cp, arg);
+    void *ret = cmb_coroutine_transfer(cp, arg);
 
     /* Possibly much later */
     return ret;

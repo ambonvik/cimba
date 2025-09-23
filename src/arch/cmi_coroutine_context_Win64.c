@@ -21,7 +21,7 @@
 #include <stdio.h>
 
 #include "cmb_assert.h"
-#include "cmi_coroutine.h"
+#include "cmb_coroutine.h"
 #include "cmi_memutils.h"
 
 /* Assembly function, see src/arc/cmi_coroutine_context_*.asm */
@@ -58,7 +58,7 @@ extern void cmi_coroutine_trampoline(void);
  * Here, we set up a context with the launcher/trampoline function as the
  * "return" address and register values that prepare for launching the
  * coroutine function foo(coro, arg) on first transfer, and for calling
- * cmi_coroutine_exit to catch its exit value if the coroutine function ever
+ * cmb_coroutine_exit to catch its exit value if the coroutine function ever
  * returns.
  *
  * In our coroutines:
@@ -68,7 +68,7 @@ extern void cmi_coroutine_trampoline(void);
  *
  * We will pre-load the address of the coroutine function foo(cp, arg) in R12,
  * the coroutine pointer cp in R13, and the void *arg in R14. We will also
- * store the address of cmi_coroutine_exit in R15 before the first transfer into
+ * store the address of cmb_coroutine_exit in R15 before the first transfer into
  * the new coroutine, to be called with the return value from the coroutine
  * function as its argument if that function ever returns.
  */
@@ -79,14 +79,13 @@ extern void cmi_coroutine_trampoline(void);
 #ifndef NASSERT
 
  /* Stack sanity check, Win64-specific */
- bool cmi_coroutine_stack_valid(struct cmi_coroutine *cp) {
+ bool cmi_coroutine_stack_valid(struct cmb_coroutine *cp) {
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
     cmb_assert_debug(cp->stack_limit != NULL);
 
-    struct cmi_coroutine *cp_main = cmi_coroutine_get_main();
-    if (cp == cp_main) {
-        cmb_assert_debug(cp->status == CMI_CORO_RUNNING);
+    if (cp == cmi_coroutine_main) {
+        cmb_assert_debug(cp->status == CMB_CORO_RUNNING);
         cmb_assert_debug(cp->stack == NULL);
         if (cp->stack_pointer != NULL) {
             cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
@@ -108,7 +107,7 @@ extern void cmi_coroutine_trampoline(void);
 
 #endif /* NASSERT */
 
-void cmi_coroutine_context_init(struct cmi_coroutine *cp,
+void cmi_coroutine_context_init(struct cmb_coroutine *cp,
                                 cmi_coroutine_func *foo,
                                 void *arg) {
     cmb_assert_release(cp != NULL);
@@ -185,7 +184,7 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp,
 
     /* Address of exit function in R15 */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_exit;
+    *(uint64_t *)stkptr = (uintptr_t)cmb_coroutine_exit;
 
     /* 10 registers * 16 bytes + 8 bytes for 16-byte alignment */
     stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
