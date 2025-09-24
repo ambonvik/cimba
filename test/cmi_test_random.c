@@ -867,6 +867,8 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
         const double ips_alias = MAX_ITER / t_alias;
         const double speedup = (ips_alias - ips_simple) / ips_simple;
         printf("%u\t%9.4g\t%9.4g\t%+8.4g%%\n", n, ips_simple, ips_alias, 100.0 * speedup);
+
+        cmi_test_print_line("=");
     }
 }
 
@@ -935,5 +937,6 @@ int main(void) {
     test_quality_vose_alias(7, q);
     test_speed_vose_alias(5, 50, 5);
 
+    cmi_test_print_line("*");
     return 0;
 }

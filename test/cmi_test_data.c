@@ -31,8 +31,6 @@
 #define NUM_BINS 20u
 
 static void test_summary(void) {
-    cmb_random_init(cmi_test_create_seed());
-
     printf("\nTesting data summaries\n");
     printf("Declaring local variable data summary on stack and initializing it: cmb_summary_init\n");
     struct cmb_summary ds;
@@ -86,8 +84,6 @@ static void test_summary(void) {
 }
 
 static void test_wsummary(void) {
-    cmb_random_init(cmi_test_create_seed());
-
     printf("\nTesting weighted data summaries\n");
     printf("Weighted and unweighted in parallel, all weights set to 1.0\n");
     struct cmb_summary ds;
@@ -169,8 +165,6 @@ static void test_wsummary(void) {
 }
 
 void test_dataset(void) {
-    cmb_random_init(cmi_test_create_seed());
-
     printf("\nTesting datasets\n");
     printf("Local variable dataset on stack: cmb_dataset_init\n");
 
@@ -272,8 +266,6 @@ void test_dataset(void) {
 }
 
 void test_timeseries(void) {
-    cmb_random_init(cmi_test_create_seed());
-
     printf("\nTesting timeseries\n");
     printf("Creating timeseries: cmb_timeseries_create\n");
 
@@ -384,14 +376,15 @@ void test_timeseries(void) {
 }
 
 int main(void) {
-   cmi_test_print_line("*");
-   printf("**********************      Testing data collectors       **********************\n");
-   cmi_test_print_line("*");
+    cmi_test_print_line("*");
+    printf("**********************      Testing data collectors       **********************\n");
+    cmi_test_print_line("*");
+    cmb_random_init(cmb_get_hwseed());
 
-   test_summary();
-   test_wsummary();
-   test_dataset();
-   test_timeseries();
+    test_summary();
+    test_wsummary();
+    test_dataset();
+    test_timeseries();
 
-   return 0;
+    return 0;
 }

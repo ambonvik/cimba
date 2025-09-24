@@ -143,9 +143,15 @@ inline void *cmb_coroutine_get_exit_value(const struct cmb_coroutine *cp) {
 
 /* Functions to manipulate (other) coroutines */
 extern struct cmb_coroutine *cmb_coroutine_create(size_t stack_size);
+
+/* Note that cmb_coroutine_start transfers into the new coroutine and only
+ * returns when that (or some other) coroutine yields / transfers back here
+ * passing some return value through the yield, resume, or transfer to here.
+ */
 extern void *cmb_coroutine_start(struct cmb_coroutine *cp,
                                 cmi_coroutine_func foo,
                                 void *arg);
+
 extern void cmb_coroutine_stop(struct cmb_coroutine *victim);
 extern void cmb_coroutine_destroy(struct cmb_coroutine *victim);
 
@@ -159,9 +165,11 @@ extern void *cmb_coroutine_transfer(struct cmb_coroutine *to, void *arg);
 inline void *cmb_coroutine_yield(void *arg) {
     const struct cmb_coroutine *from = cmi_coroutine_current;
     cmb_assert_release(from != NULL);
+    cmb_assert_release(from->status == CMB_CORO_RUNNING);
 
     struct cmb_coroutine *to = from->caller;
     cmb_assert_release(to != NULL);
+    cmb_assert_release(to->status == CMB_CORO_RUNNING);
 
     void *ret = cmb_coroutine_transfer(to, arg);
 

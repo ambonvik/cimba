@@ -497,7 +497,7 @@ static void cmi_dataset_heapify(const uint64_t un,
 }
 
 /* Heapsort from smallest to largest value */
-void cmb_dataset_sort(struct cmb_dataset *dsp) {
+void cmb_dataset_sort(const struct cmb_dataset *dsp) {
     cmb_assert_release(dsp != NULL);
 
     if (dsp->xa != NULL) {
@@ -651,47 +651,53 @@ void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp) {
  * The only external callable functions are cmb_dataset_print_histogram and
  * cmb_timeseries_print_histogram, the rest (cmi_*) are internal helper functions.
  */
+static unsigned char symbol_full = '#';
+static unsigned char symbol_half = '=';
+static unsigned char symbol_thin = '-';
+static unsigned char symbol_newline = '\n';
+static unsigned char symbol_bar = '|';
+static unsigned char symbol_space = ' ';
+
 static void cmi_data_print_stars(FILE *fp,
                                  const double scale,
                                  const double binval) {
-    uint64_t nstars = (uint64_t)(binval / scale);
-    const double rem = binval / scale - (double)nstars;
+    uint64_t nfilled = (uint64_t)(binval / scale);
+    const double rem = binval / scale - (double)nfilled;
 
-    while (nstars-- > 0) {
-        const int r = fprintf(fp, "*");
-        cmb_assert_release(r > 0);
+    while (nfilled-- > 0) {
+        const int r = fputc(symbol_full, fp);
+        cmb_assert_release(r == symbol_full);
     }
 
-    const double min_rem_plus = 0.5;
-    if (rem >= min_rem_plus) {
-        const int r = fprintf(fp, "+");
-        cmb_assert_release(r > 0);
+    const double min_rem_half = 0.5;
+    if (rem >= min_rem_half) {
+        const int r = fputc(symbol_half, fp);
+        cmb_assert_release(r == symbol_half);
     }
     else if (rem > 0.0) {
-        const int r = fprintf(fp, "-");
-        cmb_assert_release(r > 0);
+        const int r = fputc(symbol_thin, fp);
+        cmb_assert_release(r == symbol_thin);
     }
 
-    const int r = fprintf(fp, "\n");
-    cmb_assert_release(r > 0);
+    const int r = fputc(symbol_newline, fp);
+    cmb_assert_release(r == symbol_newline);
 }
 
 static void cmi_data_print_chars(FILE *fp,
-                                 const char *str,
+                                 const unsigned char c,
                                  const uint16_t repeats) {
-    cmb_assert_release(str != NULL);
     for (uint16_t ui = 0; ui < repeats; ui++) {
-        const int r = fprintf(fp, "%s", str);
-        cmb_assert_release(r > 0);
+        const int r = fputc(c, fp);;
+        cmb_assert_release(r == c);
     }
 }
 
 static void cmi_data_print_line(FILE *fp,
-                                const char *str,
+                                const unsigned char c,
                                 const uint16_t repeats) {
-    cmi_data_print_chars(fp, str, repeats);
-    int r = fprintf(fp, "\n");
-    cmb_assert_release(r > 0);
+    cmi_data_print_chars(fp, c, repeats);
+    const int r = fputc(symbol_newline, fp);
+    cmb_assert_release(r == symbol_newline);
 }
 
 /*
@@ -774,7 +780,7 @@ static void cmi_data_print_histogram(const struct cmi_data_histogram *hp,
     const double scale = hp->binmax / (double)max_stars;
 
     /* Print the histogram */
-    cmi_data_print_line(fp, "-", line_length);
+    cmi_data_print_line(fp, symbol_thin, line_length);
     int r = fprintf(fp, "( -Infinity, %#10.4g)   |", hp->low_lim);
     cmb_assert_release(r > 0);
     cmi_data_print_stars(fp, scale, hp->hbins[0u]);
@@ -789,7 +795,7 @@ static void cmi_data_print_histogram(const struct cmi_data_histogram *hp,
     r = fprintf(fp, "[%#10.4g,  Infinity )   |", hp->high_lim);
     cmb_assert_release(r > 0);
     cmi_data_print_stars(fp, scale, hp->hbins[hp->num_bins - 1u]);
-    cmi_data_print_line(fp, "-", line_length);
+    cmi_data_print_line(fp, symbol_thin, line_length);
 }
 
 static void cmi_data_destroy_histogram(struct cmi_data_histogram *hp) {
@@ -953,49 +959,49 @@ static void cmi_data_print_bar(FILE *fp,
     cmb_assert_release((acfval >= -1.0) && (acfval <= 1.0));
 
     const double bar_width = (double)max_bar_width * fabs(acfval);
-    const uint16_t num_stars = (uint16_t)floor(bar_width);
-    cmb_assert_debug(num_stars <= max_bar_width);
-    const double rem = bar_width - num_stars;
+    const uint16_t num_filled = (uint16_t)floor(bar_width);
+    cmb_assert_debug(num_filled <= max_bar_width);
+    const double rem = bar_width - num_filled;
     cmb_assert_debug((rem >= 0.0) && (rem < 1.0));
 
     /* Smallest remainder to qualify for a plus sign */
     const double min_rem_plus = 0.5;
 
     if (acfval < 0.0) {
-        const uint16_t num_spaces = max_bar_width - num_stars - 1;
-        cmi_data_print_chars(fp, " ", num_spaces);
+        const uint16_t num_spaces = max_bar_width - num_filled - 1;
+        cmi_data_print_chars(fp, symbol_space, num_spaces);
 
         if (rem > min_rem_plus) {
-            const int r = fprintf(fp, "+");
-            cmb_assert_release(r > 0);
+            const int r = fputc(symbol_half, fp);
+            cmb_assert_release(r == symbol_half);
         }
         else if (rem > 0.0) {
-            const int r = fprintf(fp, "-");
-            cmb_assert_release(r > 0);
+            const int r = fputc(symbol_thin, fp);
+            cmb_assert_release(r == symbol_thin);
         }
         else {
-            const int r = fprintf(fp, " ");
-            cmb_assert_release(r > 0);
+            const int r = fputc(symbol_space, fp);
+            cmb_assert_release(r == symbol_space);
         }
 
-        cmi_data_print_chars(fp, "*", num_stars);
-        const int r = fprintf(fp, "|");
-        cmb_assert_release(r > 0);
+        cmi_data_print_chars(fp, symbol_full, num_filled);
+        const int r = fputc(symbol_bar, fp);;
+        cmb_assert_release(r == symbol_bar);
     }
     else {
         const uint16_t num_spaces = max_bar_width;
-        cmi_data_print_chars(fp, " ", num_spaces);
-        int r = fprintf(fp, "|");
-        cmb_assert_release(r > 0);
-        cmi_data_print_chars(fp, "*", num_stars);
+        cmi_data_print_chars(fp, symbol_space, num_spaces);
+        int r = fputc(symbol_bar, fp);;
+        cmb_assert_release(r == symbol_bar);
+        cmi_data_print_chars(fp, symbol_full, num_filled);
 
         if (rem > min_rem_plus) {
-            r = fprintf(fp, "+");
-            cmb_assert_release(r > 0);
+            r = fputc(symbol_half, fp);
+            cmb_assert_release(r == symbol_half);
         }
         else if (rem > 0.0) {
-            r = fprintf(fp, "-");
-            cmb_assert_release(r > 0);
+            r = fputc(symbol_thin, fp);;
+            cmb_assert_release(r == symbol_thin);
         }
     }
 }
@@ -1022,17 +1028,17 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
     /* Max width of the bar either side of zero */
     const uint16_t max_bar_width = (line_length - 14u) / 2u;
 
-    cmi_data_print_chars(fp, " ", 11u);
+    cmi_data_print_chars(fp, symbol_space, 11u);
     int r = fprintf(fp, "-1.0");
     cmb_assert_release(r > 0);
-    cmi_data_print_chars(fp, " ", max_bar_width - 3u);
+    cmi_data_print_chars(fp, symbol_space, max_bar_width - 3u);
     r = fprintf(fp, "0.0");
     cmb_assert_release(r > 0);
-    cmi_data_print_chars(fp, " ", max_bar_width - 3u);
+    cmi_data_print_chars(fp, symbol_space, max_bar_width - 3u);
     r = fprintf(fp, "1.0\n");
     cmb_assert_release(r > 0);
 
-    cmi_data_print_line(fp, "-", line_length);
+    cmi_data_print_line(fp, symbol_thin, line_length);
     for (unsigned ui = 1u; ui <= max_lag; ui++) {
         r = fprintf(fp, "%4u  %#6.3f ", ui, acf[ui]);
         cmb_assert_release(r > 0);
@@ -1041,7 +1047,7 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
         cmb_assert_release(r > 0);
     }
 
-    cmi_data_print_line(fp, "-", line_length);
+    cmi_data_print_line(fp, symbol_thin, line_length);
     if (free_acf) {
         cmi_free(acf);
     }
@@ -1052,6 +1058,10 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
 struct cmb_timeseries *cmb_timeseries_create(void) {
     struct cmb_timeseries *tsp = cmi_malloc(sizeof *tsp);
     struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    dsp->cursize = 0u;
+    dsp->cnt = 0u;
+    dsp->min = DBL_MAX;
+    dsp->max = -DBL_MAX;
     dsp->xa = NULL;
     tsp->ta = NULL;
     tsp->wa = NULL;

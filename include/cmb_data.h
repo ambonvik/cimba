@@ -298,7 +298,7 @@ inline void cmb_dataset_clear(struct cmb_dataset *dsp) {
 extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
 
 /* Sort v[] in ascending order */
-extern void cmb_dataset_sort(struct cmb_dataset *dsp);
+extern void cmb_dataset_sort(const struct cmb_dataset *dsp);
 
 /*
  * Add a single value to a dataset, resizing the array as needed.
