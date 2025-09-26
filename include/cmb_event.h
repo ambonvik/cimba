@@ -49,6 +49,7 @@
 #ifndef CIMBA_CMB_EVENT_H
 #define CIMBA_CMB_EVENT_H
 
+#include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
 
@@ -61,13 +62,24 @@ typedef void (cmb_event_func)(void*, void*);
 /*
  * The tag to store an event with its context.
  * These tags only exist as members of the event queue, never seen alone.
+ * Padded to exactly 64 bytes size.
  */
 struct cmb_event_tag {
+    uint64_t handle;
+    uint64_t hash_index;
     cmb_event_func *action;
     void *subject;
     void *object;
     double time;
     int16_t priority;
+    unsigned char padding_bytes[14];
+};
+
+/*
+ * Hash table mapping from handle to event queue position */
+struct cmb_event_hashkey {
+    uint64_t handle;
+    uint64_t heap_index;
 };
 
 /* The event queue */

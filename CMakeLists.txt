@@ -10,7 +10,8 @@ set(SOURCES src/cmb_data.c src/cmb_random.c src/cmb_event.c src/cmb_logger.c src
         src/arch/cmb_random_hwseed_Win64.c
         src/cmb_coroutine.c
         src/arch/cmb_random_hwseed_Win64.c
-        src/arch/cmi_coroutine_context_Win64.c)
+        src/arch/cmi_coroutine_context_Win64.c
+        test/cmi_config.c)
 set(HEADERS include/cmb_data.h include/cmb_random.h include/cmb_event.h include/cmb_logger.h include/cmi_config.h include/cmi_memutils.h
         include/cmb_assert.h include/cmb_coroutine.h)
 

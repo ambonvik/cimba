@@ -18,6 +18,7 @@
  * limitations under the License.
  */
 #include <stdio.h>
+#include <stdint.h>
 #include <time.h>
 
 #include "cmb_event.h"
@@ -44,7 +45,9 @@ static const char *subjects[] = {"this", "self", "me"};
 static const char *objects[] = {"that thing", "some thing", "the other thing"};
 
 int main(void) {
-    cmb_random_init(cmi_test_create_seed());
+    cmb_random_init(cmb_random_get_hwseed());
+    size_t pgsz = cmi_get_pagesize();
+    printf("Page size %llu\n", pgsz);
 
     printf("Testing event queue\n");
     double start_time = 3.0;

@@ -34,6 +34,9 @@ CMB_THREAD_LOCAL double cmi_event_sim_time = 0.0;
 /* The event queue, a heap stored as a resizable array */
 CMB_THREAD_LOCAL struct cmb_event_tag *cmi_event_queue = NULL;
 
+/* The event counter, for giving our new handle numbers */
+static CMB_THREAD_LOCAL uint64_t cmi_event_counter = 0u;
+
 /*
  * Current size of the heap, the number of elements in use,
  * and the allocation increment
@@ -107,6 +110,7 @@ static void heap_down(uint64_t k) {
 /* Manage the event queue itself, reserving two slots for working space */
 void cmb_event_queue_init(double start_time) {
     cmb_assert_release(cmi_event_queue == NULL);
+    cmb_assert_debug(sizeof(struct cmb_event_tag) == 64);
 
     cmi_event_sim_time = start_time;
     heap_size = heap_chunk;
@@ -142,6 +146,7 @@ void cmb_event_schedule(cmb_event_func *action,
     }
 
     heap_count++;
+    cmi_event_queue[heap_count].handle = ++cmi_event_counter;;
     cmi_event_queue[heap_count].action = action;
     cmi_event_queue[heap_count].subject = subject;
     cmi_event_queue[heap_count].object = object;
@@ -253,9 +258,10 @@ void cmb_event_queue_print(FILE *fp) {
          * between function and object pointer
          */
         static_assert(sizeof(cmi_event_queue[ui].action) == sizeof(void*));
-        fprintf(fp, "%llu:\ttime %#8.4g\tpri %d:\t%p\t%p\t%p\n", ui,
+        fprintf(fp, "%llu: time %#8.4g pri %d: %llu  %p  %p  %p\n", ui,
                 cmi_event_queue[ui].time,
                 cmi_event_queue[ui].priority,
+                cmi_event_queue[ui].handle,
                 *(void**)(&(cmi_event_queue[ui].action)),
                 cmi_event_queue[ui].subject,
                 cmi_event_queue[ui].object);

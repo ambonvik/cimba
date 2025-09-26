@@ -41,7 +41,7 @@ extern void cmb_random_init(uint64_t seed);
  * Get a suitable 64-bit seed from hardware entropy source.
  * Architecture dependent, see src/arch/cmb_random_hwseed_*.c
  */
-extern uint64_t cmb_get_hwseed(void);
+extern uint64_t cmb_random_get_hwseed(void);
 
 /*
  * Main pseudo-random number generator - 64 bits output, 256 bits state.

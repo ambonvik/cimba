@@ -1,20 +1,11 @@
 ;
 ; cmi_coroutine_context_Win64.asm
-; Context switch and trampoline for coroutines,
+;
+; Context switch and launcher/trampoline for coroutines.
 ; For 64-bits Windows on AMD64/x86-64 architecture.
 ; Written in NASM syntax.
 ;
 ; Copyright (c) Asbjørn M. Bonvik 2025.
-;
-; Adapted from:
-;   Hirbod Banham (2023): "User Context Switcher"
-;       https://github.com/HirbodBehnam/UserContextSwitcher
-;       Copyright (c) 2023 Hirbod Behnam
-;       Open source under MIT license.
-; and from:
-;   Malte Skarupke (2013): "Handmade Coroutines for Windows",
-;       https://probablydance.com/2013/02/20/handmade-coroutines-for-windows/,
-;       All code examples in the linked page placed in public domain by its author.
 ;
 ; Licensed under the Apache License, Version 2.0 (the "License");
 ; you may not use this file except in compliance with the License.
@@ -37,19 +28,26 @@ global cmi_coroutine_get_stacklimit
 
 section .text
 
-; Return the current StackBase (top of allocated stack)
+;-------------------------------------------------------------------------------
+; Callable function to return the current StackBase (top of allocated stack)
+;
 cmi_coroutine_get_stackbase:
     mov rax, [gs:8]
     ret
 
-; Return the current StackLimit (bottom of allocated stack)
+;-------------------------------------------------------------------------------
+; Callable funnction to return the current StackLimit (bottom of allocated stack)
+;
 cmi_coroutine_get_stacklimit:
     mov rax, [gs:16]
     ret
 
 ;-------------------------------------------------------------------------------
 ; Macro to store relevant registers to current stack
-; In effect taking a (sub-)continuation right here.
+; In effect taking a (sub-
+; Assumes that the stack is off 16-byte alignment by 8 bytes at the start of
+; this macro (i.e. it was 16-byte aligned, then RIP got pushed, now we are here)
+;
 %macro save_context 0
     ; Save NT_TIB StackBase, the start of the stack (highest address)
     mov rax, [gs:8]
@@ -91,6 +89,7 @@ cmi_coroutine_get_stacklimit:
 
 ;-------------------------------------------------------------------------------
 ; Macro to load relevant registers from current stack
+;
 %macro load_context 0
     ; Restore XMM registers from stack
     movaps xmm6, [rsp + 0]
@@ -152,10 +151,20 @@ cmi_coroutine_context_switch:
     ; Return to wherever the new context was transferring from earlier
     ret
 
-; Launch a new coroutine by calling its function and waiting, ready to catch it
-; if the coroutine function attempts to return. If it does, transfer
+;-------------------------------------------------------------------------------
+; Not callable, preloaded as stack return address when activating a coroutine,
+; to be "called" by the first cmi_coroutine_context_switch RET instruction.
+; Launch the new coroutine by calling its function and waiting, ready to catch
+; it if the coroutine function ever attempts to return. If it does, transfer
 ; control to the exit function loaded in R15 with the value returned from
 ; the coroutine function as argument.
+; Assumes that the stack is 16-byte aligned at the start of the function.
+; Expected register content:
+;   R12 - coroutine function address
+;   R13 - its first argument cp, pointer to this coroutine
+;   R14 - its second argument arg, pointer to void
+;   R15 - address of coroutine exit function, usually cmb_coroutine_exit
+;
 cmi_coroutine_trampoline:
     ; Not a leaf function, needs to obey Win64 ABI calling convention
     ; requiring the stack to be 16-byte aligned before a call

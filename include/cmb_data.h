@@ -2,12 +2,9 @@
  * cmb_data.h - basic data collector utilities, providing the three "classes":
  *      cmb_summary - a running tally of basic statistics, not keeping
  *                    individual sample values.
- *
  *      cmb_wsummary - as above, but each sample also weighted by a double.
- *
  *      cmb_dataset - an automatically resizing array of possibly unordered
  *                    sample (x) values.
- *
  *      cmb_data_timeseries - an automatically resizing array of sequential
  *                    sample (x, t) pairs.
  *

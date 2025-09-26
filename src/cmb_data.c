@@ -651,14 +651,14 @@ void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp) {
  * The only external callable functions are cmb_dataset_print_histogram and
  * cmb_timeseries_print_histogram, the rest (cmi_*) are internal helper functions.
  */
+static unsigned char symbol_bar = '|';
 static unsigned char symbol_full = '#';
 static unsigned char symbol_half = '=';
 static unsigned char symbol_thin = '-';
+static unsigned char symbol_empty = ' ';
 static unsigned char symbol_newline = '\n';
-static unsigned char symbol_bar = '|';
-static unsigned char symbol_space = ' ';
 
-static void cmi_data_print_stars(FILE *fp,
+static void cmi_data_print_blocks(FILE *fp,
                                  const double scale,
                                  const double binval) {
     uint64_t nfilled = (uint64_t)(binval / scale);
@@ -783,18 +783,18 @@ static void cmi_data_print_histogram(const struct cmi_data_histogram *hp,
     cmi_data_print_line(fp, symbol_thin, line_length);
     int r = fprintf(fp, "( -Infinity, %#10.4g)   |", hp->low_lim);
     cmb_assert_release(r > 0);
-    cmi_data_print_stars(fp, scale, hp->hbins[0u]);
+    cmi_data_print_blocks(fp, scale, hp->hbins[0u]);
     for (unsigned ui = 1u; ui < hp->num_bins - 1u; ui++) {
         r = fprintf(fp, "[%#10.4g, %#10.4g)   |",
                 hp->low_lim + (ui - 1u) * hp->binsize,
                 hp->low_lim + ui * hp->binsize);
         cmb_assert_release(r > 0);
-        cmi_data_print_stars(fp, scale, hp->hbins[ui]);
+        cmi_data_print_blocks(fp, scale, hp->hbins[ui]);
     }
 
     r = fprintf(fp, "[%#10.4g,  Infinity )   |", hp->high_lim);
     cmb_assert_release(r > 0);
-    cmi_data_print_stars(fp, scale, hp->hbins[hp->num_bins - 1u]);
+    cmi_data_print_blocks(fp, scale, hp->hbins[hp->num_bins - 1u]);
     cmi_data_print_line(fp, symbol_thin, line_length);
 }
 
@@ -969,7 +969,7 @@ static void cmi_data_print_bar(FILE *fp,
 
     if (acfval < 0.0) {
         const uint16_t num_spaces = max_bar_width - num_filled - 1;
-        cmi_data_print_chars(fp, symbol_space, num_spaces);
+        cmi_data_print_chars(fp, symbol_empty, num_spaces);
 
         if (rem > min_rem_plus) {
             const int r = fputc(symbol_half, fp);
@@ -980,8 +980,8 @@ static void cmi_data_print_bar(FILE *fp,
             cmb_assert_release(r == symbol_thin);
         }
         else {
-            const int r = fputc(symbol_space, fp);
-            cmb_assert_release(r == symbol_space);
+            const int r = fputc(symbol_empty, fp);
+            cmb_assert_release(r == symbol_empty);
         }
 
         cmi_data_print_chars(fp, symbol_full, num_filled);
@@ -990,7 +990,7 @@ static void cmi_data_print_bar(FILE *fp,
     }
     else {
         const uint16_t num_spaces = max_bar_width;
-        cmi_data_print_chars(fp, symbol_space, num_spaces);
+        cmi_data_print_chars(fp, symbol_empty, num_spaces);
         int r = fputc(symbol_bar, fp);;
         cmb_assert_release(r == symbol_bar);
         cmi_data_print_chars(fp, symbol_full, num_filled);
@@ -1028,13 +1028,13 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
     /* Max width of the bar either side of zero */
     const uint16_t max_bar_width = (line_length - 14u) / 2u;
 
-    cmi_data_print_chars(fp, symbol_space, 11u);
+    cmi_data_print_chars(fp, symbol_empty, 11u);
     int r = fprintf(fp, "-1.0");
     cmb_assert_release(r > 0);
-    cmi_data_print_chars(fp, symbol_space, max_bar_width - 3u);
+    cmi_data_print_chars(fp, symbol_empty, max_bar_width - 3u);
     r = fprintf(fp, "0.0");
     cmb_assert_release(r > 0);
-    cmi_data_print_chars(fp, symbol_space, max_bar_width - 3u);
+    cmi_data_print_chars(fp, symbol_empty, max_bar_width - 3u);
     r = fprintf(fp, "1.0\n");
     cmb_assert_release(r > 0);
 
