@@ -88,6 +88,6 @@ static inline void *cmi_memset(void *ptr, const int c, const size_t n) {
 extern size_t cmi_get_pagesize(void);
 extern void *cmi_aligned_alloc(size_t align, size_t sz);
 extern void cmi_aligned_free(void *p);
-
+extern void *cmi_aligned_realloc(void *p, size_t align, size_t sz);
 
 #endif /* CIMBA_CMI_MEMUTILS_H */

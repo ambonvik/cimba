@@ -31,6 +31,7 @@
 size_t cmi_get_pagesize(void) {
     SYSTEM_INFO sys_info;
     GetSystemInfo(&sys_info);
+
     return sys_info.dwPageSize;
 }
 
@@ -43,19 +44,20 @@ static bool is_power_of_two(size_t n) {
 /*
  * Allocate memory aligned to some alignment value > 8 (as malloc gives by defeult)
  * https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-malloc
+ *
  * Strict requirements to arguments, need to be powers of two, multiples of 8 (byte),
  * and the sz argument needs to be an integer multiple of the alignment.
- * Example: align to page size, allocate a multiple of page size.
+ * Usage example: align to page size, allocate an integer multiple of page size.
  */
 void *cmi_aligned_alloc(const size_t align, const size_t sz) {
     cmb_assert_debug(align > 8u);
-    cmb_assert_debug((align % sizeof(void*)) == 0);
+    cmb_assert_debug((align % sizeof(void*)) == 0u);
     cmb_assert_debug(is_power_of_two(align));
     cmb_assert_debug(sz > 8u);
-    cmb_assert_debug(is_power_of_two(align));
-    cmb_assert_debug((sz % align) == 0);
+    cmb_assert_debug(is_power_of_two(sz));
+    cmb_assert_debug((sz % align) == 0u);
 
-    /* Note reversed arguments vs C standard aligned_alloc */
+    /* Note reversed order of arguments vs C standard aligned_alloc */
     void *r = _aligned_malloc(sz, align);
     cmb_assert_release(r != NULL);
 
@@ -70,4 +72,28 @@ void *cmi_aligned_alloc(const size_t align, const size_t sz) {
 void cmi_aligned_free(void *p) {
     cmb_assert_debug(p != NULL);
     _aligned_free(p);
+}
+
+/*
+ * Reallocate a previously allocated aligned memory area.
+ * No standard C function for this, only in Windows.
+ *   https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-realloc
+ *
+ * However, we keep the argument order of a hypothetical standard C function for
+ * consistency with standard realloc(ptr, sz) and aligned_alloc(alignment, sz)
+ */
+void *cmi_aligned_realloc(void *p, const size_t align, const size_t sz) {
+    cmb_assert_debug(p != NULL);
+    cmb_assert_debug(align > 8u);
+    cmb_assert_debug((align % sizeof(void*)) == 0u);
+    cmb_assert_debug(is_power_of_two(align));
+    cmb_assert_debug(sz > 8u);
+    cmb_assert_debug(is_power_of_two(sz));
+    cmb_assert_debug((sz % align) == 0u);
+
+    /* Note reversed order of arguments vs C standard aligned_alloc */
+    void *r = _aligned_realloc(p, sz, align);
+    cmb_assert_release(r != NULL);
+
+    return r;
 }
