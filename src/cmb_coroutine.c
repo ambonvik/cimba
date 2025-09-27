@@ -42,7 +42,6 @@ CMB_THREAD_LOCAL struct cmb_coroutine *cmi_coroutine_current = NULL;
 /* Inlined functions from cmb_coroutine.h */
 extern void *cmb_coroutine_resume(struct cmb_coroutine *cp, void *arg);
 extern void *cmb_coroutine_yield(void *arg);
-
 extern struct cmb_coroutine *cmb_coroutine_get_current(void);
 extern struct cmb_coroutine *cmb_coroutine_get_main(void);
 extern enum cmb_coroutine_state cmb_coroutine_get_status(const struct cmb_coroutine *cp);
@@ -71,7 +70,7 @@ static void cmi_coroutine_create_main(void) {
     /* Using system stack, no separate allocation */
     cmi_coroutine_main->stack = NULL;
 
-    /* Get stack top / bottom from assembly */
+    /* Get stack top and bottom from assembly. */
     cmi_coroutine_main->stack_base = cmi_coroutine_get_stackbase();
     cmi_coroutine_main->stack_limit = cmi_coroutine_get_stacklimit();
 
@@ -121,10 +120,10 @@ void *cmb_coroutine_start(struct cmb_coroutine *cp,
     cp->parent = cmi_coroutine_current;
     cp->caller = cmi_coroutine_current;
 
-    /* Start it by transferring into it for the first time,
-     * loading register values from the new stack */
+    /* Start it by transferring into it for the first time */
     cp->status = CMB_CORO_RUNNING;
     void *ret = cmb_coroutine_transfer(cp, arg);
+
     return ret;
 }
 
@@ -191,5 +190,6 @@ extern void *cmb_coroutine_transfer(struct cmb_coroutine *to, void *arg) {
     /* Possibly much later, when control has returned here again */
     cmb_assert_debug(cmi_coroutine_stack_valid(to));
     cmb_assert_debug(cmi_coroutine_stack_valid(from));
+
     return ret;
 }

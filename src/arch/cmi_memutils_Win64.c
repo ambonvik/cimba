@@ -1,0 +1,73 @@
+/*
+ * cmi_memutils_Win64.c - System dependent utility functions
+ *
+ * Copyright (c) Asbjørn M. Bonvik 2025.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <malloc.h>
+#include <stdbool.h>
+#include <windows.h>
+
+#include "cmb_assert.h"
+#include "cmi_config.h"
+#include "cmi_memutils.h"
+
+/*
+ * Get page size from OS.
+ * Should be 4096 bytes, but better check.
+ */
+size_t cmi_get_pagesize(void) {
+    SYSTEM_INFO sys_info;
+    GetSystemInfo(&sys_info);
+    return sys_info.dwPageSize;
+}
+
+/* Helper function for clarity */
+static bool is_power_of_two(size_t n) {
+    /* A power of two has only one bit set */
+    return (n == 0u) ? false : (n & (n - 1)) == 0u;
+}
+
+/*
+ * Allocate memory aligned to some alignment value > 8 (as malloc gives by defeult)
+ * https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-malloc
+ * Strict requirements to arguments, need to be powers of two, multiples of 8 (byte),
+ * and the sz argument needs to be an integer multiple of the alignment.
+ * Example: align to page size, allocate a multiple of page size.
+ */
+void *cmi_aligned_alloc(const size_t align, const size_t sz) {
+    cmb_assert_debug(align > 8u);
+    cmb_assert_debug((align % sizeof(void*)) == 0);
+    cmb_assert_debug(is_power_of_two(align));
+    cmb_assert_debug(sz > 8u);
+    cmb_assert_debug(is_power_of_two(align));
+    cmb_assert_debug((sz % align) == 0);
+
+    /* Note reversed arguments vs C standard aligned_alloc */
+    void *r = _aligned_malloc(sz, align);
+    cmb_assert_release(r != NULL);
+
+    return r;
+}
+
+/*
+ * Free a previously allocated aligned memory area.
+ * Windows requires a separate function for this, see
+ *   https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-free
+ */
+void cmi_aligned_free(void *p) {
+    cmb_assert_debug(p != NULL);
+    _aligned_free(p);
+}

@@ -61,7 +61,4 @@
   #error "Compiler not yet supported."
 #endif
 
-/* Config dependent utility functions in cmi_config.c */
-extern size_t cmi_get_pagesize(void);
-
 #endif /* CIMBA_CMB_CONFIG_H */

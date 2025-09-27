@@ -51,6 +51,8 @@ extern void cmi_coroutine_trampoline(void);
  *
  * See also:
  *  https://en.wikipedia.org/wiki/X86_calling_conventions#Microsoft_x64_calling_convention
+ *  https://probablydance.com/2013/02/20/handmade-coroutines-for-windows/
+ *  https://github.com/HirbodBehnam/UserContextSwitcher (a good Linux example)
  *  https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention
  *  https://learn.microsoft.com/en-us/cpp/build/stack-usage
  *  https://learn.microsoft.com/en-us/cpp/build/prolog-and-epilog
@@ -170,27 +172,29 @@ void cmi_coroutine_context_init(struct cmb_coroutine *cp,
     stkptr -= 8u;
     *(uint64_t *)stkptr = 0x0ull;
 
-    /* Address of coroutine function in R12 */
+    /* Place address of coroutine function in R12 */
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)foo;
 
-    /* Address of coroutine struct in R13 */
+    /* Place address of coroutine struct in R13 */
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)cp;
 
-    /* Coroutine function argument in R14 */
+    /* Place coroutine function argument in R14 */
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)arg;
 
-    /* Address of exit function in R15 */
+    /* Place address of exit function in R15 */
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)cmb_coroutine_exit;
 
-    /* 10 registers * 16 bytes + 8 bytes for 16-byte alignment */
+    /* Add space for 10 XMM registers * 16 bytes + 8 bytes for alignment */
     stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
     (void)cmi_memset(stkptr, 0, 168);
 
-    /* Store the stack pointer RSP */
+    /* Store stack pointer RSP in the coroutine struct to resume from here */
     cp->stack_pointer = stkptr;
+
+    /* That should be it, a valid stack frame ready to transfer into */
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 }

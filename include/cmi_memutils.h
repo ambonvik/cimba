@@ -84,4 +84,10 @@ static inline void *cmi_memset(void *ptr, const int c, const size_t n) {
     return rp;
 }
 
+/* System dependent utility functions in src/arch/cmi_memutils_*.c */
+extern size_t cmi_get_pagesize(void);
+extern void *cmi_aligned_alloc(size_t align, size_t sz);
+extern void cmi_aligned_free(void *p);
+
+
 #endif /* CIMBA_CMI_MEMUTILS_H */
