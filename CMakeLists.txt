@@ -6,10 +6,12 @@ enable_language(ASM_NASM)
 
 include_directories(include)
 set(SOURCES src/cmb_coroutine.c src/cmb_data.c src/cmb_event.c src/cmb_random.c
-        src/cmb_assert.c src/cmb_logger.c src/arch/cmi_memutils_Win64.c
+        src/cmb_assert.c src/cmb_logger.c
         src/cmi_random_exp_zig.inc src/cmi_random_nor_zig.inc
+        src/arch/cmi_memutils_Win64.c
         src/arch/cmb_random_hwseed_Win64.c
-        src/arch/cmi_coroutine_context_Win64.c)
+        src/arch/cmi_coroutine_context_Win64.c
+        codegen/cmi_calc_utils.c)
 set(HEADERS include/cmb_coroutine.h include/cmb_data.h include/cmb_event.h include/cmb_random.h
         include/cmb_assert.h include/cmi_config.h include/cmb_logger.h include/cmi_memutils.h)
 
