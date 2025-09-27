@@ -1,7 +1,23 @@
 /*
- * Program to calculate the ziggurat lookup tables for standard normal distribution N(0, 1)
- * See https://en.wikipedia.org/wiki/Ziggurat_algorithm#McFarland's_variation
- * Sets up Vose alias sampling tables, see https://www.keithschwarz.com/darts-dice-coins/
+ * cmi_calc_normal.c - program to calculate the ziggurat lookup tables for
+ * standard normal distribution, see
+ *   https://en.wikipedia.org/wiki/Ziggurat_algorithm#McFarland's_variation
+ * Sets up Vose alias sampling tables, see
+ *   https://www.keithschwarz.com/darts-dice-coins/
+ *
+ * Copyright (c) Asbjørn M. Bonvik 2025.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 #include "cmi_calc.h"
 
@@ -18,16 +34,15 @@ uint8_t alias[ARRSIZE] = { 0 };
 uint8_t i_max = 0;
 uint8_t i_inflection = 0;
 
-
-inline double pdf(double x) {
+double pdf(const double x) {
     return exp(-0.5 * x * x) / sqrt(2.0 * M_PI);
 }
 
-inline double cdf(double x) {
+double cdf(const double x) {
     return 0.5 * (1.0 + erf(x / sqrt(2.0)));
 }
 
-void calculate_ziggurat() {
+static void calculate_ziggurat(void) {
     int last = 0;
     double xlcand = 3.0;
     double xrcand = 4.0;
@@ -43,7 +58,7 @@ void calculate_ziggurat() {
         double xmid;
         /* search for the next layer upper-right corner, ensuring that the candidate solutions bracket a root */
         if ((layer_error(xlcand, &cand) * layer_error(xrcand, &cand) < 0.0)
-              && bisection(xlcand, xrcand, layer_error, &cand, &xmid)) {
+              && cmi_bisection(xlcand, xrcand, layer_error, &cand, &xmid)) {
             /* Found a corner point, note it down */
             xarr[i] = xmid;
             yarr[i] = pdf(xmid);
@@ -69,14 +84,14 @@ void calculate_ziggurat() {
 
                 if (xarr[i] > 1.0) {
                     /* concave region */
-                    (void)bisection(xarr[i], xarr[i-1], dist_deriv, &seg, &xargmax);
+                    (void)cmi_bisection(xarr[i], xarr[i-1], dist_deriv, &seg, &xargmax);
                     double ypdf = pdf(xargmax);
                     double yline = linear_int(xargmax, &seg);
                     concavity[i] = yline - ypdf;
                 }
                 else if (xarr[i-1] < 1.0) {
                     /* convex region */
-                    (void)bisection(xarr[i], xarr[i-1], dist_deriv, &seg,  &xargmax);
+                    (void)cmi_bisection(xarr[i], xarr[i-1], dist_deriv, &seg,  &xargmax);
                     double ypdf = pdf(xargmax);
                     double yline = linear_int(xargmax, &seg);
                     convexity[i] = ypdf - yline;
@@ -86,12 +101,12 @@ void calculate_ziggurat() {
                     assert((xarr[i] < 1.0) && (xarr[i-1] > 1.0));
                     i_inflection = i;
 
-                    (void)bisection(xarr[i], 1.0, dist_deriv, &seg,  &xargmax);
+                    (void)cmi_bisection(xarr[i], 1.0, dist_deriv, &seg,  &xargmax);
                     double ypdf = pdf(xargmax);
                     double yline = linear_int(xargmax, &seg);
                     convexity[i] = ypdf - yline;
 
-                    (void)bisection(1.0, xarr[i-1], dist_deriv, &seg,  &xargmax);
+                    (void)cmi_bisection(1.0, xarr[i-1], dist_deriv, &seg,  &xargmax);
                     ypdf = pdf(xargmax);
                     yline = linear_int(xargmax, &seg);
                     concavity[i] = yline - ypdf;
@@ -120,9 +135,9 @@ void calculate_ziggurat() {
             seg.x2 = xarr[top-1];
             seg.y2 = yarr[top-1];
 
-            (void)bisection(xarr[top], xarr[top-1], dist_deriv, &seg,  &xargmax);
-            double ypdf = pdf(xargmax);
-            double yline = (xargmax - xarr[top]) * (yarr[top-1] - yarr[top]) / (xarr[top-1] - xarr[top]) + yarr[top];
+            (void)cmi_bisection(xarr[top], xarr[top-1], dist_deriv, &seg,  &xargmax);
+            const double ypdf = pdf(xargmax);
+            const double yline = (xargmax - xarr[top]) * (yarr[top-1] - yarr[top]) / (xarr[top-1] - xarr[top]) + yarr[top];
             assert(ypdf > yline);
             convexity[top] = ypdf - yline;
             break;
@@ -130,7 +145,7 @@ void calculate_ziggurat() {
     }
 }
 
-void calculate_alias_table() {
+static void calculate_alias_table(void) {
     double asum = 0.0;
     for (int i = 0; i < ARRSIZE; i++)
         asum += area[i];
@@ -188,7 +203,7 @@ void calculate_alias_table() {
     }
 }
 
-void print_c_code() {
+static void print_c_code(void) {
     /* We have all we need, now write the C code to be #included in the actual code */
     printf("/*\n");
     printf(" * cmi_random_nor_zig.inc - local file to be included in cmb_random.c,\n");
@@ -258,17 +273,9 @@ void print_c_code() {
     printf("static const int64_t nor_zig_max_i_convexity = 0x%016llxll;\n", max_iconvexity);
 }
 
-void dump_data() {
-    for (int i = 0; i < ARRSIZE; i++) {
-        printf("%3d,\t%8g,\t%8g,\t%8g,\t%8g,\t%8g, \t%8g,\t%3d\n",
-               i, xarr[i], yarr[i], area[i], concavity[i], convexity[i], prob[i], alias[i]);
-    }
-}
-
 int main(void) {
     calculate_ziggurat();
     calculate_alias_table();
-    //dump_data();
     print_c_code();
 
     return 0;
