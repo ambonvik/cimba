@@ -28,8 +28,17 @@
  * activation time, the one with higher priority will execute first. If
  * you need to ensura that some event executes after all other events at
  * a particular time, use a large negative priority. If two events have the
- * same activation time and the same priority, the activation order is
- * unspecified. (Guaranteeing FIFO could have performance implications.)
+ * same activation time and the same priority, they will be executed in
+ * first in first out (FIFO) order.
+ *
+ * When scheduled, an event handle will be assigned and returned. This is
+ * a unique event identifier and can be used as a reference for later
+ * cancelling, rescheduling, or reprioritizing the event. Behind the scene,
+ * this is implemented as a hashheap where the event handle is a key in
+ * the hash map and the event's location in the heap is the hash map value.
+ * This gives O(1) cancellations and reschedules with no need to search the
+ * entire heap to find a future event. The details of the data structure are
+ * not exposed in this header file, see cmb_event.c for the implementation.
  *
  * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
  *
@@ -53,49 +62,17 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "cmb_assert.h"
 #include "cmi_config.h"
 
 /* The generic event type */
 typedef void (cmb_event_func)(void*, void*);
 
-/*
- * The tag to store an event with its context.
- * These tags only exist as members of the event queue, never seen alone.
- * Padded to exactly 64 bytes size.
- */
-struct cmb_event_tag {
-    uint64_t handle;
-    uint64_t hash_index;
-    cmb_event_func *action;
-    void *subject;
-    void *object;
-    double time;
-    int16_t priority;
-    unsigned char padding_bytes[14];
-};
-
-/*
- * Hash table mapping from handle to event queue position */
-struct cmb_event_hashkey {
-    uint64_t handle;
-    uint64_t heap_index;
-};
-
-/* The event queue */
-extern CMB_THREAD_LOCAL struct cmb_event_tag *cmi_event_queue;
-
 /* Manage the event queue itself */
 extern void cmb_event_queue_init(double start_time);
 extern void cmb_event_queue_destroy(void);
 
-/* Current simulation time. */
-extern CMB_THREAD_LOCAL double cmi_event_sim_time;
-
 /* Get the current simulation time */
-inline double cmb_time(void) {
-    return cmi_event_sim_time;
-}
+extern double cmb_time(void);
 
 /*
  * cmb_event_schedule: Inserts event in event queue as indicated by reactivation
@@ -112,41 +89,60 @@ extern void cmb_event_schedule(cmb_event_func *action,
 /*
  *  cmb_event_next; Executes and removes the first event in the event queue.
  *  If both reactivation time and priority equal, FCFS order.
- *  Returns 1 for success, 0 for failure (e.g., empty event list)
+ *  Returns true for success, false for failure (e.g., empty event list), for
+ *  use in loops like while(cmb_event_execute_next()) { ... }
  */
-extern int cmb_event_execute_next(void);
-
-/* TODO: Heavy rewrite to use hash table instead of direct index */
-
-/* cmb_event_cancel: Remove event from event list. */
-extern void cmb_event_cancel(uint64_t index);
-
-/* cmb_event_reschedule: Reschedules event at index to another time */
-extern void cmb_event_reschedule(uint64_t index, double time);
-
-/* The currently scheduled time for an event */
-inline double cmb_event_time(const uint64_t index) {
-    return cmi_event_queue[index].time;
-}
-
-/* cmb_event_reprioritize: Reprioritizes event to another priority level */
-extern void cmb_event_reprioritize(uint64_t index, int16_t priority);
-
-/* The current priority for an event */
-inline int16_t cmb_event_priority(const uint64_t index) {
-    return cmi_event_queue[index].priority;
-}
+extern bool cmb_event_execute_next(void);
 
 /*
- * cmb_event_find: Find event in event list and return index, zero if not found.
- * CMB_ANY_* are wildcarda, matching any value in its position.
+ * cmb_event_cancel: Remove event from event list.
+ * Returns true if found, false if not.
  */
-static_assert(sizeof(cmb_event_func *) == sizeof(void*));
+extern bool cmb_event_cancel(uint64_t handle);
+
+/*
+ * cmb_event_reschedule: Reschedules event at index to another time
+ * Returns true if found, false if not.
+ */
+extern bool cmb_event_reschedule(uint64_t handle, double time);
+
+/*
+ * cmb_event_reprioritize: Reprioritizes event to another priority level
+ * Returns true if found, false if not.
+ */
+extern bool cmb_event_reprioritize(uint64_t handle, int16_t priority);
+
+/* The currently scheduled time for an event */
+extern double cmb_event_time(uint64_t handle);
+
+
+/* The current priority for an event */
+extern int16_t cmb_event_priority(uint64_t handle);
+
+/*
+ * cmb_event_find: Search in event list for an event matching the given pattern
+ * and return its handle if one exists in the queue. Return zero if no match.
+ * CMB_ANY_* are wildcarda, matching any value in its position.
+ *
+ * Will start the search from the beginning of the event queue each time,
+ * since the queue may have changed in the meantime. There is no guarantee
+ * for it returning the event that will execute first, only that it will find
+ * some event that matches the search pattern if one exists in the queue. The
+ * sequence in which events are found is unspecified.
+ */
+static_assert((sizeof(cmb_event_func *) == 8) && (sizeof(void*) == 8),
+    "Pointer to function and pointer to void both expected to be 64 bits");
+
 #define CMB_ANY_ACTION ((cmb_event_func *)0xFFFFFFFFFFFFFFFF)
 #define CMB_ANY_SUBJECT ((void *)0xFFFFFFFFFFFFFFFF)
 #define CMB_ANY_OBJECT ((void *)0xFFFFFFFFFFFFFFFF)
 
 extern uint64_t cmb_event_find(cmb_event_func *action,
+                               const void *subject,
+                               const void *object);
+
+/* cmb_event_count : count the number of matching events */
+extern uint64_t cmb_event_count(cmb_event_func *action,
                                const void *subject,
                                const void *object);
 
