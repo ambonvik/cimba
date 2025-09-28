@@ -68,7 +68,7 @@ extern void cmi_coroutine_trampoline(void);
  *  - cp_>stack_base points to the top of the stack area (high address).
  *  - cp->stack_pointer stores the current stack pointer between transfers.
  *
- * We will pre-load the address of the coroutine function foo(cp, arg) in R12,
+ * We will preload the address of the coroutine function foo(cp, arg) in R12,
  * the coroutine pointer cp in R13, and the void *arg in R14. We will also
  * store the address of cmb_coroutine_exit in R15 before the first transfer into
  * the new coroutine, to be called with the return value from the coroutine
@@ -79,9 +79,8 @@ extern void cmi_coroutine_trampoline(void);
 #define CMI_STACK_LIMIT_UNTOUCHED 0xFA151F1AB1Eull
 
 #ifndef NASSERT
-
  /* Stack sanity check, Win64-specific */
- bool cmi_coroutine_stack_valid(struct cmb_coroutine *cp) {
+ bool cmi_coroutine_stack_valid(const struct cmb_coroutine *cp) {
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
     cmb_assert_debug(cp->stack_limit != NULL);

@@ -53,7 +53,7 @@ extern void *cmi_coroutine_get_stackbase(void);
 extern void *cmi_coroutine_get_stacklimit(void);
 
 /* OS specific C code, see src/arch/cmi_coroutine_context_*.c */
-extern bool cmi_coroutine_stack_valid(struct cmb_coroutine *cp);
+extern bool cmi_coroutine_stack_valid(const struct cmb_coroutine *cp);
 extern void cmi_coroutine_context_init(struct cmb_coroutine *cp,
                                        cmi_coroutine_func *foo,
                                        void *arg);
