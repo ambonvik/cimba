@@ -76,14 +76,13 @@ extern double cmb_time(void);
 
 /*
  * cmb_event_schedule: Inserts event in event queue as indicated by reactivation
- * time and priority. An avent cannot be scheduled at a time before current. The
- * reactivation time rel_time is relative to the current simulation time and is
- * non-negative.
+ * time and priority. An event cannot be scheduled at a time before current.
+ * Returns the unique handle of the scheduled event.
  */
-extern void cmb_event_schedule(cmb_event_func *action,
+extern uint64_t cmb_event_schedule(cmb_event_func *action,
                                void *subject,
                                void *object,
-                               double rel_time,
+                               double time,
                                int16_t priority);
 
 /*
@@ -101,7 +100,7 @@ extern bool cmb_event_execute_next(void);
 extern bool cmb_event_cancel(uint64_t handle);
 
 /*
- * cmb_event_reschedule: Reschedules event at index to another time
+ * cmb_event_reschedule: Reschedules event at index to another (absolute) time
  * Returns true if found, false if not.
  */
 extern bool cmb_event_reschedule(uint64_t handle, double time);
@@ -141,8 +140,13 @@ extern uint64_t cmb_event_find(cmb_event_func *action,
                                const void *subject,
                                const void *object);
 
-/* cmb_event_count : count the number of matching events */
+/* cmb_event_count : Similarly, count the number of matching events. */
 extern uint64_t cmb_event_count(cmb_event_func *action,
+                               const void *subject,
+                               const void *object);
+
+/* cmb_event_cancel_all : cancel all matching events, returns the number cancelled */
+extern uint64_t cmb_event_cancel_all(cmb_event_func *action,
                                const void *subject,
                                const void *object);
 
