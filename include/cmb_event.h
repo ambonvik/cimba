@@ -145,12 +145,18 @@ extern uint64_t cmb_event_count(cmb_event_func *action,
                                const void *subject,
                                const void *object);
 
-/* cmb_event_cancel_all : cancel all matching events, returns the number cancelled */
+/*
+ * cmb_event_cancel_all : Cancel all matching events, returns the number
+ * of events that were cancelled. Use e.g. for cancelling all events
+ * related to some subject or object if that thing no longer is alive in
+ * the simulation.
+ */
 extern uint64_t cmb_event_cancel_all(cmb_event_func *action,
                                const void *subject,
                                const void *object);
 
-/* Print the current content of the event queue, mostly for debugging use. */
-extern void cmb_event_queue_print(FILE *fp);
+/* Print the current content of the event queue, for debugging use. */
+extern void cmb_event_heap_print(FILE *fp);
+extern void cmb_event_hash_print(FILE *fp);
 
 #endif /* CIMBA_CMB_EVENT_H */
