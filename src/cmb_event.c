@@ -101,7 +101,7 @@ static_assert(sizeof(struct hash_tag) == 16,
 /*
  * event_hash - The hash map, physically located in a contiguous memory area
  * with the event queue heap array. There are twice as many slots in the hash map as
- * in the heap array to ensure that the hash map utilization remains below 50 % before
+ * in the heap array to ensure that the hash map load factor remains below 50 % before
  * both get resized to twice the previous size.
  */
 static CMB_THREAD_LOCAL struct hash_tag *event_hash = NULL;
@@ -197,7 +197,7 @@ uint64_t hash_find_handle(const uint64_t handle, const unsigned shift) {
 uint64_t hash_find_slot(const uint64_t handle, const unsigned shift) {
     uint64_t hash = hash_handle(handle, shift);
     for (;;) {
-        /* Guaranteed to find a slot eventually, < 50 % hash utilization */
+        /* Guaranteed to find a slot eventually, < 50 % hash load factor */
         if (event_hash[hash].heap_index == 0u) {
             /* Found a free slot */
             return hash;
