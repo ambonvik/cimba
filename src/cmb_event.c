@@ -141,7 +141,7 @@ void cmb_event_queue_destroy(void) {
 }
 
 /* Test if heaptag index a should go before index b. If so, return true */
-static bool heap_check(const uint64_t a, const uint64_t b) {
+static bool heap_order_check(const uint64_t a, const uint64_t b) {
     cmb_assert_release(event_heap != NULL);
 
     bool ret = false;
@@ -174,6 +174,7 @@ uint64_t hash_handle(const uint64_t handle, const unsigned shift) {
 
 /* Find the heap index of a given handle, zero if not found */
 uint64_t hash_find_handle(const uint64_t handle, const unsigned shift) {
+    const uint64_t bitmap = 2u * heap_size - 1u;
     uint64_t hash = hash_handle(handle, shift);
     do {
         if (event_hash[hash].handle == handle) {
@@ -181,20 +182,17 @@ uint64_t hash_find_handle(const uint64_t handle, const unsigned shift) {
             return event_hash[hash].heap_index;
         }
 
-        /* Not there, linear probing, try next */
-        hash++;
-        if (hash >= 2u * heap_size) {
-            /* Loop around, hash map starting from index 0 */
-            hash = 0u;
-        }
+        /* Not there, linear probing, try next, possibly looping around */
+        hash = (hash + 1u) & bitmap;
     } while (event_hash[hash].handle != 0u);
 
     /* Got to an empty slot, the handle is not in hash map */
     return 0u;
 }
 
-/* FInd thte first free hash map slot for the given handle */
+/* Find thte first free hash map slot for the given handle */
 uint64_t hash_find_slot(const uint64_t handle, const unsigned shift) {
+    const uint64_t bitmap = 2u * heap_size - 1u;
     uint64_t hash = hash_handle(handle, shift);
     for (;;) {
         /* Guaranteed to find a slot eventually, < 50 % hash load factor */
@@ -202,29 +200,33 @@ uint64_t hash_find_slot(const uint64_t handle, const unsigned shift) {
             /* Found a free slot */
             return hash;
         }
-        /* Already taken, linear probing, try next */
-        hash++;
-        if (hash >= 2u * heap_size) {
-            /* Loop around */
-            hash = 0u;
-        }
+
+        /* Already taken, linear probing, try next, possibly looping around */
+        hash = (hash + 1u) & bitmap;
     }
 }
 
 /*
- * Growing the heap, doubling the available heap and hash map sizes.
+ * heap_grow: doubling the available heap and hash map sizes.
+ * The old heap is memcpy'd into its new location, each event at the same
+ * index as before. The new hash map is initialized to all zeros, the old
+ * hash map is memcpy'd together with the old heap into the area that now
+ * belongs to the new heap. From there, valid hash entries are rehashed into
+ * their new locations in the new hash map. This works, since there is no
+ * memory overlap between the copy of the old hash map and the new one.
  */
 static void heap_grow(void) {
-    /* TODO: Rewrite for hashheap */
     cmb_assert_release(event_heap != NULL);
     cmb_assert_release(event_hash != NULL);
     cmb_assert_release(heap_size < (UINT32_MAX / 2u));
 
+    /* Set the new heap size, i.e. the max number of events in the queue */
     heap_exp++;
     const uint64_t old_heap_size = heap_size;
     heap_size = 1u << heap_exp;
     cmb_assert_debug(heap_size == 2 * old_heap_size);
 
+    /* Caclulate the memory footprint it will need */
     const size_t heapbytes = (heap_size + 2u) * sizeof(struct heap_tag);
     const size_t hashbytes = (heap_size * 2u) * sizeof(struct hash_tag);
     const size_t newsz = heapbytes + hashbytes;
@@ -236,6 +238,8 @@ static void heap_grow(void) {
      * Reallocate heap and hash map to twice the size, copying the heap into
      * the new location. The old hash table also gets copied into the lower
      * half of the new area and will need to be rehashed into its new place.
+     * For efficiency reasons, we align the new hashheap to a memory page
+     * boundary and allocate an integer number of pages for it.
      */
     const unsigned char *alignedbytes = cmi_aligned_realloc(event_heap, pagesz, npages);
     event_heap = (struct heap_tag *)alignedbytes;
@@ -280,7 +284,7 @@ static void heap_up(uint64_t k) {
     /* A binary tree, parent node at k / 2 */
     uint64_t l;
     while ((l = (k >> 1)) > 0) {
-        if (heap_check(0, l)) {
+        if (heap_order_check(0, l)) {
             /* Our candidate event goes before the one at l, swap them */
             event_heap[k] = event_heap[l];
             const uint64_t khash = event_heap[k].hash_index;
@@ -309,12 +313,12 @@ static void heap_down(uint64_t k) {
         uint64_t l = k << 1;
         if (l < heap_count) {
             const uint64_t r = l + 1;
-            if (heap_check(r, l)) {
+            if (heap_order_check(r, l)) {
                 l++;
             }
         }
 
-        if (heap_check(0, l)) {
+        if (heap_order_check(0, l)) {
             break;
         }
 
@@ -424,7 +428,7 @@ bool cmb_event_cancel(const uint64_t handle) {
     event_hash[hashidx].heap_index = 0u;
 
     /* Remove event from heap position heapidx */
-    if (heap_check(heapidx, heap_count)) {
+    if (heap_order_check(heapidx, heap_count)) {
         event_heap[heapidx] = event_heap[heap_count];
         hashidx = event_heap[heapidx].hash_index;
         event_hash[hashidx].heap_index = heapidx;
