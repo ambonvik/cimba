@@ -1,5 +1,13 @@
 /*
- * cmb_dataset.c - basic data collector utilities mainly for debugging purposes
+ * cmb_dataset.c - basic data collector utilities mainly for debugging purposes.
+ * , Implementation of the four "classes":
+ *      cmb_summary - a running tally of basic statistics, not keeping
+ *                    individual sample values.
+ *      cmb_wsummary - as above, but each sample also weighted by a double.
+ *      cmb_dataset - an automatically resizing array of possibly unordered
+ *                    sample (x) values.
+ *      cmb_data_timeseries - an automatically resizing array of sequential
+ *                    sample (x, t) pairs.
  *
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
  *
@@ -736,7 +744,7 @@ static struct cmi_data_histogram *cmi_data_create_histogram(const unsigned num_b
 
 /*
  * Calculate the histogram data for a dataset,
- * weighting each x-value equally as 1.0.
+ * weighting each x-value equally with 1.0.
  */
 static void cmi_dataset_fill_histogram(struct cmi_data_histogram *hp,
                                        const uint64_t n,
