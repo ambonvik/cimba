@@ -45,13 +45,15 @@ uint64_t cmb_random_get_hwseed(void) {
         /* Start with thread id in top 32 bits */
         const uint64_t tid = cmi_threadid();
         seed = (tid << 32);
-        /* Put a mashup of clock values into low 32 bits */
+
+        /* Add a mashup of clock values into low 32 bits */
         struct timespec ts;
         const int r = clock_gettime(CLOCK_REALTIME, &ts);
         cmb_assert_release(r == 0);
         const uint64_t mash = (uint64_t)(ts.tv_nsec ^ ts.tv_sec);
         seed += mash;
-        /* xor the whole thing with the 64-bit CPU cycle count since reset */
+
+        /* XOR the whole thing with the 64-bit CPU cycle count since reset */
         seed ^= cmi_rdtsc();
     }
 
