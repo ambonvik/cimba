@@ -51,7 +51,7 @@ cmi_cpu_has_rdrand:
     pop rbx            ; Restore RBX
     ret
 
-; Get rdseed
+; Get rdseed from system entropy buffer
 cmi_rdseed:
     rdseed rax              ; Request a 64-bit true random value in RAX
     jnc cmi_rdseed_retry    ; Check carry flag, retry if not set as call failed
@@ -66,11 +66,12 @@ cmi_rdrand:
     jnc cmi_rdrand          ; Retry immediately if carry flag not set
     ret
 
-; Get current thread ID and CPU cycle count (used if nothing else is available)
+; Get current thread ID (used if rdseed and rdrand are not available)
 cmi_threadid:
     mov rax, qword [gs:0x48]    ; Thread ID is at offset 0x48 in TIB
     ret
 
+; Get time-stamp counter as a 64-bit value (used if rdseed/rdrand not available)
 cmi_rdtsc:
     rdtsc                  ; Read time-stamp counter into EDX:EAX
     shl rdx, 32            ; Shift high 32 bits into position
