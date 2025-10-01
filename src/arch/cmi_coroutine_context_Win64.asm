@@ -44,7 +44,7 @@ cmi_coroutine_get_stacklimit:
 
 ;-------------------------------------------------------------------------------
 ; Macro to store relevant registers to current stack
-; In effect taking a (sub-
+; In effect taking a (sub-)continuation at this point in execution.
 ; Assumes that the stack is off 16-byte alignment by 8 bytes at the start of
 ; this macro (i.e. it was 16-byte aligned, then RIP got pushed, now we are here)
 ;
