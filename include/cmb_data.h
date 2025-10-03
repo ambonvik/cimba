@@ -26,14 +26,12 @@
 #ifndef CIMBA_CMB_DATA_H
 #define CIMBA_CMB_DATA_H
 
-#include <float.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 
 #include "cmb_assert.h"
-#include "cmi_memutils.h"
 
 /******************************************************************************
  * The cmb_summary maintains a running tally of key statistics,
@@ -50,38 +48,22 @@ struct cmb_summary {
 };
 
 /* Initialize a given data summary, not necessarily allocated on the heap */
-inline void cmb_summary_init(struct cmb_summary *sup) {
-    cmb_assert_release(sup != NULL);
+extern void cmb_summary_init(struct cmb_summary *sup);
 
-    sup->cnt = 0u;
-    sup->max = -DBL_MAX;
-    sup->min = DBL_MAX;
-    sup->m1 = sup->m2 = sup->m3 = sup->m4 = 0.0;
-}
-
-inline void cmb_summary_clear(struct cmb_summary *sup) {
-    cmb_assert_release(sup != NULL);
-    cmb_summary_init(sup);
-}
+/* Reset a previously used data summary, re-initializing all counters */
+extern void cmb_summary_clear(struct cmb_summary *sup);
 
 /*
  * Allocate a data summary object on the heap and initialize it.
  * Note that this does not allocate from a thread local memory pool,
  * since it may be passed back outside the current replication.
  */
-inline struct cmb_summary *cmb_summary_create(void) {
-    struct cmb_summary *sup = cmi_malloc(sizeof *sup);
-    cmb_summary_init(sup);
-    return sup;
-}
+extern struct cmb_summary *cmb_summary_create(void);
 
 /*
  * A matching function to free the heap area again if created there.
  */
-inline void cmb_summary_destroy(struct cmb_summary *sup) {
-    cmb_assert_release(sup != NULL);
-    cmi_free(sup);
-}
+extern void cmb_summary_destroy(struct cmb_summary *sup);
 
 /*
  * Add a single value to a data summary, updating running statistics.
@@ -156,10 +138,10 @@ extern void cmb_summary_print(const struct cmb_summary *sup, FILE *fp,
                               bool lead_ins);
 
 /******************************************************************************
- * The cmb_wsummary does the same thing as cmb_summary, but
- * each sample value is weighted by a double precision value. It can be used
- * for time series statistics where each value is held for a certain duration,
- * such as queue lengths or the number of customers in a system.
+ * The cmb_wsummary does the same thing as cmb_summary, but each sample value
+ * is weighted by a double precision value. It can be used for time series
+ * statistics where each value is held for a certain duration, such as queue
+ * lengths or the number of customers in a system.
  */
 struct cmb_wsummary {
     struct cmb_summary ds;
@@ -177,19 +159,9 @@ inline void cmb_wsummary_clear(struct cmb_wsummary *wsup) {
     cmb_wsummary_init(wsup);
 }
 
-inline struct cmb_wsummary *cmb_wsummary_create(void) {
-    struct cmb_wsummary *wsup = cmi_malloc(sizeof *wsup);
-    cmb_wsummary_init(wsup);
-    return wsup;
-}
-
-inline void cmb_wsummary_destroy(struct cmb_wsummary *wsup) {
-    cmb_assert_release(wsup != NULL);
-    cmi_free(wsup);
-}
-
+extern struct cmb_wsummary *cmb_wsummary_create(void);
+extern void cmb_wsummary_destroy(struct cmb_wsummary *wsup);
 extern uint64_t cmb_wsummary_add(struct cmb_wsummary *wsup, double y, double w);
-
 extern uint64_t cmb_wsummary_merge(struct cmb_wsummary *tgt,
                                         const struct cmb_wsummary *ws1,
                                         const struct cmb_wsummary *ws2);

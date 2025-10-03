@@ -31,6 +31,7 @@
 
 /* Utilities for the testing */
 #include "cmi_test.h"
+#include "../src/cmi_memutils.h"
 
 /* Test macros */
 #define MOMENTS 15

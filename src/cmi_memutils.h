@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cmb_assert.h"
+#include "../include/cmb_assert.h"
 
 /*
   * Convenience functions to encapsulate repetitive error handling

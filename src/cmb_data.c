@@ -24,16 +24,15 @@
  * limitations under the License.
  */
 
+#include <float.h>
 #include <stdio.h>
 
 #include "cmb_data.h"
 #include "cmb_logger.h"
 
+#include "cmi_memutils.h"
+
 /* If the compiler decides to issue code for the inlines, do it here */
-extern void cmb_summary_init(struct cmb_summary *sup);
-extern void cmb_summary_clear(struct cmb_summary *sup);
-extern struct cmb_summary *cmb_summary_create(void);
-extern void cmb_summary_destroy(struct cmb_summary *sup);
 extern uint64_t cmb_summary_count(const struct cmb_summary *sup);
 extern double cmb_summary_max(const struct cmb_summary *sup);
 extern double cmb_summary_min(const struct cmb_summary *sup);
@@ -43,8 +42,6 @@ extern double cmb_summary_stddev(const struct cmb_summary *sup);
 
 extern void cmb_wsummary_init(struct cmb_wsummary *wsup);
 extern void cmb_wsummary_clear(struct cmb_wsummary *wsup);
-extern struct cmb_wsummary *cmb_wsummary_create(void);
-extern void cmb_wsummary_destroy(struct cmb_wsummary *wsup);
 extern uint64_t cmb_wsummary_count(const struct cmb_wsummary *wsup);
 extern double cmb_wsummary_max(const struct cmb_wsummary *wsup);
 extern double cmb_wsummary_min(const struct cmb_wsummary *wsup);
@@ -73,6 +70,32 @@ extern void cmi_free(void *p);
 static const uint64_t cmb_dataset_init_size = 1024;
 
 /**************************** Data summary methods ****************************/
+
+struct cmb_summary *cmb_summary_create(void) {
+    struct cmb_summary *sup = cmi_malloc(sizeof *sup);
+    cmb_summary_init(sup);
+    return sup;
+}
+
+void cmb_summary_destroy(struct cmb_summary *sup) {
+    cmb_assert_release(sup != NULL);
+    cmi_free(sup);
+}
+
+void cmb_summary_init(struct cmb_summary *sup) {
+    cmb_assert_release(sup != NULL);
+
+    sup->cnt = 0u;
+    sup->max = -DBL_MAX;
+    sup->min = DBL_MAX;
+    sup->m1 = sup->m2 = sup->m3 = sup->m4 = 0.0;
+}
+
+void cmb_summary_clear(struct cmb_summary *sup) {
+    cmb_assert_release(sup != NULL);
+    cmb_summary_init(sup);
+}
+
 /*
  * Merge two data summaries, updating the statistics.
  * Used e.g. for merging across pthreads.
@@ -235,6 +258,19 @@ double cmb_summary_kurtosis(const struct cmb_summary *sup) {
 }
 
 /************************** Weighted summary methods **************************/
+
+struct cmb_wsummary *cmb_wsummary_create(void) {
+    struct cmb_wsummary *wsup = cmi_malloc(sizeof *wsup);
+    cmb_wsummary_init(wsup);
+    return wsup;
+}
+
+void cmb_wsummary_destroy(struct cmb_wsummary *wsup) {
+    cmb_assert_release(wsup != NULL);
+    cmi_free(wsup);
+}
+
+
 /*
  * Add a weighted sample value to the data summary, updating the statistics.
  * See: Pébay & al, "Numerically stable, scalable formulas for parallel and

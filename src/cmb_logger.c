@@ -24,6 +24,8 @@
 #include "cmb_event.h"
 #include "cmb_logger.h"
 
+#include "cmi_config.h"
+
 /* The current logging level. Initially everything on. */
 CMB_THREAD_LOCAL uint32_t cmi_logger_mask = 0xFFFFFFFF;
 

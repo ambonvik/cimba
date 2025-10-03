@@ -26,6 +26,7 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+
 #include "cmi_config.h"
 
 /* Using 32-bit unsigned for the flags, top four bits reserved for Cimba use. */
@@ -33,9 +34,6 @@
 #define CMI_LOGGER_ERROR    0x40000000
 #define CMI_LOGGER_WARNING  0x20000000
 #define CMI_LOGGER_INFO     0x10000000
-
-/* The current logging level. Initially everything on. */
-extern CMB_THREAD_LOCAL uint32_t cmi_logger_mask;
 
 /*
  * Set callback function to format simulation times to character

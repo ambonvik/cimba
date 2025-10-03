@@ -22,6 +22,7 @@
 
 #include "cmb_assert.h"
 #include "cmb_coroutine.h"
+
 #include "cmi_memutils.h"
 
 /* Assembly function, see src/arc/cmi_coroutine_context_*.asm */

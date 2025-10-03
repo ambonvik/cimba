@@ -31,6 +31,8 @@
 
 #include "cmb_event.h"
 #include "cmb_logger.h"
+
+#include "cmi_config.h"
 #include "cmi_memutils.h"
 
 /* The simulation clock, read-only for user application */
@@ -167,15 +169,15 @@ static bool heap_order_check(const uint64_t a, const uint64_t b) {
  * Hash function, see
  * https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
  */
-uint64_t hash_handle(const uint64_t handle, const unsigned shift) {
+uint64_t hash_handle(const uint64_t handle) {
     /* The "magic number" is approx 2^64 / phi, the golden ratio */
-    return (handle * 11400714819323198485llu) >> shift;
+    return (handle * 11400714819323198485llu) >> (64u - heap_exp);
 }
 
 /* Find the heap index of a given handle, zero if not found */
-uint64_t hash_find_handle(const uint64_t handle, const unsigned shift) {
+uint64_t hash_find_handle(const uint64_t handle) {
     const uint64_t bitmap = 2u * heap_size - 1u;
-    uint64_t hash = hash_handle(handle, shift);
+    uint64_t hash = hash_handle(handle);
     do {
         if (event_hash[hash].handle == handle) {
             /* Found, return the heap index (possibly a tombstone zero) */
@@ -191,9 +193,9 @@ uint64_t hash_find_handle(const uint64_t handle, const unsigned shift) {
 }
 
 /* Find thte first free hash map slot for the given handle */
-uint64_t hash_find_slot(const uint64_t handle, const unsigned shift) {
+uint64_t hash_find_slot(const uint64_t handle) {
     const uint64_t bitmap = 2u * heap_size - 1u;
-    uint64_t hash = hash_handle(handle, shift);
+    uint64_t hash = hash_handle(handle);
     for (;;) {
         /* Guaranteed to find a slot eventually, < 50 % hash load factor */
         if (event_hash[hash].heap_index == 0u) {
@@ -268,7 +270,7 @@ static void heap_grow(void) {
             const uint64_t heapidx = old_hash_map[ui].heap_index;
             if (heapidx != 0u) {
                 /* Not a tombstone */
-                const uint64_t hashidx = hash_find_slot(handle, 64u - heap_exp);
+                const uint64_t hashidx = hash_find_slot(handle);
                 event_hash[hashidx].handle = handle;
                 event_hash[hashidx].heap_index = heapidx;
                 event_heap[heapidx].hash_index = hashidx;
@@ -279,6 +281,9 @@ static void heap_grow(void) {
 
 /* Bubble a tag at index k upwards into its right place */
 static void heap_up(uint64_t k) {
+    cmb_assert_debug(event_heap != NULL);
+    cmb_assert_debug(k <= heap_count);
+
     /* Place a working copy at index 0 */
     event_heap[0] = event_heap[k];
     /* A binary tree, parent node at k / 2 */
@@ -304,6 +309,9 @@ static void heap_up(uint64_t k) {
 
 /* Bubble a tag at index k downwards into its right place */
 static void heap_down(uint64_t k) {
+    cmb_assert_debug(event_heap != NULL);
+    cmb_assert_debug(k <= heap_count);
+
     /* Place a working copy at index 0 */
     event_heap[0] = event_heap[k];
 
@@ -364,7 +372,7 @@ uint64_t cmb_event_schedule(cmb_event_func *action,
     event_heap[heap_count].priority = priority;
 
     /* Initialize the hashtag for the event, pointing it to the heaptag */
-    const uint64_t hash = hash_find_slot(handle, 64u - heap_exp);
+    const uint64_t hash = hash_find_slot(handle);
     event_hash[hash].handle = handle;
     event_hash[hash].heap_index = heap_count;
 
@@ -374,6 +382,23 @@ uint64_t cmb_event_schedule(cmb_event_func *action,
 
     return handle;
 }
+
+/* The currently scheduled time for the given event */
+double cmb_event_time(const uint64_t handle) {
+    /* For now, just assert that this event must be in the heap */
+    const uint64_t idx = hash_find_handle(handle);
+    cmb_assert_release(idx != 0u);
+
+    return event_heap[idx].time;
+}
+
+/* The current priority for the given event */
+int16_t cmb_event_priority(uint64_t handle) {
+    /* For now, just assert that this event must be in the heap */
+    const uint64_t idx = hash_find_handle(handle);
+    return event_heap[idx].priority;
+}
+
 
 /*
  * Remove and execute the next event, update simulation clock.
@@ -415,7 +440,7 @@ bool cmb_event_execute_next(void) {
 
 /* Cancel the event in position idx and reshuffle heap */
 bool cmb_event_cancel(const uint64_t handle) {
-    const uint64_t heapidx = hash_find_handle(handle, 64u - heap_exp);
+    const uint64_t heapidx = hash_find_handle(handle);
     if (heapidx == 0u) {
         /* Not found */
         return false;
@@ -450,7 +475,7 @@ bool cmb_event_cancel(const uint64_t handle) {
 bool cmb_event_reschedule(const uint64_t handle, const double time) {
     cmb_assert_release(time >= sim_time);
 
-    const uint64_t heapidx = hash_find_handle(handle, 64 - heap_exp);
+    const uint64_t heapidx = hash_find_handle(handle);
     cmb_assert_release(heapidx <= heap_count);
     if (heapidx == 0u) {
         /* Not found */
@@ -471,7 +496,7 @@ bool cmb_event_reschedule(const uint64_t handle, const double time) {
 
 /* Reprioritize the event in position idx and reshuffle heap */
 bool cmb_event_reprioritize(const uint64_t handle, const int16_t priority) {
-    const uint64_t heapidx = hash_find_handle(handle, 64 - heap_exp);
+    const uint64_t heapidx = hash_find_handle(handle);
     cmb_assert_release(heapidx <= heap_count);
 
     const int tmp = event_heap[heapidx].priority;

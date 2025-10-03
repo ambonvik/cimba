@@ -58,11 +58,9 @@
 #ifndef CIMBA_CMB_EVENT_H
 #define CIMBA_CMB_EVENT_H
 
-#include <stddef.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
-
-#include "cmi_config.h"
 
 /* The generic event type */
 typedef void (cmb_event_func)(void*, void*);
@@ -129,8 +127,6 @@ extern int16_t cmb_event_priority(uint64_t handle);
  * some event that matches the search pattern if one exists in the queue. The
  * sequence in which events are found is unspecified.
  */
-static_assert((sizeof(cmb_event_func *) == 8) && (sizeof(void*) == 8),
-    "Pointer to function and pointer to void both expected to be 64 bits");
 
 #define CMB_ANY_ACTION ((cmb_event_func *)0xFFFFFFFFFFFFFFFF)
 #define CMB_ANY_SUBJECT ((void *)0xFFFFFFFFFFFFFFFF)
