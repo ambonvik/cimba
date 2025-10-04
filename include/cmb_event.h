@@ -66,18 +66,31 @@
 #include <stdio.h>
 #include <stdint.h>
 
-/* Get the current simulation time, read-only for the user application */
+/*
+ * cmb_time : Get the current simulation time, read-only for the user application
+ */
 extern double cmb_time(void);
 
-/* The generic event function type, typedef'd for clarity later */
+/*
+ * typedef cmb_event_func : The generic event function type
+ */
 typedef void (cmb_event_func)(void*, void*);
 
-/* Manage the event queue itself */
+/*
+ * cmb_event_eueue_init : Initialize the event queue itself.
+ * Must be called before any events can be scheduled or executed.
+ */
 extern void cmb_event_queue_init(double start_time);
+
+/*
+ * cmb_event_queue_destroy : Free memory allocated for event queue and
+ * reinitialize pointers. Can be reinitialized by calling cmb_event_queue_init
+ * again to start a new simulation run.
+ */
 extern void cmb_event_queue_destroy(void);
 
 /*
- * cmb_event_schedule: Inserts event in event queue as indicated by reactivation
+ * cmb_event_schedule: Insert event in event queue as indicated by reactivation
  * time and priority. An event cannot be scheduled at a time before current.
  * Returns the unique handle of the scheduled event.
  */
@@ -88,8 +101,8 @@ extern uint64_t cmb_event_schedule(cmb_event_func *action,
                                int16_t priority);
 
 /*
- *  cmb_event_next : Executes and removes the first event in the event queue.
- *  If both reactivation time and priority equal, FCFS order.
+ *  cmb_event_next : Removes and executes the first event in the event queue.
+ *  If both reactivation time and priority equal, first in first out order.
  *
  *  Returns true for success, false for failure (e.g., empty event list), for
  *  use in loops like while(cmb_event_execute_next()) { ... }
@@ -168,9 +181,16 @@ extern uint64_t cmb_event_cancel_all(cmb_event_func *action,
                                const void *object);
 
 /*
- * Print the current content of the event queue, for debugging use.
+ * cmb_event_heap_print : Print the current content of the event heap.
+ * Intended for debugging use, will print hexadecimal pointer values and
+ * similar raw data values from the event tag structs.
  */
 extern void cmb_event_heap_print(FILE *fp);
+
+/*
+ * cmb_event_hash_print : Print the current content of the hash map.
+ * Intended for debugging use, will print 64-bit handles and indexes.
+ */
 extern void cmb_event_hash_print(FILE *fp);
 
 #endif /* CIMBA_CMB_EVENT_H */

@@ -76,8 +76,8 @@ static CMB_THREAD_LOCAL struct heap_tag *event_heap = NULL;
 static CMB_THREAD_LOCAL uint64_t event_counter = 0u;
 
 /*
- * The heap and hash map need to be sized as powers of two, the hash map with
- * twice as many entries as the heap. heap_exp defines a heap size of
+ * heap_exp : The heap and hash map need to be sized as powers of two, the hash
+ * map with twice as many entries as the heap. heap_exp defines a heap size of
  * 2^heap_exp and a hash map of 2^(heap_exp + 1). Start small and fast,
  * e.g., heap size 2^5 = 32 entries, total size of the heaphash structure less
  * than one page of memory and well inside the L1 cache size. It will increase
@@ -247,7 +247,7 @@ static void heap_grow(void)
     cmb_assert_debug(heap_size == 2 * old_heap_size);
     hash_size = 2u * heap_size;
 
-    /* Caclulate the memory footprint it will need */
+    /* Calculate the page-aligned memory footprint it will need */
     const size_t heapbytes = (heap_size + 2u) * sizeof(struct heap_tag);
     const size_t hashbytes = hash_size * sizeof(struct hash_tag);
     const size_t newsz = heapbytes + hashbytes;
@@ -271,7 +271,7 @@ static void heap_grow(void)
     cmi_memset(event_hash, 0u, hashbytes);
 
     /*
-    * We  cannot access its old location since that was probably free'd by
+    * We cannot access its old location since that was probably free'd by
     * the realloc call. However, the old hash map was memcpy'd together
     * with the old heap, now located in the first half of the new array
     * since we doubled the size of the entire structure, guaranteeing that
@@ -285,7 +285,7 @@ static void heap_grow(void)
     cmb_assert_debug(is_power_of_two(hash_size));
 }
 
-/* Bubble a tag at index k upwards into its right place */
+/* heap_up : Bubble a tag at index k upwards into its right place */
 static void heap_up(uint64_t k)
 {
     cmb_assert_debug(event_heap != NULL);
@@ -314,7 +314,7 @@ static void heap_up(uint64_t k)
     event_hash[khash].heap_index = k;
 }
 
-/* Bubble a tag at index k downwards into its right place */
+/* heap_down : Bubble a tag at index k downwards into its right place */
 static void heap_down(uint64_t k)
 {
     cmb_assert_debug(event_heap != NULL);
@@ -539,7 +539,10 @@ bool cmb_event_execute_next(void)
     return true;
 }
 
-/* Cancel the event in position idx and reshuffle heap */
+/*
+ * cmb_event_cancel : Cancel the given event and reshuffle heap
+ * Precondition: Event must be in heap.
+ */
 void cmb_event_cancel(const uint64_t handle)
 {
     const uint64_t heapidx = hash_find_handle(handle);
@@ -567,7 +570,10 @@ void cmb_event_cancel(const uint64_t handle)
     }
 }
 
-/* Reschedule the event in position idx and reshuffle heap */
+/*
+ * cmb_event_reschedule : Reschedule the given event and reshuffle heap
+ * Precondition: The event must be in heap.
+ */
 void cmb_event_reschedule(const uint64_t handle, const double time)
 {
     cmb_assert_release(time >= sim_time);
@@ -586,7 +592,10 @@ void cmb_event_reschedule(const uint64_t handle, const double time)
     }
 }
 
-/* Reprioritize the event in position idx and reshuffle heap */
+/*
+ * Reprioritize the given event and reshuffle heap
+ * Precondition: The event must be in heap.
+ */
 void cmb_event_reprioritize(const uint64_t handle,
                             const int16_t priority)
 {
@@ -604,7 +613,10 @@ void cmb_event_reprioritize(const uint64_t handle,
     }
 }
 
-/* Helper function to get the condition out of the next three functions */
+/*
+ * event_match : Wildcard search helper function to get the condition
+ * out of the next three functions.
+ */
 static bool event_match(cmb_event_func *action,
                         const void *subject,
                         const void *object,
@@ -618,7 +630,11 @@ static bool event_match(cmb_event_func *action,
           || (object == event->object)));
 }
 
-/* Locate a specific event, using CMB_EVENT_ANY as a wildcard */
+/*
+ * cmb_event_find : Locate a specific event, using the CMB_ANY_* constants as
+ * wildcards in the respective positions. Returns the handle of the event, or
+ * zero if none found.
+ */
 uint64_t cmb_event_find(cmb_event_func *action,
                         const void *subject,
                         const void *object)
@@ -634,7 +650,10 @@ uint64_t cmb_event_find(cmb_event_func *action,
     return 0u;
 }
 
-/* Count matching events, using CMB_EVENT_ANY as a wildcard */
+/*
+ * cmb_event_count : Count matching events using CMB_ANY_* as wildcards.
+ * Returns the number of matching events, possibly zero.
+ */
 uint64_t cmb_event_count(cmb_event_func *action,
                         const void *subject,
                         const void *object)
@@ -652,11 +671,12 @@ uint64_t cmb_event_count(cmb_event_func *action,
 }
 
 /*
- * Cancel all matching events, using CMB_EVENT_ANY as a wildcard
+ * cmb_event_cancel_all : Cancel all matching events.
  * Two-pass approach: Allocate temporary storage for the list of
  * matching handles in the first pass, then cancel these in the
  * second pass. Avoids any possible issues caused by modification
  * (reshuffling) of the heap while iterating over it.
+ * Returns the number of events cancelled, possibly zero.
  */
 uint64_t cmb_event_cancel_all(cmb_event_func *action,
                         const void *subject,
@@ -688,13 +708,15 @@ uint64_t cmb_event_cancel_all(cmb_event_func *action,
     return cnt;
 }
 
-/* Print content of event queue for debugging purposes */
+/*
+ * cmb_event_heap_print : Print content of event heap, useful for debugging
+ */
 void cmb_event_heap_print(FILE *fp)
 {
     for (uint64_t ui = 1u; ui <= heap_count; ui++) {
         /*
          * Use a contrived cast to circumvent strict ban on conversion
-         * between function and object pointer
+         * between function and object pointer in ISO C.
          */
         static_assert(sizeof(event_heap[ui].action) == sizeof(void*),
             "Pointer to function expected to be same size as pointer to void");
@@ -710,10 +732,12 @@ void cmb_event_heap_print(FILE *fp)
     }
 }
 
-/* Print content of event queue for debugging purposes */
+/*
+ * cmb_event_hash_print : Print content of hash map, useful for debugging
+ */
 void cmb_event_hash_print(FILE *fp)
 {
-    for (uint64_t ui = 0u; ui < 2u * heap_size; ui++) {
+    for (uint64_t ui = 0u; ui < hash_size; ui++) {
         fprintf(fp, "%llu: %llu  %llu\n", ui,
                 event_hash[ui].handle,
                 event_hash[ui].heap_index);
