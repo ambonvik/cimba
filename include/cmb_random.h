@@ -50,9 +50,12 @@ extern uint64_t cmb_random_get_hwseed(void);
  */
 extern uint64_t cmb_random_sfc64(void);
 
-
 /*
- * Get pseudo-random number uniformly distributed on interval [0, 1).
+ * Get pseudo-random number uniformly distributed on interval [0, 1].
+ * A 64-bit double has 53 bits significand. We discard the bottom 11 bits and
+ * scale the result by 2^(-53) to get a number in [0.0, 1.0].
+ * See also IEEE 754 Standard for Floating-Point Arithmetic, or
+ * https://en.wikipedia.org/wiki/Double-precision_floating-point_format
  */
 inline double cmb_random(void)
 {
@@ -62,7 +65,9 @@ inline double cmb_random(void)
 /*
  * Continuous uniform distribution on the open interval [min, max].
  * Often used in lack of any other information about a distribution than
- * the endpoints. Assuming uniform in between may then be reasonable.
+ * the endpoints. Assuming a uniform distribution between may then be
+ * reasonable, but see also cmb_random_triangular, cmb_random_PERT, and
+ * cmb_random_PERT_mod as other possible empirical distributions.
  */
 inline double cmb_random_uniform(const double min, const double max)
 {
