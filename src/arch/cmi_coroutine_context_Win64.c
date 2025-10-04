@@ -81,12 +81,13 @@ extern void cmi_coroutine_trampoline(void);
 
 #ifndef NASSERT
  /* Stack sanity check, Win64-specific */
- bool cmi_coroutine_stack_valid(const struct cmb_coroutine *cp) {
+ bool cmi_coroutine_stack_valid(const struct cmb_coroutine *cp)
+{
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
     cmb_assert_debug(cp->stack_limit != NULL);
 
-    if (cp == cmi_coroutine_main) {
+    if (cp == coroutine_main) {
         cmb_assert_debug(cp->status == CMB_CORO_RUNNING);
         cmb_assert_debug(cp->stack == NULL);
         if (cp->stack_pointer != NULL) {
@@ -110,8 +111,9 @@ extern void cmi_coroutine_trampoline(void);
 #endif /* NASSERT */
 
 void cmi_coroutine_context_init(struct cmb_coroutine *cp,
-                                cmi_coroutine_func *foo,
-                                void *arg) {
+                                cmb_coroutine_func *foo,
+                                void *arg)
+{
     cmb_assert_release(cp != NULL);
     cmb_assert_debug(cp->stack != NULL),
     cmb_assert_debug(cp->stack_base != NULL);

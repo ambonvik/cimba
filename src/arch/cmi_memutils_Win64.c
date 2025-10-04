@@ -24,31 +24,37 @@
 #include "cmi_memutils.h"
 
 /*
- * Get page size from OS.
+ * cmi_get_pagesize : Get page size from OS.
  * Should be 4096 bytes, but better check.
  */
-size_t cmi_get_pagesize(void) {
+size_t cmi_get_pagesize(void)
+{
     SYSTEM_INFO sys_info;
     GetSystemInfo(&sys_info);
 
     return sys_info.dwPageSize;
 }
 
-/* Helper function for clarity */
-static bool is_power_of_two(size_t n) {
+/*
+ * is_power_of_two : Predicate helper function
+ */
+static bool is_power_of_two(size_t n)
+{
     /* A power of two has only one bit set */
     return (n == 0u) ? false : (n & (n - 1)) == 0u;
 }
 
 /*
- * Allocate memory aligned to some alignment value > 8 (as malloc gives by defeult)
+ * cmi_aligned_alloc : Allocate memory aligned to some alignment value > 8
+ * (as malloc gives by defeult). See also:
  * https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-malloc
  *
  * Strict requirements to arguments, need to be powers of two, multiples of 8 (bytes),
  * and the sz argument needs to be an integer multiple of the alignment.
  * Usage example: align to page size, allocate an integer multiple of page size.
  */
-void *cmi_aligned_alloc(const size_t align, const size_t sz) {
+void *cmi_aligned_alloc(const size_t align, const size_t sz)
+{
     cmb_assert_debug(align > 8u);
     cmb_assert_debug((align % sizeof(void*)) == 0u);
     cmb_assert_debug(is_power_of_two(align));
@@ -63,24 +69,26 @@ void *cmi_aligned_alloc(const size_t align, const size_t sz) {
 }
 
 /*
- * Free a previously allocated aligned memory area.
- * Windows requires a separate function for this, see
+ * cmi_aligned_free : Free a previously allocated aligned memory area.
+ * Windows requires a separate function for this, see also:
  *   https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-free
  */
-void cmi_aligned_free(void *p) {
+void cmi_aligned_free(void *p)
+{
     cmb_assert_debug(p != NULL);
     _aligned_free(p);
 }
 
 /*
- * Reallocate a previously allocated aligned memory area.
+ * cmi_aligned_realloc : Reallocate a previously allocated aligned memory area.
  * No standard C function for this, only in Windows.
  *   https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-realloc
  *
  * However, we keep the argument order of a hypothetical standard C function for
  * consistency with standard realloc(ptr, sz) and aligned_alloc(alignment, sz)
  */
-void *cmi_aligned_realloc(void *p, const size_t align, const size_t sz) {
+void *cmi_aligned_realloc(void *p, const size_t align, const size_t sz)
+{
     cmb_assert_debug(p != NULL);
     cmb_assert_debug(align > 8u);
     cmb_assert_debug((align % sizeof(void*)) == 0u);

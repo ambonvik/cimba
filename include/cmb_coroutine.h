@@ -6,7 +6,7 @@
  *   peer-to-peer relationship, using the cmi_transfer(to, arg) function.
  *   A "from" argument is not necessary, since only one coroutine can have the
  *   CPU execution thread at a time, and it will always be the currently
- *   executing coroutine (cmi_coroutine_current) that is initiating the transfer.
+ *   executing coroutine (coroutine_current) that is initiating the transfer.
  *   The argument will reappear as the return value of the cmb_transfer() on the
  *   receiving end.
  *
@@ -68,11 +68,16 @@
 
 #include <stddef.h>
 
-#include "cmb_assert.h"
-#include "cmi_config.h"
+/*
+ * struct cmb_coroutine : Opaque struct, no user serviceable parts inside.
+ * Contains the stack pointers and other housekeeping for the coroutines.
+ * Only accessible through defined API functiongs. For implementation details,
+ * see src/cmb_coroutine.c
+ */
+struct cmb_coroutine;
 
 /*
- * Possible states of a coroutine
+ * enum cmb_coroutine_state : Possible states of a coroutine
  * Running means that it has been started and has not yet ended, not necessarily
  * that it is the coroutine currently executing instructions.
  */
@@ -82,64 +87,14 @@ enum cmb_coroutine_state {
     CMB_CORO_FINISHED = 2
 };
 
-/*
- * The coroutine struct contains data about current stack and where to return.
- * Execution context (such as registers) are pushed to and popped from the
- * coroutine's stack, pointed to from here. The *stack is the raw address of the
- * allocated stack, *stack_base the top (growing down), *stack_limit the end as
- * seen by the OS. Alignment requirements may cause minor differences, hence
- * maintaining several pointers here for different purposes.
- *
- * Parent is the coroutine that first activated (started) this coroutine, and
- * where control is passed when and if the coroutine function returns or exits.
- * Hence, cmb_coroutine_exit(arg) => cmb_coroutine_transfer(this, parent, arg).
- *
- * Caller is the coroutine that last (re)activated this coroutine, and where
- * control is passed when and if the coroutine yields.
- * cmb_coroutine_yield(arg) => cmb_coroutine_transfer(this, caller, arg).
- *
- * Initially, caller and parent will be the same, only differing if the
- * coroutine later gets reactivated by some other coroutine.
- *
- * Invariant: stack_base > stack_pointer > stack_limit >= stack.
- * Using unsigned char * as raw byte addresses to have same offset calculation
- * here as in the assembly code.
- */
-struct cmb_coroutine {
-    struct cmb_coroutine *parent;
-    struct cmb_coroutine *caller;
-    unsigned char *stack;
-    unsigned char *stack_base;
-    unsigned char *stack_limit;
-    unsigned char *stack_pointer;
-    enum cmb_coroutine_state status;
-    void *exit_value;
-};
-
-/* The generic coroutine function type */
-typedef void *(cmi_coroutine_func)(struct cmb_coroutine *cp, void *arg);
-
-extern CMB_THREAD_LOCAL struct cmb_coroutine *cmi_coroutine_current;
-extern CMB_THREAD_LOCAL struct cmb_coroutine *cmi_coroutine_main;
+/* typedef cmb_coroutine_func : The generic coroutine function type */
+typedef void *(cmb_coroutine_func)(struct cmb_coroutine *cp, void *arg);
 
 /* Simple getters */
-inline struct cmb_coroutine *cmb_coroutine_get_current(void) {
-    return cmi_coroutine_current;
-}
-
-inline struct cmb_coroutine *cmb_coroutine_get_main(void) {
-    return cmi_coroutine_main;
-}
-
-inline enum cmb_coroutine_state cmb_coroutine_get_status(const struct cmb_coroutine *cp) {
-    cmb_assert_release(cp != NULL);
-    return cp->status;
-}
-
-inline void *cmb_coroutine_get_exit_value(const struct cmb_coroutine *cp) {
-    cmb_assert_release(cp != NULL);
-    return cp->exit_value;
-}
+extern struct cmb_coroutine *cmb_coroutine_get_current(void);
+extern struct cmb_coroutine *cmb_coroutine_get_main(void);
+extern enum cmb_coroutine_state cmb_coroutine_get_status(const struct cmb_coroutine *cp);
+extern void *cmb_coroutine_get_exit_value(const struct cmb_coroutine *cp);
 
 /* Functions to manipulate (other) coroutines */
 extern struct cmb_coroutine *cmb_coroutine_create(size_t stack_size);
@@ -149,43 +104,20 @@ extern struct cmb_coroutine *cmb_coroutine_create(size_t stack_size);
  * passing some return value through the yield, resume, or transfer to here.
  */
 extern void *cmb_coroutine_start(struct cmb_coroutine *cp,
-                                cmi_coroutine_func foo,
-                                void *arg);
+                                 cmb_coroutine_func foo,
+                                 void *arg);
 
 extern void cmb_coroutine_stop(struct cmb_coroutine *victim);
 extern void cmb_coroutine_destroy(struct cmb_coroutine *victim);
 
-/* Equivalent to returning from the coroutine function. */
+/* Equivalent to returning retval from the coroutine function. */
 extern void cmb_coroutine_exit(void *retval);
 
-/* Symmetric coroutine pattern, called from within coroutine */
+/* Symmetric coroutine pattern, transferring to wherever */
 extern void *cmb_coroutine_transfer(struct cmb_coroutine *to, void *arg);
 
-/* Asymmetric coroutine pattern yield/resume, called from within coroutine */
-inline void *cmb_coroutine_yield(void *arg) {
-    const struct cmb_coroutine *from = cmi_coroutine_current;
-    cmb_assert_release(from != NULL);
-    cmb_assert_release(from->status == CMB_CORO_RUNNING);
-
-    struct cmb_coroutine *to = from->caller;
-    cmb_assert_release(to != NULL);
-    cmb_assert_release(to->status == CMB_CORO_RUNNING);
-
-    void *ret = cmb_coroutine_transfer(to, arg);
-
-    /* Possibly much later */
-    return ret;
-}
-
-inline void *cmb_coroutine_resume(struct cmb_coroutine *cp, void *arg) {
-    cmb_assert_release(cp != NULL);
-    cmb_assert_release(cp != cmi_coroutine_current);
-    cmb_assert_release(cp->status == CMB_CORO_RUNNING);
-
-    void *ret = cmb_coroutine_transfer(cp, arg);
-
-    /* Possibly much later */
-    return ret;
-}
+/* Asymmetric coroutine pattern, always returning to caller */
+extern void *cmb_coroutine_resume(struct cmb_coroutine *cp, void *arg);
+extern void *cmb_coroutine_yield(void *arg);
 
 #endif /* CIMBA_CMB_COROUTINE_H */

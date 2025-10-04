@@ -27,7 +27,8 @@
 /*
   * Convenience functions to encapsulate repetitive error handling
   */
-inline void *cmi_malloc(const size_t sz) {
+inline void *cmi_malloc(const size_t sz)
+{
     cmb_assert_debug(sz > 0);
 
     void *rp = malloc(sz);
@@ -36,7 +37,8 @@ inline void *cmi_malloc(const size_t sz) {
     return rp;
 }
 
-inline void *cmi_calloc(const unsigned n, const size_t sz) {
+inline void *cmi_calloc(const unsigned n, const size_t sz)
+{
     cmb_assert_debug(n > 0);
     cmb_assert_debug(sz > 0);
 
@@ -46,7 +48,8 @@ inline void *cmi_calloc(const unsigned n, const size_t sz) {
     return rp;
 }
 
-inline void *cmi_realloc(void *p, const size_t sz) {
+inline void *cmi_realloc(void *p, const size_t sz)
+{
     cmb_assert_debug(p != NULL);
     cmb_assert_debug(sz > 0);
 
@@ -56,13 +59,15 @@ inline void *cmi_realloc(void *p, const size_t sz) {
     return rp;
 }
 
-inline void cmi_free(void *p) {
+inline void cmi_free(void *p)
+{
     cmb_assert_debug(p != NULL);
 
     free(p);
 }
 
-static inline void *cmi_memcpy(void* dest, const void* src, const size_t sz) {
+static inline void *cmi_memcpy(void* dest, const void* src, const size_t sz)
+{
     cmb_assert_debug(dest != NULL);
     cmb_assert_debug(src != NULL);
     cmb_assert_debug(sz > 0);
@@ -73,7 +78,8 @@ static inline void *cmi_memcpy(void* dest, const void* src, const size_t sz) {
     return rp;
 }
 
-static inline void *cmi_memset(void *ptr, const int c, const size_t n) {
+static inline void *cmi_memset(void *ptr, const int c, const size_t n)
+{
     cmb_assert_debug(ptr != NULL);
     cmb_assert_debug(n > 0);
 

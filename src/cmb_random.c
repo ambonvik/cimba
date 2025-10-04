@@ -76,7 +76,8 @@ static CMB_THREAD_LOCAL struct {
  * An implementation of Chris Doty-Humphrey's sfc64. Fast and high quality.
  * Public domain, see https://pracrand.sourceforge.net
  */
-uint64_t cmb_random_sfc64(void) {
+uint64_t cmb_random_sfc64(void)
+{
     const uint64_t tmp = prng_state.a + prng_state.b + prng_state.d++;
     prng_state.a = prng_state.b ^ (prng_state.b >> 11);
     prng_state.b = prng_state.c + (prng_state.c << 3);
@@ -94,11 +95,13 @@ uint64_t cmb_random_sfc64(void) {
  */
 static CMB_THREAD_LOCAL uint64_t splitmix_state = DUMMY_SEED;
 
-static void splitmix_init(const uint64_t seed) {
+static void splitmix_init(const uint64_t seed)
+{
     splitmix_state = seed;
 }
 
-static uint64_t splitmix64(void) {
+static uint64_t splitmix64(void)
+{
 	uint64_t z = (splitmix_state += 0x9e3779b97f4a7c15);
 	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
 	z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
@@ -112,7 +115,8 @@ static uint64_t splitmix64(void) {
  * Intentionally randomizes the counter (.d) to start at random place in cycle.
  * Pulls a few samples from the generator to get rid of any initial transient.
  */
-void cmb_random_init(uint64_t seed) {
+void cmb_random_init(const uint64_t seed)
+{
     splitmix_init(seed);
     prng_state.a = splitmix64();
     prng_state.b = splitmix64();
@@ -174,11 +178,13 @@ void cmb_random_init(uint64_t seed) {
  * We do as many calculations as possible in unsigned integer for speed.
  * Helper functions to map uint64_t values to doubles on the correct scale.
  */
-static double zig_exp_convert_x(const double *dpx, const uint64_t u) {
+static double zig_exp_convert_x(const double *dpx, const uint64_t u)
+{
     return ldexp((*dpx), 64) + (*(dpx - 1) - *dpx) * (double)u;
 }
 
-static inline double zig_exp_convert_y(const double *dpy, const uint64_t u) {
+static inline double zig_exp_convert_y(const double *dpy, const uint64_t u)
+{
     return ldexp(*(dpy - 1), 64) + (*dpy - *(dpy - 1)) * (double)u;
 }
 
@@ -186,7 +192,8 @@ static inline double zig_exp_convert_y(const double *dpy, const uint64_t u) {
 #include "cmi_random_exp_zig.inc"
 
 /* Fallback sampling function, called in about 1,5 % of cases */
-double cmi_random_exp_not_hot(uint64_t u_cand_x) {
+double cmi_random_exp_not_hot(uint64_t u_cand_x)
+{
     /* Offset for tail sample generation, implemented as iteration */
     double x_offset = 0.0;
     for (;;) {
@@ -270,7 +277,8 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x) {
  */
 double cmb_random_hyperexponential(const unsigned n,
                                    const double ma[n],
-                                   const double pa[n]) {
+                                   const double pa[n])
+{
     cmb_assert_release(n > 0u);
     cmb_assert_release(ma != NULL);
     cmb_assert_release(pa != NULL);
@@ -293,22 +301,26 @@ double cmb_random_hyperexponential(const unsigned n,
  */
 
 /* Helper functions to map int64_t values to doubles on the correct scale */
-static double zig_nor_convert_x(const double *dpx, const int64_t ix) {
+static double zig_nor_convert_x(const double *dpx, const int64_t ix)
+{
     return ldexp((*dpx), 63) + (*(dpx - 1) - *dpx) * (double)ix;
 }
 
-static double zig_nor_convert_y(const double *dpy, const uint64_t uy) {
+static double zig_nor_convert_y(const double *dpy, const uint64_t uy)
+{
     return ldexp(*(dpy - 1), 63) + (*dpy - *(dpy - 1)) * (double)uy;
 }
 
 /* Pull 64 bits of randomness, convert to signed and clear the sign bit */
-static int64_t zig_sample63(void) {
+static int64_t zig_sample63(void)
+{
     uint64_t bits = cmb_random_sfc64();
     return (*(int64_t *)&bits) & INT64_MAX;
 }
 
 /* pdf pre-scaled by sqrt (2 * M_PI) to avoid recalculating constant */
-static inline double sc_nor_pdf(const double x) {
+static inline double sc_nor_pdf(const double x)
+{
     return exp(-0.5 * x * x);
 }
 
@@ -316,7 +328,8 @@ static inline double sc_nor_pdf(const double x) {
 #include "cmi_random_nor_zig.inc"
 
 /* The actual normal distribution sampling function */
-double cmi_random_nor_not_hot(int64_t i_cand_x) {
+double cmi_random_nor_not_hot(int64_t i_cand_x)
+{
     /* Save the sign bit for later use and clear it */
     double sign = ((i_cand_x >> 63) ? -1.0 : 1.0);
     i_cand_x &= INT64_MAX;
@@ -428,7 +441,8 @@ double cmi_random_nor_not_hot(int64_t i_cand_x) {
  *   Marsaglia & Tsang (2000): "A Simple Method for Generating Gamma Variables",
  *   https://dl.acm.org/doi/10.1145/358407.358414
  */
-double cmb_random_std_gamma(const double shape) {
+double cmb_random_std_gamma(const double shape)
+{
     cmb_assert_release(shape > 0.0);
 
     static CMB_THREAD_LOCAL double a_prev = 0.0;
@@ -464,7 +478,8 @@ double cmb_random_std_gamma(const double shape) {
 /* Triangular distribution */
 double cmb_random_triangular(const double min,
                              const double mode,
-                             const double max) {
+                             const double max)
+{
     cmb_assert_release(min <= mode);
     cmb_assert_release(mode <= max);
 
@@ -486,7 +501,8 @@ double cmb_random_triangular(const double min,
 double cmb_random_PERT_mod(const double min,
                            const double mode,
                            const double max,
-                           const double lambda) {
+                           const double lambda)
+{
     cmb_assert_release(min < mode);
     cmb_assert_release(mode < max);
     cmb_assert_release(lambda > 0.0);
@@ -501,7 +517,8 @@ double cmb_random_PERT_mod(const double min,
 }
 
 /* Simple flip of a fair unbiased coin, caching bits for efficiency */
-int cmb_random_flip(void) {
+int cmb_random_flip(void)
+{
     static CMB_THREAD_LOCAL uint64_t bits;
     static CMB_THREAD_LOCAL uint8_t bitpos = 0;
 
@@ -518,7 +535,8 @@ int cmb_random_flip(void) {
  * and including the first success.
  *
  */
-unsigned cmb_random_geometric(const double p) {
+unsigned cmb_random_geometric(const double p)
+{
     cmb_assert((p > 0.0) && (p <= 1.0));
 
     static CMB_THREAD_LOCAL double prev = 0.0;
@@ -534,7 +552,8 @@ unsigned cmb_random_geometric(const double p) {
 }
 
 /* Binomial distribution, the number of successes in n trials */
-unsigned cmb_random_binomial(const unsigned n, const double p) {
+unsigned cmb_random_binomial(const unsigned n, const double p)
+{
     cmb_assert_release(n > 0);
     cmb_assert_release((p > 0.0) && (p <= 1.0));
 
@@ -551,7 +570,8 @@ unsigned cmb_random_binomial(const unsigned n, const double p) {
  * Negative binomial distribution, number of failures until m'th success,
  * where p > 0 is the probability of success in each trial.
  */
-unsigned cmb_random_negative_binomial(const unsigned m, const double p) {
+unsigned cmb_random_negative_binomial(const unsigned m, const double p)
+{
     cmb_assert_release(m > 0);
     cmb_assert((p > 0.0) && (p <= 1.0));
 
@@ -567,7 +587,8 @@ unsigned cmb_random_negative_binomial(const unsigned m, const double p) {
  * Poisson distribution, number of arrivals with rate r in unit time,
  * using our fast exponential distribution to simulate it arrival by arrival.
  */
-unsigned cmb_random_poisson(const double r) {
+unsigned cmb_random_poisson(const double r)
+{
     cmb_assert_release(r > 0.0);
 
     const double m = 1.0 / r;
@@ -593,7 +614,8 @@ unsigned cmb_random_poisson(const double r) {
  */
 #ifndef NASSERT
 static double sum_tolerance = 1.0e-3;
-static bool sums_to_one(const unsigned n, const double p[n]) {
+static bool sums_to_one(const unsigned n, const double p[n])
+{
     double sum = 0.0;
     for (unsigned ui = 0u; ui < n; ui++) {
         sum += p[ui];
@@ -603,7 +625,8 @@ static bool sums_to_one(const unsigned n, const double p[n]) {
 }
 #endif /* ifndef NASSERT */
 
-unsigned cmb_random_loaded_dice(const unsigned n, const double pa[n]) {
+unsigned cmb_random_loaded_dice(const unsigned n, const double pa[n])
+{
     cmb_assert_release(n > 0);
     cmb_assert_release(pa != NULL);
     cmb_assert_release(sums_to_one(n, pa));
@@ -631,7 +654,8 @@ unsigned cmb_random_loaded_dice(const unsigned n, const double pa[n]) {
  */
 
 /* Helper function to make sure the table index never wraps around */
-static inline uint64_t cmi_random_alias_secure(const double p) {
+static inline uint64_t alias_secure(const double p)
+{
     uint64_t ur;
     if (p <= 0.0) {
         ur = 0;
@@ -682,7 +706,7 @@ struct cmb_random_alias *cmb_random_alias_create(const unsigned n,
     while ((idxs > 0) && (idxl > 0)) {
         const unsigned l = small[--idxs];
         const unsigned g = large[--idxl];
-        alp->uprob[l] = cmi_random_alias_secure(work[l]);
+        alp->uprob[l] = alias_secure(work[l]);
         alp->alias[l] = g;
         work[g] = (work[g] + work[l]) - 1.0;
         if (work[g] < 1.0) {
@@ -711,7 +735,8 @@ struct cmb_random_alias *cmb_random_alias_create(const unsigned n,
 }
 
 /* Deallocate the alias lookup table when done sampling */
-void cmb_random_alias_destroy(struct cmb_random_alias *pa) {
+void cmb_random_alias_destroy(struct cmb_random_alias *pa)
+{
     cmb_assert_release(pa != NULL);
     cmb_assert_release(pa->uprob != NULL);
     cmb_assert_release(pa->alias != NULL);

@@ -30,7 +30,8 @@
 #define MAX_LAG 20u
 #define NUM_BINS 20u
 
-static void test_summary(void) {
+static void test_summary(void)
+{
     printf("\nTesting data summaries\n");
     printf("Declaring local variable data summary on stack and initializing it: cmb_summary_init\n");
     struct cmb_summary ds;
@@ -83,7 +84,8 @@ static void test_summary(void) {
     cmi_test_print_line("=");
 }
 
-static void test_wsummary(void) {
+static void test_wsummary(void)
+{
     printf("\nTesting weighted data summaries\n");
     printf("Weighted and unweighted in parallel, all weights set to 1.0\n");
     struct cmb_summary ds;
@@ -164,7 +166,8 @@ static void test_wsummary(void) {
     cmi_test_print_line("=");
 }
 
-void test_dataset(void) {
+void test_dataset(void)
+{
     printf("\nTesting datasets\n");
     printf("Local variable dataset on stack: cmb_dataset_init\n");
 
@@ -265,7 +268,8 @@ void test_dataset(void) {
     cmi_test_print_line("=");
 }
 
-void test_timeseries(void) {
+void test_timeseries(void)
+{
     printf("\nTesting timeseries\n");
     printf("Creating timeseries: cmb_timeseries_create\n");
 
@@ -375,7 +379,8 @@ void test_timeseries(void) {
     cmi_test_print_line("=");
 }
 
-int main(void) {
+int main(void)
+{
     cmi_test_print_line("*");
     printf("**********************      Testing data collectors       **********************\n");
     cmi_test_print_line("*");

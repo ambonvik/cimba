@@ -27,7 +27,8 @@
 #include "cmi_test.h"
 
 /* An event, prints a line of info and reschedules itself */
-static void test_action(void *subject, void *object) {
+static void test_action(void *subject, void *object)
+{
     cmb_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
     cmb_event_schedule(test_action, subject, object,
                       cmb_random_exponential(10),
@@ -35,7 +36,8 @@ static void test_action(void *subject, void *object) {
 }
 
 /* Another event, closes the bar for good */
-static void end_sim(void *subject, void *object) {
+static void end_sim(void *subject, void *object)
+{
     cmb_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);
     cmb_warning(stdout, "===> end_sim: game over <===");
     cmb_event_queue_destroy();
@@ -44,7 +46,8 @@ static void end_sim(void *subject, void *object) {
 static const char *subjects[] = {"this", "self", "me"};
 static const char *objects[] = {"that thing", "some thing", "the other thing"};
 
-int main(void) {
+int main(void)
+{
     cmb_random_init(cmb_random_get_hwseed());
 
     printf("Testing event queue\n");

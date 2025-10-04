@@ -85,28 +85,33 @@ extern uint64_t cmb_summary_merge(struct cmb_summary *tgt,
                                         const struct cmb_summary *sup2);
 
 /* The various summary statistics, starting with the sample count */
-inline uint64_t cmb_summary_count(const struct cmb_summary *sup) {
+inline uint64_t cmb_summary_count(const struct cmb_summary *sup)
+{
     cmb_assert_release(sup != NULL);
     return sup->cnt;
 }
 
-inline double cmb_summary_max(const struct cmb_summary *sup) {
+inline double cmb_summary_max(const struct cmb_summary *sup)
+{
     cmb_assert_release(sup != NULL);
     return sup->max;
 }
 
-inline double cmb_summary_min(const struct cmb_summary *sup) {
+inline double cmb_summary_min(const struct cmb_summary *sup)
+{
     cmb_assert_release(sup != NULL);
     return sup->min;
 }
 
-inline double cmb_summary_mean(const struct cmb_summary *sup) {
+inline double cmb_summary_mean(const struct cmb_summary *sup)
+{
     cmb_assert_release(sup != NULL);
     return sup->m1;
 }
 
 /* Sample variance */
-inline double cmb_summary_variance(const struct cmb_summary *sup) {
+inline double cmb_summary_variance(const struct cmb_summary *sup)
+{
     cmb_assert_release(sup != NULL);
 
     double r = 0.0;
@@ -118,7 +123,8 @@ inline double cmb_summary_variance(const struct cmb_summary *sup) {
     return r;
 }
 
-inline double cmb_summary_stddev(const struct cmb_summary *sup) {
+inline double cmb_summary_stddev(const struct cmb_summary *sup)
+{
     cmb_assert_release(sup != NULL);
     return sqrt(cmb_summary_variance(sup));
 }
@@ -134,7 +140,8 @@ extern double cmb_summary_kurtosis(const struct cmb_summary *sup);
  * The argument lead_ins controls if explanatory text is printed.
  * If false, only prints a tab-separated line of numeric values.
  */
-extern void cmb_summary_print(const struct cmb_summary *sup, FILE *fp,
+extern void cmb_summary_print(const struct cmb_summary *sup,
+                              FILE *fp,
                               bool lead_ins);
 
 /******************************************************************************
@@ -148,13 +155,15 @@ struct cmb_wsummary {
     double wsum;
 };
 
-inline void cmb_wsummary_init(struct cmb_wsummary *wsup) {
+inline void cmb_wsummary_init(struct cmb_wsummary *wsup)
+{
     cmb_assert_release(wsup != NULL);
     cmb_summary_init((struct cmb_summary *)wsup);
     wsup->wsum = 0.0;
 }
 
-inline void cmb_wsummary_clear(struct cmb_wsummary *wsup) {
+inline void cmb_wsummary_clear(struct cmb_wsummary *wsup)
+{
     cmb_assert_release(wsup != NULL);
     cmb_wsummary_init(wsup);
 }
@@ -163,47 +172,57 @@ extern struct cmb_wsummary *cmb_wsummary_create(void);
 extern void cmb_wsummary_destroy(struct cmb_wsummary *wsup);
 extern uint64_t cmb_wsummary_add(struct cmb_wsummary *wsup, double y, double w);
 extern uint64_t cmb_wsummary_merge(struct cmb_wsummary *tgt,
-                                        const struct cmb_wsummary *ws1,
-                                        const struct cmb_wsummary *ws2);
+                                   const struct cmb_wsummary *ws1,
+                                   const struct cmb_wsummary *ws2);
 
 /*
  * Member functions "inherited" from the base data summary class,
  * but using the already weighted moments.
  */
-inline uint64_t cmb_wsummary_count(const struct cmb_wsummary *wsup) {
+inline uint64_t cmb_wsummary_count(const struct cmb_wsummary *wsup)
+{
     return cmb_summary_count((struct cmb_summary *)wsup);
 }
 
-inline double cmb_wsummary_max(const struct cmb_wsummary *wsup) {
+inline double cmb_wsummary_max(const struct cmb_wsummary *wsup)
+{
     return cmb_summary_max((struct cmb_summary *)wsup);
 }
 
-inline double cmb_wsummary_min(const struct cmb_wsummary *wsup) {
+inline double cmb_wsummary_min(const struct cmb_wsummary *wsup)
+{
     return cmb_summary_min((struct cmb_summary *)wsup);
 }
 
-inline double cmb_wsummary_mean(const struct cmb_wsummary *wsup) {
+inline double cmb_wsummary_mean(const struct cmb_wsummary *wsup)
+{
     return cmb_summary_mean((struct cmb_summary *)wsup);
 }
 
-inline double cmb_wsummary_variance(const struct cmb_wsummary *wsup) {
+inline double cmb_wsummary_variance(const struct cmb_wsummary *wsup)
+{
     return cmb_summary_variance((struct cmb_summary *)wsup);
 }
 
-inline double cmb_wsummary_stddev(const struct cmb_wsummary *wsup) {
+inline double cmb_wsummary_stddev(const struct cmb_wsummary *wsup)
+{
     return cmb_summary_stddev((struct cmb_summary *)wsup);
 }
 
-inline double cmb_wsummary_skewness(const struct cmb_wsummary *wsup) {
+inline double cmb_wsummary_skewness(const struct cmb_wsummary *wsup)
+{
     return cmb_summary_skewness((struct cmb_summary *)wsup);
 }
 
-inline double cmb_wsummary_kurtosis(const struct cmb_wsummary *wsup) {
+inline double cmb_wsummary_kurtosis(const struct cmb_wsummary *wsup)
+{
     return cmb_summary_kurtosis((struct cmb_summary *)wsup);
 }
 
-inline void cmb_wsummary_print(const struct cmb_wsummary *wsup, FILE *fp,
-                               const bool lead_ins) {
+inline void cmb_wsummary_print(const struct cmb_wsummary *wsup,
+                               FILE *fp,
+                               const bool lead_ins)
+{
     cmb_summary_print((struct cmb_summary *)wsup, fp, lead_ins);
 }
 
@@ -254,7 +273,8 @@ extern uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
  * allocated for the data arrays, but does not free the memory allocated for
  * the dataset itself.
  */
-inline void cmb_dataset_clear(struct cmb_dataset *dsp) {
+inline void cmb_dataset_clear(struct cmb_dataset *dsp)
+{
     cmb_assert_release(dsp != NULL);
     cmb_dataset_init(dsp);
 }
@@ -282,17 +302,20 @@ extern uint64_t cmb_dataset_add(struct cmb_dataset *dsp, double x);
 extern uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
                                       struct cmb_summary *dsump);
 
-inline uint64_t cmb_dataset_count(const struct cmb_dataset *dsp) {
+inline uint64_t cmb_dataset_count(const struct cmb_dataset *dsp)
+{
     cmb_assert_release(dsp != NULL);
     return dsp->cnt;
 }
 
-inline double cmb_dataset_min(const struct cmb_dataset *dsp) {
+inline double cmb_dataset_min(const struct cmb_dataset *dsp)
+{
     cmb_assert_release(dsp != NULL);
     return dsp->min;
 }
 
-inline double cmb_dataset_max(const struct cmb_dataset *dsp) {
+inline double cmb_dataset_max(const struct cmb_dataset *dsp)
+{
     cmb_assert_release(dsp != NULL);
     return dsp->max;
 }
@@ -371,7 +394,9 @@ struct cmb_timeseries {
 /* Manage the timeseries themselves */
 extern struct cmb_timeseries *cmb_timeseries_create(void);
 extern void cmb_timeseries_init(struct cmb_timeseries *tsp);
-inline void cmb_timeseries_clear(struct cmb_timeseries *tsp) {
+
+inline void cmb_timeseries_clear(struct cmb_timeseries *tsp)
+{
     cmb_assert_release(tsp != NULL);
     cmb_timeseries_init(tsp);
 }
@@ -380,11 +405,12 @@ extern void cmb_timeseries_destroy(struct cmb_timeseries *tsp);
 
 /* Copy tgt into src, overwriting whatever was in tgt */
 extern uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
-                                     const struct cmb_timeseries *src);
+                                    const struct cmb_timeseries *src);
 
 /* Add a single value to a timeseries, resizing the array as needed */
 extern uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp,
-                                   double x, double t);
+                                   double x,
+                                   double t);
 
 /*
  * Add a final data point at the given time t with the same x-value as
@@ -413,19 +439,22 @@ extern void cmb_timeseries_sort_t(struct cmb_timeseries *tsp);
  * Returns the number of data points in the summary.
  */
 extern uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp,
-                                  struct cmb_wsummary *wsp);
+                                         struct cmb_wsummary *wsp);
 
-inline uint64_t cmb_timeseries_count(const struct cmb_timeseries *tsp) {
+inline uint64_t cmb_timeseries_count(const struct cmb_timeseries *tsp)
+{
     cmb_assert_release(tsp != NULL);
     return cmb_dataset_count((struct cmb_dataset *)tsp);
 }
 
-inline double cmb_timeseries_min(const struct cmb_timeseries *tsp) {
+inline double cmb_timeseries_min(const struct cmb_timeseries *tsp)
+{
     cmb_assert_release(tsp != NULL);
     return cmb_dataset_min((struct cmb_dataset *)tsp);
 }
 
-inline double cmb_timeseries_max(const struct cmb_timeseries *tsp) {
+inline double cmb_timeseries_max(const struct cmb_timeseries *tsp)
+{
     cmb_assert_release(tsp != NULL);
     return cmb_dataset_max((struct cmb_dataset *)tsp);
 }
@@ -468,7 +497,8 @@ extern void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp);
  */
 inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp,
                                const uint16_t max_lag,
-                               double acf[max_lag + 1u]) {
+                               double acf[max_lag + 1u])
+{
     cmb_assert_release(tsp != NULL);
     cmb_dataset_ACF((struct cmb_dataset *)tsp, max_lag, acf);
 }
@@ -480,7 +510,8 @@ inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp,
 inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
                                 uint16_t max_lag,
                                 double pacf[max_lag + 1u],
-                                double acf[max_lag + 1u]) {
+                                double acf[max_lag + 1u])
+{
     cmb_assert_release(tsp != NULL);
     cmb_dataset_PACF((struct cmb_dataset *)tsp, max_lag, pacf, acf);
 }
@@ -492,7 +523,8 @@ inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
 inline void cmb_timeseries_print_correlogram(const struct cmb_timeseries *tsp,
                                              FILE *fp,
                                              const uint16_t max_lag,
-                                             double acf[max_lag + 1u]) {
+                                             double acf[max_lag + 1u])
+{
     cmb_assert_release(tsp != NULL);
     cmb_dataset_print_correlogram((struct cmb_dataset *)tsp, fp, max_lag, acf);
 }

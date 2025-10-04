@@ -23,11 +23,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
 
 #include "cmb_assert.h"
 
-static inline void cmi_test_print_chars(const char *str, const uint16_t repeats) {
+static inline void cmi_test_print_chars(const char *str, const uint16_t repeats)
+{
     cmb_assert_release(str != NULL);
 
     for (uint16_t ui = 0; ui < repeats; ui++) {
@@ -35,7 +35,8 @@ static inline void cmi_test_print_chars(const char *str, const uint16_t repeats)
     }
 }
 
-static inline void cmi_test_print_line(const char *str) {
+static inline void cmi_test_print_line(const char *str)
+{
     cmb_assert_release(str != NULL);
 
     const uint16_t len = strlen(str);

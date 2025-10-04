@@ -24,13 +24,15 @@
 #include "cmi_test.h"
 
 /* Simple test function, just a single event that returns */
-static void *corofunc(struct cmb_coroutine *myself, void *arg) {
+static void *corofunc(struct cmb_coroutine *myself, void *arg)
+{
     printf("corofunc(%p, %p) running\n", (void *)myself, arg);
     printf("corofunc returning %p\n", arg);
     return arg;
 }
 
-static void test_simple_event(void) {
+static void test_simple_event(void)
+{
     /* First create a coroutine, which is straightforward memory allocation. */
     printf("Test simple coroutine call\n");
     const size_t stksz = 24 * 1024;
@@ -60,7 +62,8 @@ static void test_simple_event(void) {
 }
 
 /* A coroutine that transfers control to a partner coroutine and back */
-static void *corofunc_2(struct cmb_coroutine *myself, void *arg) {
+static void *corofunc_2(struct cmb_coroutine *myself, void *arg)
+{
     /* The arg is not used here, indirectly using the caller pointer instead */
     printf("corofunc_2(%p, %p) running\n", (void *)myself, arg);
 
@@ -84,7 +87,8 @@ static void *corofunc_2(struct cmb_coroutine *myself, void *arg) {
 }
 
 /* A coroutine that transfers control to a partner coroutine and back */
-static void *corofunc_1(struct cmb_coroutine *myself, void *arg) {
+static void *corofunc_1(struct cmb_coroutine *myself, void *arg)
+{
     /* The arg is a disguised pointer to the other coroutine */
     struct cmb_coroutine *buddy = arg;
     printf("corofunc_1(%p, %p) running\n", (void *)myself, (void *)buddy);
@@ -110,7 +114,8 @@ static void *corofunc_1(struct cmb_coroutine *myself, void *arg) {
     return (void *)0x5EAF00Dull;
 }
 
-static void test_asymmetric(void) {
+static void test_asymmetric(void)
+{
     printf("Test asymmetric coroutines\n");
     const size_t stksz = 16 * 1024;
     printf("Create two coroutines, stack size %llu\n", stksz);
@@ -133,7 +138,8 @@ static void test_asymmetric(void) {
 
 
 
-int main(void) {
+int main(void)
+{
     cmi_test_print_line("*");
     printf("**********************         Testing coroutines         **********************\n");
     cmi_test_print_line("*");

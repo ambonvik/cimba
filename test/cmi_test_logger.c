@@ -25,15 +25,9 @@
 #include "cmb_random.h"
 #include "cmb_logger.h"
 
-static uint64_t create_seed(void) {
-    struct timespec ts;
-    (void) clock_gettime(CLOCK_REALTIME, &ts);
-
-    return (uint64_t)(ts.tv_nsec ^ ts.tv_sec);
-}
-
 /* An event, prints a line of info and reschedules itself */
-static void test_action(void *subject, void *object) {
+static void test_action(void *subject, void *object)
+{
     cmb_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
     cmb_event_schedule(test_action, subject, object,
                        cmb_random_exponential(3600),
@@ -41,7 +35,8 @@ static void test_action(void *subject, void *object) {
 }
 
 /* Another event, closes the bar for good */
-static void end_sim(void *subject, void *object) {
+static void end_sim(void *subject, void *object)
+{
     cmb_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);
     cmb_warning(stdout, "===> end_sim: game over <===");
     cmb_event_queue_destroy();
@@ -51,7 +46,8 @@ static void end_sim(void *subject, void *object) {
 #define MYBUFLEN 20
 static char mybuf[MYBUFLEN];
 
-static char *myformatter(double t) {
+static char *myformatter(const double t)
+{
     double tmp = t;
     const unsigned days = (unsigned)(tmp / (24.0 * 60.0));
     tmp -= (double)(days * 24 * 60);
@@ -67,8 +63,9 @@ static char *myformatter(double t) {
     return mybuf;
 }
 
-int main(void) {
-    cmb_random_init(create_seed());
+int main(void)
+{
+    cmb_random_init(cmb_random_get_hwseed());
     cmb_event_queue_init(0.0);
     cmb_set_timeformatter(myformatter);
 

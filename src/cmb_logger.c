@@ -34,7 +34,8 @@ CMB_THREAD_LOCAL uint32_t cmi_logger_mask = 0xFFFFFFFF;
 #define TSTRBUF_SZ 16
 CMB_THREAD_LOCAL static char timestrbuf[TSTRBUF_SZ];
 
-static char *time_to_string(double t) {
+static char *time_to_string(double t)
+{
     (void)snprintf(timestrbuf, TSTRBUF_SZ, "%#10.5g", t);
     timestrbuf[TSTRBUF_SZ - 1] = '\0';
 
@@ -44,7 +45,8 @@ static char *time_to_string(double t) {
 /* Pointer to current time formatting function (for all threads). */
 static char *(*timeformatter) (double) = time_to_string;
 
-void cmb_set_timeformatter(char *(*fp)(double)) {
+void cmb_set_timeformatter(char *(*fp)(double))
+{
     assert(fp != NULL);
     timeformatter = fp;
 }
@@ -56,7 +58,8 @@ void cmb_set_timeformatter(char *(*fp)(double)) {
 int cmb_vfprintf(const uint32_t flags,
                  FILE *fp,
                  const char *fmtstr,
-                 const va_list args) {
+                 const va_list args)
+{
     int ret = 0;
     if ((flags & cmi_logger_mask) != 0) {
         int r = fprintf(fp, "%s\t", timeformatter(cmb_time()));
@@ -93,7 +96,8 @@ int cmb_vfprintf(const uint32_t flags,
     return ret;
 }
 
-void cmb_fatal(FILE *fp, char *fmtstr, ...) {
+void cmb_fatal(FILE *fp, char *fmtstr, ...)
+{
     fflush(NULL);
     va_list args;
     va_start(args, fmtstr);
@@ -102,7 +106,8 @@ void cmb_fatal(FILE *fp, char *fmtstr, ...) {
     abort();
 }
 
-void cmb_error(FILE *fp, char *fmtstr, ...) {
+void cmb_error(FILE *fp, char *fmtstr, ...)
+{
     fflush(NULL);
     va_list args;
     va_start(args, fmtstr);
@@ -111,7 +116,8 @@ void cmb_error(FILE *fp, char *fmtstr, ...) {
     exit(1);
 }
 
-void cmb_warning(FILE *fp, char *fmtstr, ...) {
+void cmb_warning(FILE *fp, char *fmtstr, ...)
+{
     fflush(NULL);
     va_list args;
     va_start(args, fmtstr);
@@ -119,7 +125,8 @@ void cmb_warning(FILE *fp, char *fmtstr, ...) {
     va_end(args);
 }
 
-void cmb_info(FILE *fp, char *fmtstr, ...) {
+void cmb_info(FILE *fp, char *fmtstr, ...)
+{
     va_list args;
     va_start(args, fmtstr);
     (void)cmb_vfprintf(CMI_LOGGER_INFO, fp, fmtstr, args);
