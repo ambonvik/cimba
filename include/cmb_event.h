@@ -23,8 +23,8 @@
  *
  * The event has an associated activation time and a priority. Just before
  * the event is executed, the simulation time will jump to this time as the
- * event is removed from the queue. The priority is an integer value, where
- * higher numeric value means higher priority. If two events have equal
+ * event is removed from the queue. The priority is a signed 16-bit integer,
+ * where higher numeric value means higher priority. If two events have equal
  * activation time, the one with higher priority will execute first. If
  * you need to ensura that some event executes after all other events at
  * a particular time, use a large negative priority. If two events have the
@@ -34,11 +34,15 @@
  * When scheduled, an event handle will be assigned and returned. This is
  * a unique event identifier and can be used as a reference for later
  * cancelling, rescheduling, or reprioritizing the event. Behind the scene,
- * this is implemented as a hashheap where the event handle is a key in
- * the hash map and the event's location in the heap is the hash map value.
- * This gives O(1) cancellations and reschedules with no need to search the
- * entire heap to find a future event. The details of the data structure are
- * not exposed in this header file, see cmb_event.c for the implementation.
+ * the event queue is implemented as a hashheap where the event handle is a key
+ * in the hash map and the event's current location in the heap is the hash map
+ * value. This gives O(1) cancellations and reschedules with no need to search
+ * the entire heap to find a future event. The details of the data structure
+ * are not exposed in this header file, see cmb_event.c for the implementation.
+ *
+ * As always, the error handling is draconian. Functions for e.g. rescheduling
+ * an event will trip an assertion if the given event is not currently in the
+ * event queue. This is a deliberate design choice, see the documentation.
  *
  * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
  *
@@ -62,15 +66,15 @@
 #include <stdio.h>
 #include <stdint.h>
 
-/* The generic event type */
+/* Get the current simulation time, read-only for the user application */
+extern double cmb_time(void);
+
+/* The generic event function type, typedef'd for clarity later */
 typedef void (cmb_event_func)(void*, void*);
 
 /* Manage the event queue itself */
 extern void cmb_event_queue_init(double start_time);
 extern void cmb_event_queue_destroy(void);
-
-/* Get the current simulation time */
-extern double cmb_time(void);
 
 /*
  * cmb_event_schedule: Inserts event in event queue as indicated by reactivation
@@ -84,37 +88,49 @@ extern uint64_t cmb_event_schedule(cmb_event_func *action,
                                int16_t priority);
 
 /*
- *  cmb_event_next; Executes and removes the first event in the event queue.
+ *  cmb_event_next : Executes and removes the first event in the event queue.
  *  If both reactivation time and priority equal, FCFS order.
+ *
  *  Returns true for success, false for failure (e.g., empty event list), for
  *  use in loops like while(cmb_event_execute_next()) { ... }
  */
 extern bool cmb_event_execute_next(void);
 
 /*
- * cmb_event_cancel: Remove event from event list.
- * Returns true if found, false if not.
+ * cmb_event_is_scheduled : Is the given event currently in the event queue?
  */
-extern bool cmb_event_cancel(uint64_t handle);
+extern bool cmb_event_is_scheduled(uint64_t handle);
+
+/*
+ * cmb_event_time : Get the currently scheduled time for an event
+ * Precondition: The event is in the event queue.
+ * If in doubt, call cmb_event_is_scheduled(handle) first to verify.
+ */
+extern double cmb_event_time(uint64_t handle);
+
+/*
+ * cmb_event_priority : Get the current priority for an event
+ * Precondition: The event is in the event queue.
+ */
+extern int16_t cmb_event_priority(uint64_t handle);
+
+/*
+ * cmb_event_cancel: Remove event from event queue.
+ * Precondition: The event is in the event queue.
+ */
+extern void cmb_event_cancel(uint64_t handle);
 
 /*
  * cmb_event_reschedule: Reschedules event at index to another (absolute) time
- * Returns true if found, false if not.
+ * Precondition: The event is in the event queue.
  */
-extern bool cmb_event_reschedule(uint64_t handle, double time);
+extern void cmb_event_reschedule(uint64_t handle, double time);
 
 /*
  * cmb_event_reprioritize: Reprioritizes event to another priority level
- * Returns true if found, false if not.
+ * Precondition: The event is in the event queue.
  */
-extern bool cmb_event_reprioritize(uint64_t handle, int16_t priority);
-
-/* The currently scheduled time for an event */
-extern double cmb_event_time(uint64_t handle);
-
-
-/* The current priority for an event */
-extern int16_t cmb_event_priority(uint64_t handle);
+extern void cmb_event_reprioritize(uint64_t handle, int16_t priority);
 
 /*
  * cmb_event_find: Search in event list for an event matching the given pattern
@@ -128,9 +144,9 @@ extern int16_t cmb_event_priority(uint64_t handle);
  * sequence in which events are found is unspecified.
  */
 
-#define CMB_ANY_ACTION ((cmb_event_func *)0xFFFFFFFFFFFFFFFF)
-#define CMB_ANY_SUBJECT ((void *)0xFFFFFFFFFFFFFFFF)
-#define CMB_ANY_OBJECT ((void *)0xFFFFFFFFFFFFFFFF)
+#define CMB_ANY_ACTION ((cmb_event_func *)0xFFFFFFFFFFFFFFFFull)
+#define CMB_ANY_SUBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
+#define CMB_ANY_OBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
 
 extern uint64_t cmb_event_find(cmb_event_func *action,
                                const void *subject,
@@ -151,7 +167,9 @@ extern uint64_t cmb_event_cancel_all(cmb_event_func *action,
                                const void *subject,
                                const void *object);
 
-/* Print the current content of the event queue, for debugging use. */
+/*
+ * Print the current content of the event queue, for debugging use.
+ */
 extern void cmb_event_heap_print(FILE *fp);
 extern void cmb_event_hash_print(FILE *fp);
 

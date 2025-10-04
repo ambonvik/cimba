@@ -12,7 +12,11 @@
  *   that the World Forgot (or: a Better Alternative to Integer Modulo)",
  *   https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
  *
- * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
+ * Structure of this file: The data structures are defined first, then the
+ * hash map implementation, the heap implementation, and last the user API for
+ * the cmb_event hashheap event queue.
+ *
+* Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,20 +39,23 @@
 #include "cmi_config.h"
 #include "cmi_memutils.h"
 
-/* The simulation clock, read-only for user application */
-static CMB_THREAD_LOCAL double sim_time = 0.0;
+/*****************************************************************************/
+/*                          The data structures                              */
+/*****************************************************************************/
 
-/* cmb_time : Return current simulation time. */
-double cmb_time(void) {
-    return sim_time;
-}
+/*
+ * sim_time : The simulation clock. It can be initiated to start from a
+ * negative value, but it can only increase once initiated, never go back.
+ * Read-only for the user application, only accessible through cmb_time()
+ */
+static CMB_THREAD_LOCAL double sim_time = 0.0;
 
 /*
  * struct heap_tag : The record to store an event with its context.
- * These tags only exist as members of the event queue array, never seen alone.
+ * These tags only exist as members of the event queue array, never alone.
  * The tuple (action, subject, object) is the actual event, scheduled to
- * execute at (time, priority). The handle is a unique identifier, the
- * hash_index a reference to where in the hash map to update its location.
+ * execute at (time, priority). The handle is a unique event identifier, the
+ * hash_index a reference to where in the hash map to maintain its location.
  * Padded to 64 bytes size for efficiency reasons.
  */
 struct heap_tag {
@@ -62,10 +69,7 @@ struct heap_tag {
     unsigned char padding_bytes[14];
 };
 
-static_assert(sizeof(struct heap_tag) == 64,
-    "Something went very wrong with the padding in heap_tag");
-
-/* The event queue, a heap stored as a resizable array of cmb_event_tags */
+/* The event heap, stored as a resizable array of cmb_event_tags */
 static CMB_THREAD_LOCAL struct heap_tag *event_heap = NULL;
 
 /* The event counter, for assigning new event handle numbers */
@@ -75,75 +79,122 @@ static CMB_THREAD_LOCAL uint64_t event_counter = 0u;
  * The heap and hash map need to be sized as powers of two, the hash map with
  * twice as many entries as the heap. heap_exp defines a heap size of
  * 2^heap_exp and a hash map of 2^(heap_exp + 1). Start small and fast,
- * heap size 2^5 = 32 entries, total size of the heaphash structure less than
- * one page of memory and well inside the L1 cache size. It will increase
+ * e.g., heap size 2^5 = 32 entries, total size of the heaphash structure less
+ * than one page of memory and well inside the L1 cache size. It will increase
  * exponentially as needed, but the number of entries in the event queue at
  * the same time can be surprisingly small even in a large model.
  */
 static CMB_THREAD_LOCAL uint16_t heap_exp = 3u;
 
-/* Current size of the heap */
+/* Current size of the heap, invariant equal to 2^heap_exp once initialized */
 static CMB_THREAD_LOCAL uint64_t heap_size = 0u;
 
-/* The number of heap elements in use*/
+/* The number of heap elements currently in use. */
 static CMB_THREAD_LOCAL uint64_t heap_count = 0u;
 
 /*
- * struct hash_tag : Hash mapping from handle to event queue position.
- * Heap index value zero is a tombstone, event no longer in queue.
+ * struct hash_tag : Hash mapping from event handle to heap position.
+ * Heap index value zero indicates a tombstone, event is no longer in heap.
  */
 struct hash_tag {
     uint64_t handle;
     uint64_t heap_index;
 };
 
-static_assert(sizeof(struct hash_tag) == 16,
-    "Something went wrong with the size of hash entries");
-
 /*
  * event_hash - The hash map, physically located in a contiguous memory area
- * with the event queue heap array. There are twice as many slots in the hash map as
- * in the heap array to ensure that the hash map load factor remains below 50 % before
- * both get resized to twice the previous size.
+ * with the event queue heap array. There are twice as many slots in the hash
+ * map as in the heap array to ensure that the hash map load factor remains
+ * below 50 % before both get resized to twice the previous size.
  */
 static CMB_THREAD_LOCAL struct hash_tag *event_hash = NULL;
 
-/* Allocate and initialize the event queue, reserving two slots for working space */
-void cmb_event_queue_init(const double start_time) {
-    cmb_assert_release(event_heap == NULL);
-    cmb_assert_release(event_hash == NULL);
+/* Current size of the hash, invariant equal to 2^heap_exp once initialized */
+static CMB_THREAD_LOCAL uint64_t hash_size = 0u;
 
-    heap_size = 1u << heap_exp;
-    const size_t heapbytes = (heap_size + 2u) * sizeof(struct heap_tag);
-    const size_t hashbytes = (heap_size * 2u) * sizeof(struct hash_tag);
-    const size_t initsz = heapbytes + hashbytes;
-    const size_t pagesz = cmi_get_pagesize();
-    const size_t npages = (size_t)(initsz + pagesz - 1u) / pagesz;
-    cmb_assert_debug(npages >= 1u);
+/*****************************************************************************/
+/*                            The event hash map                             */
+/*****************************************************************************/
 
-    const unsigned char *alignedbytes = cmi_aligned_alloc(pagesz, npages);
-    event_heap = (struct heap_tag *)alignedbytes;
-    event_hash = (struct hash_tag *)(alignedbytes + heapbytes);
-    cmb_assert_debug((void *)event_hash == (void *)(event_heap + heap_size + 1));
-    /* Initialize the new hash map to all zeros */
-    cmi_memset(event_hash, 0u, hashbytes);
-
-    sim_time = start_time;
-    heap_count = 0;
+/*
+ * Fibonacci hash function, see
+ * https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
+ */
+uint64_t hash_handle(const uint64_t handle)
+{
+    /* The "magic number" is approx 2^64 / phi, the golden ratio */
+    return (handle * 11400714819323198485llu) >> (64u - heap_exp);
 }
 
-/* Clean up, deallocating space */
-void cmb_event_queue_destroy(void) {
-    cmb_assert_release(event_heap != NULL);
+/*
+ * Find the heap index of a given handle, zero if not found
+ */
+uint64_t hash_find_handle(const uint64_t handle)
+{
+    const uint64_t bitmap = 2u * heap_size - 1u;
+    uint64_t hash = hash_handle(handle);
+    do {
+        if (event_hash[hash].handle == handle) {
+            /* Found, return the heap index (possibly a tombstone zero) */
+            return event_hash[hash].heap_index;
+        }
 
-    cmi_aligned_free(event_heap);
-    event_heap = NULL;
-    event_hash = NULL;
-    heap_size = heap_count = 0;
+        /* Not there, linear probing, try next, possibly looping around */
+        hash = (hash + 1u) & bitmap;
+    } while (event_hash[hash].handle != 0u);
+
+    /* Got to an empty slot, the handle is not in hash map */
+    return 0u;
 }
+
+/*
+ * Find the first free hash map slot for the given handle
+ */
+uint64_t hash_find_slot(const uint64_t handle)
+{
+    const uint64_t bitmap = 2u * heap_size - 1u;
+    uint64_t hash = hash_handle(handle);
+    for (;;) {
+        /* Guaranteed to find a slot eventually, < 50 % hash load factor */
+        if (event_hash[hash].heap_index == 0u) {
+            /* Found a free slot */
+            return hash;
+        }
+
+        /* Already taken, linear probing, try next, possibly looping around */
+        hash = (hash + 1u) & bitmap;
+    }
+}
+
+/*
+ * Rehash old hash entries to new (current) hash map, removing any tombstones.
+ */
+void hash_rehash(const struct hash_tag *old_hash_map,
+                 const uint64_t old_hash_size)
+{
+    for (uint64_t ui = 0u; ui < old_hash_size; ui++) {
+        const uint64_t handle = old_hash_map[ui].handle;
+        if (handle != 0u) {
+            /* Something is here */
+            const uint64_t heapidx = old_hash_map[ui].heap_index;
+            if (heapidx != 0u) {
+                /* It is not a tombstone */
+                const uint64_t hashidx = hash_find_slot(handle);
+                event_hash[hashidx].handle = handle;
+                event_hash[hashidx].heap_index = heapidx;
+                event_heap[heapidx].hash_index = hashidx;
+            }
+        }
+    }
+}
+
+/*****************************************************************************/
+/*                              The event heap                               */
+/*****************************************************************************/
 
 /* Test if heaptag index a should go before index b. If so, return true */
-static bool heap_order_check(const uint64_t a, const uint64_t b) {
+static bool heap_order_check(const uint64_t a, const uint64_t b)
+{
     cmb_assert_release(event_heap != NULL);
 
     bool ret = false;
@@ -165,47 +216,11 @@ static bool heap_order_check(const uint64_t a, const uint64_t b) {
     return ret;
 }
 
-/*
- * Hash function, see
- * https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
- */
-uint64_t hash_handle(const uint64_t handle) {
-    /* The "magic number" is approx 2^64 / phi, the golden ratio */
-    return (handle * 11400714819323198485llu) >> (64u - heap_exp);
-}
-
-/* Find the heap index of a given handle, zero if not found */
-uint64_t hash_find_handle(const uint64_t handle) {
-    const uint64_t bitmap = 2u * heap_size - 1u;
-    uint64_t hash = hash_handle(handle);
-    do {
-        if (event_hash[hash].handle == handle) {
-            /* Found, return the heap index (possibly a tombstone zero) */
-            return event_hash[hash].heap_index;
-        }
-
-        /* Not there, linear probing, try next, possibly looping around */
-        hash = (hash + 1u) & bitmap;
-    } while (event_hash[hash].handle != 0u);
-
-    /* Got to an empty slot, the handle is not in hash map */
-    return 0u;
-}
-
-/* Find thte first free hash map slot for the given handle */
-uint64_t hash_find_slot(const uint64_t handle) {
-    const uint64_t bitmap = 2u * heap_size - 1u;
-    uint64_t hash = hash_handle(handle);
-    for (;;) {
-        /* Guaranteed to find a slot eventually, < 50 % hash load factor */
-        if (event_hash[hash].heap_index == 0u) {
-            /* Found a free slot */
-            return hash;
-        }
-
-        /* Already taken, linear probing, try next, possibly looping around */
-        hash = (hash + 1u) & bitmap;
-    }
+/* Helper function for clarity */
+static bool is_power_of_two(size_t n)
+{
+    /* A power of two has only one bit set */
+    return (n == 0u) ? false : ((n & (n - 1)) == 0u);
 }
 
 /*
@@ -217,20 +232,24 @@ uint64_t hash_find_slot(const uint64_t handle) {
  * their new locations in the new hash map. This works, since there is no
  * memory overlap between the copy of the old hash map and the new one.
  */
-static void heap_grow(void) {
+static void heap_grow(void)
+{
     cmb_assert_release(event_heap != NULL);
-    cmb_assert_release(event_hash != NULL);
     cmb_assert_release(heap_size < (UINT32_MAX / 2u));
+    cmb_assert_debug(event_hash != NULL);
+    cmb_assert_debug(is_power_of_two(heap_size));
+    cmb_assert_debug(is_power_of_two(hash_size));
 
     /* Set the new heap size, i.e. the max number of events in the queue */
     heap_exp++;
     const uint64_t old_heap_size = heap_size;
     heap_size = 1u << heap_exp;
     cmb_assert_debug(heap_size == 2 * old_heap_size);
+    hash_size = 2u * heap_size;
 
     /* Caclulate the memory footprint it will need */
     const size_t heapbytes = (heap_size + 2u) * sizeof(struct heap_tag);
-    const size_t hashbytes = (heap_size * 2u) * sizeof(struct hash_tag);
+    const size_t hashbytes = hash_size * sizeof(struct hash_tag);
     const size_t newsz = heapbytes + hashbytes;
     const size_t pagesz = cmi_get_pagesize();
     const size_t npages = (size_t)(newsz + pagesz - 1u) / pagesz;
@@ -252,35 +271,23 @@ static void heap_grow(void) {
     cmi_memset(event_hash, 0u, hashbytes);
 
     /*
-     * Rehash old hash entries to new hash map, removing any tombstones.
-     * We cannot access its old location since that was probably free'd by
-     * the realloc call. However, the old hash map was memcpy'd together
-     * with the old heap, now located in the first half of the new array
-     * since we doubled the size of the entire structure, guaranteeing that
-     * the new hash area is well beyond the location of the old copy in memory.
-     * We will hackishly abuse some pointer algebra to find the old hashes,
-     * knowing that it was located just beyond the last heap space.
-     */
+    * We  cannot access its old location since that was probably free'd by
+    * the realloc call. However, the old hash map was memcpy'd together
+    * with the old heap, now located in the first half of the new array
+    * since we doubled the size of the entire structure, guaranteeing that
+    * the new hash area is well beyond the location of the old copy in memory.
+    */
     const struct hash_tag *old_hash_map = (struct hash_tag *)(event_heap + old_heap_size + 1u);
     const uint64_t old_hash_size = 2 * old_heap_size;
-    for (uint64_t ui = 0; ui < old_hash_size; ui++) {
-        const uint64_t handle = old_hash_map[ui].handle;
-        if (handle != 0u) {
-            /* Something here */
-            const uint64_t heapidx = old_hash_map[ui].heap_index;
-            if (heapidx != 0u) {
-                /* Not a tombstone */
-                const uint64_t hashidx = hash_find_slot(handle);
-                event_hash[hashidx].handle = handle;
-                event_hash[hashidx].heap_index = heapidx;
-                event_heap[heapidx].hash_index = hashidx;
-            }
-        }
-    }
+    hash_rehash(old_hash_map, old_hash_size);
+
+    cmb_assert_debug(is_power_of_two(heap_size));
+    cmb_assert_debug(is_power_of_two(hash_size));
 }
 
 /* Bubble a tag at index k upwards into its right place */
-static void heap_up(uint64_t k) {
+static void heap_up(uint64_t k)
+{
     cmb_assert_debug(event_heap != NULL);
     cmb_assert_debug(k <= heap_count);
 
@@ -308,7 +315,8 @@ static void heap_up(uint64_t k) {
 }
 
 /* Bubble a tag at index k downwards into its right place */
-static void heap_down(uint64_t k) {
+static void heap_down(uint64_t k)
+{
     cmb_assert_debug(event_heap != NULL);
     cmb_assert_debug(k <= heap_count);
 
@@ -343,23 +351,93 @@ static void heap_down(uint64_t k) {
     event_hash[khash].heap_index = k;
 }
 
+/*****************************************************************************/
+/*                        The cmb_event_* public API                         */
+/*****************************************************************************/
+
 /*
- * Insert event in event queue as indicated by (relative)
- * reactivation time t and priority p
+ * cmb_time : Return current simulation time.
+ */
+double cmb_time(void)
+{
+    return sim_time;
+}
+
+/*
+ * cmb_event_queue_init : Set starting simulation time, allocate and initialize
+ * hashheap for use. Allocates contiguous memory aligned to an integer number
+ * of memory pages for efficiency.
+ */
+void cmb_event_queue_init(const double start_time)
+{
+    cmb_assert_release(event_heap == NULL);
+    cmb_assert_debug(event_hash == NULL);
+
+    sim_time = start_time;
+    heap_count = 0;
+
+    /* Use initial value of heap_exp for sizing, hard-coded at top of file */
+    heap_size = 1u << heap_exp;
+    hash_size = 2 * heap_size;
+
+    /* Calculate the memory size needed, page aligned */
+    const size_t heapbytes = (heap_size + 2u) * sizeof(struct heap_tag);
+    const size_t hashbytes = (heap_size * 2u) * sizeof(struct hash_tag);
+    const size_t initsz = heapbytes + hashbytes;
+    const size_t pagesz = cmi_get_pagesize();
+    const size_t npages = (size_t)(initsz + pagesz - 1u) / pagesz;
+    cmb_assert_debug(npages >= 1u);
+
+    /* Allocate it and set pointers to heap and hash parts */
+    const unsigned char *alignedbytes = cmi_aligned_alloc(pagesz, npages);
+    event_heap = (struct heap_tag *)alignedbytes;
+    event_hash = (struct hash_tag *)(alignedbytes + heapbytes);
+    cmb_assert_debug((void *)event_hash == (void *)(event_heap + heap_size + 1));
+
+    /* Initialize the new hash map to all zeros */
+    cmi_memset(event_hash, 0u, hashbytes);
+}
+
+/*
+ * cmb_event_queue_destroy : Clean up, deallocating space.
+ * Note that hash_exp is not reset to initial value.
+ */
+void cmb_event_queue_destroy(void)
+{
+    cmb_assert_release(event_heap != NULL);
+    cmb_assert_debug(event_hash != NULL);
+
+    cmi_aligned_free(event_heap);
+    event_heap = NULL;
+    event_hash = NULL;
+    heap_size = 0;
+    hash_size = 0;
+    heap_count = 0;
+}
+
+/*
+ * cmb_event_schedule : Insert event in event queue as indicated by activation
+ * time t and priority p, return unique event handle.
+ * Resizes hashheap if necessary.
  */
 uint64_t cmb_event_schedule(cmb_event_func *action,
-                        void *subject,
-                        void *object,
-                        const double time,
-                        const int16_t priority) {
+                            void *subject,
+                            void *object,
+                            const double time,
+                            const int16_t priority)
+{
     cmb_assert_release(time >= sim_time);
     cmb_assert_release(heap_count <= heap_size);
     cmb_assert_release(event_heap != NULL);
+    cmb_assert_debug(event_hash != NULL);
 
+    /* Do we have space? */
     if (heap_count == heap_size) {
        heap_grow();
     }
 
+    /* Now we have */
+    cmb_assert_debug(heap_count < heap_size);
     heap_count++;
     const uint64_t handle = ++event_counter;
 
@@ -383,31 +461,54 @@ uint64_t cmb_event_schedule(cmb_event_func *action,
     return handle;
 }
 
-/* The currently scheduled time for the given event */
-double cmb_event_time(const uint64_t handle) {
-    /* For now, just assert that this event must be in the heap */
+/*
+ * cmb_event_is_scheduled : Is the given event scheduled?
+ */
+bool cmb_event_is_scheduled(const uint64_t handle)
+{
+    cmb_assert_release(event_heap != NULL);
+    cmb_assert_debug(event_hash != NULL);
+
+    return (hash_find_handle(handle) != 0u) ? true : false;
+}
+
+/*
+ * cmb_event_time : The currently scheduled time for the given event
+ */
+double cmb_event_time(const uint64_t handle)
+{
+    cmb_assert_release(event_heap != NULL);
+    cmb_assert_debug(event_hash != NULL);
+
     const uint64_t idx = hash_find_handle(handle);
     cmb_assert_release(idx != 0u);
 
     return event_heap[idx].time;
 }
 
-/* The current priority for the given event */
-int16_t cmb_event_priority(uint64_t handle) {
+/*
+ * cmb_event_priority : The current priority for the given event
+ */
+int16_t cmb_event_priority(uint64_t handle)
+{
+    cmb_assert_release(event_heap != NULL);
+    cmb_assert_debug(event_hash != NULL);
+
     /* For now, just assert that this event must be in the heap */
     const uint64_t idx = hash_find_handle(handle);
     return event_heap[idx].priority;
 }
 
-
 /*
- * Remove and execute the next event, update simulation clock.
- * The next event is always in position 1, while position 0 is working space for
- * the heap. The event may schedule other events, needs to have a consistent
- * heap state without itself. Temporarily saves the next event to workspace at
- * the end of list before executing it, to ensure a consistent heap and hash.
+ * cmb_event_execute_next : Remove and execute the next event, update clock.
+ * The next event is always in position 1, while position 0 is working space
+ * for the heap. The event may schedule other events, needs to have a
+ * consistent heap state without itself. Temporarily saves the next event to
+ * workspace at the end of list before executing it, to ensure a consistent
+ * heap and hash.
  */
-bool cmb_event_execute_next(void) {
+bool cmb_event_execute_next(void)
+{
     if ((event_heap == NULL) || (heap_count == 0u)) {
         /* Nothing to do */
         return false;
@@ -439,17 +540,14 @@ bool cmb_event_execute_next(void) {
 }
 
 /* Cancel the event in position idx and reshuffle heap */
-bool cmb_event_cancel(const uint64_t handle) {
+void cmb_event_cancel(const uint64_t handle)
+{
     const uint64_t heapidx = hash_find_handle(handle);
-    if (heapidx == 0u) {
-        /* Not found */
-        return false;
-    }
-
+    cmb_assert_release(heapidx != 0u);
     cmb_assert_debug(event_heap[heapidx].handle == handle);
 
-    /* Tombstone it */
-   uint64_t hashidx = event_heap[heapidx].hash_index;
+    /* Lazy deletion, tombstone it */
+    uint64_t hashidx = event_heap[heapidx].hash_index;
     event_hash[hashidx].heap_index = 0u;
 
     /* Remove event from heap position heapidx */
@@ -467,20 +565,16 @@ bool cmb_event_cancel(const uint64_t handle) {
         heap_count--;
         heap_up(heapidx);
     }
-
-    return true;
 }
 
 /* Reschedule the event in position idx and reshuffle heap */
-bool cmb_event_reschedule(const uint64_t handle, const double time) {
+void cmb_event_reschedule(const uint64_t handle, const double time)
+{
     cmb_assert_release(time >= sim_time);
 
     const uint64_t heapidx = hash_find_handle(handle);
-    cmb_assert_release(heapidx <= heap_count);
-    if (heapidx == 0u) {
-        /* Not found */
-        return false;
-    }
+    cmb_assert_release(heapidx != 0u);
+    cmb_assert_debug(heapidx <= heap_count);
 
     const double tmp = event_heap[heapidx].time;
     event_heap[heapidx].time = time;
@@ -490,14 +584,15 @@ bool cmb_event_reschedule(const uint64_t handle, const double time) {
     else {
         heap_up(heapidx);
     }
-
-    return true;
 }
 
 /* Reprioritize the event in position idx and reshuffle heap */
-bool cmb_event_reprioritize(const uint64_t handle, const int16_t priority) {
+void cmb_event_reprioritize(const uint64_t handle,
+                            const int16_t priority)
+{
     const uint64_t heapidx = hash_find_handle(handle);
-    cmb_assert_release(heapidx <= heap_count);
+    cmb_assert_release(heapidx != 0u);
+    cmb_assert_debug(heapidx <= heap_count);
 
     const int tmp = event_heap[heapidx].priority;
     event_heap[heapidx].priority = priority;
@@ -507,15 +602,14 @@ bool cmb_event_reprioritize(const uint64_t handle, const int16_t priority) {
     else {
         heap_up(heapidx);
     }
-
-    return true;
 }
 
-/* Helper function to get the conditional out of the next three functions */
+/* Helper function to get the condition out of the next three functions */
 static bool event_match(cmb_event_func *action,
                         const void *subject,
                         const void *object,
-                        const struct heap_tag *event) {
+                        const struct heap_tag *event)
+{
     return (((action == CMB_ANY_ACTION)
           || (action == event->action))
          && ((subject == CMB_ANY_SUBJECT)
@@ -527,8 +621,9 @@ static bool event_match(cmb_event_func *action,
 /* Locate a specific event, using CMB_EVENT_ANY as a wildcard */
 uint64_t cmb_event_find(cmb_event_func *action,
                         const void *subject,
-                        const void *object) {
-    for (uint64_t ui = 1; ui <= heap_count; ui++) {
+                        const void *object)
+{
+    for (uint64_t ui = 1u; ui <= heap_count; ui++) {
         const struct heap_tag *event = &(event_heap[ui]);
         if (event_match(action, object, subject, event)) {
             return ui;
@@ -536,16 +631,17 @@ uint64_t cmb_event_find(cmb_event_func *action,
     }
 
     /* Not found */
-    return 0;
+    return 0u;
 }
 
 /* Count matching events, using CMB_EVENT_ANY as a wildcard */
 uint64_t cmb_event_count(cmb_event_func *action,
                         const void *subject,
-                        const void *object) {
+                        const void *object)
+{
     /* Note that NULL may be a valid argument here */
     uint64_t cnt = 0u;
-    for (uint64_t ui = 1; ui <= heap_count; ui++) {
+    for (uint64_t ui = 1u; ui <= heap_count; ui++) {
         const struct heap_tag *event = &(event_heap[ui]);
         if (event_match(action, object, subject, event)) {
             cnt++;
@@ -564,7 +660,8 @@ uint64_t cmb_event_count(cmb_event_func *action,
  */
 uint64_t cmb_event_cancel_all(cmb_event_func *action,
                         const void *subject,
-                        const void *object) {
+                        const void *object)
+{
     /* Note that NULL may be a valid argument here */
     uint64_t cnt = 0u;
 
@@ -583,7 +680,7 @@ uint64_t cmb_event_cancel_all(cmb_event_func *action,
     /* Second pass, cancel the matching events, never mind the
      * heap reshuffling underneath us for each cancel.
      */
-    for (uint64_t ui = 0; ui < cnt; ui++) {
+    for (uint64_t ui = 0u; ui < cnt; ui++) {
         cmb_event_cancel(tmp[ui]);
     }
 
@@ -592,8 +689,9 @@ uint64_t cmb_event_cancel_all(cmb_event_func *action,
 }
 
 /* Print content of event queue for debugging purposes */
-void cmb_event_heap_print(FILE *fp) {
-    for (uint64_t ui = 1; ui <= heap_count; ui++) {
+void cmb_event_heap_print(FILE *fp)
+{
+    for (uint64_t ui = 1u; ui <= heap_count; ui++) {
         /*
          * Use a contrived cast to circumvent strict ban on conversion
          * between function and object pointer
@@ -613,7 +711,8 @@ void cmb_event_heap_print(FILE *fp) {
 }
 
 /* Print content of event queue for debugging purposes */
-void cmb_event_hash_print(FILE *fp) {
+void cmb_event_hash_print(FILE *fp)
+{
     for (uint64_t ui = 0u; ui < 2u * heap_size; ui++) {
         fprintf(fp, "%llu: %llu  %llu\n", ui,
                 event_hash[ui].handle,
