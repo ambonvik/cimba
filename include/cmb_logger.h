@@ -30,10 +30,10 @@
 #include "cmi_config.h"
 
 /* Using 32-bit unsigned for the flags, top four bits reserved for Cimba use. */
-#define CMI_LOGGER_FATAL    0x80000000
-#define CMI_LOGGER_ERROR    0x40000000
-#define CMI_LOGGER_WARNING  0x20000000
-#define CMI_LOGGER_INFO     0x10000000
+#define CMI_LOGGER_FATAL    0x80000000ul
+#define CMI_LOGGER_ERROR    0x40000000ul
+#define CMI_LOGGER_WARNING  0x20000000ul
+#define CMI_LOGGER_INFO     0x10000000ul
 
 /*
  * Set callback function to format simulation times to character
@@ -52,7 +52,8 @@ extern void cmb_set_timeformatter(char *(*fp)(double));
      */
     extern int cmb_vfprintf(uint32_t flags,
                             FILE *fp,
-                            const char *fmtstr, va_list args)
+                            const char *fmtstr,
+                            va_list args)
                             __attribute__((format(printf, 3, 0)));
 #else
     extern int cmb_vfprintf(uint32_t flags,
