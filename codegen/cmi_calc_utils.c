@@ -20,19 +20,24 @@
 
 #include "cmi_calc.h"
 
-int cmi_bisection(double x_left, double x_right, double (*f)(double x, void *vp), void *vp, double *x_root) {
+int cmi_bisection(double x_left,
+                  double x_right,
+                  double (*f)(double x, void *vp),
+                  void *vp,
+                  double *x_root)
+{
     static const double max_eps = 1e-15;
-    static const unsigned max_iter = 1000000;
+    static const unsigned max_iter = 1000000u;
 
     /* Initial guesses must bracket the root, i.e. have opposite signs */
     double y_left = f(x_left, vp);
     double y_right = f(x_right, vp);
     assert((y_left * y_right) <= 0.0);
 
-    int i = 0;
+    unsigned int i = 0;
     do {
-        double x_mid = (x_left + x_right) * 0.5;
-        double y_mid = f(x_mid, vp);
+        const double x_mid = (x_left + x_right) * 0.5;
+        const double y_mid = f(x_mid, vp);
         if (fabs(y_mid) < max_eps) {
             *x_root = x_mid;
             return 1;

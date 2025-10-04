@@ -34,15 +34,18 @@ uint8_t alias[ARRSIZE] = { 0 };
 uint8_t i_max = 0;
 uint8_t i_inflection = 0;
 
-double pdf(const double x) {
+double pdf(const double x)
+{
     return exp(-0.5 * x * x) / sqrt(2.0 * M_PI);
 }
 
-double cdf(const double x) {
+double cdf(const double x)
+{
     return 0.5 * (1.0 + erf(x / sqrt(2.0)));
 }
 
-static void calculate_ziggurat(void) {
+static void calculate_ziggurat(void)
+{
     int last = 0;
     double xlcand = 3.0;
     double xrcand = 4.0;
@@ -145,7 +148,8 @@ static void calculate_ziggurat(void) {
     }
 }
 
-static void calculate_alias_table(void) {
+static void calculate_alias_table(void)
+{
     double asum = 0.0;
     for (int i = 0; i < ARRSIZE; i++)
         asum += area[i];
@@ -203,7 +207,8 @@ static void calculate_alias_table(void) {
     }
 }
 
-static void print_c_code(void) {
+static void print_c_code(void)
+{
     /* We have all we need, now write the C code to be #included in the actual code */
     printf("/*\n");
     printf(" * cmi_random_nor_zig.inc - local file to be included in cmb_random.c,\n");
@@ -273,7 +278,8 @@ static void print_c_code(void) {
     printf("static const int64_t nor_zig_max_i_convexity = 0x%016llxll;\n", max_iconvexity);
 }
 
-int main(void) {
+int main(void)
+{
     calculate_ziggurat();
     calculate_alias_table();
     print_c_code();

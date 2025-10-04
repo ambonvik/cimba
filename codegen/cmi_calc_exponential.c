@@ -36,15 +36,18 @@ uint64_t uprob[ARRSIZE] = { 0 };
 uint8_t alias[ARRSIZE] = { 0 };
 uint8_t i_max = 0;
 
-double pdf(const double x) {
+double pdf(const double x)
+{
     return exp(-x);
 }
 
-double cdf(const double x) {
+double cdf(const double x)
+{
     return 1 - exp(-x);
 }
 
-static void calculate_ziggurat(void) {
+static void calculate_ziggurat(void)
+{
     int last = 0;
     double xlcand = 1.0;
     double xrcand = 10.0;
@@ -105,7 +108,8 @@ static void calculate_ziggurat(void) {
     }
 }
 
-static void calculate_alias_table(void) {
+static void calculate_alias_table(void)
+{
     double asum = 0.0;
     for (int i = 0; i < ARRSIZE; i++)
         asum += area[i];
@@ -163,7 +167,8 @@ static void calculate_alias_table(void) {
     }
 }
 
-static void print_c_code(void) {
+static void print_c_code(void)
+{
     /* We have all we need, now write the C code to be #included in the actual code */
     printf("/*\n");
     printf(" * cmi_random_exp_zig.inc - local file to be included in cmb_random.c,\n");
@@ -211,7 +216,8 @@ static void print_c_code(void) {
     printf("static const double exp_zig_x_tail_start = %.15g;\n", x_tail);
 }
 
-int main(void) {
+int main(void)
+{
     calculate_ziggurat();
     calculate_alias_table();
     print_c_code();
