@@ -90,6 +90,16 @@ static inline void *cmi_memset(void *ptr, const int c, const size_t n)
     return rp;
 }
 
+/*
+ * cmi_is_power_of_two : Predicate helper function
+ */
+inline bool cmi_is_power_of_two(const size_t n)
+{
+    /* A power of two has only one bit set */
+    return (n == 0u) ? false : (n & (n - 1)) == 0u;
+}
+
+
 /* System dependent utility functions in src/arch/cmi_memutils_*.c */
 extern size_t cmi_get_pagesize(void);
 extern void *cmi_aligned_alloc(size_t align, size_t sz);

@@ -36,15 +36,6 @@ size_t cmi_get_pagesize(void)
 }
 
 /*
- * is_power_of_two : Predicate helper function
- */
-static bool is_power_of_two(size_t n)
-{
-    /* A power of two has only one bit set */
-    return (n == 0u) ? false : (n & (n - 1)) == 0u;
-}
-
-/*
  * cmi_aligned_alloc : Allocate memory aligned to some alignment value > 8
  * (as malloc gives by defeult). See also:
  * https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-malloc
@@ -57,7 +48,7 @@ void *cmi_aligned_alloc(const size_t align, const size_t sz)
 {
     cmb_assert_debug(align > 8u);
     cmb_assert_debug((align % sizeof(void*)) == 0u);
-    cmb_assert_debug(is_power_of_two(align));
+    cmb_assert_debug(cmi_is_power_of_two(align));
     cmb_assert_debug(sz > 8u);
     cmb_assert_debug((sz % align) == 0u);
 
@@ -92,7 +83,7 @@ void *cmi_aligned_realloc(void *p, const size_t align, const size_t sz)
     cmb_assert_debug(p != NULL);
     cmb_assert_debug(align > 8u);
     cmb_assert_debug((align % sizeof(void*)) == 0u);
-    cmb_assert_debug(is_power_of_two(align));
+    cmb_assert_debug(cmi_is_power_of_two(align));
     cmb_assert_debug(sz > 8u);
     cmb_assert_debug((sz % align) == 0u);
 

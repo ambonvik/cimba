@@ -216,13 +216,6 @@ static bool heap_order_check(const uint64_t a, const uint64_t b)
     return ret;
 }
 
-/* Helper function for clarity */
-static bool is_power_of_two(size_t n)
-{
-    /* A power of two has only one bit set */
-    return (n == 0u) ? false : ((n & (n - 1)) == 0u);
-}
-
 /*
  * heap_grow: doubling the available heap and hash map sizes.
  * The old heap is memcpy'd into its new location, each event at the same
@@ -237,8 +230,8 @@ static void heap_grow(void)
     cmb_assert_release(event_heap != NULL);
     cmb_assert_release(heap_size < (UINT32_MAX / 2u));
     cmb_assert_debug(event_hash != NULL);
-    cmb_assert_debug(is_power_of_two(heap_size));
-    cmb_assert_debug(is_power_of_two(hash_size));
+    cmb_assert_debug(cmi_is_power_of_two(heap_size));
+    cmb_assert_debug(cmi_is_power_of_two(hash_size));
 
     /* Set the new heap size, i.e. the max number of events in the queue */
     heap_exp++;
@@ -281,8 +274,8 @@ static void heap_grow(void)
     const uint64_t old_hash_size = 2 * old_heap_size;
     hash_rehash(old_hash_map, old_hash_size);
 
-    cmb_assert_debug(is_power_of_two(heap_size));
-    cmb_assert_debug(is_power_of_two(hash_size));
+    cmb_assert_debug(cmi_is_power_of_two(heap_size));
+    cmb_assert_debug(cmi_is_power_of_two(hash_size));
 }
 
 /* heap_up : Bubble a tag at index k upwards into its right place */
