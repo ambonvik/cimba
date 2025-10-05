@@ -17,11 +17,20 @@
  */
 
 #include <malloc.h>
-#include <stdbool.h>
 #include <windows.h>
 
 #include "cmb_assert.h"
 #include "cmi_memutils.h"
+
+/* Inlined function from cmi_memutils.h */
+extern void *cmi_malloc(size_t sz);
+extern void *cmi_calloc(unsigned n, size_t sz);
+extern void *cmi_realloc(void *p, size_t sz);
+extern void cmi_free(void *p);
+extern void *cmi_memcpy(void *dest, const void *src, size_t sz);
+extern void *cmi_memset(void *ptr, int c, size_t n);
+extern bool cmi_is_power_of_two(size_t n);
+
 
 /*
  * cmi_get_pagesize : Get page size from OS.

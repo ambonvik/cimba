@@ -19,6 +19,7 @@
 #ifndef CIMBA_CMI_MEMUTILS_H
 #define CIMBA_CMI_MEMUTILS_H
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -66,7 +67,7 @@ inline void cmi_free(void *p)
     free(p);
 }
 
-static inline void *cmi_memcpy(void* dest, const void* src, const size_t sz)
+inline void *cmi_memcpy(void *dest, const void *src, const size_t sz)
 {
     cmb_assert_debug(dest != NULL);
     cmb_assert_debug(src != NULL);
@@ -78,7 +79,7 @@ static inline void *cmi_memcpy(void* dest, const void* src, const size_t sz)
     return rp;
 }
 
-static inline void *cmi_memset(void *ptr, const int c, const size_t n)
+inline void *cmi_memset(void *ptr, const int c, const size_t n)
 {
     cmb_assert_debug(ptr != NULL);
     cmb_assert_debug(n > 0);
