@@ -61,6 +61,6 @@ extern void *cmi_mempool_get(struct cmi_mempool *mp);
  * cmi_mempool_put : Return an object to the pool. The object must be one
  * previously obtained from this pool.
  */
-extern void cmi_mempool_put(void *op);
+extern void cmi_mempool_put(struct cmi_mempool *mp, void *op);
 
 #endif //CIMBA_CMI_MEMPOOL_H
