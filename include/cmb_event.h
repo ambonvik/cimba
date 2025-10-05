@@ -167,18 +167,18 @@ extern uint64_t cmb_event_find(cmb_event_func *action,
 
 /* cmb_event_count : Similarly, count the number of matching events. */
 extern uint64_t cmb_event_count(cmb_event_func *action,
-                               const void *subject,
-                               const void *object);
+                                const void *subject,
+                                const void *object);
 
 /*
  * cmb_event_cancel_all : Cancel all matching events, returns the number
- * of events that were cancelled. Use e.g. for cancelling all events
- * related to some subject or object if that thing no longer is alive in
+ * of events that were cancelled, possibly zero. Use e.g. for cancelling all
+ * events related to some subject or object if that thing no longer is alive in
  * the simulation.
  */
 extern uint64_t cmb_event_cancel_all(cmb_event_func *action,
-                               const void *subject,
-                               const void *object);
+                                     const void *subject,
+                                     const void *object);
 
 /*
  * cmb_event_heap_print : Print the current content of the event heap.
