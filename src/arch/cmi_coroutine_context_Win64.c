@@ -87,8 +87,9 @@ extern void cmi_coroutine_trampoline(void);
     cmb_assert_debug(cp->stack_base != NULL);
     cmb_assert_debug(cp->stack_limit != NULL);
 
-    if (cp == coroutine_main) {
-        cmb_assert_debug(cp->status == CMB_CORO_RUNNING);
+     struct cmb_coroutine *cp_main = cmb_coroutine_get_main();
+    if (cp == cp_main) {
+        cmb_assert_debug(cp->status == CMB_COROUTINE_RUNNING);
         cmb_assert_debug(cp->stack == NULL);
         if (cp->stack_pointer != NULL) {
             cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
