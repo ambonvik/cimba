@@ -24,14 +24,13 @@
 #include "cmb_event.h"
 #include "cmb_random.h"
 #include "cmb_logger.h"
-#include "cmi_test.h"
 
 /* An event, prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object)
 {
     cmb_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
     cmb_event_schedule(test_action, subject, object,
-                      cmb_random_exponential(10),
+                      cmb_time() + cmb_random_exponential(10),
                       (int16_t)cmb_random_dice(1, 5));
 }
 
@@ -59,57 +58,62 @@ int main(void)
     printf("Scheduling 3x3 events\n");
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            cmb_event_schedule(test_action, (void *)subjects[i], (void *)objects[j],
-                              cmb_random_exponential(10.0),
+            const uint64_t handle = cmb_event_schedule(test_action,
+                              (void *)subjects[i],
+                              (void *)objects[j],
+                              cmb_time() + cmb_random_exponential(10.0),
                               (int16_t)cmb_random_dice(1, 5));
+            printf("Scheduled event %llu\n", handle);
         }
     }
 
     printf("Scheduling end event\n");
-    cmb_event_schedule(end_sim, NULL, NULL, 100.0, 0);
+    (void)cmb_event_schedule(end_sim, NULL, NULL, 100.0, 0);
 
-    printf("Queue now:\n");
     cmb_event_heap_print(stdout);
+    cmb_event_hash_print(stdout);
 
     printf("\nSearching for an event (%p, %p, %p)...", (void *)test_action, subjects[1], objects[0]);
-    unsigned idx = cmb_event_find(test_action, (void *)subjects[1], (void *)objects[0]);
-    printf("found index %d\n", idx);
-    printf("It has time %g priority %d.\n", cmb_event_time(idx), cmb_event_priority(idx));
+    uint64_t handle = cmb_event_find(test_action, (void *)subjects[1], (void *)objects[0]);
+    if (handle != 0u) {
+        printf("found event %llu\n", handle);
+        printf("It has time %g priority %d.\n", cmb_event_time(handle), cmb_event_priority(handle));
 
-    printf("Canceling it, queue now:\n");
-    cmb_event_cancel(idx);
-    cmb_event_heap_print(stdout);
+        printf("Canceling it\n");
+        cmb_event_cancel(handle);
 
-    printf("\nSearching for it again...  ");
-    idx = cmb_event_find(test_action, (void *)subjects[1], (void *)objects[0]);
-    printf("returned index %d %s\n", idx, ((idx == 0)? "not found" : "huh?"));
-
-    printf("\nWildcard search, cancelling test action events with subject %p, any object\n", subjects[2]);
-    while ((idx = cmb_event_find(test_action, (void *)subjects[2], CMB_ANY_OBJECT))) {
-        printf("\tcanceling %d\n", idx);
-        cmb_event_cancel(idx);
+        printf("\nSearching for it again...  ");
+        handle = cmb_event_find(test_action, (void *)subjects[1], (void *)objects[0]);
+        printf("returned handle %llu %s\n", handle, ((handle == 0)? "not found" : "huh?"));
+    }
+    else {
+        printf("not found???\n");
     }
 
-    cmb_event_heap_print(stdout);
+    printf("\nWildcard search, searching for test action events with subject %p, any object\n", subjects[2]);
+    while ((handle = cmb_event_find(test_action, (void *)subjects[2], CMB_ANY_OBJECT))) {
+        printf("\tcanceling %llu\n", handle);
+        cmb_event_cancel(handle);
+    }
 
     printf("\nScheduling new events with subject %p\n", subjects[2]);
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[0], 20.0, 1);
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[1], 20.0, 1);
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[2], 20.0, 1);
-    cmb_event_heap_print(stdout);
 
     printf("\nRescheduling and reprioritizing events with subject %p\n", subjects[2]);
-    idx = cmb_event_find(test_action, (void *)subjects[2], (void *)objects[0]);
-    cmb_event_reschedule(idx, 25.0);
-    idx = cmb_event_find(test_action, (void *)subjects[2], (void *)objects[1]);
-    cmb_event_reprioritize(idx, 3);
-    cmb_event_heap_print(stdout);
+    handle = cmb_event_find(test_action, (void *)subjects[2], (void *)objects[0]);
+    cmb_event_reschedule(handle, cmb_time() + 25.0);
+    handle = cmb_event_find(test_action, (void *)subjects[2], (void *)objects[1]);
+    cmb_event_reprioritize(handle, 3);
+
+    printf("\nWildcard search, counting events with subject %p, any object\n", subjects[1]);
+    uint64_t cnt = cmb_event_count(CMB_ANY_ACTION, subjects[1], CMB_ANY_OBJECT);
+    printf("Found %llu events\n", cnt);
 
     printf("\nWildcard search, cancelling any events with subject %p, any object\n", subjects[1]);
-    while ((idx = cmb_event_find(CMB_ANY_ACTION, (void *)subjects[1], CMB_ANY_OBJECT))) {
-        printf("\tcanceling %d\n", idx);
-        cmb_event_cancel(idx);
-    }
+    cnt = cmb_event_cancel_all(CMB_ANY_ACTION, subjects[1], CMB_ANY_OBJECT);
+    printf("Cancelled %llu events\n", cnt);
 
     printf("\nExecuting the simulation, starting time %#g\n", cmb_time());
     printf("Time:\t\tType:\tAction: \t\tSubject:\t\tObject:\n");

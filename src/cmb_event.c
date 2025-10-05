@@ -238,6 +238,7 @@ static void heap_grow(void)
     const uint64_t old_heap_size = heap_size;
     heap_size = 1u << heap_exp;
     cmb_assert_debug(heap_size == 2 * old_heap_size);
+    const uint64_t old_hash_size = hash_size;
     hash_size = 2u * heap_size;
 
     /* Calculate the page-aligned memory footprint it will need */
@@ -248,34 +249,25 @@ static void heap_grow(void)
     const size_t npages = (size_t)(newsz + pagesz - 1u) / pagesz;
     cmb_assert_debug(npages >= 1u);
 
-    /*
-     * Reallocate heap and hash map to twice the size, copying the heap into
-     * the new location. The old hash table also gets copied into the lower
-     * half of the new area and will need to be rehashed into its new place.
-     * For efficiency reasons, we align the new hashheap to a memory page
-     * boundary and allocate an integer number of pages for it.
-     */
-    const unsigned char *alignedbytes = cmi_aligned_realloc(event_heap, pagesz, npages);
-    event_heap = (struct heap_tag *)alignedbytes;
-    event_hash = (struct hash_tag *)(alignedbytes + heapbytes);
-    cmb_assert_debug((void *)event_hash == (void *)(event_heap + heap_size + 1u));
+    /* Save the old address and allocate the new area */
+    struct heap_tag *old_heaploc = event_heap;
+    unsigned char * newloc = cmi_aligned_alloc(pagesz, npages * pagesz);
 
-    /* Initialize the new hash map to all zeros to avoid any surprises */
+    /* Copy the old heap straight into the new */
+    struct heap_tag *new_heaploc = (struct heap_tag *)newloc;
+    const size_t old_heapbytes = (old_heap_size + 2u) * sizeof(struct heap_tag);
+    cmi_memcpy(new_heaploc, old_heaploc, old_heapbytes);
+    event_heap = new_heaploc;
+
+    /* Rehash the old hash map into the new */
+    struct hash_tag *old_hashloc = event_hash;
+    struct hash_tag *new_hashloc = (struct hash_tag *)(newloc + heapbytes);
+    event_hash = new_hashloc;
     cmi_memset(event_hash, 0u, hashbytes);
+    hash_rehash(old_hashloc, old_hash_size);
 
-    /*
-    * We cannot access its old location since that was probably free'd by
-    * the realloc call. However, the old hash map was memcpy'd together
-    * with the old heap, now located in the first half of the new array
-    * since we doubled the size of the entire structure, guaranteeing that
-    * the new hash area is well beyond the location of the old copy in memory.
-    */
-    const struct hash_tag *old_hash_map = (struct hash_tag *)(event_heap + old_heap_size + 1u);
-    const uint64_t old_hash_size = 2 * old_heap_size;
-    hash_rehash(old_hash_map, old_hash_size);
-
-    cmb_assert_debug(cmi_is_power_of_two(heap_size));
-    cmb_assert_debug(cmi_is_power_of_two(hash_size));
+    /* Free the old heap and hash map */
+    cmi_aligned_free(old_heaploc);
 }
 
 /* heap_up : Bubble a tag at index k upwards into its right place */
@@ -382,10 +374,9 @@ void cmb_event_queue_init(const double start_time)
     cmb_assert_debug(npages >= 1u);
 
     /* Allocate it and set pointers to heap and hash parts */
-    const unsigned char *alignedbytes = cmi_aligned_alloc(pagesz, npages);
+    const unsigned char *alignedbytes = cmi_aligned_alloc(pagesz, npages * pagesz);
     event_heap = (struct heap_tag *)alignedbytes;
     event_hash = (struct hash_tag *)(alignedbytes + heapbytes);
-    cmb_assert_debug((void *)event_hash == (void *)(event_heap + heap_size + 1));
 
     /* Initialize the new hash map to all zeros */
     cmi_memset(event_hash, 0u, hashbytes);
@@ -547,7 +538,10 @@ void cmb_event_cancel(const uint64_t handle)
     event_hash[hashidx].heap_index = 0u;
 
     /* Remove event from heap position heapidx */
-    if (heap_order_check(heapidx, heap_count)) {
+    if (heapidx == heap_count) {
+        heap_count--;
+    }
+    else if (heap_order_check(heapidx, heap_count)) {
         event_heap[heapidx] = event_heap[heap_count];
         hashidx = event_heap[heapidx].hash_index;
         event_hash[hashidx].heap_index = heapidx;
@@ -615,12 +609,14 @@ static bool event_match(cmb_event_func *action,
                         const void *object,
                         const struct heap_tag *event)
 {
-    return (((action == CMB_ANY_ACTION)
-          || (action == event->action))
-         && ((subject == CMB_ANY_SUBJECT)
-          || (subject == event->subject))
-         && ((object == CMB_ANY_OBJECT)
-          || (object == event->object)));
+    bool ret = true;
+    if ( ((action != event->action) && (action != CMB_ANY_ACTION))
+      || ((subject != event->subject) && (subject != CMB_ANY_SUBJECT))
+      || ((object != event->object) && (object != CMB_ANY_OBJECT))) {
+        ret = false;
+    }
+
+    return ret;
 }
 
 /*
@@ -634,8 +630,8 @@ uint64_t cmb_event_find(cmb_event_func *action,
 {
     for (uint64_t ui = 1u; ui <= heap_count; ui++) {
         const struct heap_tag *event = &(event_heap[ui]);
-        if (event_match(action, object, subject, event)) {
-            return ui;
+        if (event_match(action, subject, object, event)) {
+            return event->handle;
         }
     }
 
@@ -655,7 +651,7 @@ uint64_t cmb_event_count(cmb_event_func *action,
     uint64_t cnt = 0u;
     for (uint64_t ui = 1u; ui <= heap_count; ui++) {
         const struct heap_tag *event = &(event_heap[ui]);
-        if (event_match(action, object, subject, event)) {
+        if (event_match(action, subject, object, event)) {
             cnt++;
         }
     }
@@ -684,7 +680,7 @@ uint64_t cmb_event_cancel_all(cmb_event_func *action,
     /* First pass, recording the matches */
     for (uint64_t ui = 1; ui <= heap_count; ui++) {
         const struct heap_tag *event = &(event_heap[ui]);
-        if (event_match(action, object, subject, event)) {
+        if (event_match(action, subject, object, event)) {
             /* Matched, note it on the list */
             tmp[cnt++] = event_heap[ui].handle;
         }
@@ -706,6 +702,7 @@ uint64_t cmb_event_cancel_all(cmb_event_func *action,
  */
 void cmb_event_heap_print(FILE *fp)
 {
+    fprintf(fp, "Event heap:\n");
     for (uint64_t ui = 1u; ui <= heap_count; ui++) {
         /*
          * Use a contrived cast to circumvent strict ban on conversion
@@ -714,7 +711,7 @@ void cmb_event_heap_print(FILE *fp)
         static_assert(sizeof(event_heap[ui].action) == sizeof(void*),
             "Pointer to function expected to be same size as pointer to void");
 
-        fprintf(fp, "%llu: time %#8.4g pri %d: %llu  %llu : %p  %p  %p\n", ui,
+        fprintf(fp, "heap index %llu: time %#8.4g pri %d: handle %llu hash index %llu : %p  %p  %p\n", ui,
                 event_heap[ui].time,
                 event_heap[ui].priority,
                 event_heap[ui].handle,
@@ -730,8 +727,9 @@ void cmb_event_heap_print(FILE *fp)
  */
 void cmb_event_hash_print(FILE *fp)
 {
+    fprintf(fp, "Event hash map:\n");
     for (uint64_t ui = 0u; ui < hash_size; ui++) {
-        fprintf(fp, "%llu: %llu  %llu\n", ui,
+        fprintf(fp, "hash index %llu: handle %llu  heap index %llu\n", ui,
                 event_hash[ui].handle,
                 event_hash[ui].heap_index);
     }

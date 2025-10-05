@@ -17,7 +17,6 @@
  */
 #include <stdio.h>
 #include <stdint.h>
-#include <time.h>
 
 #include "cmb_coroutine.h"
 #include "cmi_memutils.h"

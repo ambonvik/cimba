@@ -30,7 +30,7 @@ static void test_action(void *subject, void *object)
 {
     cmb_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
     cmb_event_schedule(test_action, subject, object,
-                       cmb_random_exponential(3600),
+                       cmb_time() + cmb_random_exponential(3600),
                        (int16_t)cmb_random_dice(1, 5));
 }
 
