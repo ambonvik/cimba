@@ -53,20 +53,42 @@ struct cmi_mempool *cmi_mempool_create(const uint64_t obj_num, const size_t obj_
     struct cmi_mempool *mp = cmi_malloc(sizeof(*mp));
     mp->obj_sz = obj_sz;
     mp->incr_num = obj_num;
+
     mp->area_list_len = AREA_LIST_SIZE;
     mp->area_list_cnt = 0u;
     mp->area_list = cmi_malloc(mp->area_list_len * sizeof(void *));
+
+    /* We'll allocate actual object memory on first call to cmi_mempool_get */
     mp->next_obj = NULL;
 
     return mp;
 }
 
 /*
- * cmi_mempool_expand : Increase the memory pool size by the same amount as
+ * cmi_mempool_destroy : Free all memory that was allocated to the pool,
+ * including the mempool object itself. All application pointers to objects
+ * previously allocated from this pool will become invalid.
+ */
+void cmi_mempool_destroy(struct cmi_mempool *mp)
+{
+    cmb_assert_release(mp != NULL);
+
+    /* Free all allocated memory areas, remembering that they were aligned */
+    for (uint64_t ui = 0u; ui < mp->area_list_cnt; ui++) {
+        cmi_aligned_free(mp->area_list[ui]);
+    }
+
+    /* Free the area list, and then the pool itself */
+    cmi_free(mp->area_list);
+    cmi_free(mp);
+}
+
+/*
+ * mempool_expand : Increase the memory pool size by the same amount as
  * originally allocated, obj_sz * obj_num. The allocated memory is aligned to
  * the system memory page size.
  */
-void cmi_mempool_expand(struct cmi_mempool *mp)
+static void mempool_expand(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp->next_obj == NULL);
 
@@ -90,26 +112,10 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
         vp = *vp;
     }
 
+    /* Set the next pointer in the last object to NULL, end of list */
     *vp = NULL;
+
     cmb_assert_debug(mp->next_obj != NULL);
-}
-
-/*
- * cmi_mempool_destroy : Free all memory that was allocated to the pool,
- * including the mempool object itself.
- */
-void cmi_mempool_destroy(struct cmi_mempool *mp)
-{
-    cmb_assert_release(mp != NULL);
-
-    /* Free the allocated memory areas, remembering that they were aligned */
-    for (uint64_t ui = 0u; ui < mp->area_list_cnt; ui++) {
-        cmi_aligned_free(mp->area_list[ui]);
-    }
-
-    /* Free the area list, and then the pool itself */
-    cmi_free(mp->area_list);
-    cmi_free(mp);
 }
 
 /*
@@ -121,7 +127,7 @@ void *cmi_mempool_get(struct cmi_mempool *mp)
     cmb_assert_release(mp != NULL);
     if (mp->next_obj == NULL) {
         /* Pool empty, refill it */
-        cmi_mempool_expand(mp);
+        mempool_expand(mp);
     }
 
     void *op = mp->next_obj;

@@ -84,7 +84,7 @@ static CMB_THREAD_LOCAL uint64_t event_counter = 0u;
  * exponentially as needed, but the number of entries in the event queue at
  * the same time can be surprisingly small even in a large model.
  */
-static CMB_THREAD_LOCAL uint16_t heap_exp = 3u;
+static CMB_THREAD_LOCAL uint16_t heap_exp = 5u;
 
 /* Current size of the heap, invariant equal to 2^heap_exp once initialized */
 static CMB_THREAD_LOCAL uint64_t heap_size = 0u;

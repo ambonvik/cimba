@@ -40,12 +40,6 @@ struct cmi_mempool;
 extern struct cmi_mempool *cmi_mempool_create(uint64_t obj_num, size_t obj_sz);
 
 /*
- * cmi_mempool_expand : Increase the memory pool size by the same amount as
- * originally allocated, obj_sz * obj_num.
- */
-extern void cmi_mempool_expand(struct cmi_mempool *mp);
-
-/*
  * cmi_mempool_destroy : Free all memory allocated to the memory pool.
  * All allocated objects from the pool will become invalid.
  */

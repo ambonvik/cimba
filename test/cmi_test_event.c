@@ -25,6 +25,8 @@
 #include "cmb_random.h"
 #include "cmb_logger.h"
 
+#include "cmi_test.h"
+
 /* An event, prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object)
 {
@@ -47,14 +49,14 @@ static const char *objects[] = {"that thing", "some thing", "the other thing"};
 
 int main(void)
 {
-    cmb_random_init(cmb_random_get_hwseed());
-
+    cmi_test_print_line("-");
     printf("Testing event queue\n");
     const double start_time = 3.0;
     printf("Creating queue, start time %g\n", start_time);
     cmb_event_queue_init(start_time);
     printf("Current simulation time %g\n", cmb_time());
 
+    cmb_random_init(cmb_random_get_hwseed());
     printf("Scheduling 3x3 events\n");
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
@@ -69,9 +71,10 @@ int main(void)
 
     printf("Scheduling end event\n");
     (void)cmb_event_schedule(end_sim, NULL, NULL, 100.0, 0);
-
+    cmi_test_print_line("-");
     cmb_event_heap_print(stdout);
     cmb_event_hash_print(stdout);
+    cmi_test_print_line("-");
 
     printf("\nSearching for an event (%p, %p, %p)...", (void *)test_action, subjects[1], objects[0]);
     uint64_t handle = cmb_event_find(test_action, (void *)subjects[1], (void *)objects[0]);
@@ -114,11 +117,13 @@ int main(void)
     printf("\nWildcard search, cancelling any events with subject %p, any object\n", subjects[1]);
     cnt = cmb_event_cancel_all(CMB_ANY_ACTION, subjects[1], CMB_ANY_OBJECT);
     printf("Cancelled %llu events\n", cnt);
+    cmi_test_print_line("-");
 
     printf("\nExecuting the simulation, starting time %#g\n", cmb_time());
     printf("Time:\t\tType:\tAction: \t\tSubject:\t\tObject:\n");
     while (cmb_event_execute_next()) { }
 
     printf("\nDone\n");
+    cmi_test_print_line("=");
     return 0;
 }
