@@ -109,7 +109,7 @@ struct hash_tag {
  */
 static CMB_THREAD_LOCAL struct hash_tag *event_hash = NULL;
 
-/* Current size of the hash, invariant equal to 2^heap_exp once initialized */
+/* Current size of the hash, invariant equal to 2 * heap_size once initialized */
 static CMB_THREAD_LOCAL uint64_t hash_size = 0u;
 
 /*****************************************************************************/
@@ -117,21 +117,27 @@ static CMB_THREAD_LOCAL uint64_t hash_size = 0u;
 /*****************************************************************************/
 
 /*
- * Fibonacci hash function, see
+ * hash_handle : Fibonacci hash function, see
  * https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
  */
 uint64_t hash_handle(const uint64_t handle)
 {
-    /* The "magic number" is approx 2^64 / phi, the golden ratio */
-    return (handle * 11400714819323198485llu) >> (64u - heap_exp);
+    /*
+     * The "magic number" is approx 2^64 / phi, the golden ratio.
+     * The right shift maps to the hash map size, twice the heap size.
+     */
+    return (handle * 11400714819323198485llu) >> (64u - (heap_exp + 1));
 }
 
 /*
- * Find the heap index of a given handle, zero if not found
+ * hash_find_handle : Find the heap index of a given handle, zero if not found.
+ * Uses a bitmap with all ones in the first positions to wrap around fast,
+ * instead of using the modulo operator. In effect, simulates overflow in an
+ * unsigned integer of (heap_exp + 1) bits.
  */
 uint64_t hash_find_handle(const uint64_t handle)
 {
-    const uint64_t bitmap = 2u * heap_size - 1u;
+    const uint64_t bitmap = hash_size - 1u;
     uint64_t hash = hash_handle(handle);
     do {
         if (event_hash[hash].handle == handle) {
@@ -148,11 +154,11 @@ uint64_t hash_find_handle(const uint64_t handle)
 }
 
 /*
- * Find the first free hash map slot for the given handle
+ * hash_find_slot : Find the first free hash map slot for the given handle
  */
 uint64_t hash_find_slot(const uint64_t handle)
 {
-    const uint64_t bitmap = 2u * heap_size - 1u;
+    const uint64_t bitmap = hash_size - 1u;
     uint64_t hash = hash_handle(handle);
     for (;;) {
         /* Guaranteed to find a slot eventually, < 50 % hash load factor */
