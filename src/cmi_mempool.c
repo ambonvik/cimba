@@ -44,15 +44,25 @@ struct cmi_mempool {
  * area_list keeps track of the allocated memory to be able to free it later.
  * The area_list resizes as needed, starting from AREA_LIST_SIZE defined above.
  * next_obj points to the first available object in the pool, NULL if empty.
+ *
+ * We will be allocating memory aligned to page size. The allocator will reguire
+ * the total amount of memory to be a multiple of the page size. We round the
+ * number of objects upwards to make it an integer multiple of the page size.
  */
 struct cmi_mempool *cmi_mempool_create(const uint64_t obj_num, const size_t obj_sz)
 {
     cmb_assert_release((obj_sz % 8u) == 0);
     cmb_assert_release(obj_num > 0u);
 
+    /* Ensure that obj_num * obj_sz become a multiple of page size */
+    const size_t pagesz = cmi_get_pagesize();
+    const uint64_t obj_num_adj = ((obj_num * obj_sz + pagesz - 1u) / pagesz)
+                                * (pagesz / obj_sz);
+
     struct cmi_mempool *mp = cmi_malloc(sizeof(*mp));
     mp->obj_sz = obj_sz;
-    mp->incr_num = obj_num;
+    mp->incr_num = obj_num_adj;
+    cmb_assert_debug(((mp->obj_sz * mp->incr_num) % pagesz) == 0u);
 
     mp->area_list_len = AREA_LIST_SIZE;
     mp->area_list_cnt = 0u;
@@ -100,7 +110,7 @@ static void mempool_expand(struct cmi_mempool *mp)
 
     /* Allocate another contiguous array of objects, aligned to page size */
     const size_t pagesz = cmi_get_pagesize();
-    void *ap = cmi_aligned_alloc(mp->obj_sz * mp->incr_num, pagesz);
+    void *ap = cmi_aligned_alloc(pagesz, mp->obj_sz * mp->incr_num);
     mp->area_list[mp->area_list_cnt - 1u] = ap;
 
     /* Initialize the objects */

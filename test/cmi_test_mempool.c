@@ -22,7 +22,7 @@
 
 int main(void)
 {
-    cmi_test_print_line("-");
+    cmi_test_print_line("=");
     printf("Testing memory pool\n");
     size_t obj_sz = 32u;
     uint64_t obj_num = 16u;
@@ -43,11 +43,11 @@ int main(void)
 
     cmi_test_print_line("-");
     obj_sz = 64u;
-    obj_num = 64u;
+    obj_num = 57u;
     printf("cmi_mempool_create: %llu objects size %llu\n", obj_num, obj_sz);
     mp = cmi_mempool_create(obj_num, obj_sz);
 
-    printf("cmi_mempool_get: pulling out 101 of them ... ");
+    printf("cmi_mempool_get: pulling out 101 of them, forcing a pool expand ... ");
     void *vp_first = cmi_mempool_get(mp);
     for (unsigned ui = 0; ui < 100; ui++) {
         vp = cmi_mempool_get(mp);
@@ -58,6 +58,7 @@ int main(void)
 
     printf("cmi_mempool_put: returning the first and last ... ");
     cmi_mempool_put(mp, vp_first);
+    cmi_mempool_put(mp, vp);
     printf("done\n");
 
     printf("cmi_mempool_destroy: Deleting the pool ... ");

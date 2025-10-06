@@ -33,9 +33,10 @@ struct cmi_mempool;
  * cmi_mempool_create : Set up a memory pool for objects of size obj_sz bytes.
  * The initial memory allocation is obj_sz * obj_num bytes, later incrementing
  * by the same amount whenever needed. obj_sz must be a multiple of 8 bytes.
- * The memory allocation will be aligned to a page boundary. For efficiency,
- * obj_num * obj_size should be an integer multiple of the page size, such as
- * 128 * 32 = 4096 or 256 * 64 = 16384 for a page size of 4096 bytes.
+ * The memory allocation will be aligned to a page boundary. This will require
+ * obj_sz * obj_num to be an integer multiple of the page size. We will quietly
+ * adjust obj_num upwards to make this happen. Hence, obj_num should be seen as
+ * indicating a minimum initial (and later increment) number, not an absolute.
  */
 extern struct cmi_mempool *cmi_mempool_create(uint64_t obj_num, size_t obj_sz);
 
@@ -46,14 +47,14 @@ extern struct cmi_mempool *cmi_mempool_create(uint64_t obj_num, size_t obj_sz);
 extern void cmi_mempool_destroy(struct cmi_mempool *mp);
 
 /*
- * cmi_mempool_get : Get an object of size obj_sz from the pool, expanding it
- * if necessary.
+ * cmi_mempool_get : Get an object of size obj_sz from the pool, expanding the
+ * pool if necessary.
  */
 extern void *cmi_mempool_get(struct cmi_mempool *mp);
 
 /*
  * cmi_mempool_put : Return an object to the pool. The object must be one
- * previously obtained from this pool.
+ * previously obtained from this pool. Do not put back the same object twice.
  */
 extern void cmi_mempool_put(struct cmi_mempool *mp, void *op);
 
