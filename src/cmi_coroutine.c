@@ -47,7 +47,7 @@ extern void *cmi_coroutine_get_stacklimit(void);
 extern bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp);
 extern void cmi_coroutine_context_init(struct cmi_coroutine *cp,
                                        cmi_coroutine_func *foo,
-                                       void *arg);
+                                       void *context);
 
 struct cmi_coroutine *cmi_coroutine_get_current(void)
 {
@@ -65,10 +65,20 @@ enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp
     return cp->status;
 }
 
-void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp)
+void *cmi_coroutine_get_context(const struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
-    return cp->exit_value;
+    return cp->context;
+}
+
+
+void *cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context)
+{
+    cmb_assert_release(cp != NULL);
+    void *old_context = cp->context;
+    cp->context = context;
+
+    return old_context;
 }
 
 /*
@@ -103,7 +113,9 @@ static void coroutine_create_main(void)
  * cmi_coroutine_create : Create a coroutine with the given stack size,
  * creating a main coroutine object if not done already.
  */
-struct cmi_coroutine *cmi_coroutine_create(const size_t stack_size)
+struct cmi_coroutine *cmi_coroutine_create(cmi_coroutine_func foo,
+                                           void *context,
+                                           const size_t stack_size)
 {
     /* Create a dummy main coroutine if not already existing */
     if (coroutine_main == NULL) {
@@ -121,6 +133,8 @@ struct cmi_coroutine *cmi_coroutine_create(const size_t stack_size)
     cp->stack_limit = NULL;
     cp->stack_pointer = NULL;
     cp->status = CMI_COROUTINE_CREATED;
+    cp->foo = foo;
+    cp->context = context;
     cp->exit_value = NULL;
 
     return cp;
@@ -130,16 +144,14 @@ struct cmi_coroutine *cmi_coroutine_create(const size_t stack_size)
  * cmi_coroutine_start : Load the given function and argument into the given
  * coroutine stack, and launch it by transferring control into it.
  */
-void *cmi_coroutine_start(struct cmi_coroutine *cp,
-                         cmi_coroutine_func *foo,
-                         void *arg)
+void *cmi_coroutine_start(struct cmi_coroutine *cp, void *sig)
 {
     cmb_assert_release(cp != NULL);
     cmb_assert_release(cp->status == CMI_COROUTINE_CREATED);
     cmb_assert_debug(coroutine_current != NULL);
 
     /* Prepare the stack for launching the coroutine function */
-    cmi_coroutine_context_init(cp, foo, arg);
+    cmi_coroutine_context_init(cp, cp->foo, cp->context);
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 
     /* The current coroutine now becomes both the parent and caller of cp */
@@ -148,7 +160,7 @@ void *cmi_coroutine_start(struct cmi_coroutine *cp,
 
     /* Start it by transferring into it for the first time */
     cp->status = CMI_COROUTINE_RUNNING;
-    void *ret = cmi_coroutine_transfer(cp, arg);
+    void *ret = cmi_coroutine_transfer(cp, sig);
 
     return ret;
 }
@@ -221,7 +233,7 @@ void cmi_coroutine_stop(struct cmi_coroutine *cp)
  * through several other coroutines in the meantime, may not be returning
  * from the one we just switched into.
  */
-extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *arg)
+extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *sig)
 {
     cmb_assert_release(to != NULL);
     cmb_assert_release(to->status == CMI_COROUTINE_RUNNING);
@@ -240,7 +252,7 @@ extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *arg)
     /* The actual context switch happens in assembly */
     void **fromstk = (void **)&(from->stack_pointer);
     void **tostk = (void **)&(to->stack_pointer);
-    void *ret = cmi_coroutine_context_switch(fromstk, tostk, arg);
+    void *ret = cmi_coroutine_context_switch(fromstk, tostk, sig);
 
     /* Possibly much later, when control has returned here again */
     cmb_assert_debug(cmi_coroutine_stack_valid(to));
@@ -250,7 +262,7 @@ extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *arg)
 }
 
 /* Asymmetric coroutine pattern yield/resume, called from within coroutine */
-void *cmi_coroutine_yield(void *arg)
+void *cmi_coroutine_yield(void *sig)
 {
     const struct cmi_coroutine *from = cmi_coroutine_get_current();
     cmb_assert_release(from != NULL);
@@ -260,19 +272,19 @@ void *cmi_coroutine_yield(void *arg)
     cmb_assert_release(to != NULL);
     cmb_assert_release(to->status == CMI_COROUTINE_RUNNING);
 
-    void *ret = cmi_coroutine_transfer(to, arg);
+    void *ret = cmi_coroutine_transfer(to, sig);
 
     /* Possibly much later */
     return ret;
 }
 
-void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *arg)
+void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *sig)
 {
     cmb_assert_release(cp != NULL);
     cmb_assert_release(cp != cmi_coroutine_get_current());
     cmb_assert_release(cp->status == CMI_COROUTINE_RUNNING);
 
-    void *ret = cmi_coroutine_transfer(cp, arg);
+    void *ret = cmi_coroutine_transfer(cp, sig);
 
     /* Possibly much later */
     return ret;

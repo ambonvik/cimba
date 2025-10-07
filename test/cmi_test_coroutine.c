@@ -23,11 +23,11 @@
 #include "cmi_test.h"
 
 /* Simple test function, just a single event that returns */
-static void *corofunc(struct cmi_coroutine *myself, void *arg)
+static void *corofunc(struct cmi_coroutine *myself, void *context)
 {
-    printf("corofunc(%p, %p) running\n", (void *)myself, arg);
-    printf("corofunc returning %p\n", arg);
-    return arg;
+    printf("corofunc(%p, %p) running\n", (void *)myself, context);
+    printf("corofunc returning %p\n", context);
+    return context;
 }
 
 static void test_simple_event(void)
@@ -36,7 +36,7 @@ static void test_simple_event(void)
     printf("Test simple coroutine call\n");
     const size_t stksz = 24 * 1024;
     printf("Create a coroutine, stack size %llu\n", stksz);
-    struct cmi_coroutine *cp = cmi_coroutine_create(stksz);
+    struct cmi_coroutine *cp = cmi_coroutine_create(corofunc, (void *)0x5EAF00D, stksz);
     printf("Got %p, now start it\n", (void *)cp);
 
     /* The next call may look simple, but it exercises a lot of stuff.
@@ -49,7 +49,7 @@ static void test_simple_event(void)
      * transferred back to its parent, i.e., here. It tests almost
      * everything in the coroutine class in just this call.
      */
-    void *ret = cmi_coroutine_start(cp, corofunc, (void *)0x5EAF00Dull);
+    void *ret = cmi_coroutine_start(cp, NULL);
 
     printf("Survived, now back in main coroutine, received %p\n", ret);
 
@@ -61,10 +61,10 @@ static void test_simple_event(void)
 }
 
 /* A coroutine that transfers control to a partner coroutine and back */
-static void *corofunc_2(struct cmi_coroutine *myself, void *arg)
+static void *corofunc_2(struct cmi_coroutine *myself, void *context)
 {
-    /* The arg is not used here, indirectly using the caller pointer instead */
-    printf("corofunc_2(%p, %p) running\n", (void *)myself, arg);
+    /* The context is not used here, indirectly using the caller pointer instead */
+    printf("corofunc_2(%p, %p) running\n", (void *)myself, context);
 
     for (unsigned ui = 0; ui < 5; ui++) {
         /* Wrap the index number in a fortune cookie and pass it back */
@@ -82,19 +82,19 @@ static void *corofunc_2(struct cmi_coroutine *myself, void *arg)
     cmi_coroutine_exit(NULL);
 
     /* Never gets here */
-    return (void *)0xBADF00Dull;
+    return (void *)0xBADF00D;
 }
 
 /* A coroutine that transfers control to a partner coroutine and back */
-static void *corofunc_1(struct cmi_coroutine *myself, void *arg)
+static void *corofunc_1(struct cmi_coroutine *myself, void *context)
 {
-    /* The arg is a disguised pointer to the other coroutine */
-    struct cmi_coroutine *buddy = arg;
+    /* The context is a disguised pointer to the other coroutine */
+    struct cmi_coroutine *buddy = context;
     printf("corofunc_1(%p, %p) running\n", (void *)myself, (void *)buddy);
 
     /* We are evidently running, start the buddy as well. */
-    void *ret = cmi_coroutine_start(buddy, corofunc_2, NULL);
-    printf("corofunc_1: Back, now trade tickets for cookies\n");
+    void *ret = cmi_coroutine_start(buddy, (void *)0x5EAF00D);
+    printf("corofunc_1: Back, return value %p, now trade tickets for cookies\n", ret);
 
     int cntr = 100;
     while (ret != NULL) {
@@ -110,7 +110,7 @@ static void *corofunc_1(struct cmi_coroutine *myself, void *arg)
 
     /* Return is caught and redirected to cmi_coroutine_exit(ret) */
     printf("corofunc_1: Wut, no more cookies?\n");
-    return (void *)0x5EAF00Dull;
+    return (void *)0xBADF00D;
 }
 
 static void test_asymmetric(void)
@@ -118,12 +118,13 @@ static void test_asymmetric(void)
     printf("Test asymmetric coroutines\n");
     const size_t stksz = 16 * 1024;
     printf("Create two coroutines, stack size %llu\n", stksz);
-    struct cmi_coroutine *cp1 = cmi_coroutine_create(stksz);
-    struct cmi_coroutine *cp2 = cmi_coroutine_create(stksz);
+    struct cmi_coroutine *cp1 = cmi_coroutine_create(corofunc_1, NULL, stksz);
+    struct cmi_coroutine *cp2 = cmi_coroutine_create(corofunc_2, (void *)cp1, stksz);
+    cmi_coroutine_set_context(cp1, (void *)cp2);
 
     /* Start cp1 and hence the entire circus */
     printf("Start %p\n", (void *)cp1);
-    void *ret = cmi_coroutine_start(cp1, corofunc_1, (void *)cp2);
+    void *ret = cmi_coroutine_start(cp1, (void *)0x5EAF00D);
     printf("Survived, now back in main coroutine, received %p\n", ret);
 
     /* Destroy the coroutine to free its memory allocation*/

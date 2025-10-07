@@ -113,7 +113,7 @@ extern void cmi_coroutine_trampoline(void);
 
 void cmi_coroutine_context_init(struct cmi_coroutine *cp,
                                 cmi_coroutine_func *foo,
-                                void *arg)
+                                void *context)
 {
     cmb_assert_release(cp != NULL);
     cmb_assert_debug(cp->stack != NULL),
@@ -183,9 +183,9 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp,
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)cp;
 
-    /* Place coroutine function argument in R14 */
+    /* Place coroutine function context argument in R14 */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)arg;
+    *(uint64_t *)stkptr = (uintptr_t)context;
 
     /* Place address of exit function in R15 */
     stkptr -= 8u;
