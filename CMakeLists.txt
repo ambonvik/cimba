@@ -5,15 +5,24 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Wall -Wextra -Wpedantic")
 enable_language(ASM_NASM)
 
 include_directories(include src)
-set(SOURCES src/cmb_coroutine.c src/cmb_data.c src/cmb_event.c src/cmb_random.c
-        src/cmb_assert.c src/cmb_logger.c src/cmi_mempool.c
+set(SOURCES  src/cmb_data.c
+        src/cmb_event.c
+        src/cmb_random.c
+        src/cmb_assert.c
+        src/cmb_logger.c
+        src/cmi_coroutine.c
+        src/cmi_mempool.c
         src/cmi_random_exp_zig.inc
         src/cmi_random_nor_zig.inc
         src/arch/cmi_memutils_Win64.c
         src/arch/cmb_random_hwseed_Win64.c
         src/arch/cmi_coroutine_context_Win64.c )
-set(HEADERS include/cmb_coroutine.h include/cmb_data.h include/cmb_event.h include/cmb_random.h
-        include/cmb_assert.h src/cmi_config.h include/cmb_logger.h src/cmi_memutils.h
+set(HEADERS include/cmb_data.h
+        include/cmb_event.h
+        include/cmb_random.h
+        include/cmb_assert.h
+        src/cmi_coroutine.h
+        src/cmi_config.h include/cmb_logger.h src/cmi_memutils.h
         src/cmi_mempool.h )
 
 set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm src/arch/cmi_random_hwseed_Win64.asm)

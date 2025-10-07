@@ -21,8 +21,8 @@
 #include <stdio.h>
 
 #include "cmb_assert.h"
-#include "cmb_coroutine.h"
 
+#include "cmi_coroutine.h"
 #include "cmi_memutils.h"
 
 /* Assembly function, see src/arc/cmi_coroutine_context_*.asm */
@@ -81,15 +81,15 @@ extern void cmi_coroutine_trampoline(void);
 
 #ifndef NASSERT
  /* Stack sanity check, Win64-specific */
- bool cmi_coroutine_stack_valid(const struct cmb_coroutine *cp)
+ bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
 {
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
     cmb_assert_debug(cp->stack_limit != NULL);
 
-     struct cmb_coroutine *cp_main = cmb_coroutine_get_main();
+    struct cmi_coroutine *cp_main = cmi_coroutine_get_main();
     if (cp == cp_main) {
-        cmb_assert_debug(cp->status == CMB_COROUTINE_RUNNING);
+        cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
         cmb_assert_debug(cp->stack == NULL);
         if (cp->stack_pointer != NULL) {
             cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
@@ -111,8 +111,8 @@ extern void cmi_coroutine_trampoline(void);
 
 #endif /* NASSERT */
 
-void cmi_coroutine_context_init(struct cmb_coroutine *cp,
-                                cmb_coroutine_func *foo,
+void cmi_coroutine_context_init(struct cmi_coroutine *cp,
+                                cmi_coroutine_func *foo,
                                 void *arg)
 {
     cmb_assert_release(cp != NULL);
@@ -189,7 +189,7 @@ void cmi_coroutine_context_init(struct cmb_coroutine *cp,
 
     /* Place address of exit function in R15 */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)cmb_coroutine_exit;
+    *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_exit;
 
     /* Add space for 10 XMM registers * 16 bytes + 8 bytes for alignment */
     stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
