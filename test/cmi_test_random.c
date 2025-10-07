@@ -877,6 +877,7 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
     const uint64_t seed = cmb_random_get_hwseed();
     cmb_random_init(seed);
     printf("\nSpeed testing vose alias sampling, %llu samples, seed = %#llx.\n", MAX_ITER, seed);
+    printf("Iterations per second (ips)\n");
     printf("n\tips simple\tips alias\tspeedup\n");
     for (unsigned n = init; n <= end; n += step) {
         double *pa = calloc(n, sizeof *pa);
@@ -914,9 +915,9 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
         const double ips_alias = MAX_ITER / t_alias;
         const double speedup = (ips_alias - ips_simple) / ips_simple;
         printf("%u\t%9.4g\t%9.4g\t%+8.4g%%\n", n, ips_simple, ips_alias, 100.0 * speedup);
-
-        cmi_test_print_line("=");
     }
+
+    cmi_test_print_line("=");
 }
 
 int main(void)

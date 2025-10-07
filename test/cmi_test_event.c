@@ -123,7 +123,6 @@ int main(void)
     printf("Time:\t\tType:\tAction: \t\tSubject:\t\tObject:\n");
     while (cmb_event_execute_next()) { }
 
-    printf("\nDone\n");
     cmi_test_print_line("=");
     return 0;
 }

@@ -3,40 +3,39 @@
  *
  * This "base class" covers both symmetric and asymmetric coroutine behavior:
  * - Symmetric coroutines can transfer control to any other coroutine in a
- *   peer-to-peer relationship, using the cmi_transfer(to, arg) function.
+ *   peer-to-peer relationship, using the cmi_transfer(to, msg) function.
  *   A "from" argument is not necessary, since only one coroutine can have the
  *   CPU execution thread at a time, and it will always be the currently
  *   executing coroutine (coroutine_current) that is initiating the transfer.
- *   The arg argument will reappear as the return value of the cmb_transfer()
- *   on the receiving end.
+ *   The msg argument will reappear as the return value of the cmb_transfer()
+ *   on the receiving end. This allows arbitrary message passing between
+ *   cooperating coroutines.
  *
  * - Asymmetric coroutines only transfer control back to a caller coroutine,
  *   often on the main stack. This coroutine then selects the next one to
- *   be activated. This is done by cmi_yield(arg) / cmi_resume(to, arg)
+ *   be activated. This is done by cmi_yield(msg) / cmi_resume(to, msg)
  *   pairs. Again, the "from" argument is not needed, since it can only be
  *   called by the current coroutine at that point in time. When yielding,
  *   control passes to the coroutine that last resumed the active coroutine,
  *   or that otherwise last transferred control into it.
- *   The argument passed through yield() appears as the return value of
- *   resume(), and vice versa, the argument given to resume() appears as the
- *   return value from yield() on the other end of the implicit transfer.
+ *   The msg argument passed through yield() appears as the return value of
+ *   resume(), and vice versa, the msg gargument given to resume() appears as
+ *   the return value from yield() on the other end of the implicit transfer.
  *
  * The cmb_coroutines can do both patterns, and can mix freely between them.
  * E.g., the main execution thread can transfer control into some coroutine,
  * which can act in a yield/resume asymmetric producer/consumer relationship
  * with some other coroutine for a while, before transferring control to yet
- * another coroutine, which could abruptly decide to return to main.
+ * another coroutine, which could abruptly decide to transfer back to main.
  *
  * Coroutines can also be nested by creating and starting coroutines from other
  * coroutines. If the coroutine function returns, it will transfer control back
- * to the context it was started from. This will appear to the caller as a
- * return from where it last transferred control out, not necessarily from the
- * call to start the daughther coroutine.
+ * to the context it was started from. This could be another coroutine.
  *
- * If exploiting this fully, the control flow can get mightily confusing fast.
- * It should be considered low-level code not to be called directly by
- * user applications, but can on the other hand be used as such independent of
- * the rest of the Cimba library.
+ * If exploiting this fully, the control flow can get very confusing. It should
+ * be considered low-level code not to be called directly by user simulations,
+ * but can on the other hand be used as general purpose coroutines independent
+ * of the rest of the cimba library.
  *
  * See also:
  *      https://en.wikipedia.org/wiki/Coroutine
@@ -163,11 +162,12 @@ extern struct cmi_coroutine *cmi_coroutine_create(cmi_coroutine_func foo,
  * cmi_coroutine_start : Launch the given coroutine, launching foo(cp, context)
  * on its own stack. This will transfer control into the new coroutine and only
  * return when that (or some other) coroutine yields / transfers back here. The
- * sig argument is an application defined signal value passed to the coroutine
- * in the transfer, possibly NULL. The value returned from cmi_coroutine_start
- * is whatever signal value was passed by the transfer back here again.
+ * msg argument is a pointer to an application defined message passed to the
+ * coroutine in the transfer, possibly NULL, or some non-pointer value encoded
+ * directly into the argument. The value returned from cmi_coroutine_start
+ * is whatever message was passed by the transfer back here again.
  */
-extern void *cmi_coroutine_start(struct cmi_coroutine *cp, void *sig);
+extern void *cmi_coroutine_start(struct cmi_coroutine *cp, void *msg);
 
 /*
  * cmi_coroutine_stop : Kill the given coroutine, setting its status to
@@ -211,22 +211,24 @@ extern void cmi_coroutine_destroy(struct cmi_coroutine *cp);
 
 /*
  * cmi_coroutine_transfer : Symmetric coroutine pattern, transferring control
- * to given coroutine. The second argument sig will appear as the return value
+ * to given coroutine. The second argument msg will appear as the return value
  * on the receiving end of the transfer.
  */
-extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *sig);
+extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *msg);
 
 /*
  * cmi_coroutine_yield : Asymmetric coroutine pattern, transfer back to latest
  * caller, i.e. the coroutine that last resumed this one or transferred to it.
+ * The msg argument will be returned to the caller, apparently as the return
+ * value from its latest transfer out.
  */
-extern void *cmi_coroutine_yield(void *sig);
+extern void *cmi_coroutine_yield(void *msg);
 
 /*
  * cmi_coroutine_resume : Asymmetric coroutine pattern, transfer control to the
- * given coroutine. Equivalent to cmi_coroutine_transfer(cp, sig).
+ * given coroutine. Equivalent to cmi_coroutine_transfer(cp, msg).
  */
-extern void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *sig);
+extern void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *msg);
 
 /*
  * cmi_coroutine_exit : End the currently executing coroutine and store the
