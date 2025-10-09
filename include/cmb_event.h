@@ -74,7 +74,7 @@ extern double cmb_time(void);
 /*
  * typedef cmb_event_func : The generic event function type
  */
-typedef void (cmb_event_func)(void*, void*);
+typedef void (cmb_event_func)(void *subject, void *object);
 
 /*
  * cmb_event_eueue_init : Initialize the event queue itself.
@@ -95,10 +95,10 @@ extern void cmb_event_queue_destroy(void);
  * Returns the unique handle of the scheduled event.
  */
 extern uint64_t cmb_event_schedule(cmb_event_func *action,
-                               void *subject,
-                               void *object,
-                               double time,
-                               int16_t priority);
+                                   void *subject,
+                                   void *object,
+                                   double time,
+                                   int16_t priority);
 
 /*
  *  cmb_event_next : Removes and executes the first event in the event queue.

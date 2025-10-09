@@ -37,7 +37,6 @@ CMB_THREAD_LOCAL static char timestrbuf[TSTRBUF_SZ];
 static char *time_to_string(double t)
 {
     (void)snprintf(timestrbuf, TSTRBUF_SZ, "%#10.5g", t);
-    timestrbuf[TSTRBUF_SZ - 1] = '\0';
 
     return timestrbuf;
 }

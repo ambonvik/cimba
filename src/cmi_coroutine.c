@@ -135,7 +135,6 @@ struct cmi_coroutine *cmi_coroutine_create(cmi_coroutine_func foo,
     cp->status = CMI_COROUTINE_CREATED;
     cp->foo = foo;
     cp->context = context;
-    cp->exit_value = NULL;
 
     return cp;
 }
@@ -143,11 +142,15 @@ struct cmi_coroutine *cmi_coroutine_create(cmi_coroutine_func foo,
 /*
  * cmi_coroutine_start : Load the given function and argument into the given
  * coroutine stack, and launch it by transferring control into it.
+ * Note that restarting a finished coroutine with the original function and
+ * context is allowed, but trying to restart a running coroutine is an error.
+ * It will be faster to restart a finished coroutine than to create a new, in
+ * cases where this makes sense in the user application.
  */
 void *cmi_coroutine_start(struct cmi_coroutine *cp, void *msg)
 {
     cmb_assert_release(cp != NULL);
-    cmb_assert_release(cp->status == CMI_COROUTINE_CREATED);
+    cmb_assert_release(cp->status != CMI_COROUTINE_RUNNING);
     cmb_assert_debug(coroutine_current != NULL);
 
     /* Prepare the stack for launching the coroutine function */
@@ -158,8 +161,13 @@ void *cmi_coroutine_start(struct cmi_coroutine *cp, void *msg)
     cp->parent = coroutine_current;
     cp->caller = coroutine_current;
 
-    /* Start it by transferring into it for the first time */
+    cp->exit_value = NULL;
     cp->status = CMI_COROUTINE_RUNNING;
+
+    /*
+     * Start it by transferring into it for the first time, passing the
+     * message msg and returning whatever message it passes back.
+     */
     void *ret = cmi_coroutine_transfer(cp, msg);
 
     return ret;

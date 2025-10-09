@@ -84,7 +84,7 @@ struct cmi_coroutine;
 /*
  * typedef cmi_coroutine_func : The generic coroutine function type,
  * a function taking two arguments, a pointer to a coroutine (itself) and
- * a pointer to some application-defined context.
+ * a pointer to some application-defined context, returning a pointer to void.
  */
 typedef void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *context);
 
