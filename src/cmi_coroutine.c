@@ -62,12 +62,14 @@ struct cmi_coroutine *cmi_coroutine_get_main(void)
 enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
+
     return cp->status;
 }
 
 void *cmi_coroutine_get_context(const struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
+
     return cp->context;
 }
 
@@ -75,6 +77,7 @@ void *cmi_coroutine_get_context(const struct cmi_coroutine *cp)
 void *cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context)
 {
     cmb_assert_release(cp != NULL);
+
     void *old_context = cp->context;
     cp->context = context;
 
@@ -117,15 +120,26 @@ struct cmi_coroutine *cmi_coroutine_create(cmi_coroutine_func foo,
                                            void *context,
                                            const size_t stack_size)
 {
+    /* Create the new coroutine and stack */
+    struct cmi_coroutine *cp = cmi_malloc(sizeof(*cp));
+    cmi_coroutine_init(cp, foo, context, stack_size);
+
+    return cp;
+}
+
+void cmi_coroutine_init(struct cmi_coroutine *cp,
+                        cmi_coroutine_func foo,
+                        void *context,
+                        const size_t stack_size)
+{
     /* Create a dummy main coroutine if not already existing */
     if (coroutine_main == NULL) {
         coroutine_create_main();
         cmb_assert_debug(coroutine_main != NULL);
         cmb_assert_debug(coroutine_current == coroutine_main);
-     }
+    }
 
-    /* Create the new coroutine and stack */
-    struct cmi_coroutine *cp = cmi_malloc(sizeof(*cp));
+    /* Initialize the coroutine struct and allocate stack */
     cp->parent = NULL;
     cp->caller = NULL;
     cp->stack = cmi_malloc(stack_size);
@@ -135,8 +149,6 @@ struct cmi_coroutine *cmi_coroutine_create(cmi_coroutine_func foo,
     cp->status = CMI_COROUTINE_CREATED;
     cp->foo = foo;
     cp->context = context;
-
-    return cp;
 }
 
 /*
@@ -183,11 +195,21 @@ void cmi_coroutine_destroy(struct cmi_coroutine *cp)
     cmb_assert_debug(cp != coroutine_main);
     cmb_assert_debug(cp != coroutine_current);
 
+    cmi_coroutine_destroy_stack(cp);
+    cmi_free(cp);
+}
+
+void cmi_coroutine_destroy_stack(struct cmi_coroutine *cp)
+{
+    cmb_assert_debug(cp != NULL);
+    cmb_assert_debug(cp != coroutine_main);
+    cmb_assert_debug(cp != coroutine_current);
+
     if (cp->stack != NULL) {
         cmi_free(cp->stack);
     }
 
-    cmi_free(cp);
+    cp->stack = NULL;
 }
 
 /*

@@ -159,6 +159,17 @@ extern struct cmi_coroutine *cmi_coroutine_create(cmi_coroutine_func foo,
                                                   size_t stack_size);
 
 /*
+ * cmi_coroutine_init : Initialize a coroutine object, creating a new stack
+ * and initializing the pointers to it. Helper function to separate the
+ * memory allocation for the coroutine object from the initialization including
+ * allocating the stack memory in this function.
+ */
+extern void cmi_coroutine_init(struct cmi_coroutine *cp,
+                               cmi_coroutine_func foo,
+                               void *context,
+                               size_t stack_size );
+
+/*
  * cmi_coroutine_start : Launch the given coroutine, launching foo(cp, context)
  * on its own stack. This will transfer control into the new coroutine and only
  * return when that (or some other) coroutine yields / transfers back here. The
@@ -204,6 +215,9 @@ extern void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp);
  * cmi_coroutine_destroy : Free memory allocated to coroutine.
  */
 extern void cmi_coroutine_destroy(struct cmi_coroutine *cp);
+
+/* Helper function to free memory allocated to stack only */
+extern void cmi_coroutine_destroy_stack(struct cmi_coroutine *cp);
 
 /*****************************************************************************/
 /*         Functions called from within the coroutine                        */

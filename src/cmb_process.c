@@ -20,16 +20,41 @@
 #include "cmb_assert.h"
 #include "cmb_process.h"
 
+#include "cmi_memutils.h"
+
 struct cmb_process *cmb_process_create(const char *name,
                                               cmb_process_func foo,
                                               void *context,
-                                              int16_t priority) {
-    return NULL;
+                                              int16_t priority)
+{
+    /* Allocate memory and initialize the cmi_coroutine parts */
+    struct cmb_process *cp = cmi_malloc(sizeof(*cp));
+    cmi_coroutine_init((struct cmi_coroutine *)cp,
+                       (cmi_coroutine_func *)foo,
+                       context,
+              CMB_PROCESS_STACK_SIZE);
+
+    /* Initialize the cmi_process parts */
+    (void)cmb_process_set_name(cp, name);
+    cp->priority = priority;
+    cp->wakeup_handle = 0ull;
+
+    return cp;
 }
 
 void cmb_process_destroy(struct cmb_process *cp)
 {
+    cmb_assert_debug(cp != NULL);
 
+    struct cmi_coroutine *crp = (struct cmi_coroutine *)cp;
+    cmb_assert_debug(crp != cmi_coroutine_get_main());
+    cmb_assert_debug(crp != cmi_coroutine_get_current());
+
+    if (crp->stack != NULL) {
+        cmi_free(crp->stack);
+    }
+
+    cmi_free(cp);
 }
 
 void cmb_process_start(struct cmb_process *cp)
@@ -87,3 +112,22 @@ struct cmb_process *cmb_process_get_current(void)
     return (struct cmb_process *)cmi_coroutine_get_current();
 }
 
+int64_t cmb_process_hold(double dur)
+{
+    return 0;
+}
+
+void cmb_process_exit(void *retval)
+{
+
+}
+
+void cmb_process_interrupt(struct cmb_process *cp, int64_t sig)
+{
+
+}
+
+void cmb_process_stop(struct cmb_process *cp)
+{
+
+}
