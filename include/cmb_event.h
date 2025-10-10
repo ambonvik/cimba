@@ -110,6 +110,16 @@ extern uint64_t cmb_event_schedule(cmb_event_func *action,
 extern bool cmb_event_execute_next(void);
 
 /*
+ * cmb_event_run : Executes the event list until empty or otherwise stopped.
+ * Schedule an event calling cmb_event_list_destroy() or calling
+ * cmb_event_cancel_all(CMB_ANY_ACTION, CMB_ANY_SUBJECT, CMB_ANY_OBJECT)
+ * to flush the event queue without deleting it. This can either be pre-
+ * scheduled at some particular time or triggered by some other condition such
+ * as reaching a certain number of samples in some data collector.
+ */
+extern void cmb_event_run(void);
+
+/*
  * cmb_event_is_scheduled : Is the given event currently in the event queue?
  */
 extern bool cmb_event_is_scheduled(uint64_t handle);

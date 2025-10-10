@@ -23,9 +23,9 @@
 #include "cmi_memutils.h"
 
 struct cmb_process *cmb_process_create(const char *name,
-                                              cmb_process_func foo,
-                                              void *context,
-                                              int16_t priority)
+                                       cmb_process_func foo,
+                                       void *context,
+                                       int16_t priority)
 {
     /* Allocate memory and initialize the cmi_coroutine parts */
     struct cmb_process *cp = cmi_malloc(sizeof(*cp));
@@ -62,7 +62,7 @@ void cmb_process_start(struct cmb_process *cp)
 
 }
 
-char *cmb_process_get_name(struct cmb_process *cp)
+const char *cmb_process_get_name(const struct cmb_process *cp)
 {
     cmb_assert_release(cp != NULL);
 
@@ -80,7 +80,7 @@ char *cmb_process_set_name(struct cmb_process *cp, const char *name)
     return cp->name;
 }
 
-void *cmb_process_get_context(struct cmb_process *cp)
+void *cmb_process_get_context(const struct cmb_process *cp)
 {
     cmb_assert_release(cp != NULL);
 
@@ -94,14 +94,18 @@ void *cmb_process_set_context(struct cmb_process *cp, void *context)
     return cmi_coroutine_set_context((struct cmi_coroutine *)cp, context);
 }
 
-int16_t cmb_process_get_priority(struct cmb_process *cp)
+int16_t cmb_process_get_priority(const struct cmb_process *cp)
 {
+    cmb_assert_release(cp != NULL);
+
     return cp->priority;
 }
 
-int16_t cmb_process_set_priority(struct cmb_process *cp, int16_t pri)
+int16_t cmb_process_set_priority(struct cmb_process *cp, const int16_t pri)
 {
-    int16_t oldpri = cp->priority;
+    cmb_assert_release(cp != NULL);
+
+    const int16_t oldpri = cp->priority;
     cp->priority = pri;
 
     return oldpri;
@@ -112,8 +116,19 @@ struct cmb_process *cmb_process_get_current(void)
     return (struct cmb_process *)cmi_coroutine_get_current();
 }
 
+static void process_wakeup_event(void *cp, void *arg)
+{
+
+}
+
+static void process_interrupt_event(void *cp, void *arg)
+{
+
+}
+
 int64_t cmb_process_hold(double dur)
 {
+    /* Schedule a wakeup call at time + dur and yield */
     return 0;
 }
 
@@ -122,8 +137,9 @@ void cmb_process_exit(void *retval)
 
 }
 
-void cmb_process_interrupt(struct cmb_process *cp, int64_t sig)
+void cmb_process_interrupt(struct cmb_process *cp, int64_t sig, int16_t pri)
 {
+    /* Schedule an interrupt for cp at the current time.   */
 
 }
 

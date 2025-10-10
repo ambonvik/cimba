@@ -121,7 +121,7 @@ int main(void)
 
     printf("\nExecuting the simulation, starting time %#g\n", cmb_time());
     printf("Time:\t\tType:\tAction: \t\tSubject:\t\tObject:\n");
-    while (cmb_event_execute_next()) { }
+    cmb_event_run();
 
     cmi_test_print_line("=");
     return 0;

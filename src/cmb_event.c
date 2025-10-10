@@ -492,10 +492,9 @@ int16_t cmb_event_priority(uint64_t handle)
 /*
  * cmb_event_execute_next : Remove and execute the next event, update clock.
  * The next event is always in position 1, while position 0 is working space
- * for the heap. The event may schedule other events, needs to have a
- * consistent heap state without itself. Temporarily saves the next event to
- * workspace at the end of list before executing it, to ensure a consistent
- * heap and hash.
+ * for the heap. Temporarily saves the next event to workspace at the end of
+ * list before executing it, to ensure a consistent heap and hash when the event
+ * starts executing.
  */
 bool cmb_event_execute_next(void)
 {
@@ -528,6 +527,17 @@ bool cmb_event_execute_next(void)
 
     return true;
 }
+
+/*
+ * cmb_event_run : Executes event list until empty or otherwise stopped.
+ * Schedule an event containing cmb_event_list_destroy to terminate the
+ * simulation at a given point, or use cmb_event_cancel_all.
+ */
+void cmb_event_run(void)
+{
+    while (cmb_event_execute_next()) { }
+}
+
 
 /*
  * cmb_event_cancel : Cancel the given event and reshuffle heap

@@ -65,11 +65,11 @@ extern void cmb_process_destroy(struct cmb_process *cp);
 
 extern void cmb_process_start(struct cmb_process *cp);
 
-extern char *cmb_process_get_name(struct cmb_process *cp);
+extern const char *cmb_process_get_name(const struct cmb_process *cp);
 extern char *cmb_process_set_name(struct cmb_process *cp, const char *name);
-extern void *cmb_process_get_context(struct cmb_process *cp);
+extern void *cmb_process_get_context(const struct cmb_process *cp);
 extern void *cmb_process_set_context(struct cmb_process *cp, void *context);
-extern int16_t cmb_process_get_priority(struct cmb_process *cp);
+extern int16_t cmb_process_get_priority(const struct cmb_process *cp);
 extern int16_t cmb_process_set_priority(struct cmb_process *cp, int16_t pri);
 
 extern struct cmb_process *cmb_process_get_current(void);
@@ -84,7 +84,7 @@ extern struct cmb_process *cmb_process_get_current(void);
  * will mean in the application. Called from within the process.
  */
 #define CMB_PROCESS_HOLD_NORMAL 0LL
-#define CMB_PROCESS_HOLD_PREEMPTED (1LL)
+#define CMB_PROCESS_HOLD_INTERRUPTED (1LL)
 extern int64_t cmb_process_hold(double dur);
 
 /*
@@ -99,12 +99,18 @@ extern void cmb_process_exit(void *retval);
  * The signal cannot be zero, since that would appear as a normal, non-
  * interrupted return from cmb_process_hold. Called on some other process.
  *
- * This will enter an interrupt event at the current simulation time, rather
- * than calling the process interrupt handler directly. This lets the calling
- * process complete whatever it is doing at the current time before the
- * interrupt is executed and control is transferred to the interrupted process.
+ * This will enter an interrupt event with priority pri at the current
+ * simulation time, rather than calling the process interrupt handler directly.
+ * This lets the calling process complete whatever it is doing at the current
+ * time before the interrupt is executed and control is transferred to the
+ * interrupted process.
+ *
+ * Since this allows multiple interrupts on the same process, the interrupt
+ * event function will check if the process still is holding in the event queue.
  */
-extern void cmb_process_interrupt(struct cmb_process *cp, int64_t sig);
+extern void cmb_process_interrupt(struct cmb_process *cp,
+                                  int64_t sig,
+                                  int16_t pri);
 
 /*
  * cmb_process_stop : Unceremoniously terminate the calling process. Does not
