@@ -25,15 +25,15 @@
 
 void *procfunc1(struct cmb_process *me, void *ctx)
 {
-    cmb_logger_info(stdout, "procfunc1: %s %p ctx %p", me->name, (void *)me, ctx);
+    cmb_logger_info(stdout, "procfunc1 running me %p ctx %p", (void *)me, ctx);
     for (unsigned ui = 0u; ui < 5u; ui++) {
         const double dur = cmb_random_exponential(10.0);
         const int64_t sig = cmb_process_hold(dur);
         if (sig == CMB_PROCESS_HOLD_NORMAL) {
-            cmb_logger_info(stdout, "%s hold returned normal sig %lld", me->name, sig);
+            cmb_logger_info(stdout, "Hold returned normal sig %lld", sig);
         }
         else {
-            cmb_logger_info(stdout, "%s was interrupted sig %lld", me->name, sig);
+            cmb_logger_info(stdout, "Interrupted sig %lld", sig);
         }
     }
 
@@ -44,13 +44,13 @@ void *procfunc1(struct cmb_process *me, void *ctx)
 
 void *procfunc2(struct cmb_process *me, void *ctx)
 {
-    cmb_logger_info(stdout, "%s %p ctx %p", me->name, (void *)me, ctx);
+    cmb_logger_info(stdout, "procfunc2 running me %p ctx %p", (void *)me, ctx);
     struct cmb_process *tgt = (struct cmb_process *)ctx;
     for (unsigned ui = 0u; ui < 5u; ui++) {
         const double dur = cmb_random_exponential(10.0);
-        cmb_logger_info(stdout, "%s will next interrupt at %f", me->name, cmb_time() + dur);
+        cmb_logger_info(stdout, "Next interrupt at %f", cmb_time() + dur);
         const int64_t sig = cmb_process_hold(dur);
-        cmb_logger_info(stdout, "%s interrupting tgt %s sig %lld", me->name, tgt->name, sig);
+        cmb_logger_info(stdout, "Tnterrupting tgt %s sig %lld", tgt->name, sig);
         cmb_process_interrupt(tgt, CMB_PROCESS_HOLD_INTERRUPTED, 5);
     }
 
@@ -78,8 +78,8 @@ int main(void)
     printf("cmb_run ...\n");
     cmb_run();
 
-    printf("Test process 1 returned %p\n", cmb_process_get_exit_value(cpp1));
-    printf("Test process 2 returned %p\n", cmb_process_get_exit_value(cpp2));
+    printf("%s returned %p\n", cmb_process_get_name(cpp1), cmb_process_get_exit_value(cpp1));
+    printf("%s returned %p\n", cmb_process_get_name(cpp2), cmb_process_get_exit_value(cpp2));
 
     printf("cmb_process_destroy ...\n");
     cmb_process_destroy(cpp1);

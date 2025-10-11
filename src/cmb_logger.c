@@ -22,6 +22,7 @@
 #include <stdlib.h>
 
 #include "cmb_event.h"
+#include "cmb_process.h"
 #include "cmb_logger.h"
 
 #include "cmi_config.h"
@@ -52,6 +53,7 @@ void cmb_set_timeformatter(cmb_timeformatter_func fp)
 
 /*
  * Core logger function, fprintf-style with flags for matching with the mask.
+ * Overall format: <time> <process> <label> <message> \n
  * Returns the number of characters written, in case anyone cares.
  */
 int cmb_vfprintf(const uint32_t flags,
@@ -66,7 +68,17 @@ int cmb_vfprintf(const uint32_t flags,
         assert(r > 0);
         ret += r;
 
-        /* todo: add pthread and process names to message string */
+        struct cmb_process *pp = cmb_process_get_current();
+        if (pp != NULL) {
+            r = fprintf(fp, "%s\t", pp->name);
+            assert(r > 0);
+            ret += r;
+        }
+        else {
+            r = fprintf(fp, "main_process\t");
+            assert(r > 0);
+            ret += r;
+        }
 
         char *label;
         if (flags >= CMI_LOGGER_FATAL)

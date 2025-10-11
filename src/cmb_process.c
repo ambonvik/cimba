@@ -63,7 +63,6 @@ static void process_start_event(void *vp, void *arg)
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *pp = (struct cmb_process *)vp;
-    cmb_logger_info(stdout, "process_start_event: %s %p arg %p", pp->name, vp, arg);
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     cmi_coroutine_start(cp, arg);
 }
@@ -72,7 +71,6 @@ static void process_wakeup_event(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
-    cmb_logger_info(stdout, "process_wakeup_event: vp %p arg %p", vp, arg);
     struct cmb_process *pp = (struct cmb_process *)vp;
     pp->wakeup_handle = 0ull;
 
@@ -85,7 +83,6 @@ static void process_interrupt_event(void *vp, void *arg)
     cmb_assert_debug(vp != NULL);
     cmb_assert_debug((int64_t)arg != CMB_PROCESS_HOLD_NORMAL);
 
-    cmb_logger_info(stdout, "process_interrupt_event: vp %p arg %p", vp, arg);
     struct cmb_process *tgt = (struct cmb_process *)vp;
     if (tgt->wakeup_handle == 0ull) {
         /* Someone else got it first, no longer holding */
@@ -103,7 +100,6 @@ void cmb_process_start(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    printf("cmb_process_start: pp %p %s\n", (void *)pp, pp->name);
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     const double t = cmb_time();
     const int16_t pri = pp->priority;
@@ -166,7 +162,18 @@ void *cmb_process_get_exit_value(const struct cmb_process *pp)
 
 struct cmb_process *cmb_process_get_current(void)
 {
-    return (struct cmb_process *)cmi_coroutine_get_current();
+    struct cmb_process *rp;
+    const struct cmi_coroutine *cp = cmi_coroutine_get_current();
+    const struct cmi_coroutine *mp = cmi_coroutine_get_main();
+    if (cp != mp) {
+        rp = (struct cmb_process *)cp;
+    }
+    else {
+        /* The main coroutine is not defined as a named process */
+        rp = NULL;
+    }
+
+    return rp;
 }
 
 int64_t cmb_process_hold(const double dur)
@@ -181,9 +188,6 @@ int64_t cmb_process_hold(const double dur)
     cmb_assert_debug(pp->wakeup_handle == 0ull);
 
     const int16_t pri = cmb_process_get_priority(pp);
-    cmb_logger_info(stdout, "cmb_process_hold: %s %p t %f pri %d",
-        pp->name, (void *)pp, dur, pri);
-
     pp->wakeup_handle = cmb_event_schedule(process_wakeup_event,
                                     pp, NULL, t, pri);
 
@@ -212,16 +216,11 @@ void cmb_process_interrupt(struct cmb_process *pp,
 
     if (pp->wakeup_handle != 0ull) {
         const double t = cmb_time();
-
-        cmb_logger_info(stdout,
-                  "cmb_process_interrupt: tgt %s sig %lld pri %d",
-                        pp->name, sig, pri);
-
         (void)cmb_event_schedule(process_interrupt_event,
                                  pp, (void *)sig, t, pri);
     }
     else {
-        cmb_logger_info(stdout,
+        cmb_logger_warning(stdout,
                   "cmb_process_interrupt: tgt %s not holding", pp->name);
     }
 }

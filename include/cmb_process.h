@@ -82,6 +82,8 @@ extern int16_t cmb_process_get_priority(const struct cmb_process *pp);
 extern int16_t cmb_process_set_priority(struct cmb_process *pp, int16_t pri);
 extern void *cmb_process_get_exit_value(const struct cmb_process *pp);
 
+extern struct cmb_process *cmb_process_get_current(void);
+
 /*
  * cmb_process_hold : Wait for a specified duration. Returns 0 (NORMAL) when
  * returning normally after the specified duration, something else if not. We
