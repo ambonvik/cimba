@@ -123,12 +123,11 @@ extern void cmb_process_interrupt(struct cmb_process *pp,
                                   int16_t pri);
 
 /*
- * cmb_process_stop : Unceremoniously terminate the calling process. Does not
- * transfer control to the victim process. Does not destroy its memory
- * allocation. The process can be restarted from the beginning by calling
- * cmb_process_start(pp) again.
+ * cmb_process_stop : Terminate the calling process. Does not transfer control
+ * to the victim process. Does not destroy its memory allocation. The process
+ * can be restarted from the beginning by calling cmb_process_start(pp) again.
  */
-extern void cmb_process_stop(struct cmb_process *pp);
+extern void cmb_process_stop(struct cmb_process *pp, void *retval);
 
 
 #endif // CIMBA_CMB_PROCESS_H

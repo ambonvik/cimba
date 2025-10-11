@@ -182,11 +182,11 @@ extern void *cmi_coroutine_start(struct cmi_coroutine *cp, void *msg);
 
 /*
  * cmi_coroutine_stop : Kill the given coroutine, setting its status to
- * CMI_COROUTINE_FINISHED and its exit value to NULL. If cp points to the current
- * coroutine, this has the same effect as it returning NULL or calling
- * cmi_coroutine_exit(NULL).
+ * CMI_COROUTINE_FINISHED and its exit value to retval. If cp points to the current
+ * coroutine, this has the same effect as it returning retval or calling
+ * cmi_coroutine_exit(retval).
  */
-extern void cmi_coroutine_stop(struct cmi_coroutine *cp);
+extern void cmi_coroutine_stop(struct cmi_coroutine *cp, void *retval);
 
 /*
  * cmi_coroutine_get_status : Return the current state of the given coroutine.

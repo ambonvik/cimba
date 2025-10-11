@@ -246,16 +246,17 @@ void cmi_coroutine_exit(void *retval)
  * cmi_coroutine_stop : End some coroutine. Equivalent to
  * cmi_coroutine_exit(NULL) if called on itself.
  */
-void cmi_coroutine_stop(struct cmi_coroutine *cp)
+void cmi_coroutine_stop(struct cmi_coroutine *cp, void *retval)
 {
     cmb_assert_release(cp != NULL);
     cmb_assert_release(cp->status == CMI_COROUTINE_RUNNING);
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 
     if (cp == cmi_coroutine_get_current()) {
-        cmi_coroutine_exit(NULL);
+        cmi_coroutine_exit(retval);
     }
     else {
+        cp->exit_value = retval;
         cp->status = CMI_COROUTINE_FINISHED;
     }
 }

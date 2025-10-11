@@ -26,14 +26,14 @@
 void *procfunc1(struct cmb_process *me, void *ctx)
 {
     cmb_logger_info(stdout, "procfunc1 running me %p ctx %p", (void *)me, ctx);
-    for (unsigned ui = 0u; ui < 5u; ui++) {
-        const double dur = cmb_random_exponential(10.0);
+    for (unsigned ui = 0u; ui < 10u; ui++) {
+        const double dur = cmb_random_exponential(5.0);
         const int64_t sig = cmb_process_hold(dur);
         if (sig == CMB_PROCESS_HOLD_NORMAL) {
             cmb_logger_info(stdout, "Hold returned normal sig %lld", sig);
         }
         else {
-            cmb_logger_info(stdout, "Interrupted sig %lld", sig);
+            cmb_logger_info(stdout, "Hold was interrupted sig %lld", sig);
         }
     }
 
@@ -46,13 +46,15 @@ void *procfunc2(struct cmb_process *me, void *ctx)
 {
     cmb_logger_info(stdout, "procfunc2 running me %p ctx %p", (void *)me, ctx);
     struct cmb_process *tgt = (struct cmb_process *)ctx;
-    for (unsigned ui = 0u; ui < 5u; ui++) {
+    for (unsigned ui = 0u; ui < 3u; ui++) {
         const double dur = cmb_random_exponential(10.0);
-        cmb_logger_info(stdout, "Next interrupt at %f", cmb_time() + dur);
-        const int64_t sig = cmb_process_hold(dur);
-        cmb_logger_info(stdout, "Tnterrupting tgt %s sig %lld", tgt->name, sig);
+        (void)cmb_process_hold(dur);
         cmb_process_interrupt(tgt, CMB_PROCESS_HOLD_INTERRUPTED, 5);
     }
+
+    const double dur = cmb_random_exponential(10.0);
+    (void)cmb_process_hold(dur);
+    cmb_process_stop(tgt, (void *)0xABBA);
 
     cmb_process_exit((void *)0x5EAF00D);
     /* not reached */

@@ -84,25 +84,46 @@ static void process_interrupt_event(void *vp, void *arg)
     cmb_assert_debug((int64_t)arg != CMB_PROCESS_HOLD_NORMAL);
 
     struct cmb_process *tgt = (struct cmb_process *)vp;
-    if (tgt->wakeup_handle == 0ull) {
-        /* Someone else got it first, no longer holding */
-        cmb_logger_info(stdout, "process_interrupt_event: tgt %s not holding", tgt->name);
-    }
-    else {
+    if (tgt->wakeup_handle != 0ull) {
         cmb_event_cancel(tgt->wakeup_handle);
         tgt->wakeup_handle = 0ull;
         struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
+        cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
         (void)cmi_coroutine_resume(cp, arg);
     }
+    else {
+        /* Someone else got it first, no longer holding */
+        cmb_logger_info(stdout, "process_interrupt_event: tgt %s not holding", tgt->name);
+    }
 }
+
+static void process_stop_event(void *vp, void *arg) {
+    cmb_assert_debug(vp != NULL);
+
+    struct cmb_process *tgt = (struct cmb_process *)vp;
+    if (tgt->wakeup_handle != 0ull) {
+        cmb_event_cancel(tgt->wakeup_handle);
+        tgt->wakeup_handle = 0ull;
+    }
+
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
+    if (cp->status == CMI_COROUTINE_RUNNING) {
+        cmi_coroutine_stop(cp, arg);
+    }
+    else {
+        cmb_logger_warning(stdout, "process_stop_event: tgt %s not running", tgt->name);
+    }
+ }
+
 
 void cmb_process_start(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
+    cmb_logger_info(stdout, "Starting %s", pp->name);
     const double t = cmb_time();
     const int16_t pri = pp->priority;
+
     cmb_event_schedule(process_start_event, pp, NULL, t, pri);
 }
 
@@ -186,6 +207,7 @@ int64_t cmb_process_hold(const double dur)
     cmb_assert_debug(pp != NULL);
     /* Not already holding, are we? */
     cmb_assert_debug(pp->wakeup_handle == 0ull);
+    cmb_logger_info(stdout, "Holding until time %f", t);
 
     const int16_t pri = cmb_process_get_priority(pp);
     pp->wakeup_handle = cmb_event_schedule(process_wakeup_event,
@@ -198,6 +220,8 @@ int64_t cmb_process_hold(const double dur)
 
 void cmb_process_exit(void *retval)
 {
+    cmb_logger_info(stdout, "Exiting, value %p", retval);
+
     cmi_coroutine_exit(retval);
 }
 
@@ -205,7 +229,6 @@ void cmb_process_exit(void *retval)
  * cmb_process_interrupt : Schedule an interrupt event for the target process
  * at the current time with priority pri. Non-blocking call, returns to the
  * calling process immediately.
-
  */
 void cmb_process_interrupt(struct cmb_process *pp,
                            const int64_t sig,
@@ -213,6 +236,7 @@ void cmb_process_interrupt(struct cmb_process *pp,
 {
     cmb_assert_debug(pp != NULL);
     cmb_assert_debug(sig != 0);
+    cmb_logger_info(stdout, "Tnterrupting %s with signal %lld", pp->name, sig);
 
     if (pp->wakeup_handle != 0ull) {
         const double t = cmb_time();
@@ -225,7 +249,12 @@ void cmb_process_interrupt(struct cmb_process *pp,
     }
 }
 
-void cmb_process_stop(struct cmb_process *pp)
+void cmb_process_stop(struct cmb_process *pp, void *retval)
 {
+    cmb_assert_debug(pp != NULL);
+    cmb_logger_info(stdout, "Stopping %s value %p", pp->name, retval);
 
+    const double t = cmb_time();
+    const int16_t pri = 5;
+    (void)cmb_event_schedule(process_stop_event, pp, retval, t, pri);
 }
