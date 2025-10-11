@@ -77,14 +77,26 @@ static void process_wakeup_event(void *vp, void *arg)
     pp->wakeup_handle = 0ull;
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
-    cmi_coroutine_resume(cp, arg);
+    (void)cmi_coroutine_resume(cp, arg);
 }
 
 static void process_interrupt_event(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
+    cmb_assert_debug((int64_t)arg != CMB_PROCESS_HOLD_NORMAL);
 
     cmb_logger_info(stdout, "process_interrupt_event: vp %p arg %p", vp, arg);
+    struct cmb_process *tgt = (struct cmb_process *)vp;
+    if (tgt->wakeup_handle == 0ull) {
+        /* Someone else got it first, no longer holding */
+        cmb_logger_info(stdout, "process_interrupt_event: tgt %s not holding", tgt->name);
+    }
+    else {
+        cmb_event_cancel(tgt->wakeup_handle);
+        tgt->wakeup_handle = 0ull;
+        struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
+        (void)cmi_coroutine_resume(cp, arg);
+    }
 }
 
 void cmb_process_start(struct cmb_process *pp)
@@ -185,10 +197,33 @@ void cmb_process_exit(void *retval)
     cmi_coroutine_exit(retval);
 }
 
-void cmb_process_interrupt(struct cmb_process *pp, int64_t sig, int16_t pri)
-{
-    /* Schedule an interrupt for pp at the current time.   */
+/*
+ * cmb_process_interrupt : Schedule an interrupt event for the target process
+ * at the current time with priority pri. Non-blocking call, returns to the
+ * calling process immediately.
 
+ */
+void cmb_process_interrupt(struct cmb_process *pp,
+                           const int64_t sig,
+                           const int16_t pri)
+{
+    cmb_assert_debug(pp != NULL);
+    cmb_assert_debug(sig != 0);
+
+    if (pp->wakeup_handle != 0ull) {
+        const double t = cmb_time();
+
+        cmb_logger_info(stdout,
+                  "cmb_process_interrupt: tgt %s sig %lld pri %d",
+                        pp->name, sig, pri);
+
+        (void)cmb_event_schedule(process_interrupt_event,
+                                 pp, (void *)sig, t, pri);
+    }
+    else {
+        cmb_logger_info(stdout,
+                  "cmb_process_interrupt: tgt %s not holding", pp->name);
+    }
 }
 
 void cmb_process_stop(struct cmb_process *pp)
