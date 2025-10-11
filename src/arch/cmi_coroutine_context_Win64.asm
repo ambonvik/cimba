@@ -53,7 +53,7 @@ cmi_coroutine_get_stacklimit:
     mov rax, [gs:8]
     push rax
     ; Save NT_TIB StackLimit, the end of the stack (lowest address)
-    mov [gs:16], rax
+    mov rax, [gs:16]
     push rax
     ; Save flags register
     pushfq
@@ -169,10 +169,25 @@ cmi_coroutine_trampoline:
     ; Not a leaf function, needs to obey Win64 ABI calling convention
     ; requiring the stack to be 16-byte aligned before a call
     ; and requiring 32 bytes of "shadow space" for the callee.
-    ; Ensure alignment...
-    and rsp, -16
-    ; ...and the shadow space
+    ; Already aligned here, just add the shadow space
     sub rsp, 32
+
+    ; Update the TIB with this coroutine's stack bounds, loading from the
+    ; coroutine pointer cp in R13:
+    ; struct cmi_coroutine layout (from cmi_coroutine.h):
+    ; - parent (8 bytes, offset 0)
+    ; - caller (8 bytes, offset 8)
+    ; - stack (8 bytes, offset 16)
+    ; - stack_base (8 bytes, offset 24)
+    ; - stack_limit (8 bytes, offset 32)
+
+    ; Stack base
+    mov rax, [r13 + 24]
+    mov [gs:8], rax
+    ; Stack limit
+    mov rax, [r13 + 32]
+    mov [gs:16], rax
+
     ; Will soon call coroutine function foo(cp, arg).
     ; The address of foo is now in R12, cp in R13, and arg in R14.
     ; The arguments for foo need to be in RCX and RDX, move them there.

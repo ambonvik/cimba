@@ -519,7 +519,9 @@ bool cmb_event_execute_next(void)
     const uint64_t hashidx = event_heap[1u].hash_index;
     event_hash[hashidx].heap_index = 1u;
     heap_count--;
-    heap_down(1);
+    if (heap_count > 1) {
+        heap_down(1);
+    }
 
     /* Execute the event */
     (*event_heap[tmp].action)(event_heap[tmp].subject,
@@ -533,7 +535,7 @@ bool cmb_event_execute_next(void)
  * Schedule an event containing cmb_event_list_destroy to terminate the
  * simulation at a given point, or use cmb_event_cancel_all.
  */
-void cmb_event_run(void)
+void cmb_run(void)
 {
     while (cmb_event_execute_next()) { }
 }

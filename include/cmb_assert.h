@@ -23,7 +23,7 @@
 #define CIMBA_CMB_ASSERT_H
 
 /*
- * Custom assert() with some more info when failing. Failed asserts call cmb_fatal().
+ * Custom assert() with some more info when failing. Failed asserts call cmb_logger_fatal().
  * cmb_assert_release() remains if NDEBUG is defined, but goes away if NASSERT is defined.
  * cmb_assert_debug() goes away if NDEBUG is defined (like standard assert()) or if NASSERT is defined.
  * cmb_assert() is shorthand for cmb_assert_debug()

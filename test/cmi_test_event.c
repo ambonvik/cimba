@@ -30,7 +30,7 @@
 /* An event, prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object)
 {
-    cmb_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
+    cmb_logger_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
     cmb_event_schedule(test_action, subject, object,
                       cmb_time() + cmb_random_exponential(10),
                       (int16_t)cmb_random_dice(1, 5));
@@ -39,8 +39,8 @@ static void test_action(void *subject, void *object)
 /* Another event, closes the bar for good */
 static void end_sim(void *subject, void *object)
 {
-    cmb_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);
-    cmb_warning(stdout, "===> end_sim: game over <===");
+    cmb_logger_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);
+    cmb_logger_warning(stdout, "===> end_sim: game over <===");
     cmb_event_queue_destroy();
 }
 
@@ -121,7 +121,7 @@ int main(void)
 
     printf("\nExecuting the simulation, starting time %#g\n", cmb_time());
     printf("Time:\t\tType:\tAction: \t\tSubject:\t\tObject:\n");
-    cmb_event_run();
+    cmb_run();
 
     cmi_test_print_line("=");
     return 0;

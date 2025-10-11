@@ -648,7 +648,7 @@ double cmb_dataset_median(const struct cmb_dataset *dsp)
         cmb_dataset_clear(&dup);
     }
     else {
-        cmb_warning(stderr, "Cannot take median without any data.");
+        cmb_logger_warning(stderr, "Cannot take median without any data.");
     }
 
     return r;
@@ -695,7 +695,7 @@ void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
         cmb_dataset_clear(&dsc);
     }
     else {
-        cmb_warning(fp, "No data to display in five-number summary");
+        cmb_logger_warning(fp, "No data to display in five-number summary");
     }
 }
 
@@ -710,7 +710,7 @@ void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp)
         }
     }
     else {
-        cmb_warning(fp, "No data to print");
+        cmb_logger_warning(fp, "No data to print");
     }
 }
 
@@ -892,7 +892,7 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
 
      if (dsp->xa == NULL) {
          cmb_assert_debug(dsp->cnt == 0u);
-         cmb_warning(fp, "No data to display in histogram");
+         cmb_logger_warning(fp, "No data to display in histogram");
          return;
     }
 
@@ -939,7 +939,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
     const double min_acf_variance = 1e-9;
     if (var < min_acf_variance) {
         /* Would be numerically unstable to divide by that */
-        cmb_warning(stderr,
+        cmb_logger_warning(stderr,
                 "Dataset nearly constant (variance %g), ACFs rounded to zero",
                  var);
         for (unsigned ui = 1; ui <= max_lag; ui++) {
@@ -1292,7 +1292,7 @@ void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp)
         }
     }
     else {
-        cmb_warning(fp, "No data to print");
+        cmb_logger_warning(fp, "No data to print");
     }
 }
 
@@ -1347,7 +1347,7 @@ void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp,
     if (dsp->xa == NULL) {
         cmb_assert_debug(dsp->cnt == 0u);
         cmb_assert_debug(tsp->ta == NULL);
-        cmb_warning(fp, "No data to display in histogram");
+        cmb_logger_warning(fp, "No data to display in histogram");
         return;
     }
 

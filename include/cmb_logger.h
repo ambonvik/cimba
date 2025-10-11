@@ -39,7 +39,8 @@
  * Set callback function to format simulation times to character
  * strings for output.
  */
-extern void cmb_set_timeformatter(char *(*fp)(double));
+typedef char *(cmb_timeformatter_func)(double t, char *buf, size_t bufsz);
+extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
 
 /*
  * The core logging function, like vfprintf but with logging flags in front
@@ -64,19 +65,19 @@ extern void cmb_set_timeformatter(char *(*fp)(double));
 
 /*
  * Wrapper functions for predefined message levels.
- * cmb_fatal() terminates the entire simulation, cmb_error() terminates the
+ * cmb_logger_fatal() terminates the entire simulation, cmb_logger_error() terminates the
  * current replication thread only.
  * Use appropriate function attributes to avoid spurious compiler warnings in
  * unreachable code. No portable way to do this more elegantly, unfortunately.
  */
 #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
-    extern void cmb_fatal(FILE *fp, char *fmtstr, ...)
+    extern void cmb_logger_fatal(FILE *fp, char *fmtstr, ...)
                           __attribute__((noreturn, format(printf,2,3)));
-    extern void cmb_error(FILE *fp, char *fmtstr, ...)
+    extern void cmb_logger_error(FILE *fp, char *fmtstr, ...)
                           __attribute__((noreturn, format(printf,2,3)));
-    extern void cmb_warning(FILE *fp, char *fmtstr, ...)
+    extern void cmb_logger_warning(FILE *fp, char *fmtstr, ...)
                           __attribute__((format(printf,2,3)));
-    extern void cmb_info(FILE *fp, char *fmtstr, ...)
+    extern void cmb_logger_info(FILE *fp, char *fmtstr, ...)
                           __attribute__((format(printf,2,3)));
 #elif CMB_COMPILER == MSVC
     extern __declspec(noreturn) void cmb_fatal(FILE *fp, char *fmtstr, ...);

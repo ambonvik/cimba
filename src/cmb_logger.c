@@ -32,21 +32,21 @@ CMB_THREAD_LOCAL uint32_t cmi_logger_mask = 0xFFFFFFFF;
 /* todo: add functions to set and clear mask */
 
 #define TSTRBUF_SZ 16
-CMB_THREAD_LOCAL static char timestrbuf[TSTRBUF_SZ];
 
-static char *time_to_string(double t)
+static char *time_to_string(const double t, char *buf, const size_t bufsz)
 {
-    (void)snprintf(timestrbuf, TSTRBUF_SZ, "%#10.5g", t);
+    (void)snprintf(buf, bufsz, "%#10.5g", t);
 
-    return timestrbuf;
+    return buf;
 }
 
-/* Pointer to current time formatting function (for all threads). */
-static char *(*timeformatter) (double) = time_to_string;
+/* Pointer to current time formatting function */
+CMB_THREAD_LOCAL static char *(*timeformatter)(double, char*, size_t) = time_to_string;
 
-void cmb_set_timeformatter(char *(*fp)(double))
+void cmb_set_timeformatter(cmb_timeformatter_func fp)
 {
     assert(fp != NULL);
+
     timeformatter = fp;
 }
 
@@ -61,7 +61,8 @@ int cmb_vfprintf(const uint32_t flags,
 {
     int ret = 0;
     if ((flags & cmi_logger_mask) != 0) {
-        int r = fprintf(fp, "%s\t", timeformatter(cmb_time()));
+        char timestrbuf[TSTRBUF_SZ];
+        int r = fprintf(fp, "%s\t", timeformatter(cmb_time(), timestrbuf, TSTRBUF_SZ));
         assert(r > 0);
         ret += r;
 
@@ -95,7 +96,7 @@ int cmb_vfprintf(const uint32_t flags,
     return ret;
 }
 
-void cmb_fatal(FILE *fp, char *fmtstr, ...)
+void cmb_logger_fatal(FILE *fp, char *fmtstr, ...)
 {
     fflush(NULL);
     va_list args;
@@ -105,7 +106,7 @@ void cmb_fatal(FILE *fp, char *fmtstr, ...)
     abort();
 }
 
-void cmb_error(FILE *fp, char *fmtstr, ...)
+void cmb_logger_error(FILE *fp, char *fmtstr, ...)
 {
     fflush(NULL);
     va_list args;
@@ -115,7 +116,7 @@ void cmb_error(FILE *fp, char *fmtstr, ...)
     exit(1);
 }
 
-void cmb_warning(FILE *fp, char *fmtstr, ...)
+void cmb_logger_warning(FILE *fp, char *fmtstr, ...)
 {
     fflush(NULL);
     va_list args;
@@ -124,7 +125,7 @@ void cmb_warning(FILE *fp, char *fmtstr, ...)
     va_end(args);
 }
 
-void cmb_info(FILE *fp, char *fmtstr, ...)
+void cmb_logger_info(FILE *fp, char *fmtstr, ...)
 {
     va_list args;
     va_start(args, fmtstr);

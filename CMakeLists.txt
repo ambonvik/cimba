@@ -52,3 +52,6 @@ target_link_libraries(cmi_test_coroutine PRIVATE cimba)
 
 add_executable(cmi_test_mempool test/cmi_test_mempool.c test/cmi_test.h)
 target_link_libraries(cmi_test_mempool PRIVATE cimba)
+
+add_executable(cmi_test_process test/cmi_test_process.c test/cmi_test.h)
+target_link_libraries(cmi_test_process PRIVATE cimba)

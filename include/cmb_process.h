@@ -61,18 +61,26 @@ extern struct cmb_process *cmb_process_create(const char *name,
                                               void *context,
                                               int16_t priority);
 
-extern void cmb_process_destroy(struct cmb_process *cp);
+/*
+ * cmb_process_destroy : Deallocates memory for the process struct and its
+ * underlying coroutine.
+ */
+extern void cmb_process_destroy(struct cmb_process *pp);
 
-extern void cmb_process_start(struct cmb_process *cp);
+/*
+ * cmb_process_start : Schedules the process to start execution at the current
+ * simulation time. This is a non-blocking call, allowing the calling process
+ * to continue execution until it explicitly yields to some other process.
+ */
+extern void cmb_process_start(struct cmb_process *pp);
 
-extern const char *cmb_process_get_name(const struct cmb_process *cp);
+extern const char *cmb_process_get_name(const struct cmb_process *pp);
 extern char *cmb_process_set_name(struct cmb_process *cp, const char *name);
-extern void *cmb_process_get_context(const struct cmb_process *cp);
-extern void *cmb_process_set_context(struct cmb_process *cp, void *context);
-extern int16_t cmb_process_get_priority(const struct cmb_process *cp);
-extern int16_t cmb_process_set_priority(struct cmb_process *cp, int16_t pri);
-
-extern struct cmb_process *cmb_process_get_current(void);
+extern void *cmb_process_get_context(const struct cmb_process *pp);
+extern void *cmb_process_set_context(struct cmb_process *pp, void *context);
+extern int16_t cmb_process_get_priority(const struct cmb_process *pp);
+extern int16_t cmb_process_set_priority(struct cmb_process *pp, int16_t pri);
+extern void *cmb_process_get_exit_value(const struct cmb_process *pp);
 
 /*
  * cmb_process_hold : Wait for a specified duration. Returns 0 (NORMAL) when
@@ -108,7 +116,7 @@ extern void cmb_process_exit(void *retval);
  * Since this allows multiple interrupts on the same process, the interrupt
  * event function will check if the process still is holding in the event queue.
  */
-extern void cmb_process_interrupt(struct cmb_process *cp,
+extern void cmb_process_interrupt(struct cmb_process *pp,
                                   int64_t sig,
                                   int16_t pri);
 
@@ -116,9 +124,9 @@ extern void cmb_process_interrupt(struct cmb_process *cp,
  * cmb_process_stop : Unceremoniously terminate the calling process. Does not
  * transfer control to the victim process. Does not destroy its memory
  * allocation. The process can be restarted from the beginning by calling
- * cmb_process_start(cp) again.
+ * cmb_process_start(pp) again.
  */
-extern void cmb_process_stop(struct cmb_process *cp);
+extern void cmb_process_stop(struct cmb_process *pp);
 
 
 #endif // CIMBA_CMB_PROCESS_H

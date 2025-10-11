@@ -28,7 +28,7 @@
 /* An event, prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object)
 {
-    cmb_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
+    cmb_logger_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
     cmb_event_schedule(test_action, subject, object,
                        cmb_time() + cmb_random_exponential(3600),
                        (int16_t)cmb_random_dice(1, 5));
@@ -37,8 +37,8 @@ static void test_action(void *subject, void *object)
 /* Another event, closes the bar for good */
 static void end_sim(void *subject, void *object)
 {
-    cmb_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);
-    cmb_warning(stdout, "===> end_sim: game over <===");
+    cmb_logger_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);
+    cmb_logger_warning(stdout, "===> end_sim: game over <===");
     cmb_event_queue_destroy();
 }
 
@@ -82,8 +82,8 @@ int main(void)
     const double two_days = 2.0 * 24.0 * 60.0;
     cmb_event_schedule(end_sim, NULL, NULL, two_days, 0);
     while (cmb_event_execute_next()) { }
-    cmb_error(stdout, "We seemed to run out of time here. (This was a test.)");
+    cmb_logger_error(stdout, "We seemed to run out of time here. (This was a test.)");
     /* Not reached */
-    cmb_fatal(stdout, "How did this happen?");
+    cmb_logger_fatal(stdout, "How did this happen?");
     cmb_assert_release(false);
 }

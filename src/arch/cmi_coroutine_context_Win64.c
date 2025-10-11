@@ -155,9 +155,10 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp,
     stkptr -= 8u;
     *(uint64_t *)stkptr = 0x0ull;
 
-    /* Clear the XMM status register */
+    /* Set the XMM status register MXCSR */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = 0x1f80ull;
+    *(uint64_t *)(stkptr + 4) = 0x1f80u;
+    *(uint32_t *)stkptr = 0u;
 
     /* Clear RBX */
     stkptr -= 8u;

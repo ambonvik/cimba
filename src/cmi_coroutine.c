@@ -84,6 +84,13 @@ void *cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context)
     return old_context;
 }
 
+void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp)
+{
+    cmb_assert_release(cp != NULL);
+
+    return cp->exit_value;
+}
+
 /*
  * coroutine_create_main : Helper function to set up the dummy main coroutine
  */
