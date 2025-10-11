@@ -23,17 +23,19 @@
 
 #include "cmi_test.h"
 
+#define USERFLAG 0x00000001
+
 void *procfunc1(struct cmb_process *me, void *ctx)
 {
-    cmb_logger_info(stdout, "procfunc1 running me %p ctx %p", (void *)me, ctx);
+    cmb_logger_user(USERFLAG, stdout, "procfunc1 running me %p ctx %p", (void *)me, ctx);
     for (unsigned ui = 0u; ui < 10u; ui++) {
         const double dur = cmb_random_exponential(5.0);
         const int64_t sig = cmb_process_hold(dur);
         if (sig == CMB_PROCESS_HOLD_NORMAL) {
-            cmb_logger_info(stdout, "Hold returned normal sig %lld", sig);
+            cmb_logger_user(USERFLAG, stdout, "Hold returned normal signal %lld", sig);
         }
         else {
-            cmb_logger_info(stdout, "Hold was interrupted sig %lld", sig);
+            cmb_logger_user(USERFLAG, stdout, "Hold was interrupted signal %lld", sig);
         }
     }
 
@@ -44,12 +46,13 @@ void *procfunc1(struct cmb_process *me, void *ctx)
 
 void *procfunc2(struct cmb_process *me, void *ctx)
 {
-    cmb_logger_info(stdout, "procfunc2 running me %p ctx %p", (void *)me, ctx);
+    cmb_logger_user(USERFLAG, stdout, "procfunc2 running me %p ctx %p", (void *)me, ctx);
     struct cmb_process *tgt = (struct cmb_process *)ctx;
+    const int16_t pri = cmb_process_get_priority(me);
     for (unsigned ui = 0u; ui < 3u; ui++) {
         const double dur = cmb_random_exponential(10.0);
         (void)cmb_process_hold(dur);
-        cmb_process_interrupt(tgt, CMB_PROCESS_HOLD_INTERRUPTED, 5);
+        cmb_process_interrupt(tgt, CMB_PROCESS_HOLD_INTERRUPTED, pri);
     }
 
     const double dur = cmb_random_exponential(10.0);
@@ -70,7 +73,7 @@ int main(void)
 
     printf("cmb_process_create ...\n");
     struct cmb_process *cpp1 = cmb_process_create("Testproc", procfunc1, NULL, 0);
-    struct cmb_process *cpp2 = cmb_process_create("Nuisance", procfunc2, cpp1, 0);
+    struct cmb_process *cpp2 = cmb_process_create("Nuisance", procfunc2, cpp1, 1);
 
     printf("cmb_process_start ...\n");
     cmb_event_queue_init(0.0);

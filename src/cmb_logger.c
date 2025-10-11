@@ -90,7 +90,7 @@ int cmb_vfprintf(const uint32_t flags,
         else if (flags >= CMI_LOGGER_INFO)
             label = "Info";
         else
-            label = "";
+            label = "User";
 
         r = fprintf(fp, "%s: ", label);
         assert(r > 0);
@@ -142,5 +142,13 @@ void cmb_logger_info(FILE *fp, char *fmtstr, ...)
     va_list args;
     va_start(args, fmtstr);
     (void)cmb_vfprintf(CMI_LOGGER_INFO, fp, fmtstr, args);
+    va_end(args);
+}
+
+void cmb_logger_user(const uint32_t flags, FILE *fp, char *fmtstr, ...)
+{
+    va_list args;
+    va_start(args, fmtstr);
+    (void)cmb_vfprintf(flags, fp, fmtstr, args);
     va_end(args);
 }

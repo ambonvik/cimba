@@ -79,15 +79,19 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
                           __attribute__((format(printf,2,3)));
     extern void cmb_logger_info(FILE *fp, char *fmtstr, ...)
                           __attribute__((format(printf,2,3)));
+    extern void cmb_logger_user(uint32_t flags, FILE *fp, char *fmtstr, ...)
+                          __attribute__((format(printf,3,4)));
 #elif CMB_COMPILER == MSVC
     extern __declspec(noreturn) void cmb_fatal(FILE *fp, char *fmtstr, ...);
     extern __declspec(noreturn) void cmb_error(FILE *fp, char *fmtstr, ...);
     extern void cmb_warning(FILE *fp, char *fmtstr, ...);
     extern void cmb_info(FILE *fp, char *fmtstr, ...);
+    extern void cmb_logger_user(uint32_t flags, FILE *fp, char *fmtstr, ...)
 #else
     #warning "CMB_COMPILER does not match any predefined values"
     extern void cmb_fatal(FILE *fp, char *fmtstr, ...);
     extern void cmb_warning(FILE *fp, char *fmtstr, ...);
     extern void cmb_info(FILE *fp, char *fmtstr, ...);
+    extern void cmb_logger_user(uint32_t flags, FILE *fp, char *fmtstr, ...);
 #endif
 #endif /* CIMBA_CMB_LOGGER_H */

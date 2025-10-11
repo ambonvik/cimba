@@ -236,7 +236,7 @@ void cmb_process_interrupt(struct cmb_process *pp,
 {
     cmb_assert_debug(pp != NULL);
     cmb_assert_debug(sig != 0);
-    cmb_logger_info(stdout, "Tnterrupting %s with signal %lld", pp->name, sig);
+    cmb_logger_info(stdout, "Tnterrupting %s with signal %lld priority %d", pp->name, sig, pri);
 
     if (pp->wakeup_handle != 0ull) {
         const double t = cmb_time();
