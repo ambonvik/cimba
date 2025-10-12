@@ -27,7 +27,7 @@
 
 void *procfunc1(struct cmb_process *me, void *ctx)
 {
-    cmb_logger_user(USERFLAG, stdout, "procfunc1 running me %p ctx %p", (void *)me, ctx);
+    cmb_logger_user(USERFLAG, stdout, "procfunc1 running, me %p ctx %p", (void *)me, ctx);
     for (unsigned ui = 0u; ui < 10u; ui++) {
         const double dur = cmb_random_exponential(5.0);
         const int64_t sig = cmb_process_hold(dur);
@@ -46,7 +46,7 @@ void *procfunc1(struct cmb_process *me, void *ctx)
 
 void *procfunc2(struct cmb_process *me, void *ctx)
 {
-    cmb_logger_user(USERFLAG, stdout, "procfunc2 running me %p ctx %p", (void *)me, ctx);
+    cmb_logger_user(USERFLAG, stdout, "procfunc2 running, me %p ctx %p", (void *)me, ctx);
     struct cmb_process *tgt = (struct cmb_process *)ctx;
     const int16_t pri = cmb_process_get_priority(me);
     for (unsigned ui = 0u; ui < 3u; ui++) {

@@ -1,48 +1,7 @@
 /*
- * cmb_event.h - simulation manager for discrete event simulation.
- * Provides routines to handle clock sequencing and event scheduling.
- *
- * An event is defined as a function taking two pointers to void as
- * arguments and returning void. The arguments are application defined,
- * but the intention is to provide tuples of (action, subject, object)
- * consisting of pointers to the event function and its two arguments.
- *
- * This is similar to a closure, i.e., an object consisting of a function
- * and its context, for execution at some other point in time and space.
- * In this case, it will be called as *action(subject, object) when it is
- * its turn. Afterwards, control will return to the event dispatcher, which
- * does not know much about the event specifics. Hence, no need to return
- * indications of success or failure (or anything else) from the event
- * function - void (*action)(void *object, void *subject).
- *
- * The first argument void *subject can be understood as the implicit
- * self or this pointer in an object-oriented language. It can be used as
- * an identificator, e.g. what object or process the event belongs to.
- * Understood that way, the meaning becomes subject.action(object), i.e.,
- * a method of the subject class, acting on some other object.
- *
- * The event has an associated activation time and a priority. Just before
- * the event is executed, the simulation time will jump to this time as the
- * event is removed from the queue. The priority is a signed 16-bit integer,
- * where higher numeric value means higher priority. If two events have equal
- * activation time, the one with higher priority will execute first. If
- * you need to ensura that some event executes after all other events at
- * a particular time, use a large negative priority. If two events have the
- * same activation time and the same priority, they will be executed in
- * first in first out (FIFO) order.
- *
- * When scheduled, an event handle will be assigned and returned. This is
- * a unique event identifier and can be used as a reference for later
- * cancelling, rescheduling, or reprioritizing the event. Behind the scene,
- * the event queue is implemented as a hashheap where the event handle is a key
- * in the hash map and the event's current location in the heap is the hash map
- * value. This gives O(1) cancellations and reschedules with no need to search
- * the entire heap to find a future event. The details of the data structure
- * are not exposed in this header file, see cmb_event.c for the implementation.
- *
- * As always, the error handling is draconian. Functions for e.g. rescheduling
- * an event will trip an assertion if the given event is not currently in the
- * event queue. This is a deliberate design choice, see the documentation.
+ * cmi_hashheap.h - The combined heap / hash map data structure used for
+ * priority queues, both as the main event queue in the simulation and for the
+ * priority queues associated with each guarded resource.
  *
  * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
  *
@@ -59,32 +18,85 @@
  * limitations under the License.
  */
 
-#ifndef CIMBA_CMB_EVENT_H
-#define CIMBA_CMB_EVENT_H
+#ifndef CIMBA_CMI_HASHHEAP_H
+#define CIMBA_CMI_HASHHEAP_H
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 
 /*
- * cmb_time : Get the current simulation time, read-only for the user application
- */
-extern double cmb_time(void);
-
-/*
- * cmb_run : Executes the event list until empty or otherwise stopped.
+ * struct cmi_heap_tag : The record to store an item in the priority queue.
+ * These tags only exist as members of the event queue array, never alone.
+ * The handle is a unique event identifier, the hash_index a reference to where
+ * in the hash map it is located.
  *
- * Schedule an event calling cmb_event_list_destroy() or calling
- * cmb_event_cancel_all(CMB_ANY_ACTION, CMB_ANY_SUBJECT, CMB_ANY_OBJECT)
- * to zero out the event queue and stop the simulation. This can either be pre-
- * scheduled at some particular time or triggered by some other condition such
- * as reaching a certain number of samples in some data collector.
+ * Thereafter, three keys used for ordering the heap, one double (e.g. time),
+ * one signed 64-bit int (e.g., a priority), and an unsigned 64-bit int (e.g.
+ * a FIFO sequence number). The exact meaning and ordering is application
+ * defined by the heap compare function.
+ *
+ * Finally, there are three 64-bit payload values, which could be the (action,
+ * subject, object) tuple for an event, or something else in other use cases.
+ *
+ * Note that the heap tag is 8 * 8 = 64 bytes large.
  */
-extern void cmb_run(void);
-
+struct cmi_heap_tag {
+    uint64_t handle;
+    uint64_t hash_index;
+    double dkey;
+    int64_t ikey;
+    uint64_t ukey;
+    uintptr_t payload[3];
+};
 
 /*
- * typedef cmb_event_func : The generic event function type
+ * typedef cmi_heap_compare_func : Return true if a goes before b.
+ */
+typedef bool (cmi_heap_compare_func)(struct cmi_heap_tag *a,
+                                     struct cmi_heap_tag *b);
+
+/*
+ * struct cmi_hash_tag : Hash mapping from event handle to heap position.
+ * Heap index value zero indicates a tombstone, event is no longer in heap.
+ *
+ * Note that the hash tag is 2 * 8 = 16 bytes large.
+ */
+struct cmi_hash_tag {
+    uint64_t handle;
+    uint64_t heap_index;
+};
+
+/*
+ * struct cmi_hashheap : The hashheap control structure with direct pointers to
+ * the heap and hash map, and a function for ordering comparison between items
+ * in the heap.
+ *
+ * The heap and hash map need to be sized as powers of two, the hash  map with
+ * twice as many entries as the heap. heap_exp defines a heap size of 2^heap_exp
+ * and a hash map size of 2^(heap_exp + 1).
+ *
+ * Start small and fast, e.g., heap size 2^5 = 32 entries, total size of the
+ * heaphash structure less than one page of memory and well inside the L1 cache
+ * size. The data structure will grow as needed if more memory is required.
+ *
+ * The heap_count is the number of items currently in the heap, the heap_size
+ * and hash_size are the allocated number of slots, where hash_size is twice the
+ * heap_size once initialized (an invariant).
+ */
+
+struct cmi_hashheap {
+    struct cmi_heap_tag *heap;
+    uint16_t heap_exp;
+    uint64_t heap_size;
+    uint64_t heap_count;
+    cmi_heap_compare_func *heap_compare;
+    struct cmi_hash_tag *hash_map;
+    uint64_t hash_size;
+};
+
+/*
+ * typedef cmb_hashheap_compare_func : The generic event function type
  */
 typedef void (cmb_event_func)(void *subject, void *object);
 
@@ -205,4 +217,4 @@ extern void cmb_event_heap_print(FILE *fp);
  */
 extern void cmb_event_hash_print(FILE *fp);
 
-#endif /* CIMBA_CMB_EVENT_H */
+#endif /* CIMBA_CMI_HASHHEAP_H */
