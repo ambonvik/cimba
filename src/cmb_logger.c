@@ -68,9 +68,10 @@ int cmb_vfprintf(const uint32_t flags,
         assert(r > 0);
         ret += r;
 
-        struct cmb_process *pp = cmb_process_get_current();
+        const struct cmb_process *pp = cmb_process_get_current();
         if (pp != NULL) {
-            r = fprintf(fp, "%s\t", pp->name);
+            const char *pp_name = cmb_process_get_name(pp);
+            r = fprintf(fp, "%s\t", pp_name);
             assert(r > 0);
             ret += r;
         }

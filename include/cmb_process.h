@@ -1,9 +1,9 @@
 /*
  * cmb_process.h - the simulated processes
  *
- * Basically, the cmb_process is a coroutine that works in the simulated time
- * and interacts with events off the simulation event queue. It has a name and
- * a priority, which can be changed. When a cmb_process is created, a start
+ * The cmb_process is a named coroutine that works in the simulated time and
+ * interacts with events off the simulation event queue. It has a name and a
+ * priority, which can be changed. When a cmb_process is created, a start
  * event is scheduled at the current time. The cmb_process can hold (deactivate
  * itself for a certain interval of simulated time) and wait for resources to
  * become available. In those states, it can also be interrupted by other
@@ -32,16 +32,10 @@
 #include "cmi_coroutine.h"
 
 /*
- * struct cmb_process : Inherits all properties from a coroutine and adds name,
- * priority, and the next scheduled wake-up event (when applicable).
+ * struct cmb_process : Opaque struct. See cmb_process.c for implementation
+ * details.
  */
-#define CMB_PROCESS_NAMEBUF_SZ 32
-struct cmb_process {
-    struct cmi_coroutine cr;
-    char name[CMB_PROCESS_NAMEBUF_SZ];
-    int16_t priority;
-    uint64_t wakeup_handle;
-};
+struct cmb_process;
 
 /*
  * typedef cmb_process_func : The generic process function type is a function
