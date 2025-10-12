@@ -28,7 +28,8 @@
 void *procfunc1(struct cmb_process *me, void *ctx)
 {
     cmb_logger_user(USERFLAG, stdout, "procfunc1 running, me %p ctx %p", (void *)me, ctx);
-    for (unsigned ui = 0u; ui < 10u; ui++) {
+    // ReSharper disable once CppDFAEndlessLoop
+    for (;;) {
         const double dur = cmb_random_exponential(5.0);
         const int64_t sig = cmb_process_hold(dur);
         if (sig == CMB_PROCESS_HOLD_NORMAL) {
@@ -39,8 +40,10 @@ void *procfunc1(struct cmb_process *me, void *ctx)
         }
     }
 
+    // ReSharper disable once CppDFAUnreachableCode
     cmb_process_exit((void *)0x5EAF00D);
-    /* not reached */
+
+    /* Not reached */
     return (void *)0xBADF00D;
 }
 
@@ -49,7 +52,7 @@ void *procfunc2(struct cmb_process *me, void *ctx)
     cmb_logger_user(USERFLAG, stdout, "procfunc2 running, me %p ctx %p", (void *)me, ctx);
     struct cmb_process *tgt = (struct cmb_process *)ctx;
     const int16_t pri = cmb_process_get_priority(me);
-    for (unsigned ui = 0u; ui < 3u; ui++) {
+    for (unsigned ui = 0u; ui < 5u; ui++) {
         const double dur = cmb_random_exponential(10.0);
         (void)cmb_process_hold(dur);
         cmb_process_interrupt(tgt, CMB_PROCESS_HOLD_INTERRUPTED, pri);

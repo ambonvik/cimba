@@ -1,7 +1,23 @@
 /*
  * cmi_hashheap.h - The combined heap / hash map data structure used for
  * priority queues, both as the main event queue in the simulation and for the
- * priority queues associated with each guarded resource.
+ * priority queues associated with each guarded resource. It provides enqueue,
+ * dequeue, peek, and cancel operations, plus item search functions.
+ *
+ * Each item in the priority queue is a tuple of (up to) three 64-bit payload
+ * values, such as (action, subject, object) for an cmb_event.
+ * The item is uniquely identified by a 64-bit handle returned when it is
+ * enqueued. An item can be cancelled or reprioritized with reference to this
+ * handle.
+ *
+ * An item in the queue has (up to) three priority keys for determining the
+ * sorting order; one double, one signed 64-bit integer, and one unsigned 64-bit
+ * integer. The semantics are application defined, determined by a compare
+ * function that takes two pointers to items a and b, and returns a bool
+ * indicating if a should precede b in the priority order. For example, in the
+ * main event queue, the priority keys would be reactivation time, priority, and
+ * the sequential event handle. A pointer to the appropriate compare function is
+ * stored in the hashheap control structure.
  *
  * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
  *
@@ -31,14 +47,6 @@
  * The handle is a unique event identifier, the hash_index a reference to where
  * in the hash map it is located.
  *
- * Thereafter, three keys used for ordering the heap, one double (e.g. time),
- * one signed 64-bit int (e.g., a priority), and an unsigned 64-bit int (e.g.
- * a FIFO sequence number). The exact meaning and ordering is application
- * defined by the heap compare function.
- *
- * Finally, there are three 64-bit payload values, which could be the (action,
- * subject, object) tuple for an event, or something else in other use cases.
- *
  * Note that the heap tag is 8 * 8 = 64 bytes large.
  */
 struct cmi_heap_tag {
@@ -51,7 +59,8 @@ struct cmi_heap_tag {
 };
 
 /*
- * typedef cmi_heap_compare_func : Return true if a goes before b.
+ * typedef cmi_heap_compare_func : Return true if a goes before b in the
+ * priority queue order.
  */
 typedef bool (cmi_heap_compare_func)(struct cmi_heap_tag *a,
                                      struct cmi_heap_tag *b);
@@ -96,27 +105,36 @@ struct cmi_hashheap {
 };
 
 /*
- * typedef cmb_hashheap_compare_func : The generic event function type
+ * cmi_hashheap_create : Allocate memory for a new priority queue.
+ * Initializes the pointers to NULL, call cmi_hashmap_init next.
  */
-typedef void (cmb_event_func)(void *subject, void *object);
+extern struct cmi_hashheap *cmi_hashheap_create(void);
 
 /*
- * cmb_event_queue_init : Initialize the event queue itself.
- * Must be called before any events can be scheduled or executed.
+ * cmi_hashheap_init : Allocate and initiate the actual heap/hash array.
+ * hex is the heap_exp, e.g. hex = 5 gives an initial heap size of 2^5 = 32 and
+ * a hash map size of 2^(5+1) = 64.
+ *
+ * A separate function from _create to allow for inheritance by composition.
  */
-extern void cmb_event_queue_init(double start_time);
+extern void cmi_hasheap_init(struct cmi_hashheap *hp,
+                             int16_t hex,
+                             cmi_heap_compare_func *cmp);
 
 /*
- * cmb_event_queue_destroy : Free memory allocated for event queue and
- * reinitialize pointers. Can be reinitialized by calling cmb_event_queue_init
- * again to start a new simulation run.
+ * cmi_hashheap_clear : Free memory allocated for the hash/heap array and reset
+ * pointers to NULL. Does not free *hp itself.
  */
-extern void cmb_event_queue_destroy(void);
+extern void cmi_hashheap_clear(struct cmi_hashheap *hp);
 
 /*
- * cmb_event_schedule: Insert event in event queue as indicated by reactivation
- * time and priority. An event cannot be scheduled at a time before current.
- * Returns the unique handle of the scheduled event.
+ * cmi_hashheap_destroy : Free memory allocated for the priority queue,
+ * including both the array (if not NULL) and *hp itself.
+ */
+extern void cmi_hashheap_destroy(struct cmi_hashheap *hp);
+
+/*
+ * cmb_hashheap_enqueue: Insert an item into the priority queue
  */
 extern uint64_t cmb_event_schedule(cmb_event_func *action,
                                    void *subject,
