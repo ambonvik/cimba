@@ -223,7 +223,7 @@ static bool heap_order_check(const uint64_t a, const uint64_t b)
 }
 
 /*
- * heap_grow: doubling the available heap and hash map sizes.
+ * hashheap_grow: doubling the available heap and hash map sizes.
  * The old heap is memcpy'd into its new location, each event at the same
  * index as before. The new hash map is initialized to all zeros, the old
  * hash map is memcpy'd together with the old heap into the area that now
@@ -231,7 +231,7 @@ static bool heap_order_check(const uint64_t a, const uint64_t b)
  * their new locations in the new hash map. This works, since there is no
  * memory overlap between the copy of the old hash map and the new one.
  */
-static void heap_grow(void)
+static void hashheap_grow(void)
 {
     cmb_assert_release(event_heap != NULL);
     cmb_assert_release(heap_size < (UINT32_MAX / 2u));
@@ -423,7 +423,7 @@ uint64_t cmb_event_schedule(cmb_event_func *action,
 
     /* Do we have space? */
     if (heap_count == heap_size) {
-       heap_grow();
+       hashheap_grow();
     }
 
     /* Now we have */

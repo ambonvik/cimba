@@ -94,6 +94,8 @@ struct cmi_hash_tag {
  * The heap_count is the number of items currently in the heap, the heap_size
  * and hash_size are the allocated number of slots, where hash_size is twice the
  * heap_size once initialized (an invariant).
+ *
+ * item_counter is a running count of all items seen, used to assign new handles.
  */
 
 struct cmi_hashheap {
@@ -104,23 +106,25 @@ struct cmi_hashheap {
     cmi_heap_compare_func *heap_compare;
     struct cmi_hash_tag *hash_map;
     uint64_t hash_size;
+    uint64_t item_counter;
 };
 
 /*
  * cmi_hashheap_create : Allocate memory for a new priority queue.
  * Initializes the pointers to NULL, call cmi_hashmap_init next.
+ *
+ * hexp is the initial heap_exp, e.g. hex = 5 gives an initial heap
+ * size of 2^5 = 32 and a hash map size of 2^(5+1) = 64.
  */
 extern struct cmi_hashheap *cmi_hashheap_create(void);
 
 /*
  * cmi_hashheap_init : Allocate and initiate the actual heap/hash array.
- * hex is the heap_exp, e.g. hex = 5 gives an initial heap size of 2^5 = 32 and
- * a hash map size of 2^(5+1) = 64.
  *
  * A separate function from _create to allow for inheritance by composition.
  */
 extern void cmi_hasheap_init(struct cmi_hashheap *hp,
-                             int16_t hex,
+                             uint16_t hexp,
                              cmi_heap_compare_func *cmp);
 
 /*
