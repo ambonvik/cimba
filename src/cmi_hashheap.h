@@ -45,17 +45,19 @@
  * struct cmi_heap_tag : The record to store an item in the priority queue.
  * These tags only exist as members of the event queue array, never alone.
  * The handle is a unique event identifier, the hash_index a reference to where
- * in the hash map it is located.
+ * in the hash map it is located. The item is a 3-tuple of 64-bit values, here
+ * represented as void*, but could be used for any other 64-bit value depending
+ * on application needs (see cmb_event.c for an example).
  *
  * Note that the heap tag is 8 * 8 = 64 bytes large.
  */
 struct cmi_heap_tag {
     uint64_t handle;
     uint64_t hash_index;
+    void *item[3];
     double dkey;
     int64_t ikey;
     uint64_t ukey;
-    uintptr_t payload[3];
 };
 
 /*
@@ -134,105 +136,104 @@ extern void cmi_hashheap_clear(struct cmi_hashheap *hp);
 extern void cmi_hashheap_destroy(struct cmi_hashheap *hp);
 
 /*
- * cmb_hashheap_enqueue: Insert an item into the priority queue
- */
-extern uint64_t cmb_event_schedule(cmb_event_func *action,
-                                   void *subject,
-                                   void *object,
-                                   double time,
-                                   int16_t priority);
-
-/*
- *  cmb_event_next : Removes and executes the first event in the event queue.
- *  If both reactivation time and priority equal, first in first out order.
+ * cmi_hashheap_enqueue: Insert an item (pl1, pl2, pl3) into the priority queue
+ * using the priority keys dkey, ikey, ukey. The exact meaning is application
+ * defined, depending on the heap compare function provided.
  *
- *  Returns true for success, false for failure (e.g., empty event list), for
- *  use in loops like while(cmb_event_execute_next()) { ... }
+ * Returns the handle to the new item.
  */
-extern bool cmb_event_execute_next(void);
+extern uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
+                                     void *pl1,
+                                     void *pl2,
+                                     void *pl3,
+                                     double dkey,
+                                     int64_t ikey,
+                                     uint64_t ukey);
 
 /*
- * cmb_event_is_scheduled : Is the given event currently in the event queue?
+ * cmi_hashheap_dequeue : Removes the highest priority item from the queue
+ * (according to the ordering given by the comparator function), and returns a
+ * pointer to its current location. Note that this is a temporary location that
+ * will be overwritten in the next enqueue operation.
  */
-extern bool cmb_event_is_scheduled(uint64_t handle);
+extern void **cmi_hasheap_dequeue(struct cmi_hashheap *hp);
 
 /*
- * cmb_event_time : Get the currently scheduled time for an event
+ * cmi_hashheap_peek : Returns a pointer to the location of the item currently
+ * at the top of the priority queue, without removing it.
+ */
+extern void **cmi_hasheap_peek(struct cmi_hashheap *hp);
+
+/*
+ * cmi_hashheap_cancel: Remove item from the priority queue. Returns true if
+ * found (and removed), false if not found (already removed). Either way,
+ * the item will not be in the queue at the end of this call.
+ */
+extern bool cmi_hashheap_cancel(struct cmi_hashheap *hp, uint64_t handle);
+
+/*
+ * cmi_hashheap_is_enqueued : Is the given item currently in the queue?
+ */
+extern bool cmi_hashheap_is_enqueued(struct cmi_hashheap *hp, uint64_t handle);
+
+/*
+ * cmi_hashheap_get_dkey/ikey/ukey : Get the dkey/ikey/ukey for the given item.
+ * Precondition: The item is in the priority queue, otherwise error.
+ * If in doubt, call cmi_hashheap_is_enqueued(handle) first to verify.
+ */
+extern double cmi_hashheap_get_dkey(struct cmi_hashheap *hp, uint64_t handle);
+extern int64_t cmi_hashheap_get_ikey(struct cmi_hashheap *hp, uint64_t handle);
+extern uint64_t cmi_hashheap_get_ukey(struct cmi_hashheap *hp, uint64_t handle);
+
+/*
+ * cmi_hashheap_reprioritize: Changes one or more of the prioritization keys.
  * Precondition: The event is in the event queue.
- * If in doubt, call cmb_event_is_scheduled(handle) first to verify.
  */
-extern double cmb_event_time(uint64_t handle);
+extern void cmi_hashheap_reprioritize(struct cmi_hashheap *hp,
+                                      uint64_t handle,
+                                      double dkey,
+                                      int64_t ikey,
+                                      uint64_t ukey);
 
 /*
- * cmb_event_priority : Get the current priority for an event
- * Precondition: The event is in the event queue.
- */
-extern int16_t cmb_event_priority(uint64_t handle);
-
-/*
- * cmb_event_cancel: Remove event from event queue.
- * Precondition: The event is in the event queue.
- */
-extern void cmb_event_cancel(uint64_t handle);
-
-/*
- * cmb_event_reschedule: Reschedules event at index to another (absolute) time
- * Precondition: The event is in the event queue.
- */
-extern void cmb_event_reschedule(uint64_t handle, double time);
-
-/*
- * cmb_event_reprioritize: Reprioritizes event to another priority level
- * Precondition: The event is in the event queue.
- */
-extern void cmb_event_reprioritize(uint64_t handle, int16_t priority);
-
-/*
- * cmb_event_find: Search in event list for an event matching the given pattern
- * and return its handle if one exists in the queue. Return zero if no match.
- * CMB_ANY_* are wildcarda, matching any value in its position.
+ * cmi_hashheap_find: Search the priority queue for an item matching the given
+ * pattern and return its handle if one exists in the queue. Return zero if no
+ * match. CMI_ANY_ITEM is a wildcard, matching any item value.
  *
- * Will start the search from the beginning of the event queue each time,
+ * Will start the search from the beginning of the priority queue each time,
  * since the queue may have changed in the meantime. There is no guarantee
- * for it returning the event that will execute first, only that it will find
- * some event that matches the search pattern if one exists in the queue. The
- * sequence in which events are found is unspecified.
+ * for it returning the highest priority item first, only that it will find
+ * some itemt that matches the search pattern if at least one exists in the
+ * queue. The sequence in which items are found is unspecified.
  */
 
-#define CMB_ANY_ACTION ((cmb_event_func *)0xFFFFFFFFFFFFFFFFull)
-#define CMB_ANY_SUBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
-#define CMB_ANY_OBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
+#define CMI_ANY_ITEM ((void *)0xFFFFFFFFFFFFFFFFull)
+extern uint64_t cmi_hashheap_find(struct cmi_hashheap *hp,
+                                  const void *item_val1,
+                                  const void *item_val2,
+                                  const void *item_val3);
 
-extern uint64_t cmb_event_find(cmb_event_func *action,
-                               const void *subject,
-                               const void *object);
-
-/* cmb_event_count : Similarly, count the number of matching events. */
-extern uint64_t cmb_event_count(cmb_event_func *action,
-                                const void *subject,
-                                const void *object);
+/* cmi_hashheap_count : Similarly, count the number of matching items. */
+extern uint64_t cmb_event_count(struct cmi_hashheap *hp,
+                                const void *item_val1,
+                                const void *item_val2,
+                                const void *item_val3);
 
 /*
- * cmb_event_cancel_all : Cancel all matching events, returns the number
- * of events that were cancelled, possibly zero. Use e.g. for cancelling all
- * events related to some subject or object if that thing no longer is alive in
- * the simulation.
+ * cmi_hashheap_cancel_all : Cancel all matching items, returns the number
+ * of events that were cancelled, possibly zero.
  */
-extern uint64_t cmb_event_cancel_all(cmb_event_func *action,
-                                     const void *subject,
-                                     const void *object);
+extern uint64_t cmb_event_cancel_all(struct cmi_hashheap *hp,
+                                     const void *item_val1,
+                                     const void *item_val2,
+                                     const void *item_val3);
+
 
 /*
- * cmb_event_heap_print : Print the current content of the event heap.
+ * cmi_hashheap_print : Print the current content of the heap and hash map.
  * Intended for debugging use, will print hexadecimal pointer values and
  * similar raw data values from the event tag structs.
  */
-extern void cmb_event_heap_print(FILE *fp);
-
-/*
- * cmb_event_hash_print : Print the current content of the hash map.
- * Intended for debugging use, will print 64-bit handles and indexes.
- */
-extern void cmb_event_hash_print(FILE *fp);
+extern void cmi_hashheap_print(struct cmi_hashheap *hp, FILE *fp);
 
 #endif /* CIMBA_CMI_HASHHEAP_H */
