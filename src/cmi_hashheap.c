@@ -60,7 +60,7 @@ uint64_t hash_find_handle(const struct cmi_hashheap *hp, const uint64_t handle)
     cmb_assert_debug(hp != NULL);
     cmb_assert_debug(hp->hash_map != NULL);
 
-    const struct cmi_hash_tag *hm = hp->hash_map;
+    const struct cmi_hash_tag * restrict hm = hp->hash_map;
     uint64_t hash = hash_handle(hp, handle);
     const uint64_t bitmap = hp->hash_size - 1u;
      do {
@@ -168,14 +168,15 @@ static void heap_up(struct cmi_hashheap *hp, uint64_t k)
     cmb_assert_debug(k <= hp->heap_count);
 
     /* Place a working copy at index 0 */
-    struct cmi_heap_tag *heap = hp->heap;
-    struct cmi_hash_tag *hash = hp->hash_map;
+    struct cmi_heap_tag * restrict heap = hp->heap;
+    struct cmi_hash_tag * restrict hash = hp->hash_map;
+    cmi_heap_compare_func * const compare = hp->heap_compare;
     heap[0] = heap[k];
 
     /* A binary tree, parent node at k / 2 */
     uint64_t l;
     while ((l = (k >> 1)) > 0) {
-        if ((*(hp->heap_compare))(&(heap[0]), &(heap[l]))) {
+        if ((*compare)(&(heap[0]), &(heap[l]))) {
             /* Our candidate event goes before the one at l, swap them */
             heap[k] = heap[l];
             const uint64_t khash = heap[k].hash_index;
@@ -201,22 +202,21 @@ static void heap_down(struct cmi_hashheap *hp, uint64_t k)
     cmb_assert_debug(k <= hp->heap_count);
 
     /* Place a working copy at index 0 */
-    struct cmi_heap_tag *heap = hp->heap;
-    struct cmi_hash_tag *hash = hp->hash_map;
+    struct cmi_heap_tag * restrict heap = hp->heap;
+    struct cmi_hash_tag * restrict hash = hp->hash_map;
+    cmi_heap_compare_func * const compare = hp->heap_compare;
     heap[0] = heap[k];
 
     /* Binary heap, children at 2x and 2x + 1 */
     uint64_t j = (hp->heap_count >> 1);
     while (k <= j) {
         uint64_t l = k << 1;
-        if (l < hp->heap_count) {
-            const uint64_t r = l + 1;
-            if ((*(hp->heap_compare))(&(heap[r]), &(heap[l]))) {
-                l++;
-            }
+        const uint64_t r = l + 1;
+        if (r <= hp->heap_count && (*compare)(&(heap[r]), &(heap[l]))) {
+            l = r;
         }
 
-        if ((*(hp->heap_compare))(&(heap[0]), &(heap[l]))) {
+        if ((*compare)(&(heap[0]), &(heap[l]))) {
             break;
         }
 
@@ -410,8 +410,8 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
     const uint64_t hc = ++hp->heap_count;
 
     /* Initialize the heaptag for the event */
-    struct cmi_heap_tag *heap = hp->heap;
-    struct cmi_hash_tag *hash = hp->hash_map;
+    struct cmi_heap_tag * restrict heap = hp->heap;
+    struct cmi_hash_tag * restrict hash = hp->hash_map;
 
     heap[hc].handle = handle;
     heap[hc].item[0] = pl1;
@@ -447,7 +447,8 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
 
-    if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
+    const uint64_t heapcnt = hp->heap_count;
+    if ((hp->heap == NULL) || (heapcnt == 0u)) {
         /* Nothing to do */
         return NULL;
     }
@@ -456,9 +457,9 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
      * Copy the event to working space at the end of the heap.
      * This is safe, since we allocated two slots more than the heap_size.
      */
-    const uint64_t tmp = hp->heap_count + 1u;
-    struct cmi_heap_tag *heap = hp->heap;
-    struct cmi_hash_tag *hash = hp->hash_map;
+    const uint64_t tmp = heapcnt + 1u;
+    struct cmi_heap_tag * restrict heap = hp->heap;
+    struct cmi_hash_tag * restrict hash = hp->hash_map;
     heap[tmp] = heap[1u];
 
     /* Mark it as deleted (a tombstone) in the hash map */
@@ -466,10 +467,10 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
     hash[idx].heap_index = 0u;
 
     /* Reshuffle the heap */
-    heap[1u] = heap[hp->heap_count];
+    heap[1u] = heap[heapcnt];
     idx = hp->heap[1u].hash_index;
     hash[idx].heap_index = 1u;
-    hp->heap_count--;
+    hp->heap_count = heapcnt - 1u;
     if (hp->heap_count > 1u) {
         heap_down(hp, 1u);
     }
