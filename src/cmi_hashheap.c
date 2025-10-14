@@ -478,136 +478,188 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
     return heap[tmp].item;
 }
 
-
-
 /*
- * cmb_event_is_scheduled : Is the given event scheduled?
+ * cmi_hashheap_peek : Returns a pointer to the location of the item currently
+ * at the top of the priority queue, without removing it.
  */
-bool cmb_event_is_scheduled(const uint64_t handle)
-{
-    cmb_assert_release(event_heap != NULL);
-    cmb_assert_debug(event_hash != NULL);
+void **cmi_hashheap_peek(const struct cmi_hashheap *hp) {
+    cmb_assert_release(hp != NULL);
 
-    return (hash_find_handle(handle) != 0u) ? true : false;
+    if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
+        /* Nothing to do */
+        return NULL;
+    }
+
+    struct cmi_heap_tag *first = &(hp->heap[1]);
+    void **item = first->item;
+
+    return item;
 }
 
 /*
- * cmb_event_time : The currently scheduled time for the given event
+ * cmi_hashheap_cancel : Cancel the given event and reshuffle heap
  */
-double cmb_event_time(const uint64_t handle)
+bool cmb_event_cancel(struct cmi_hashheap *hp, const uint64_t handle)
 {
-    cmb_assert_release(event_heap != NULL);
-    cmb_assert_debug(event_hash != NULL);
+    cmb_assert_release(hp != NULL);
 
-    const uint64_t idx = hash_find_handle(handle);
+    if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
+         return false;
+    }
+
+    const uint64_t heapidx = hash_find_handle(hp, handle);
+    if (heapidx == 0u) {
+        return false;
+    }
+    else {
+        cmb_assert_debug(hp->heap[heapidx].handle == handle);
+
+        /* Lazy deletion, tombstone it */
+        uint64_t hashidx = hp->heap[heapidx].hash_index;
+        hp->hash_map[hashidx].heap_index = 0u;
+
+        /* Remove event from heap position heapidx */
+        if (heapidx == hp->heap_count) {
+            hp->heap_count--;
+        }
+        else {
+            const struct cmi_heap_tag *a = &(hp->heap[heapidx]);
+            const uint64_t heapcnt = hp->heap_count;
+            const struct cmi_heap_tag *b = &(hp->heap[heapcnt]);
+            if ((*hp->heap_compare)(a, b)) {
+                hp->heap[heapidx] = hp->heap[heapcnt];
+                hashidx = hp->heap[heapidx].hash_index;
+                hp->hash_map[hashidx].heap_index = heapidx;
+                hp->heap_count--;
+                heap_down(hp, heapidx);
+            }
+            else {
+                hp->heap[heapidx] = hp->heap[heapcnt];
+                hashidx = hp->heap[heapidx].hash_index;
+                hp->hash_map[hashidx].heap_index = heapidx;
+                hp->heap_count--;
+                heap_up(hp, heapidx);
+            }
+        }
+
+        return true;
+    }
+}
+
+
+
+/*
+ * cmi_hashheap_is_enqueued : Is the given item currently in the queue?
+ */
+bool cmi_hashheap_is_enqueued(struct cmi_hashheap *hp, uint64_t handle)
+{
+    cmb_assert_release(hp != NULL);
+
+    bool ret;
+    if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
+        ret = false;
+    }
+    else {
+        ret = (hash_find_handle(hp, handle) != 0u);
+    }
+
+     return ret;
+}
+
+/*
+ * cmi_hashheap_get_dkey/ikey/ukey : Get the dkey/ikey/ukey for the given item.
+ */
+double cmi_hashheap_get_dkey(const struct cmi_hashheap *hp,
+                             const uint64_t handle)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_debug(hp->heap != NULL);
+    cmb_assert_debug(hp->heap_count != 0u);
+
+    const uint64_t idx = hash_find_handle(hp, handle);
     cmb_assert_release(idx != 0u);
 
-    return event_heap[idx].time;
+    return hp->heap[idx].dkey;
+}
+
+int64_t cmi_hashheap_get_ikey(const struct cmi_hashheap *hp,
+                              const uint64_t handle)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_debug(hp->heap != NULL);
+    cmb_assert_debug(hp->heap_count != 0u);
+
+    const uint64_t idx = hash_find_handle(hp, handle);
+    cmb_assert_release(idx != 0u);
+
+    return hp->heap[idx].ikey;
+
+}
+
+uint64_t cmi_hashheap_get_ukey(const struct cmi_hashheap *hp,
+                               const uint64_t handle)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_debug(hp->heap != NULL);
+    cmb_assert_debug(hp->heap_count != 0u);
+
+    const uint64_t idx = hash_find_handle(hp, handle);
+    cmb_assert_release(idx != 0u);
+
+    return hp->heap[idx].ukey;
+
 }
 
 /*
- * cmb_event_priority : The current priority for the given event
+ * cmi_hashheap_reprioritize: Changes one or more of the prioritization keys
+ * and reshuffles the heap.
+ * Precondition: The event is in the event queue.
  */
-int16_t cmb_event_priority(uint64_t handle)
-{
-    cmb_assert_release(event_heap != NULL);
-    cmb_assert_debug(event_hash != NULL);
+void cmi_hashheap_reprioritize(struct cmi_hashheap *hp,
+                               const uint64_t handle,
+                               const double dkey,
+                               const int64_t ikey,
+                               const uint64_t ukey) {
+    cmb_assert_release(hp != NULL);
+    cmb_assert_debug(hp->heap != NULL);
+    cmb_assert_debug(hp->heap_count != 0u);
+    cmb_assert_debug(hp->heap_compare != NULL);
 
-    /* For now, just assert that this event must be in the heap */
-    const uint64_t idx = hash_find_handle(handle);
-    return event_heap[idx].priority;
-}
+    const uint64_t idx = hash_find_handle(hp, handle);
+    cmb_assert_release(idx != 0u);
 
-/*
- * cmb_event_cancel : Cancel the given event and reshuffle heap
- * Precondition: Event must be in heap.
- */
-void cmb_event_cancel(const uint64_t handle)
-{
-    const uint64_t heapidx = hash_find_handle(handle);
-    cmb_assert_release(heapidx != 0u);
-    cmb_assert_debug(event_heap[heapidx].handle == handle);
+    /* Save a copy of the old values */
+    hp->heap[0] = hp->heap[idx];
 
-    /* Lazy deletion, tombstone it */
-    uint64_t hashidx = event_heap[heapidx].hash_index;
-    event_hash[hashidx].heap_index = 0u;
+    hp->heap[idx].dkey = dkey;
+    hp->heap[idx].ikey = ikey;
+    hp->heap[idx].ukey = ukey;
 
-    /* Remove event from heap position heapidx */
-    if (heapidx == heap_count) {
-        heap_count--;
-    }
-    else if (heap_order_check(heapidx, heap_count)) {
-        event_heap[heapidx] = event_heap[heap_count];
-        hashidx = event_heap[heapidx].hash_index;
-        event_hash[hashidx].heap_index = heapidx;
-        heap_count--;
-        heap_down(heapidx);
+    if ((*hp->heap_compare)(&(hp->heap[0]), &(hp->heap[idx]))) {
+        /* The old values should go before the new ones, item heading down */
+        heap_down(hp, idx);
     }
     else {
-        event_heap[heapidx] = event_heap[heap_count];
-        hashidx = event_heap[heapidx].hash_index;
-        event_hash[hashidx].heap_index = heapidx;
-        heap_count--;
-        heap_up(heapidx);
+        /* Other way around, item should rise in the heap */
+        heap_up(hp, idx);
     }
 }
 
 /*
- * cmb_event_reschedule : Reschedule the given event and reshuffle heap
- * Precondition: The event must be in heap.
- */
-void cmb_event_reschedule(const uint64_t handle, const double time)
-{
-    cmb_assert_release(time >= sim_time);
-
-    const uint64_t heapidx = hash_find_handle(handle);
-    cmb_assert_release(heapidx != 0u);
-    cmb_assert_debug(heapidx <= heap_count);
-
-    const double tmp = event_heap[heapidx].time;
-    event_heap[heapidx].time = time;
-    if (time > tmp) {
-        heap_down(heapidx);
-    }
-    else {
-        heap_up(heapidx);
-    }
-}
-
-/*
- * Reprioritize the given event and reshuffle heap
- * Precondition: The event must be in heap.
- */
-void cmb_event_reprioritize(const uint64_t handle,
-                            const int16_t priority)
-{
-    const uint64_t heapidx = hash_find_handle(handle);
-    cmb_assert_release(heapidx != 0u);
-    cmb_assert_debug(heapidx <= heap_count);
-
-    const int tmp = event_heap[heapidx].priority;
-    event_heap[heapidx].priority = priority;
-    if (priority < tmp) {
-        heap_down(heapidx);
-    }
-    else {
-        heap_up(heapidx);
-    }
-}
-
-/*
- * event_match : Wildcard search helper function to get the condition
+ * item_match : Wildcard search helper function to get the condition
  * out of the next three functions.
  */
-static bool event_match(cmb_event_func *action,
-                        const void *subject,
-                        const void *object,
-                        const struct heap_tag *event)
+static bool item_match(const struct cmi_heap_tag *htp,
+                       const void *val1,
+                       const void *val2,
+                       const void *val3)
 {
+    cmb_assert_debug(htp != NULL);
+
     bool ret = true;
-    if ( ((action != event->action) && (action != CMB_ANY_ACTION))
-      || ((subject != event->subject) && (subject != CMB_ANY_SUBJECT))
-      || ((object != event->object) && (object != CMB_ANY_OBJECT))) {
+    if ( ((val1 != htp->item[0]) && (val1 != CMI_ANY_ITEM))
+      || ((val2 != htp->item[1]) && (val2 != CMI_ANY_ITEM))
+      || ((val3 != htp->item[2]) && (val3 != CMI_ANY_ITEM))) {
         ret = false;
     }
 
@@ -615,18 +667,21 @@ static bool event_match(cmb_event_func *action,
 }
 
 /*
- * cmb_event_find : Locate a specific event, using the CMB_ANY_* constants as
+ * cmi_hashheap_find : Locate a specific event, using the CMB_ANY_* constants as
  * wildcards in the respective positions. Returns the handle of the event, or
- * zero if none found.
+ * zero if none found. Simple linear search from the start of the heap.
  */
-uint64_t cmb_event_find(cmb_event_func *action,
-                        const void *subject,
-                        const void *object)
+uint64_t cmi_hashheap_find(const struct cmi_hashheap *hp,
+                           const void *val1,
+                           const void *val2,
+                           const void *val3)
 {
-    for (uint64_t ui = 1u; ui <= heap_count; ui++) {
-        const struct heap_tag *event = &(event_heap[ui]);
-        if (event_match(action, subject, object, event)) {
-            return event->handle;
+    cmb_assert_debug(hp != NULL);
+
+    for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
+        const struct cmi_heap_tag *htp = &(hp->heap[ui]);
+        if (item_match(htp, val1, val2, val3)) {
+            return htp->handle;
         }
     }
 
@@ -635,49 +690,55 @@ uint64_t cmb_event_find(cmb_event_func *action,
 }
 
 /*
- * cmb_event_count : Count matching events using CMB_ANY_* as wildcards.
- * Returns the number of matching events, possibly zero.
+ * cmi_hashheap_count : Count matching items using CMB_ANY_ITEM as wildcard.
+ * Returns the number of matching items, possibly zero.
  */
-uint64_t cmb_event_count(cmb_event_func *action,
-                        const void *subject,
-                        const void *object)
+uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp,
+                            const void *val1,
+                            const void *val2,
+                            const void *val3)
 {
-    /* Note that NULL may be a valid argument here */
+    cmb_assert_debug(hp != NULL);
+
     uint64_t cnt = 0u;
-    for (uint64_t ui = 1u; ui <= heap_count; ui++) {
-        const struct heap_tag *event = &(event_heap[ui]);
-        if (event_match(action, subject, object, event)) {
+    for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
+        const struct cmi_heap_tag *htp = &(hp->heap[ui]);
+        if (item_match(htp, val1, val2, val3)) {
             cnt++;
         }
     }
 
     return cnt;
 }
-
 /*
- * cmb_event_cancel_all : Cancel all matching events.
+ * cmi_hashheap_cancel_all : Cancel all matching items.
  * Two-pass approach: Allocate temporary storage for the list of
  * matching handles in the first pass, then cancel these in the
  * second pass. Avoids any possible issues caused by modification
  * (reshuffling) of the heap while iterating over it.
- * Returns the number of events cancelled, possibly zero.
+ * Returns the number of items cancelled, possibly zero.
  */
-uint64_t cmb_event_cancel_all(cmb_event_func *action,
-                        const void *subject,
-                        const void *object)
+uint64_t cmb_event_cancel_all(struct cmi_hashheap *hp,
+                              const void *val1,
+                              const void *val2,
+                              const void *val3)
 {
-    /* Note that NULL may be a valid argument here */
+    cmb_assert_debug(hp != NULL);
+
     uint64_t cnt = 0u;
+    if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
+        return cnt;
+    }
 
     /* Allocate space enough to match everything in the heap */
-    uint64_t *tmp = cmi_malloc(heap_count * sizeof(*tmp));
+    uint64_t *tmp = cmi_malloc(hp->heap_count * sizeof(*tmp));
 
     /* First pass, recording the matches */
-    for (uint64_t ui = 1; ui <= heap_count; ui++) {
-        const struct heap_tag *event = &(event_heap[ui]);
-        if (event_match(action, subject, object, event)) {
+    for (uint64_t ui = 1; ui <= hp->heap_count; ui++) {
+        const struct cmi_heap_tag *htp = &(hp->heap[ui]);
+        if (item_match(htp, val1, val2, val3)) {
             /* Matched, note it on the list */
-            tmp[cnt++] = event_heap[ui].handle;
+            tmp[cnt++] = htp->handle;
         }
     }
 
@@ -685,7 +746,7 @@ uint64_t cmb_event_cancel_all(cmb_event_func *action,
      * heap reshuffling underneath us for each cancel.
      */
     for (uint64_t ui = 0u; ui < cnt; ui++) {
-        cmb_event_cancel(tmp[ui]);
+        cmi_hashheap_cancel(hp, tmp[ui]);
     }
 
     cmi_free(tmp);
@@ -693,39 +754,35 @@ uint64_t cmb_event_cancel_all(cmb_event_func *action,
 }
 
 /*
- * cmb_event_heap_print : Print content of event heap, useful for debugging
+ * cmi_hashheap_print : Print content of event heap, useful for debugging
  */
-void cmb_event_heap_print(FILE *fp)
+void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
 {
-    fprintf(fp, "Event heap:\n");
-    for (uint64_t ui = 1u; ui <= heap_count; ui++) {
-        /*
-         * Use a contrived cast to circumvent strict ban on conversion
-         * between function and object pointer in ISO C.
-         */
-        static_assert(sizeof(event_heap[ui].action) == sizeof(void*),
-            "Pointer to function expected to be same size as pointer to void");
+    cmb_assert_debug(hp != NULL);
 
-        fprintf(fp, "heap index %llu: time %#8.4g pri %d: handle %llu hash index %llu : %p  %p  %p\n", ui,
-                event_heap[ui].time,
-                event_heap[ui].priority,
-                event_heap[ui].handle,
-                event_heap[ui].hash_index,
-                *(void**)(&(event_heap[ui].action)),
-                event_heap[ui].subject,
-                event_heap[ui].object);
+    fprintf(fp, "----------------- Hash heap -----------------\n");
+    fprintf(fp, "Heap section:\n");
+    for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
+        const struct cmi_heap_tag *htp = &(hp->heap[ui]);
+        fprintf(fp, "heap index %llu: handle %llu dkey %#8.4g ikey %lld ukey %llu : hash index %llu : %p  %p  %p\n",
+                ui,
+                htp->handle,
+                htp->dkey,
+                htp->ikey,
+                htp->ukey,
+                htp->hash_index,
+                htp->item[0],
+                htp->item[1],
+                htp->item[2]);
     }
-}
 
-/*
- * cmb_event_hash_print : Print content of hash map, useful for debugging
- */
-void cmb_event_hash_print(FILE *fp)
-{
-    fprintf(fp, "Event hash map:\n");
-    for (uint64_t ui = 0u; ui < hash_size; ui++) {
-        fprintf(fp, "hash index %llu: handle %llu  heap index %llu\n", ui,
-                event_hash[ui].handle,
-                event_hash[ui].heap_index);
+    fprintf(fp, "\nHash map section:\n");
+    for (uint64_t ui = 0u; ui < hp->hash_size; ui++) {
+        const struct cmi_hash_tag *htp = &(hp->hash_map[ui]);
+        fprintf(fp, "hash index %llu: handle %llu heap index %llu\n", ui,
+                htp->handle,
+                htp->heap_index);
     }
+
+    fprintf(fp, "---------------------------------------------\n");
 }
