@@ -49,7 +49,7 @@ inline void *cmi_calloc(const unsigned n, const size_t sz)
     return rp;
 }
 
-inline void *cmi_realloc(void *p, const size_t sz)
+inline void *cmi_realloc(void* restrict p, const size_t sz)
 {
     cmb_assert_debug(p != NULL);
     cmb_assert_debug(sz > 0);
@@ -67,7 +67,7 @@ inline void cmi_free(void *p)
     free(p);
 }
 
-inline void *cmi_memcpy(void *dest, const void *src, const size_t sz)
+inline void *cmi_memcpy(void* restrict dest, const void* restrict src, const size_t sz)
 {
     cmb_assert_debug(dest != NULL);
     cmb_assert_debug(src != NULL);
@@ -79,7 +79,7 @@ inline void *cmi_memcpy(void *dest, const void *src, const size_t sz)
     return rp;
 }
 
-inline void *cmi_memset(void *ptr, const int c, const size_t n)
+inline void *cmi_memset(void* restrict ptr, const int c, const size_t n)
 {
     cmb_assert_debug(ptr != NULL);
     cmb_assert_debug(n > 0);
