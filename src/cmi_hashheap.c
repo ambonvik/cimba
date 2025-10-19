@@ -131,37 +131,8 @@ void hash_rehash(const struct cmi_hashheap *hp,
     }
 }
 
-/*
- * Test if heap_tag *a should go before *b. If so, return true.
- * Default heap compare function, corresponds to event queue order, where
- * dkey = reactivation time, ikey = priority, ukey = not used, use handle FIFO.
- */
-static bool heap_order_check(const struct cmi_heap_tag *a,
-                             const struct cmi_heap_tag *b)
-{
-    cmb_assert_debug(a != NULL);
-    cmb_assert_debug(b != NULL);
-
-    bool ret = false;
-    if (a->dkey < b->dkey) {
-        ret = true;
-    }
-    else if (a->dkey == b->dkey) {
-        if (a->ikey > b->ikey) {
-            ret = true;
-        }
-        else if (a->ikey == b->ikey) {
-            if (a->handle < b->handle) {
-                ret = true;
-            }
-        }
-    }
-
-    return ret;
-}
-
 /* heap_up : Bubble a tag at index k upwards into its right place */
-static void heap_up(struct cmi_hashheap *hp, uint64_t k)
+static void heap_up(const struct cmi_hashheap *hp, uint64_t k)
 {
     cmb_assert_debug(hp != NULL);
     cmb_assert_debug(hp->heap != NULL);
@@ -195,7 +166,7 @@ static void heap_up(struct cmi_hashheap *hp, uint64_t k)
 }
 
 /* heap_down : Bubble a tag at index k downwards into its right place */
-static void heap_down(struct cmi_hashheap *hp, uint64_t k)
+static void heap_down(const struct cmi_hashheap *hp, uint64_t k)
 {
     cmb_assert_debug(hp != NULL);
     cmb_assert_debug(hp->heap != NULL);
@@ -364,7 +335,6 @@ void cmi_hashheap_clear(struct cmi_hashheap *hp)
     hashheap_nullify(hp);
 }
 
-
 /*
  * cmi_hashheap_destroy : Clean up, deallocating space.
  * Note that hash_exp is not reset to initial value.
@@ -388,9 +358,9 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
                                      void *pl1,
                                      void *pl2,
                                      void *pl3,
-                                     double dkey,
-                                     int64_t ikey,
-                                     uint64_t ukey)
+                                     const double dkey,
+                                     const int64_t ikey,
+                                     const uint64_t ukey)
 {
     cmb_assert_release(hp != NULL);
     cmb_assert_debug(hp->heap != NULL);
@@ -453,10 +423,7 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
         return NULL;
     }
 
-    /*
-     * Copy the event to working space at the end of the heap.
-     * This is safe, since we allocated two slots more than the heap_size.
-     */
+    /* Copy the event to working space at the end of the heap. */
     const uint64_t tmp = heapcnt + 1u;
     struct cmi_heap_tag * restrict heap = hp->heap;
     struct cmi_hash_tag * restrict hash = hp->hash_map;
@@ -467,12 +434,17 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
     hash[idx].heap_index = 0u;
 
     /* Reshuffle the heap */
-    heap[1u] = heap[heapcnt];
-    idx = hp->heap[1u].hash_index;
-    hash[idx].heap_index = 1u;
-    hp->heap_count = heapcnt - 1u;
-    if (hp->heap_count > 1u) {
-        heap_down(hp, 1u);
+    if (heapcnt > 1u) {
+        heap[1u] = heap[heapcnt];
+        idx = hp->heap[1u].hash_index;
+        hash[idx].heap_index = 1u;
+        hp->heap_count = heapcnt - 1u;
+        if (hp->heap_count > 1u) {
+            heap_down(hp, 1u);
+        }
+    }
+    else {
+        hp->heap_count = 0u;
     }
 
     /* Return a pointer to the start of the payload array */
@@ -500,7 +472,7 @@ void **cmi_hashheap_peek(const struct cmi_hashheap *hp) {
 /*
  * cmi_hashheap_cancel : Cancel the given event and reshuffle heap
  */
-bool cmb_event_cancel(struct cmi_hashheap *hp, const uint64_t handle)
+bool cmi_hashheap_cancel(struct cmi_hashheap *hp, const uint64_t handle)
 {
     cmb_assert_release(hp != NULL);
 
@@ -546,8 +518,6 @@ bool cmb_event_cancel(struct cmi_hashheap *hp, const uint64_t handle)
         return true;
     }
 }
-
-
 
 /*
  * cmi_hashheap_is_enqueued : Is the given item currently in the queue?
@@ -616,7 +586,7 @@ uint64_t cmi_hashheap_get_ukey(const struct cmi_hashheap *hp,
  * and reshuffles the heap.
  * Precondition: The event is in the event queue.
  */
-void cmi_hashheap_reprioritize(struct cmi_hashheap *hp,
+void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
                                const uint64_t handle,
                                const double dkey,
                                const int64_t ikey,
@@ -711,6 +681,7 @@ uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp,
 
     return cnt;
 }
+
 /*
  * cmi_hashheap_cancel_all : Cancel all matching items.
  * Two-pass approach: Allocate temporary storage for the list of
@@ -719,7 +690,7 @@ uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp,
  * (reshuffling) of the heap while iterating over it.
  * Returns the number of items cancelled, possibly zero.
  */
-uint64_t cmb_event_cancel_all(struct cmi_hashheap *hp,
+uint64_t cmi_hashheap_cancel_all(struct cmi_hashheap *hp,
                               const void *val1,
                               const void *val2,
                               const void *val3)
@@ -765,7 +736,7 @@ void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
     fprintf(fp, "Heap section:\n");
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
-        fprintf(fp, "heap index %llu: handle %llu dkey %#8.4g ikey %lld ukey %llu : hash index %llu : %p  %p  %p\n",
+        fprintf(fp, "heap index %llu: handle %llu dkey %#8.4g ikey %lld ukey %llu : hash %llu : %p  %p  %p\n",
                 ui,
                 htp->handle,
                 htp->dkey,
@@ -780,7 +751,7 @@ void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
     fprintf(fp, "\nHash map section:\n");
     for (uint64_t ui = 0u; ui < hp->hash_size; ui++) {
         const struct cmi_hash_tag *htp = &(hp->hash_map[ui]);
-        fprintf(fp, "hash index %llu: handle %llu heap index %llu\n", ui,
+        fprintf(fp, "hash index %llu: handle %llu heap %llu\n", ui,
                 htp->handle,
                 htp->heap_index);
     }

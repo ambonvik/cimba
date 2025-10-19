@@ -120,7 +120,7 @@ static CMB_THREAD_LOCAL uint64_t hash_size = 0u;
  * hash_handle : Fibonacci hash function, see
  * https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
  */
-uint64_t hash_handle(const uint64_t handle)
+static uint64_t hash_handle(const uint64_t handle)
 {
     /*
      * The "magic number" is approx 2^64 / phi, the golden ratio.
@@ -135,7 +135,7 @@ uint64_t hash_handle(const uint64_t handle)
  * instead of using the modulo operator. In effect, simulates overflow in an
  * unsigned integer of (heap_exp + 1) bits.
  */
-uint64_t hash_find_handle(const uint64_t handle)
+static uint64_t hash_find_handle(const uint64_t handle)
 {
     const uint64_t bitmap = hash_size - 1u;
     uint64_t hash = hash_handle(handle);
@@ -156,7 +156,7 @@ uint64_t hash_find_handle(const uint64_t handle)
 /*
  * hash_find_slot : Find the first free hash map slot for the given handle
  */
-uint64_t hash_find_slot(const uint64_t handle)
+static uint64_t hash_find_slot(const uint64_t handle)
 {
     const uint64_t bitmap = hash_size - 1u;
     uint64_t hash = hash_handle(handle);
@@ -175,7 +175,7 @@ uint64_t hash_find_slot(const uint64_t handle)
 /*
  * Rehash old hash entries to new (current) hash map, removing any tombstones.
  */
-void hash_rehash(const struct hash_tag *old_hash_map,
+static void hash_rehash(const struct hash_tag *old_hash_map,
                  const uint64_t old_hash_size)
 {
     for (uint64_t ui = 0u; ui < old_hash_size; ui++) {

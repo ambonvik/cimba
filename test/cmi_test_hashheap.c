@@ -17,14 +17,112 @@
  */
 #include <stdio.h>
 
+#include "cmb_random.h"
+
 #include "cmi_hashheap.h"
 #include "cmi_test.h"
 
+/*
+ * Test if heap_tag *a should go before *b. If so, return true.
+ * Default heap compare function, corresponds to event queue order, where
+ * dkey = reactivation time, ikey = priority, ukey = not used, use handle FIFO.
+ */
+static bool heap_order_check(const struct cmi_heap_tag *a,
+                             const struct cmi_heap_tag *b)
+{
+    cmb_assert_debug(a != NULL);
+    cmb_assert_debug(b != NULL);
+
+    bool ret = false;
+    if (a->dkey < b->dkey) {
+        ret = true;
+    }
+    else if (a->dkey == b->dkey) {
+        if (a->ikey > b->ikey) {
+            ret = true;
+        }
+        else if (a->ikey == b->ikey) {
+            if (a->handle < b->handle) {
+                ret = true;
+            }
+        }
+    }
+
+    return ret;
+}
+
 int main(void)
 {
-  cmi_test_print_line("-");
-  printf("Testing event queue\n");
+    cmb_random_init(cmb_random_get_hwseed());
 
-  cmi_test_print_line("=");
-  return 0;
+    cmi_test_print_line("-");
+    printf("Testing event queue\n");
+    printf("Creating hash heap: cmi_hashheap_create ...\n");
+    struct cmi_hashheap *hhp = cmi_hashheap_create();
+    printf("Initializing hash heap: cmi_hashheap_init ...\n");
+    cmi_hashheap_init(hhp, 3u, heap_order_check);
+    printf("Clearing hash heap: cmi_hashheap_clear ...\n");
+    cmi_hashheap_clear(hhp);
+    printf("Destroying hash heap: cmi_hashheap_destroy ...\n");
+    cmi_hashheap_destroy(hhp);
+
+    printf("\nCreating another hash heap: cmi_hashheap_create ...\n");
+    hhp = cmi_hashheap_create();
+    printf("Initializing hash heap: cmi_hashheap_init ...\n");
+    cmi_hashheap_init(hhp, 3u, heap_order_check);
+    printf("Adding an item: cmi_hashheap_enqueue ... ");
+    uint64_t handle = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, 1.0, 1, 1);
+    printf("returned handle %llu\n", handle);
+    printf("Peekaboo: cmi_hashheap_peek ... \n");
+    void **item = cmi_hashheap_peek(hhp);
+    printf("Pulling out an item: cmi_hashheap_dequeue ... \n");
+    item = cmi_hashheap_dequeue(hhp);
+    printf("Clearing hash heap: cmi_hashheap_clear ...\n");
+    cmi_hashheap_clear(hhp);
+    printf("Destroying hash heap: cmi_hashheap_destroy ...\n");
+    cmi_hashheap_destroy(hhp);
+
+    printf("\nCreating another hash heap: cmi_hashheap_create ...\n");
+    hhp = cmi_hashheap_create();
+    printf("Initializing hash heap: cmi_hashheap_init ...\n");
+    cmi_hashheap_init(hhp, 3u, heap_order_check);
+    printf("Adding 5 items: cmi_hashheap_enqueue ... \n");
+    for (unsigned ui = 0; ui < 5; ui++) {
+        double d = cmb_random();
+        int64_t i = cmb_random_dice(0, 1000);
+        handle = cmi_hashheap_enqueue(hhp, (void *)ui, NULL, NULL, d, i, 0);
+    }
+
+    cmi_hashheap_print(hhp, stdout);
+    while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {
+        printf("Dequeued item: %p\n", item[0]);
+        cmi_hashheap_print(hhp, stdout);
+   }
+
+    printf("Adding 10 items, forcing a resizing ... \n");
+    for (unsigned ui = 0; ui < 10; ui++) {
+        double d = cmb_random();
+        int64_t i = cmb_random_dice(0, 1000);
+        handle = cmi_hashheap_enqueue(hhp, (void *)ui, NULL, NULL, d, i, 0);
+    }
+
+    while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {
+        printf("Dequeued item: %p\n", item[0]);
+        void **nxtitem = cmi_hashheap_peek(hhp);
+        if (nxtitem != NULL) {
+            printf("Coming next: %p\n", nxtitem[0]);
+        }
+        else {
+            printf("No more items\n");
+        }
+    }
+
+    printf("Clearing hash heap: cmi_hashheap_clear ...\n");
+    cmi_hashheap_clear(hhp);
+    printf("Destroying hash heap: cmi_hashheap_destroy ...\n");
+    cmi_hashheap_destroy(hhp);
+
+
+    cmi_test_print_line("=");
+    return 0;
 }

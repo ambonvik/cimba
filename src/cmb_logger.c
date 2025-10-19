@@ -64,7 +64,11 @@ int cmb_vfprintf(const uint32_t flags,
     int ret = 0;
     if ((flags & cmi_logger_mask) != 0) {
         char timestrbuf[TSTRBUF_SZ];
-        int r = fprintf(fp, "%s\t", timeformatter(cmb_time(), timestrbuf, TSTRBUF_SZ));
+        int r = fprintf(fp,
+                       "%s\t",
+                        timeformatter(cmb_time(),
+                        timestrbuf,
+                        TSTRBUF_SZ));
         assert(r > 0);
         ret += r;
 

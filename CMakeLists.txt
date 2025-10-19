@@ -13,6 +13,7 @@ set(SOURCES  src/cmb_data.c
         src/cmb_assert.c
         src/cmb_logger.c
         src/cmi_coroutine.c
+        src/cmi_hashheap.c
         src/cmi_mempool.c
         src/cmi_random_exp_zig.inc
         src/cmi_random_nor_zig.inc
@@ -27,6 +28,7 @@ set(HEADERS include/cmb_data.h
         include/cmb_resource.h
         src/cmi_coroutine.h
         src/cmi_config.h
+        src/cmi_hashheap.h
         src/cmi_memutils.h
         src/cmi_mempool.h)
 
@@ -55,3 +57,6 @@ target_link_libraries(cmi_test_mempool PRIVATE cimba)
 
 add_executable(cmi_test_process test/cmi_test_process.c test/cmi_test.h)
 target_link_libraries(cmi_test_process PRIVATE cimba)
+
+add_executable(cmi_test_hashheap test/cmi_test_hashheap.c test/cmi_test.h)
+target_link_libraries(cmi_test_hashheap PRIVATE cimba)

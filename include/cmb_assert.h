@@ -23,35 +23,39 @@
 #define CIMBA_CMB_ASSERT_H
 
 /*
- * Custom assert() with some more info when failing. Failed asserts call cmb_logger_fatal().
- * cmb_assert_release() remains if NDEBUG is defined, but goes away if NASSERT is defined.
- * cmb_assert_debug() goes away if NDEBUG is defined (like standard assert()) or if NASSERT is defined.
+ * Custom assert() with some more info when failing.
+ * Failed asserts call cmb_logger_fatal().
+ * cmb_assert_release() remains if NDEBUG is defined, but goes away if NASSERT
+ *    is defined.
+ * cmb_assert_debug() goes away if NDEBUG is defined (like standard assert())
+ *    or if NASSERT is defined.
  * cmb_assert() is shorthand for cmb_assert_debug()
  */
 #ifndef NASSERT
     #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
         extern void cmi_assert_failed(const char *sourcefile, const char *func, int line,
                                       const char *condition) __attribute__((noreturn));
-#elif CMB_COMPILER == MSVC
-extern __declspec(noreturn) void cmi_assert_failed(const char *sourcefile,
+    #elif CMB_COMPILER == MSVC
+        extern __declspec(noreturn) void cmi_assert_failed(const char *sourcefile,
                                       const char *func, int line,
                                       const char *condition) __attribute__((noreturn));
-#else
-extern void cmi_assert_failed(const char *sourcefile, const char *func,
+    #else
+        extern void cmi_assert_failed(const char *sourcefile, const char *func,
                               int line, const char *condition);
+    #endif
+
+    #ifndef NDEBUG
+        #define cmb_assert_debug(x) ((x) ? (void)(0) : (cmi_assert_failed(__FILE_NAME__, __func__, __LINE__, #x)))
+    #else
+        #define cmb_assert_debug(x) ((void)(0))
+    #endif /* ifndef NDEBUG */
+
+    #define cmb_assert_release(x) ((x) ? (void)(0) : (cmi_assert_failed(__FILE_NAME__, __func__, __LINE__, #x)))
+#else
+    #define cmb_assert_debug(x) ((void)(0))
+    #define cmb_assert_release(x) ((void)(0))
 #endif
 
-#ifndef NDEBUG
-#define cmb_assert_debug(x) ((x) ? (void)(0) : (cmi_assert_failed(__FILE_NAME__, __func__, __LINE__, #x)))
-#else
-#define cmb_assert_debug(x) ((void)(0))
-#endif /* ifndef NDEBUG */
-#define cmb_assert_release(x) ((x) ? (void)(0) : (cmi_assert_failed(__FILE_NAME__, __func__, __LINE__, #x)))
 #define cmb_assert(x) cmb_assert_debug(x)
-#else
-#define cmb_assert_debug(x) ((void)(0))
-#define cmb_assert_release(x) ((void)(0))
-#define cmb_assert(x) cmb_assert_debug(x)
-#endif
 
 #endif /* CIMBA_CMB_ASSERT_H */

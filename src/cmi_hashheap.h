@@ -123,7 +123,7 @@ extern struct cmi_hashheap *cmi_hashheap_create(void);
  *
  * A separate function from _create to allow for inheritance by composition.
  */
-extern void cmi_hasheap_init(struct cmi_hashheap *hp,
+extern void cmi_hashheap_init(struct cmi_hashheap *hp,
                              uint16_t hexp,
                              cmi_heap_compare_func *cmp);
 
@@ -160,7 +160,7 @@ extern uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
  * pointer to its current location. Note that this is a temporary location that
  * will be overwritten in the next enqueue operation.
  */
-extern void **cmi_hasheap_dequeue(struct cmi_hashheap *hp);
+extern void **cmi_hashheap_dequeue(struct cmi_hashheap *hp);
 
 /*
  * cmi_hashheap_peek : Returns a pointer to the location of the item currently
@@ -193,7 +193,7 @@ extern uint64_t cmi_hashheap_get_ukey(const struct cmi_hashheap *hp, uint64_t ha
  * cmi_hashheap_reprioritize: Changes one or more of the prioritization keys.
  * Precondition: The event is in the event queue.
  */
-extern void cmi_hashheap_reprioritize(struct cmi_hashheap *hp,
+extern void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
                                       uint64_t handle,
                                       double dkey,
                                       int64_t ikey,
@@ -221,16 +221,16 @@ extern uint64_t cmi_hashheap_find(const struct cmi_hashheap *hp,
                                   const void *val3);
 
 /* cmi_hashheap_count : Similarly, count the number of matching items. */
-extern uint64_t cmb_event_count(const struct cmi_hashheap *hp,
-                                const void *val1,
-                                const void *val2,
-                                const void *val3);
+extern uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp,
+                                   const void *val1,
+                                   const void *val2,
+                                   const void *val3);
 
 /*
  * cmi_hashheap_cancel_all : Cancel all matching items, returns the number
  * of events that were cancelled, possibly zero.
  */
-extern uint64_t cmb_event_cancel_all(struct cmi_hashheap *hp,
+extern uint64_t cmi_hashheap_cancel_all(struct cmi_hashheap *hp,
                                      const void *val1,
                                      const void *val2,
                                      const void *val3);

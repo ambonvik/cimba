@@ -65,8 +65,9 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
 
 /*
  * Wrapper functions for predefined message levels.
- * cmb_logger_fatal() terminates the entire simulation, cmb_logger_error() terminates the
- * current replication thread only.
+ * cmb_logger_fatal() terminates the entire simulation,
+ * cmb_logger_error() terminates the current replication thread only.
+ *
  * Use appropriate function attributes to avoid spurious compiler warnings in
  * unreachable code. No portable way to do this more elegantly, unfortunately.
  */
