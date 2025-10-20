@@ -95,9 +95,13 @@ typedef void (cmb_event_func)(void *subject, void *object);
 extern void cmb_event_queue_init(double start_time);
 
 /*
- * cmb_event_queue_destroy : Free memory allocated for event queue and
- * reinitialize pointers. Can be reinitialized by calling cmb_event_queue_init
- * again to start a new simulation run.
+ * cmb_event_queue_clear : Reset event queue to newly created state.
+ * Call cmb_event_queue_init() again before a new run.
+ */
+extern void cmb_event_queue_clear(void);
+
+/*
+ * cmb_event_queue_destroy : Free memory allocated for event queue and heap.
  */
 extern void cmb_event_queue_destroy(void);
 

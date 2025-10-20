@@ -93,6 +93,17 @@ void cmb_event_queue_init(const double start_time)
 }
 
 /*
+ * cmb_event_queue_clear : Clean up, deallocating space.
+ */
+void cmb_event_queue_clear(void)
+{
+    cmb_assert_release(event_queue != NULL);
+    cmb_assert_debug(event_queue != NULL);
+
+    cmi_hashheap_clear(event_queue);
+}
+
+/*
  * cmb_event_queue_destroy : Clean up, deallocating space.
  */
 void cmb_event_queue_destroy(void)

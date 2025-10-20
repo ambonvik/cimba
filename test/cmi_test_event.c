@@ -41,7 +41,7 @@ static void end_sim(void *subject, void *object)
 {
     cmb_logger_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);
     cmb_logger_warning(stdout, "===> end_sim: game over <===");
-    cmb_event_queue_destroy();
+    cmb_event_queue_clear();
 }
 
 static const char *subjects[] = {"this", "self", "me"};
@@ -122,6 +122,8 @@ int main(void)
     printf("Time:\t\tType:\tAction: \t\tSubject:\t\tObject:\n");
     cmb_run();
 
+    cmb_event_queue_destroy();
     cmi_test_print_line("=");
+
     return 0;
 }

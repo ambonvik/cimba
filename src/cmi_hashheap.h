@@ -132,6 +132,10 @@ extern void cmi_hashheap_init(struct cmi_hashheap *hp,
                              cmi_heap_compare_func *cmp);
 
 /*
+ * cmi_hashheap_clear : Resets the hash heap to newly created state.
+ */
+extern void cmi_hashheap_clear(struct cmi_hashheap *hp);
+/*
  * cmi_hashheap_destroy : Free memory allocated for the priority queue,
  * including both the array (if not NULL) and *hp itself.
  */
@@ -142,7 +146,7 @@ extern void cmi_hashheap_destroy(struct cmi_hashheap *hp);
  * using the priority keys dkey, ikey, ukey. The exact meaning is application
  * defined, depending on the heap compare function provided.
  *
- * Returns the handle to the new item.
+ * Returns the handle to the new item, handle > 0.
  */
 extern uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
                                      void *pl1,
@@ -185,7 +189,7 @@ extern bool cmi_hashheap_cancel(struct cmi_hashheap *hp, uint64_t handle);
 /*
  * cmi_hashheap_is_enqueued : Is the given item currently in the queue?
  */
-extern bool cmi_hashheap_is_enqueued(struct cmi_hashheap *hp, uint64_t handle);
+extern bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp, uint64_t handle);
 
 /*
  * cmi_hashheap_get_dkey/ikey/ukey : Get the dkey/ikey/ukey for the given item.

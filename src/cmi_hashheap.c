@@ -322,10 +322,9 @@ void cmi_hashheap_init(struct cmi_hashheap *hp,
 }
 
 /*
- * cmi_hashheap_destroy : Clean up, deallocating space.
- * Note that hash_exp is not reset to initial value.
+ * cmi_hashheap_clear : Reset to newly created state.
  */
-void cmi_hashheap_destroy(struct cmi_hashheap *hp)
+void cmi_hashheap_clear(struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
 
@@ -333,6 +332,17 @@ void cmi_hashheap_destroy(struct cmi_hashheap *hp)
         cmi_aligned_free(hp->heap);
     }
 
+    hashheap_nullify(hp);
+}
+
+/*
+ * cmi_hashheap_destroy : Clean up, deallocating space.
+ */
+void cmi_hashheap_destroy(struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+
+    cmi_hashheap_clear(hp);
     cmi_free(hp);
 }
 
@@ -386,6 +396,7 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
     heap[hc].hash_index = idx;
     heap_up(hp, hc);
 
+    cmb_assert_debug(handle > 0u);
     return handle;
 }
 
@@ -498,14 +509,13 @@ uint64_t cmi_hashheap_peek_ukey(const struct cmi_hashheap *hp)
     return first->ukey;
 }
 
-
-
 /*
  * cmi_hashheap_cancel : Cancel the given event and reshuffle heap
  */
 bool cmi_hashheap_cancel(struct cmi_hashheap *hp, const uint64_t handle)
 {
     cmb_assert_release(hp != NULL);
+    cmb_assert_release(handle != 0u);
 
     if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
          return false;
@@ -553,9 +563,10 @@ bool cmi_hashheap_cancel(struct cmi_hashheap *hp, const uint64_t handle)
 /*
  * cmi_hashheap_is_enqueued : Is the given item currently in the queue?
  */
-bool cmi_hashheap_is_enqueued(struct cmi_hashheap *hp, uint64_t handle)
+bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp, const uint64_t handle)
 {
     cmb_assert_release(hp != NULL);
+    cmb_assert_release(handle != 0u);
 
     bool ret;
     if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
@@ -575,6 +586,7 @@ double cmi_hashheap_get_dkey(const struct cmi_hashheap *hp,
                              const uint64_t handle)
 {
     cmb_assert_release(hp != NULL);
+    cmb_assert_release(handle != 0u);
     cmb_assert_debug(hp->heap != NULL);
     cmb_assert_debug(hp->heap_count != 0u);
 
@@ -588,6 +600,7 @@ int64_t cmi_hashheap_get_ikey(const struct cmi_hashheap *hp,
                               const uint64_t handle)
 {
     cmb_assert_release(hp != NULL);
+    cmb_assert_release(handle != 0u);
     cmb_assert_debug(hp->heap != NULL);
     cmb_assert_debug(hp->heap_count != 0u);
 
@@ -602,6 +615,7 @@ uint64_t cmi_hashheap_get_ukey(const struct cmi_hashheap *hp,
                                const uint64_t handle)
 {
     cmb_assert_release(hp != NULL);
+    cmb_assert_release(handle != 0u);
     cmb_assert_debug(hp->heap != NULL);
     cmb_assert_debug(hp->heap_count != 0u);
 
@@ -623,6 +637,7 @@ void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
                                const int64_t ikey,
                                const uint64_t ukey) {
     cmb_assert_release(hp != NULL);
+    cmb_assert_release(handle != 0u);
     cmb_assert_debug(hp->heap != NULL);
     cmb_assert_debug(hp->heap_count != 0u);
     cmb_assert_debug(hp->heap_compare != NULL);
