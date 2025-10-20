@@ -64,7 +64,7 @@ int main(void)
                               (void *)subjects[i],
                               (void *)objects[j],
                               cmb_time() + cmb_random_exponential(10.0),
-                              (int16_t)cmb_random_dice(1, 5));
+                              cmb_random_dice(1, 5));
             printf("Scheduled event %llu\n", handle);
         }
     }
@@ -72,15 +72,14 @@ int main(void)
     printf("Scheduling end event\n");
     (void)cmb_event_schedule(end_sim, NULL, NULL, 100.0, 0);
     cmi_test_print_line("-");
-    cmb_event_heap_print(stdout);
-    cmb_event_hash_print(stdout);
+    cmb_event_queue_print(stdout);
     cmi_test_print_line("-");
 
     printf("\nSearching for an event (%p, %p, %p)...", (void *)test_action, subjects[1], objects[0]);
     uint64_t handle = cmb_event_find(test_action, (void *)subjects[1], (void *)objects[0]);
     if (handle != 0u) {
         printf("found event %llu\n", handle);
-        printf("It has time %g priority %d.\n", cmb_event_time(handle), cmb_event_priority(handle));
+        printf("It has time %g priority %lld.\n", cmb_event_time(handle), cmb_event_priority(handle));
 
         printf("Canceling it\n");
         cmb_event_cancel(handle);

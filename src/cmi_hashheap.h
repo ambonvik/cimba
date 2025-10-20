@@ -95,7 +95,8 @@ struct cmi_hash_tag {
  * and hash_size are the allocated number of slots, where hash_size is twice the
  * heap_size once initialized (an invariant).
  *
- * item_counter is a running count of all items seen, used to assign new handles.
+ * item_counter is a running count of all items seen, used to assign new handles
+ * valid for this hashheap only.
  */
 
 struct cmi_hashheap {
@@ -163,10 +164,19 @@ extern uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
 extern void **cmi_hashheap_dequeue(struct cmi_hashheap *hp);
 
 /*
- * cmi_hashheap_peek : Returns a pointer to the location of the item currently
- * at the top of the priority queue, without removing it.
+ * cmi_hashheap_count : Returns the number of items currently in the queue.
  */
-extern void **cmi_hashheap_peek(const struct cmi_hashheap *hp);
+extern uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp);
+
+/*
+ * cmi_hashheap_peek_item : Returns a pointer to the location of the item
+ * currently at the top of the priority queue, without removing it.
+ * Similarly, peek_dkey/ikey/ukey returns the dkey/ikey/ukey of the first item.
+ */
+extern void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp);
+extern double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp);
+extern int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp);
+extern uint64_t cmi_hashheap_peek_ukey(const struct cmi_hashheap *hp);
 
 /*
  * cmi_hashheap_cancel: Remove item from the priority queue. Returns true if
@@ -200,10 +210,10 @@ extern void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
                                       uint64_t ukey);
 
 /*
- * cmi_hashheap_find: Search the priority queue for an item with values matching
- * the given pattern and return its handle if one exists in the queue, i.e.
- *   (item[0] == val1) && (item[1] == val2) && (item[2] == val3).
- * Return zero if no match.
+ * cmi_hashheap_pattern_find: Search the priority queue for an item with values
+ * matching the given pattern and return its handle if one exists in the queue,
+ * i.e. (item[0] == val1) && (item[1] == val2) && (item[2] == val3).
+ * Return zero if no match (not a valid handle, starting from one).
  * The item value arguments to be matched can be NULL.
  * CMI_ANY_ITEM is a wildcard, matching any item value.
  *
@@ -215,22 +225,22 @@ extern void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
  */
 
 #define CMI_ANY_ITEM ((void *)0xFFFFFFFFFFFFFFFFull)
-extern uint64_t cmi_hashheap_find(const struct cmi_hashheap *hp,
+extern uint64_t cmi_hashheap_pattern_find(const struct cmi_hashheap *hp,
                                   const void *val1,
                                   const void *val2,
                                   const void *val3);
 
-/* cmi_hashheap_count : Similarly, count the number of matching items. */
-extern uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp,
+/* cmi_hashheap_pattern_count : Similarly, count the number of matching items. */
+extern uint64_t cmi_hashheap_pattern_count(const struct cmi_hashheap *hp,
                                    const void *val1,
                                    const void *val2,
                                    const void *val3);
 
 /*
- * cmi_hashheap_cancel_all : Cancel all matching items, returns the number
+ * cmi_hashheap_pattern_cancel : Cancel all matching items, returns the number
  * of events that were cancelled, possibly zero.
  */
-extern uint64_t cmi_hashheap_cancel_all(struct cmi_hashheap *hp,
+extern uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
                                      const void *val1,
                                      const void *val2,
                                      const void *val3);

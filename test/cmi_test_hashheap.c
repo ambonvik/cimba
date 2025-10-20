@@ -74,9 +74,9 @@ int main(void)
     uint64_t handle = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, 1.0, 1, 1);
     printf("returned handle %llu\n", handle);
     printf("Peekaboo: cmi_hashheap_peek ... \n");
-    void **item = cmi_hashheap_peek(hhp);
+    (void)cmi_hashheap_peek_item(hhp);
     printf("Pulling out an item: cmi_hashheap_dequeue ... \n");
-    item = cmi_hashheap_dequeue(hhp);
+    (void)cmi_hashheap_dequeue(hhp);
     printf("Clearing hash heap: cmi_hashheap_clear ...\n");
     cmi_hashheap_clear(hhp);
     printf("Destroying hash heap: cmi_hashheap_destroy ...\n");
@@ -87,13 +87,15 @@ int main(void)
     printf("Initializing hash heap: cmi_hashheap_init ...\n");
     cmi_hashheap_init(hhp, 3u, heap_order_check);
     printf("Adding 5 items: cmi_hashheap_enqueue ... \n");
+    uint64_t itemcnt = 0u;
     for (unsigned ui = 0; ui < 5; ui++) {
-        double d = cmb_random();
-        int64_t i = cmb_random_dice(0, 1000);
-        handle = cmi_hashheap_enqueue(hhp, (void *)ui, NULL, NULL, d, i, 0);
+        const double d = cmb_random();
+        const int64_t i = cmb_random_dice(0, 1000);
+        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, d, i, 0);
     }
 
     cmi_hashheap_print(hhp, stdout);
+    void **item = NULL;
     while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {
         printf("Dequeued item: %p\n", item[0]);
         cmi_hashheap_print(hhp, stdout);
@@ -101,16 +103,20 @@ int main(void)
 
     printf("Adding 10 items, forcing a resizing ... \n");
     for (unsigned ui = 0; ui < 10; ui++) {
-        double d = cmb_random();
-        int64_t i = cmb_random_dice(0, 1000);
-        handle = cmi_hashheap_enqueue(hhp, (void *)ui, NULL, NULL, d, i, 0);
+        const double d = cmb_random();
+        const int64_t i = cmb_random_dice(0, 1000);
+        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, d, i, 0);
     }
+
+    cmi_hashheap_print(hhp, stdout);
 
     while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {
         printf("Dequeued item: %p\n", item[0]);
-        void **nxtitem = cmi_hashheap_peek(hhp);
-        if (nxtitem != NULL) {
-            printf("Coming next: %p\n", nxtitem[0]);
+        if (cmi_hashheap_count(hhp) > 0u) {
+            void **nxtitem = cmi_hashheap_peek_item(hhp);
+            cmb_assert_debug(nxtitem != NULL);
+            const double d = cmi_hashheap_peek_dkey(hhp);
+            printf("Coming next: %p %f\n", nxtitem[0], d);
         }
         else {
             printf("No more items\n");

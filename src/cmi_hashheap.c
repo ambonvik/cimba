@@ -452,10 +452,20 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
 }
 
 /*
+ * cmi_hashheap_count : Number of items
+ */
+uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+
+    return hp->heap_count;
+}
+
+/*
  * cmi_hashheap_peek : Returns a pointer to the location of the item currently
  * at the top of the priority queue, without removing it.
  */
-void **cmi_hashheap_peek(const struct cmi_hashheap *hp) {
+void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp) {
     cmb_assert_release(hp != NULL);
 
     if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
@@ -468,6 +478,41 @@ void **cmi_hashheap_peek(const struct cmi_hashheap *hp) {
 
     return item;
 }
+
+double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(hp->heap != NULL);
+    cmb_assert_release(hp->heap_count != 0u);
+
+    struct cmi_heap_tag *first = &(hp->heap[1]);
+
+    return first->dkey;
+}
+
+int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(hp->heap != NULL);
+    cmb_assert_release(hp->heap_count != 0u);
+
+    struct cmi_heap_tag *first = &(hp->heap[1]);
+
+    return first->ikey;
+}
+
+uint64_t cmi_hashheap_peek_ukey(const struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(hp->heap != NULL);
+    cmb_assert_release(hp->heap_count != 0u);
+
+    struct cmi_heap_tag *first = &(hp->heap[1]);
+
+    return first->ukey;
+}
+
+
 
 /*
  * cmi_hashheap_cancel : Cancel the given event and reshuffle heap
@@ -638,14 +683,14 @@ static bool item_match(const struct cmi_heap_tag *htp,
 }
 
 /*
- * cmi_hashheap_find : Locate a specific event, using the CMB_ANY_* constants as
- * wildcards in the respective positions. Returns the handle of the event, or
+ * cmi_hashheap_find : Locate a specific event, using CMB_ANY_ITEM as a
+ * wildcard in the respective positions. Returns the handle of the event, or
  * zero if none found. Simple linear search from the start of the heap.
  */
-uint64_t cmi_hashheap_find(const struct cmi_hashheap *hp,
-                           const void *val1,
-                           const void *val2,
-                           const void *val3)
+uint64_t cmi_hashheap_pattern_find(const struct cmi_hashheap *hp,
+                                   const void *val1,
+                                   const void *val2,
+                                   const void *val3)
 {
     cmb_assert_debug(hp != NULL);
 
@@ -661,13 +706,13 @@ uint64_t cmi_hashheap_find(const struct cmi_hashheap *hp,
 }
 
 /*
- * cmi_hashheap_count : Count matching items using CMB_ANY_ITEM as wildcard.
- * Returns the number of matching items, possibly zero.
+ * cmi_hashheap_pattern_count : Count matching items using CMB_ANY_ITEM as a
+ * wildcard. Returns the number of matching items, possibly zero.
  */
-uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp,
-                            const void *val1,
-                            const void *val2,
-                            const void *val3)
+uint64_t cmi_hashheap_pattern_count(const struct cmi_hashheap *hp,
+                                    const void *val1,
+                                    const void *val2,
+                                    const void *val3)
 {
     cmb_assert_debug(hp != NULL);
 
@@ -683,17 +728,17 @@ uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp,
 }
 
 /*
- * cmi_hashheap_cancel_all : Cancel all matching items.
+ * cmi_hashheap_pattern_cancel : Cancel all matching items.
  * Two-pass approach: Allocate temporary storage for the list of
  * matching handles in the first pass, then cancel these in the
  * second pass. Avoids any possible issues caused by modification
  * (reshuffling) of the heap while iterating over it.
  * Returns the number of items cancelled, possibly zero.
  */
-uint64_t cmi_hashheap_cancel_all(struct cmi_hashheap *hp,
-                              const void *val1,
-                              const void *val2,
-                              const void *val3)
+uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
+                                     const void *val1,
+                                     const void *val2,
+                                     const void *val3)
 {
     cmb_assert_debug(hp != NULL);
 

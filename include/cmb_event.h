@@ -110,7 +110,7 @@ extern uint64_t cmb_event_schedule(cmb_event_func *action,
                                    void *subject,
                                    void *object,
                                    double time,
-                                   int16_t priority);
+                                   int64_t priority);
 
 /*
  *  cmb_event_next : Removes and executes the first event in the event queue.
@@ -137,7 +137,7 @@ extern double cmb_event_time(uint64_t handle);
  * cmb_event_priority : Get the current priority for an event
  * Precondition: The event is in the event queue.
  */
-extern int16_t cmb_event_priority(uint64_t handle);
+extern int64_t cmb_event_priority(uint64_t handle);
 
 /*
  * cmb_event_cancel: Remove event from event queue.
@@ -155,7 +155,7 @@ extern void cmb_event_reschedule(uint64_t handle, double time);
  * cmb_event_reprioritize: Reprioritizes event to another priority level
  * Precondition: The event is in the event queue.
  */
-extern void cmb_event_reprioritize(uint64_t handle, int16_t priority);
+extern void cmb_event_reprioritize(uint64_t handle, int64_t priority);
 
 /*
  * cmb_event_find: Search in event list for an event matching the given pattern
@@ -193,16 +193,10 @@ extern uint64_t cmb_event_cancel_all(cmb_event_func *action,
                                      const void *object);
 
 /*
- * cmb_event_heap_print : Print the current content of the event heap.
+ * cmb_event_queue_print : Print the current content of the event queue.
  * Intended for debugging use, will print hexadecimal pointer values and
  * similar raw data values from the event tag structs.
  */
-extern void cmb_event_heap_print(FILE *fp);
-
-/*
- * cmb_event_hash_print : Print the current content of the hash map.
- * Intended for debugging use, will print 64-bit handles and indexes.
- */
-extern void cmb_event_hash_print(FILE *fp);
+extern void cmb_event_queue_print(FILE *fp);
 
 #endif /* CIMBA_CMB_EVENT_H */
