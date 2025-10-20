@@ -6,9 +6,9 @@
  *
  * Each item in the priority queue is a tuple of (up to) three 64-bit payload
  * values, such as (action, subject, object) for an cmb_event.
- * The item is uniquely identified by a 64-bit handle returned when it is
- * enqueued. An item can be cancelled or reprioritized with reference to this
- * handle.
+ * The item is uniquely identified by a 64-bit non-zero handle returned when it
+ * is enqueued. An item can be cancelled or reprioritized with reference to this
+ * handle. Handles are not reused during the lifetime of the hashheap.
  *
  * An item in the queue has (up to) three priority keys for determining the
  * sorting order; one double, one signed 64-bit integer, and one unsigned 64-bit
@@ -62,7 +62,8 @@ struct cmi_heap_tag {
 
 /*
  * typedef cmi_heap_compare_func : Return true if a goes before b in the
- * priority queue order.
+ * priority queue order. Prototype only, actual compare function to be provided
+ * by the applicating when initializing a hashheap.
  */
 typedef bool (cmi_heap_compare_func)(const struct cmi_heap_tag *a,
                                      const struct cmi_heap_tag *b);
@@ -83,13 +84,12 @@ struct cmi_hash_tag {
  * the heap and hash map, and a function for ordering comparison between items
  * in the heap.
  *
- * The heap and hash map need to be sized as powers of two, the hash  map with
+ * The heap and hash map need to be sized as powers of two, the hash map with
  * twice as many entries as the heap. heap_exp defines a heap size of 2^heap_exp
- * and a hash map size of 2^(heap_exp + 1).
- *
- * Start small and fast, e.g., heap size 2^5 = 32 entries, total size of the
- * heaphash structure less than one page of memory and well inside the L1 cache
- * size. The data structure will grow as needed if more memory is required.
+ * and a hash map size of 2^(heap_exp + 1). It is adviseable to start small and
+ * fast, e.g., heap size 2^5 = 32 entries, total size of the heaphash structure
+ * less than one page of memory and well inside the L1 cache size. The data
+ * structure will grow as needed if more memory is required, but cannot shrink.
  *
  * The heap_count is the number of items currently in the heap, the heap_size
  * and hash_size are the allocated number of slots, where hash_size is twice the
@@ -113,26 +113,23 @@ struct cmi_hashheap {
 /*
  * cmi_hashheap_create : Allocate memory for a new priority queue.
  * Initializes the pointers to NULL, call cmi_hashmap_init next.
- *
- * hexp is the initial heap_exp, e.g. hex = 5 gives an initial heap
- * size of 2^5 = 32 and a hash map size of 2^(5+1) = 64.
  */
 extern struct cmi_hashheap *cmi_hashheap_create(void);
 
 /*
  * cmi_hashheap_init : Allocate and initiate the actual heap/hash array.
+ * Separate from cmi_hashheap_create to allow for inheritance by composition.
  *
- * A separate function from _create to allow for inheritance by composition.
+ * hexp is the initial heap_exp, e.g. hexp = 5 gives an initial heap
+ * size of 2^5 = 32 and a hash map size of 2^(5+1) = 64.
+ *
+ * cmp is the application-defined compare function for this hashheap, taking
+ * pointers to two heap tags and returning true if the first should go before
+ * the second, using whatever consideration is approprate for the usage.
  */
 extern void cmi_hashheap_init(struct cmi_hashheap *hp,
                              uint16_t hexp,
                              cmi_heap_compare_func *cmp);
-
-/*
- * cmi_hashheap_clear : Free memory allocated for the hash/heap array and reset
- * pointers to NULL. Does not free *hp itself.
- */
-extern void cmi_hashheap_clear(struct cmi_hashheap *hp);
 
 /*
  * cmi_hashheap_destroy : Free memory allocated for the priority queue,

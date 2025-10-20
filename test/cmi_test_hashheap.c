@@ -61,8 +61,6 @@ int main(void)
     struct cmi_hashheap *hhp = cmi_hashheap_create();
     printf("Initializing hash heap: cmi_hashheap_init ...\n");
     cmi_hashheap_init(hhp, 3u, heap_order_check);
-    printf("Clearing hash heap: cmi_hashheap_clear ...\n");
-    cmi_hashheap_clear(hhp);
     printf("Destroying hash heap: cmi_hashheap_destroy ...\n");
     cmi_hashheap_destroy(hhp);
 
@@ -77,8 +75,6 @@ int main(void)
     (void)cmi_hashheap_peek_item(hhp);
     printf("Pulling out an item: cmi_hashheap_dequeue ... \n");
     (void)cmi_hashheap_dequeue(hhp);
-    printf("Clearing hash heap: cmi_hashheap_clear ...\n");
-    cmi_hashheap_clear(hhp);
     printf("Destroying hash heap: cmi_hashheap_destroy ...\n");
     cmi_hashheap_destroy(hhp);
 
@@ -123,8 +119,6 @@ int main(void)
         }
     }
 
-    printf("Clearing hash heap: cmi_hashheap_clear ...\n");
-    cmi_hashheap_clear(hhp);
     printf("Destroying hash heap: cmi_hashheap_destroy ...\n");
     cmi_hashheap_destroy(hhp);
 

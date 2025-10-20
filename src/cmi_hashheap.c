@@ -322,20 +322,6 @@ void cmi_hashheap_init(struct cmi_hashheap *hp,
 }
 
 /*
- * cmi_hashheap_clear : Reset hashheap to initial state.
- */
-void cmi_hashheap_clear(struct cmi_hashheap *hp)
-{
-    cmb_assert_release(hp != NULL);
-
-    if (hp->heap != NULL) {
-        cmi_aligned_free(hp->heap);
-    }
-
-    hashheap_nullify(hp);
-}
-
-/*
  * cmi_hashheap_destroy : Clean up, deallocating space.
  * Note that hash_exp is not reset to initial value.
  */
@@ -344,7 +330,7 @@ void cmi_hashheap_destroy(struct cmi_hashheap *hp)
     cmb_assert_release(hp != NULL);
 
     if (hp->heap != NULL) {
-        cmi_hashheap_clear(hp);
+        cmi_aligned_free(hp->heap);
     }
 
     cmi_free(hp);
