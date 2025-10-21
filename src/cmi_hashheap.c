@@ -34,6 +34,14 @@
 #include "cmi_config.h"
 #include "cmi_memutils.h"
 
+/* Inlined functions from cmi_hashheap.h */
+extern uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp);
+extern bool cmi_hashheap_is_empty(const struct cmi_hashheap *hp);
+extern void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp);
+extern double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp);
+extern int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp);
+extern uint64_t cmi_hashheap_peek_ukey(const struct cmi_hashheap *hp);
+
 /*
  * hash_handle : Fibonacci hash function.
  *
@@ -312,27 +320,30 @@ void cmi_hashheap_init(struct cmi_hashheap *hp,
     const size_t npages = (size_t)(initsz + pagesz - 1u) / pagesz;
     cmb_assert_debug(npages >= 1u);
 
-    /* Allocate it and set pointers to heap and hash parts */
-    const unsigned char *abts = cmi_aligned_alloc(pagesz, npages * pagesz);
+    /* Allocate, initialize, set pointers to heap and hash parts */
+    unsigned char *abts = cmi_aligned_alloc(pagesz, npages * pagesz);
+    cmi_memset(abts, 0u, initsz);
+
     hp->heap = (struct cmi_heap_tag *)abts;
     hp->hash_map = (struct cmi_hash_tag *)(abts + heapbts);
-
-    /* Initialize the new hash map to all zeros */
-    cmi_memset(hp->hash_map, 0u, hashbts);
 }
 
 /*
- * cmi_hashheap_clear : Reset to newly created state.
+ * cmi_hashheap_clear : Zero out the hashheap. Does not reset the item counter
+ * for issuing new handles, does not free space, does not shrink the heap to its
+ * initial size, just empties it.
  */
 void cmi_hashheap_clear(struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
+    cmb_assert_release(hp->heap != NULL);
 
-    if (hp->heap != NULL) {
-        cmi_aligned_free(hp->heap);
-    }
-
-    hashheap_nullify(hp);
+    /* heap_size is allowed number of entries, calculate size in bytes */
+    const size_t heapbts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
+    const size_t hashbts = (hp->heap_size * 2u) * sizeof(struct cmi_hash_tag);
+    const size_t initsz = heapbts + hashbts;
+    cmi_memset(hp->heap, 0u, initsz);
+    hp->heap_count = 0u;
 }
 
 /*
@@ -446,67 +457,6 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
 
     /* Return a pointer to the start of the payload array */
     return heap[tmp].item;
-}
-
-/*
- * cmi_hashheap_count : Number of items
- */
-uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp)
-{
-    cmb_assert_release(hp != NULL);
-
-    return hp->heap_count;
-}
-
-/*
- * cmi_hashheap_peek : Returns a pointer to the location of the item currently
- * at the top of the priority queue, without removing it.
- */
-void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp) {
-    cmb_assert_release(hp != NULL);
-
-    if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
-        /* Nothing to do */
-        return NULL;
-    }
-
-    struct cmi_heap_tag *first = &(hp->heap[1]);
-    void **item = first->item;
-
-    return item;
-}
-
-double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp)
-{
-    cmb_assert_release(hp != NULL);
-    cmb_assert_release(hp->heap != NULL);
-    cmb_assert_release(hp->heap_count != 0u);
-
-    struct cmi_heap_tag *first = &(hp->heap[1]);
-
-    return first->dkey;
-}
-
-int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
-{
-    cmb_assert_release(hp != NULL);
-    cmb_assert_release(hp->heap != NULL);
-    cmb_assert_release(hp->heap_count != 0u);
-
-    struct cmi_heap_tag *first = &(hp->heap[1]);
-
-    return first->ikey;
-}
-
-uint64_t cmi_hashheap_peek_ukey(const struct cmi_hashheap *hp)
-{
-    cmb_assert_release(hp != NULL);
-    cmb_assert_release(hp->heap != NULL);
-    cmb_assert_release(hp->heap_count != 0u);
-
-    struct cmi_heap_tag *first = &(hp->heap[1]);
-
-    return first->ukey;
 }
 
 /*

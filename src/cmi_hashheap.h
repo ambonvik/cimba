@@ -41,6 +41,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "cmb_assert.h"
+
 /*
  * struct cmi_heap_tag : The record to store an item in the priority queue.
  * These tags only exist as members of the event queue array, never alone.
@@ -132,7 +134,9 @@ extern void cmi_hashheap_init(struct cmi_hashheap *hp,
                              cmi_heap_compare_func *cmp);
 
 /*
- * cmi_hashheap_clear : Resets the hash heap to newly created state.
+ * cmi_hashheap_clear : Empties the hash heap.
+ * Does not shrink the heap to the initial size, continues at the size it has.
+ * Does not reset the item counter for issuing new handles, continues series.
  */
 extern void cmi_hashheap_clear(struct cmi_hashheap *hp);
 /*
@@ -167,17 +171,79 @@ extern void **cmi_hashheap_dequeue(struct cmi_hashheap *hp);
 /*
  * cmi_hashheap_count : Returns the number of items currently in the queue.
  */
-extern uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp);
+inline uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+
+    return hp->heap_count;
+}
+
+/*
+ * cmi_hashheap_is_empty : Returns true if count = 0, false otherwise
+ */
+inline bool cmi_hashheap_is_empty(const struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+
+    return (hp->heap_count == 0u);
+}
 
 /*
  * cmi_hashheap_peek_item : Returns a pointer to the location of the item
  * currently at the top of the priority queue, without removing it.
- * Similarly, peek_dkey/ikey/ukey returns the dkey/ikey/ukey of the first item.
  */
-extern void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp);
-extern double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp);
-extern int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp);
-extern uint64_t cmi_hashheap_peek_ukey(const struct cmi_hashheap *hp);
+inline void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+
+    if (cmi_hashheap_is_empty(hp)) {
+        return NULL;
+    }
+
+    struct cmi_heap_tag *first = &(hp->heap[1]);
+    void **item = first->item;
+
+    return item;
+}
+
+/*
+ * cmi_hashheap_peek_dkey/ikey/ukey : Returns the dkey/ikey/ukey of first item.
+ *
+ * These functions have no good way to return an out-of-band error value, will
+ * fire an assert instead if called on an empty hashheap. Check first.
+ */
+inline double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(hp->heap != NULL);
+    cmb_assert_release(hp->heap_count != 0u);
+
+    const struct cmi_heap_tag *first = &(hp->heap[1]);
+
+    return first->dkey;
+}
+
+inline int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(hp->heap != NULL);
+    cmb_assert_release(hp->heap_count != 0u);
+
+    const struct cmi_heap_tag *first = &(hp->heap[1]);
+
+    return first->ikey;
+}
+
+inline uint64_t cmi_hashheap_peek_ukey(const struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(hp->heap != NULL);
+    cmb_assert_release(hp->heap_count != 0u);
+
+    struct cmi_heap_tag *first = &(hp->heap[1]);
+
+    return first->ukey;
+}
 
 /*
  * cmi_hashheap_cancel: Remove item from the priority queue. Returns true if
