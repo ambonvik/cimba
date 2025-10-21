@@ -76,7 +76,7 @@ int main(void)
     cmi_test_print_line("-");
 
     printf("\nSearching for an event (%p, %p, %p)...", (void *)test_action, subjects[1], objects[0]);
-    uint64_t handle = cmb_event_find(test_action, (void *)subjects[1], (void *)objects[0]);
+    uint64_t handle = cmb_event_pattern_find(test_action, (void *)subjects[1], (void *)objects[0]);
     if (handle != 0u) {
         printf("found event %llu\n", handle);
         printf("It has time %g priority %lld.\n", cmb_event_time(handle), cmb_event_priority(handle));
@@ -85,7 +85,7 @@ int main(void)
         cmb_event_cancel(handle);
 
         printf("\nSearching for it again...  ");
-        handle = cmb_event_find(test_action, (void *)subjects[1], (void *)objects[0]);
+        handle = cmb_event_pattern_find(test_action, (void *)subjects[1], (void *)objects[0]);
         printf("returned handle %llu %s\n", handle, ((handle == 0)? "not found" : "huh?"));
     }
     else {
@@ -93,7 +93,7 @@ int main(void)
     }
 
     printf("\nWildcard search, searching for test action events with subject %p, any object\n", subjects[2]);
-    while ((handle = cmb_event_find(test_action, (void *)subjects[2], CMB_ANY_OBJECT))) {
+    while ((handle = cmb_event_pattern_find(test_action, (void *)subjects[2], CMB_ANY_OBJECT))) {
         printf("\tcanceling %llu\n", handle);
         cmb_event_cancel(handle);
     }
@@ -104,17 +104,17 @@ int main(void)
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[2], 20.0, 1);
 
     printf("\nRescheduling and reprioritizing events with subject %p\n", subjects[2]);
-    handle = cmb_event_find(test_action, (void *)subjects[2], (void *)objects[0]);
+    handle = cmb_event_pattern_find(test_action, (void *)subjects[2], (void *)objects[0]);
     cmb_event_reschedule(handle, cmb_time() + 25.0);
-    handle = cmb_event_find(test_action, (void *)subjects[2], (void *)objects[1]);
+    handle = cmb_event_pattern_find(test_action, (void *)subjects[2], (void *)objects[1]);
     cmb_event_reprioritize(handle, 3);
 
     printf("\nWildcard search, counting events with subject %p, any object\n", subjects[1]);
-    uint64_t cnt = cmb_event_count(CMB_ANY_ACTION, subjects[1], CMB_ANY_OBJECT);
+    uint64_t cnt = cmb_event_pattern_count(CMB_ANY_ACTION, subjects[1], CMB_ANY_OBJECT);
     printf("Found %llu events\n", cnt);
 
     printf("\nWildcard search, cancelling any events with subject %p, any object\n", subjects[1]);
-    cnt = cmb_event_cancel_all(CMB_ANY_ACTION, subjects[1], CMB_ANY_OBJECT);
+    cnt = cmb_event_pattern_cancel(CMB_ANY_ACTION, subjects[1], CMB_ANY_OBJECT);
     printf("Cancelled %llu events\n", cnt);
     cmi_test_print_line("-");
 

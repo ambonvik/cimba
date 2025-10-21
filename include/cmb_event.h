@@ -82,7 +82,6 @@ extern double cmb_time(void);
  */
 extern void cmb_run(void);
 
-
 /*
  * typedef cmb_event_func : The generic event function type
  */
@@ -95,8 +94,7 @@ typedef void (cmb_event_func)(void *subject, void *object);
 extern void cmb_event_queue_init(double start_time);
 
 /*
- * cmb_event_queue_clear : Reset event queue to newly created state.
- * Call cmb_event_queue_init() again before a new run.
+ * cmb_event_queue_clear : Clears out all scheduled events from the queue.
  */
 extern void cmb_event_queue_clear(void);
 
@@ -104,6 +102,16 @@ extern void cmb_event_queue_clear(void);
  * cmb_event_queue_destroy : Free memory allocated for event queue and heap.
  */
 extern void cmb_event_queue_destroy(void);
+
+/*
+ * cmb_event_queue_is_empty : Is the event queue empty?
+ */
+extern bool cmb_event_queue_is_empty(void);
+
+/*
+ * cmb_event_queue_count : Returns current number of events in the queue.
+ */
+extern uint64_t cmb_event_queue_count(void);
 
 /*
  * cmb_event_schedule: Insert event in event queue as indicated by reactivation
@@ -150,7 +158,7 @@ extern int64_t cmb_event_priority(uint64_t handle);
 extern void cmb_event_cancel(uint64_t handle);
 
 /*
- * cmb_event_reschedule: Reschedules event at index to another (absolute) time
+ * cmb_event_reschedule: Reschedules event at index to another (absolute) time.
  * Precondition: The event is in the event queue.
  */
 extern void cmb_event_reschedule(uint64_t handle, double time);
@@ -177,12 +185,12 @@ extern void cmb_event_reprioritize(uint64_t handle, int64_t priority);
 #define CMB_ANY_SUBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
 #define CMB_ANY_OBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
 
-extern uint64_t cmb_event_find(cmb_event_func *action,
+extern uint64_t cmb_event_pattern_find(cmb_event_func *action,
                                const void *subject,
                                const void *object);
 
 /* cmb_event_count : Similarly, count the number of matching events. */
-extern uint64_t cmb_event_count(cmb_event_func *action,
+extern uint64_t cmb_event_pattern_count(cmb_event_func *action,
                                 const void *subject,
                                 const void *object);
 
@@ -192,7 +200,7 @@ extern uint64_t cmb_event_count(cmb_event_func *action,
  * events related to some subject or object if that thing no longer is alive in
  * the simulation.
  */
-extern uint64_t cmb_event_cancel_all(cmb_event_func *action,
+extern uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
                                      const void *subject,
                                      const void *object);
 

@@ -19,6 +19,7 @@
 
 #include <stdbool.h>
 
+#include "cmb_assert.h"
 #include "cmb_event.h"
 #include "cmb_logger.h"
 
@@ -33,11 +34,13 @@
  */
 static CMB_THREAD_LOCAL double sim_time = 0.0;
 
-/* event_queue : The main event queue, implemented as a hash/heap */
+/*
+ * event_queue : The main event queue, implemented as a hash/heap.
+ */
 static CMB_THREAD_LOCAL struct cmi_hashheap *event_queue = NULL;
 
-/* Initial capacity of the heap is 2^EVENT_INIT_HEAP items */
-#define EVENT_INIT_EXP 3
+/* Initial capacity of heap is 2^QUEUE_INIT_EXP items, resizing as needed */
+#define QUEUE_INIT_EXP 3
 
 /*
  * cmb_time : Return current simulation time.
@@ -89,7 +92,7 @@ void cmb_event_queue_init(const double start_time)
     sim_time = start_time;
 
     event_queue = cmi_hashheap_create();
-    cmi_hashheap_init(event_queue, EVENT_INIT_EXP, heap_order_check);
+    cmi_hashheap_init(event_queue, QUEUE_INIT_EXP, heap_order_check);
 }
 
 /*
@@ -112,6 +115,22 @@ void cmb_event_queue_destroy(void)
     cmb_assert_debug(event_queue != NULL);
 
     cmi_hashheap_destroy(event_queue);
+}
+
+/*
+ * cmb_event_queue_is_empty : Is the event queue empty?
+ */
+bool cmb_event_queue_is_empty(void)
+{
+    return cmi_hashheap_is_empty(event_queue);
+}
+
+/*
+ * cmb_event_queue_count : Returns current number of events in the queue.
+ */
+extern uint64_t cmb_event_queue_count(void)
+{
+    return cmi_hashheap_count(event_queue);
 }
 
 /*
@@ -170,15 +189,12 @@ int64_t cmb_event_priority(uint64_t handle)
 
 /*
  * cmb_event_execute_next : Remove and execute the next event, update clock.
- * The next event is always in position 1, while position 0 is working space
- * for the heap. Temporarily saves the next event to workspace at the end of
- * list before executing it, to ensure a consistent heap and hash when the event
- * starts executing.
+ * cmi_hashheap_dequeue returns a pointer to the location of the event.
+ * Copy the values to local variables before executing the event.
  */
 bool cmb_event_execute_next(void)
 {
-    if ((event_queue == NULL) || (cmi_hashheap_count(event_queue) == 0u)) {
-        /* Nothing to do */
+    if (cmb_event_queue_is_empty()) {
         return false;
     }
 
@@ -222,7 +238,7 @@ void cmb_event_cancel(const uint64_t handle)
 }
 
 /*
- * cmb_event_reschedule : Reschedule the given event and reshuffle heap
+ * cmb_event_reschedule : Reschedule the given event to the given absolute time.
  * Precondition: The event must be in heap.
  */
 void cmb_event_reschedule(const uint64_t handle, const double time)
@@ -258,13 +274,12 @@ void cmb_event_reprioritize(const uint64_t handle,
     cmi_hashheap_reprioritize(event_queue, handle, time, priority, 0u);
 }
 
-
 /*
- * cmb_event_find : Locate a specific event, using the CMB_ANY_* constants as
- * wildcards in the respective positions. Returns the handle of the event, or
- * zero if none found.
+ * cmb_event_pattern_find : Locate a specific event, using the CMB_ANY_*
+ * constants as wildcards in the respective positions. Returns the handle of
+ * the event, or zero if none found.
  */
-uint64_t cmb_event_find(cmb_event_func *action,
+uint64_t cmb_event_pattern_find(cmb_event_func *action,
                         const void *subject,
                         const void *object)
 {
@@ -279,10 +294,10 @@ uint64_t cmb_event_find(cmb_event_func *action,
 }
 
 /*
- * cmb_event_count : Count matching events using CMB_ANY_* as wildcards.
+ * cmb_event_pattern_count : Count matching events using CMB_ANY_* as wildcards.
  * Returns the number of matching events, possibly zero.
  */
-uint64_t cmb_event_count(cmb_event_func *action,
+uint64_t cmb_event_pattern_count(cmb_event_func *action,
                         const void *subject,
                         const void *object)
 {
@@ -304,7 +319,7 @@ uint64_t cmb_event_count(cmb_event_func *action,
  * (reshuffling) of the heap while iterating over it.
  * Returns the number of events cancelled, possibly zero.
  */
-uint64_t cmb_event_cancel_all(cmb_event_func *action,
+uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
                         const void *subject,
                         const void *object)
 {
