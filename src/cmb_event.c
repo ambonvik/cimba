@@ -152,9 +152,9 @@ uint64_t cmb_event_schedule(cmb_event_func *action,
                                  *(void**)(&(action)),
                                  subject,
                                  object,
+                                 NULL,
                                  time,
-                                 priority,
-                                 0u);
+                                 priority);
 }
 
 /*
@@ -248,11 +248,10 @@ void cmb_event_reschedule(const uint64_t handle, const double time)
     cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
     cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
 
-    /* Do not change the priority ikey, ukey not used */
+    /* Do not change the priority ikey */
     const int64_t pri = cmi_hashheap_get_ikey(event_queue, handle);
-    cmb_assert_debug(cmi_hashheap_get_ukey(event_queue, handle) == 0u);
 
-    cmi_hashheap_reprioritize(event_queue, handle, time, pri, 0u);
+    cmi_hashheap_reprioritize(event_queue, handle, time, pri);
 }
 
 /*
@@ -269,9 +268,8 @@ void cmb_event_reprioritize(const uint64_t handle,
     /* Do not change the priority ikey, ukey not used */
     const double time = cmi_hashheap_get_dkey(event_queue, handle);
     cmb_assert_debug(time >= sim_time);
-    cmb_assert_debug(cmi_hashheap_get_ukey(event_queue, handle) == 0u);
 
-    cmi_hashheap_reprioritize(event_queue, handle, time, priority, 0u);
+    cmi_hashheap_reprioritize(event_queue, handle, time, priority);
 }
 
 /*
@@ -290,7 +288,8 @@ uint64_t cmb_event_pattern_find(cmb_event_func *action,
     return cmi_hashheap_pattern_find(event_queue,
                                  vaction,
                                  subject,
-                                 object);
+                                 object,
+                                 CMI_ANY_ITEM);
 }
 
 /*
@@ -306,9 +305,10 @@ uint64_t cmb_event_pattern_count(cmb_event_func *action,
     const void *vaction = *(void**)(&(action));
 
     return cmi_hashheap_pattern_count(event_queue,
-                                 vaction,
+                                  vaction,
                                  subject,
-                                 object);
+                                 object,
+                                 CMI_ANY_ITEM);
 }
 
 /*
@@ -330,7 +330,8 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
     return cmi_hashheap_pattern_cancel(event_queue,
                                  vaction,
                                  subject,
-                                 object);
+                                 object,
+                                 CMI_ANY_ITEM);
 }
 
 /*

@@ -365,9 +365,9 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
                                      void *pl1,
                                      void *pl2,
                                      void *pl3,
+                                     void *pl4,
                                      const double dkey,
-                                     const int64_t ikey,
-                                     const uint64_t ukey)
+                                     const int64_t ikey)
 {
     cmb_assert_release(hp != NULL);
     cmb_assert_debug(hp->heap != NULL);
@@ -394,9 +394,9 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
     heap[hc].item[0] = pl1;
     heap[hc].item[1] = pl2;
     heap[hc].item[2] = pl3;
+    heap[hc].item[3] = pl4;
     heap[hc].dkey = dkey;
     heap[hc].ikey = ikey;
-    heap[hc].ukey = ukey;
 
     /* Initialize the hashtag for the event, pointing it to the heaptag */
     const uint64_t idx = hash_find_slot(hp, handle);
@@ -561,21 +561,6 @@ int64_t cmi_hashheap_get_ikey(const struct cmi_hashheap *hp,
 
 }
 
-uint64_t cmi_hashheap_get_ukey(const struct cmi_hashheap *hp,
-                               const uint64_t handle)
-{
-    cmb_assert_release(hp != NULL);
-    cmb_assert_release(handle != 0u);
-    cmb_assert_debug(hp->heap != NULL);
-    cmb_assert_debug(hp->heap_count != 0u);
-
-    const uint64_t idx = hash_find_handle(hp, handle);
-    cmb_assert_release(idx != 0u);
-
-    return hp->heap[idx].ukey;
-
-}
-
 /*
  * cmi_hashheap_reprioritize: Changes one or more of the prioritization keys
  * and reshuffles the heap.
@@ -584,8 +569,7 @@ uint64_t cmi_hashheap_get_ukey(const struct cmi_hashheap *hp,
 void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
                                const uint64_t handle,
                                const double dkey,
-                               const int64_t ikey,
-                               const uint64_t ukey) {
+                               const int64_t ikey) {
     cmb_assert_release(hp != NULL);
     cmb_assert_release(handle != 0u);
     cmb_assert_debug(hp->heap != NULL);
@@ -600,7 +584,6 @@ void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
 
     hp->heap[idx].dkey = dkey;
     hp->heap[idx].ikey = ikey;
-    hp->heap[idx].ukey = ukey;
 
     if ((*hp->heap_compare)(&(hp->heap[0]), &(hp->heap[idx]))) {
         /* The old values should go before the new ones, item heading down */
@@ -619,14 +602,16 @@ void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
 static bool item_match(const struct cmi_heap_tag *htp,
                        const void *val1,
                        const void *val2,
-                       const void *val3)
+                       const void *val3,
+                       const void *val4)
 {
     cmb_assert_debug(htp != NULL);
 
     bool ret = true;
     if ( ((val1 != htp->item[0]) && (val1 != CMI_ANY_ITEM))
       || ((val2 != htp->item[1]) && (val2 != CMI_ANY_ITEM))
-      || ((val3 != htp->item[2]) && (val3 != CMI_ANY_ITEM))) {
+      || ((val3 != htp->item[2]) && (val3 != CMI_ANY_ITEM))
+      || ((val4 != htp->item[3]) && (val4 != CMI_ANY_ITEM))) {
         ret = false;
     }
 
@@ -641,13 +626,14 @@ static bool item_match(const struct cmi_heap_tag *htp,
 uint64_t cmi_hashheap_pattern_find(const struct cmi_hashheap *hp,
                                    const void *val1,
                                    const void *val2,
-                                   const void *val3)
+                                   const void *val3,
+                                   const void *val4)
 {
     cmb_assert_debug(hp != NULL);
 
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
-        if (item_match(htp, val1, val2, val3)) {
+        if (item_match(htp, val1, val2, val3, val4)) {
             return htp->handle;
         }
     }
@@ -663,14 +649,15 @@ uint64_t cmi_hashheap_pattern_find(const struct cmi_hashheap *hp,
 uint64_t cmi_hashheap_pattern_count(const struct cmi_hashheap *hp,
                                     const void *val1,
                                     const void *val2,
-                                    const void *val3)
+                                    const void *val3,
+                                    const void *val4)
 {
     cmb_assert_debug(hp != NULL);
 
     uint64_t cnt = 0u;
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
-        if (item_match(htp, val1, val2, val3)) {
+        if (item_match(htp, val1, val2, val3, val4)) {
             cnt++;
         }
     }
@@ -689,7 +676,8 @@ uint64_t cmi_hashheap_pattern_count(const struct cmi_hashheap *hp,
 uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
                                      const void *val1,
                                      const void *val2,
-                                     const void *val3)
+                                     const void *val3,
+                                     const void *val4)
 {
     cmb_assert_debug(hp != NULL);
 
@@ -704,7 +692,7 @@ uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
     /* First pass, recording the matches */
     for (uint64_t ui = 1; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
-        if (item_match(htp, val1, val2, val3)) {
+        if (item_match(htp, val1, val2, val3, val4)) {
             /* Matched, note it on the list */
             tmp[cnt++] = htp->handle;
         }
@@ -732,16 +720,16 @@ void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
     fprintf(fp, "Heap section:\n");
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
-        fprintf(fp, "heap index %llu: handle %llu dkey %#8.4g ikey %lld ukey %llu : hash %llu : %p  %p  %p\n",
+        fprintf(fp, "heap index %llu: handle %llu dkey %#8.4g ikey %lld : hash %llu : %p %p %p %p\n",
                 ui,
                 htp->handle,
                 htp->dkey,
                 htp->ikey,
-                htp->ukey,
                 htp->hash_index,
                 htp->item[0],
                 htp->item[1],
-                htp->item[2]);
+                htp->item[2],
+                htp->item[3]);
     }
 
     fprintf(fp, "\nHash map section:\n");

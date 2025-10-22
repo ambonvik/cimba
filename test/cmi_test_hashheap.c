@@ -69,7 +69,7 @@ int main(void)
     printf("Initializing hash heap: cmi_hashheap_init ...\n");
     cmi_hashheap_init(hhp, 3u, heap_order_check);
     printf("Adding an item: cmi_hashheap_enqueue ... ");
-    uint64_t handle = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, 1.0, 1, 1);
+    uint64_t handle = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, NULL, 1.0, 1);
     printf("returned handle %llu\n", handle);
     printf("Peekaboo: cmi_hashheap_peek ... \n");
     (void)cmi_hashheap_peek_item(hhp);
@@ -87,7 +87,7 @@ int main(void)
     for (unsigned ui = 0; ui < 5; ui++) {
         const double d = cmb_random();
         const int64_t i = cmb_random_dice(0, 1000);
-        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, d, i, 0);
+        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, NULL, d, i);
     }
 
     cmi_hashheap_print(hhp, stdout);
@@ -101,7 +101,7 @@ int main(void)
     for (unsigned ui = 0; ui < 10; ui++) {
         const double d = cmb_random();
         const int64_t i = cmb_random_dice(0, 1000);
-        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, d, i, 0);
+        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, NULL, d, i);
     }
 
     cmi_hashheap_print(hhp, stdout);

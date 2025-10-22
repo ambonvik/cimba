@@ -103,7 +103,7 @@ int main(void)
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[1], 20.0, 1);
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[2], 20.0, 1);
 
-    printf("\nRescheduling and reprioritizing events with subject %p\n", subjects[2]);
+    printf("\nRescheduling and reprioritizing two events with subject %p\n", subjects[2]);
     handle = cmb_event_pattern_find(test_action, (void *)subjects[2], (void *)objects[0]);
     cmb_event_reschedule(handle, cmb_time() + 25.0);
     handle = cmb_event_pattern_find(test_action, (void *)subjects[2], (void *)objects[1]);

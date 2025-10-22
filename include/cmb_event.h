@@ -6,14 +6,11 @@
  * arguments and returning void. The arguments are application defined,
  * but the intention is to provide tuples of (action, subject, object)
  * consisting of pointers to the event function and its two arguments.
+ * It will be called as *action(subject, object) when it is its turn.
  *
- * This is similar to a closure, i.e., an object consisting of a function
- * and its context, for execution at some other point in time and space.
- * In this case, it will be called as *action(subject, object) when it is
- * its turn. Afterwards, control will return to the event dispatcher, which
- * does not know much about the event specifics. Hence, no need to return
- * indications of success or failure (or anything else) from the event
- * function - void (*action)(void *object, void *subject).
+ * Afterwards, control will return to the event dispatcher, which does not know
+ * much about the event specifics. Hence, no need to return indications of
+ * success or failure (or anything else) from the event function.
  *
  * The first argument void *subject can be understood as the implicit
  * self or this pointer in an object-oriented language. It can be used as
@@ -74,10 +71,9 @@ extern double cmb_time(void);
 /*
  * cmb_run : Executes the event list until empty or otherwise stopped.
  *
- * Schedule an event calling cmb_event_list_destroy() or calling
- * cmb_event_cancel_all(CMB_ANY_ACTION, CMB_ANY_SUBJECT, CMB_ANY_OBJECT)
+ * Schedule an event calling cmb_event_list_clear() or cmb_event_cancel_all(...)
  * to zero out the event queue and stop the simulation. This can either be pre-
- * scheduled at some particular time or triggered by some other condition such
+ * scheduled for some particular time or triggered by some other condition such
  * as reaching a certain number of samples in some data collector.
  */
 extern void cmb_run(void);
@@ -191,8 +187,8 @@ extern uint64_t cmb_event_pattern_find(cmb_event_func *action,
 
 /* cmb_event_count : Similarly, count the number of matching events. */
 extern uint64_t cmb_event_pattern_count(cmb_event_func *action,
-                                const void *subject,
-                                const void *object);
+                                        const void *subject,
+                                        const void *object);
 
 /*
  * cmb_event_cancel_all : Cancel all matching events, returns the number
@@ -201,8 +197,8 @@ extern uint64_t cmb_event_pattern_count(cmb_event_func *action,
  * the simulation.
  */
 extern uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
-                                     const void *subject,
-                                     const void *object);
+                                         const void *subject,
+                                         const void *object);
 
 /*
  * cmb_event_queue_print : Print the current content of the event queue.

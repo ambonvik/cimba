@@ -4,20 +4,20 @@
  * priority queues associated with each guarded resource. It provides enqueue,
  * dequeue, peek, and cancel operations, plus item search functions.
  *
- * Each item in the priority queue is a tuple of (up to) three 64-bit payload
- * values, such as (action, subject, object) for an cmb_event.
- * The item is uniquely identified by a 64-bit non-zero handle returned when it
- * is enqueued. An item can be cancelled or reprioritized with reference to this
- * handle. Handles are not reused during the lifetime of the hashheap.
+ * Each item in the priority queue is a tuple of (up to) four 64-bit payload
+ * values. The item is uniquely identified by a 64-bit non-zero handle returned
+ * when it is enqueued. An item can be cancelled or reprioritized with reference
+ * to this handle. Handles are not reused during the lifetime of the hashheap.
  *
- * An item in the queue has (up to) three priority keys for determining the
- * sorting order; one double, one signed 64-bit integer, and one unsigned 64-bit
- * integer. The semantics are application defined, determined by a compare
- * function that takes two pointers to items a and b, and returns a bool
- * indicating if a should precede b in the priority order. For example, in the
- * main event queue, the priority keys would be reactivation time, priority, and
- * the sequential event handle. A pointer to the appropriate compare function is
- * stored in the hashheap control structure.
+ * An item in the queue has (up to) two priority keys for determining the
+ * sorting order; one double and one signed 64-bit integer. The semantics are
+ * application defined, determined by a compare function that takes two pointers
+ * to items a and b, and returns a bool indicating if a should precede b in the
+ * priority order. The compare function can use any other properties as well.
+ * For example, in the main event queue, the priority keys would be reactivation
+ * time (double), priority (integer), and the sequential event handle. A pointer
+ * to the appropriate compare function is stored in the hashheap control
+ * structure.
  *
  * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
  *
@@ -47,7 +47,7 @@
  * struct cmi_heap_tag : The record to store an item in the priority queue.
  * These tags only exist as members of the event queue array, never alone.
  * The handle is a unique event identifier, the hash_index a reference to where
- * in the hash map it is located. The item is a 3-tuple of 64-bit values, here
+ * in the hash map it is located. The item is a 4-tuple of 64-bit values, here
  * represented as void*, but could be used for any other 64-bit value depending
  * on application needs (see cmb_event.c for an example).
  *
@@ -56,10 +56,9 @@
 struct cmi_heap_tag {
     uint64_t handle;
     uint64_t hash_index;
-    void *item[3];
+    void *item[4];
     double dkey;
     int64_t ikey;
-    uint64_t ukey;
 };
 
 /*
@@ -146,8 +145,8 @@ extern void cmi_hashheap_clear(struct cmi_hashheap *hp);
 extern void cmi_hashheap_destroy(struct cmi_hashheap *hp);
 
 /*
- * cmi_hashheap_enqueue: Insert an item (pl1, pl2, pl3) into the priority queue
- * using the priority keys dkey, ikey, ukey. The exact meaning is application
+ * cmi_hashheap_enqueue: Insert an item (pl1, pl2, pl3, pl4) into the priority
+ * queue using the priority keys dkey and ikey. The exact meaning is application
  * defined, depending on the heap compare function provided.
  *
  * Returns the handle to the new item, handle > 0.
@@ -156,9 +155,9 @@ extern uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
                                      void *pl1,
                                      void *pl2,
                                      void *pl3,
+                                     void *pl4,
                                      double dkey,
-                                     int64_t ikey,
-                                     uint64_t ukey);
+                                     int64_t ikey);
 
 /*
  * cmi_hashheap_dequeue : Removes the highest priority item from the queue
@@ -207,7 +206,7 @@ inline void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_peek_dkey/ikey/ukey : Returns the dkey/ikey/ukey of first item.
+ * cmi_hashheap_peek_dkey/ikey : Returns the dkey/ikey of first item.
  *
  * These functions have no good way to return an out-of-band error value, will
  * fire an assert instead if called on an empty hashheap. Check first.
@@ -232,17 +231,6 @@ inline int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
     const struct cmi_heap_tag *first = &(hp->heap[1]);
 
     return first->ikey;
-}
-
-inline uint64_t cmi_hashheap_peek_ukey(const struct cmi_hashheap *hp)
-{
-    cmb_assert_release(hp != NULL);
-    cmb_assert_release(hp->heap != NULL);
-    cmb_assert_release(hp->heap_count != 0u);
-
-    struct cmi_heap_tag *first = &(hp->heap[1]);
-
-    return first->ukey;
 }
 
 /*
@@ -273,8 +261,7 @@ extern uint64_t cmi_hashheap_get_ukey(const struct cmi_hashheap *hp, uint64_t ha
 extern void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
                                       uint64_t handle,
                                       double dkey,
-                                      int64_t ikey,
-                                      uint64_t ukey);
+                                      int64_t ikey);
 
 /*
  * cmi_hashheap_pattern_find: Search the priority queue for an item with values
@@ -295,22 +282,25 @@ extern void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
 extern uint64_t cmi_hashheap_pattern_find(const struct cmi_hashheap *hp,
                                   const void *val1,
                                   const void *val2,
-                                  const void *val3);
+                                  const void *val3,
+                                  const void *val4);
 
 /* cmi_hashheap_pattern_count : Similarly, count the number of matching items. */
 extern uint64_t cmi_hashheap_pattern_count(const struct cmi_hashheap *hp,
-                                   const void *val1,
-                                   const void *val2,
-                                   const void *val3);
+                                           const void *val1,
+                                           const void *val2,
+                                           const void *val3,
+                                           const void *val4);
 
 /*
  * cmi_hashheap_pattern_cancel : Cancel all matching items, returns the number
  * of events that were cancelled, possibly zero.
  */
 extern uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
-                                     const void *val1,
-                                     const void *val2,
-                                     const void *val3);
+                                            const void *val1,
+                                            const void *val2,
+                                            const void *val3,
+                                            const void *val4);
 
 /*
  * cmi_hashheap_print : Print the current content of the heap and hash map.
