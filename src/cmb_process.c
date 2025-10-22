@@ -42,14 +42,15 @@ struct cmb_process {
 struct cmb_process *cmb_process_create(const char *name,
                                        cmb_process_func foo,
                                        void *context,
-                                       int16_t priority)
+                                       const int16_t priority)
 {
     /* Allocate memory and initialize the cmi_coroutine parts */
     struct cmb_process *pp = cmi_malloc(sizeof(*pp));
     cmi_coroutine_init((struct cmi_coroutine *)pp,
                        (cmi_coroutine_func *)foo,
                        context,
-              CMB_PROCESS_STACK_SIZE);
+                       (cmi_coroutine_exit_func *)cmb_process_exit,
+                       CMB_PROCESS_STACK_SIZE);
 
     /* Initialize the cmi_process parts */
     (void)cmb_process_set_name(pp, name);

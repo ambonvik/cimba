@@ -60,7 +60,7 @@ extern void cmi_coroutine_trampoline(void);
  *
  * Here, we set up a context with the launcher/trampoline function as the
  * "return" address and register values that prepare for launching the
- * coroutine function foo(coro, arg) on first transfer, and for calling
+ * coroutine function cr_foo(coro, arg) on first transfer, and for calling
  * cmb_coroutine_exit to catch its exit value if the coroutine function ever
  * returns.
  *
@@ -69,7 +69,7 @@ extern void cmi_coroutine_trampoline(void);
  *  - cp_>stack_base points to the top of the stack area (high address).
  *  - cp->stack_pointer stores the current stack pointer between transfers.
  *
- * We will preload the address of the coroutine function foo(cp, arg) in R12,
+ * We will preload the address of the coroutine function cr_foo(cp, arg) in R12,
  * the coroutine pointer cp in R13, and the void *arg in R14. We will also
  * store the address of cmb_coroutine_exit in R15 before the first transfer into
  * the new coroutine, to be called with the return value from the coroutine
@@ -87,7 +87,7 @@ extern void cmi_coroutine_trampoline(void);
     cmb_assert_debug(cp->stack_base != NULL);
     cmb_assert_debug(cp->stack_limit != NULL);
 
-    struct cmi_coroutine *cp_main = cmi_coroutine_get_main();
+    const struct cmi_coroutine *cp_main = cmi_coroutine_get_main();
     if (cp == cp_main) {
         cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
         cmb_assert_debug(cp->stack == NULL);
@@ -111,9 +111,7 @@ extern void cmi_coroutine_trampoline(void);
 
 #endif /* NASSERT */
 
-void cmi_coroutine_context_init(struct cmi_coroutine *cp,
-                                cmi_coroutine_func *foo,
-                                void *context)
+void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
     cmb_assert_debug(cp->stack != NULL),
@@ -178,7 +176,7 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp,
 
     /* Place address of coroutine function in R12 */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)foo;
+    *(uint64_t *)stkptr = (uintptr_t)(cp->cr_foo);
 
     /* Place address of coroutine struct in R13 */
     stkptr -= 8u;
@@ -186,11 +184,16 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp,
 
     /* Place coroutine function context argument in R14 */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)context;
+    *(uint64_t *)stkptr = (uintptr_t)(cp->context);
 
     /* Place address of exit function in R15 */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_exit;
+    if (cp->cr_exit == NULL) {
+        *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_exit;
+    }
+    else {
+         *(uint64_t *)stkptr = (uintptr_t)(cp->cr_exit);
+    }
 
     /* Add space for 10 XMM registers * 16 bytes + 8 bytes for alignment */
     stkptr = (unsigned char *)((uintptr_t)stkptr - 168);

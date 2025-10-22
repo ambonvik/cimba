@@ -45,10 +45,9 @@ extern void *cmi_coroutine_get_stacklimit(void);
 
 /* OS specific C code, see src/arch/cmi_coroutine_context_*.c */
 extern bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp);
-extern void cmi_coroutine_context_init(struct cmi_coroutine *cp,
-                                       cmi_coroutine_func *foo,
-                                       void *context);
+extern void cmi_coroutine_context_init(struct cmi_coroutine *cp);
 
+/* Simple getters and putters, not inlined to avoid exposing internals */
 struct cmi_coroutine *cmi_coroutine_get_current(void)
 {
     return coroutine_current;
@@ -123,20 +122,18 @@ static void coroutine_create_main(void)
  * cmi_coroutine_create : Create a coroutine with the given stack size,
  * creating a main coroutine object if not done already.
  */
-struct cmi_coroutine *cmi_coroutine_create(cmi_coroutine_func foo,
-                                           void *context,
-                                           const size_t stack_size)
+struct cmi_coroutine *cmi_coroutine_create(void)
 {
     /* Create the new coroutine and stack */
     struct cmi_coroutine *cp = cmi_malloc(sizeof(*cp));
-    cmi_coroutine_init(cp, foo, context, stack_size);
 
     return cp;
 }
 
 void cmi_coroutine_init(struct cmi_coroutine *cp,
-                        cmi_coroutine_func foo,
+                        cmi_coroutine_func *crfoo,
                         void *context,
+                        cmi_coroutine_exit_func *crbar,
                         const size_t stack_size)
 {
     /* Create a dummy main coroutine if not already existing */
@@ -154,8 +151,10 @@ void cmi_coroutine_init(struct cmi_coroutine *cp,
     cp->stack_limit = NULL;
     cp->stack_pointer = NULL;
     cp->status = CMI_COROUTINE_CREATED;
-    cp->foo = foo;
+    cp->cr_foo = crfoo;
     cp->context = context;
+    cp->cr_exit = crbar;
+    cp->exit_value = NULL;
 }
 
 /*
@@ -173,7 +172,7 @@ void *cmi_coroutine_start(struct cmi_coroutine *cp, void *msg)
     cmb_assert_debug(coroutine_current != NULL);
 
     /* Prepare the stack for launching the coroutine function */
-    cmi_coroutine_context_init(cp, cp->foo, cp->context);
+    cmi_coroutine_context_init(cp);
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 
     /* The current coroutine now becomes both the parent and caller of cp */
