@@ -155,16 +155,16 @@ extern int64_t cmb_process_hold(double dur);
 extern void cmb_process_exit(void *retval);
 
 /*
- * cmb_process_interrupt : Preempt a holding process, passing the non-zero
+ * cmb_process_interrupt : Interrupt a holding process, passing the non-zero
  * signal value sig, which will appear as return value from cmb_process_hold.
  * The signal cannot be CMB_PROCESS_HOLD_NORMAL, since that would appear as a
  * normal, non-interrupted return from cmb_process_hold.
  *
- * This will enter an interrupt event with priority pri at the current
- * simulation time, rather than calling the process interrupt handler directly.
- * This lets the calling process complete whatever it is doing at the current
- * time before the interrupt is executed and control is transferred to the
- * interrupted process.
+ * Enters an interrupt event with priority pri at the current simulation time,
+ * rather than calling the process interrupt handler directly. This lets the
+ * calling process complete whatever else it is doing at the current time before
+ * the interrupt is executed and control is transferred to the interrupted
+ * process.
  *
  * Since this allows multiple interrupts on the same process, the interrupt
  * event function will check if the process still is holding in the event queue
@@ -173,6 +173,21 @@ extern void cmb_process_exit(void *retval);
 extern void cmb_process_interrupt(struct cmb_process *pp,
                                   int64_t sig,
                                   int16_t pri);
+
+/*
+ * cmb_process_wait : Wait for some other proceess to finish.
+ * Returns immediately if awaited already is finished.
+ * Similar to pthreads join.
+ */
+#define CMB_PROCESS_WAIT_NORMAL (0LL)
+#define CMB_PROCESS_WAIT_STOPPED (1LL)
+extern int64_t cmb_process_wait(struct cmb_process *pp,
+                                struct cmb_process *awaited);
+
+/*
+ * cmb_process_wait_cancel : Remove pp from awaited's wait list.
+ */
+extern void cmb_process_wait_cancel(const struct cmb_process *pp, const struct cmb_process *awaited);
 
 /*
  * cmb_process_stop : Terminate the target process by scheduling a stop event.
