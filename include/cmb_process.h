@@ -36,7 +36,6 @@
 #define CIMBA_CMB_PROCESS_H
 
 #include "cmb_event.h"
-#include "cmi_coroutine.h"
 
 /*
  * struct cmb_process : Opaque struct. See cmb_process.c for implementation

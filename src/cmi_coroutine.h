@@ -220,12 +220,15 @@ extern void *cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context);
 extern void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp);
 
 /*
+ * cmi_coroutine_clear : Destroys stack memory, not coroutine object itself.
+ * Coroutine can be restarted from the beginning by calling cmi_coroutine_start.
+ */
+extern void cmi_coroutine_clear(struct cmi_coroutine *cp);
+
+/*
  * cmi_coroutine_destroy : Free memory allocated to coroutine.
  */
 extern void cmi_coroutine_destroy(struct cmi_coroutine *cp);
-
-/* Helper function to free memory allocated to stack only */
-extern void cmi_coroutine_destroy_stack(struct cmi_coroutine *cp);
 
 /*****************************************************************************/
 /*         Functions called from within the coroutine                        */

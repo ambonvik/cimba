@@ -21,6 +21,7 @@
 #include "cmb_logger.h"
 #include "cmb_process.h"
 
+#include "cmi_coroutine.h"
 #include "cmi_memutils.h"
 
 /*
@@ -46,6 +47,7 @@ struct cmb_process *cmb_process_create(const char *name,
 {
     /* Allocate memory and initialize the cmi_coroutine parts */
     struct cmb_process *pp = cmi_malloc(sizeof(*pp));
+    cmi_memset(pp, 0, sizeof(*pp));
     cmi_coroutine_init((struct cmi_coroutine *)pp,
                        (cmi_coroutine_func *)foo,
                        context,
