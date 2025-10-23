@@ -59,11 +59,12 @@ typedef void *(cmb_process_func)(struct cmb_process *cp, void *context);
 extern struct cmb_process *cmb_process_create(const char *name,
                                               cmb_process_func foo,
                                               void *context,
-                                              int16_t priority);
+                                              int64_t priority);
 
 /*
  * cmb_process_destroy : Deallocates memory for the process struct and its
- * underlying coroutine.
+ * underlying coroutine. The process cannot be in a running state and no other
+ * process can be waiting for it.
  */
 extern void cmb_process_destroy(struct cmb_process *pp);
 
@@ -112,13 +113,13 @@ extern void *cmb_process_set_context(struct cmb_process *pp, void *context);
 /*
  * cmb_process_get_priority : Returns the current priority for the process.
  */
-extern int16_t cmb_process_get_priority(const struct cmb_process *pp);
+extern int64_t cmb_process_get_priority(const struct cmb_process *pp);
 
 /*
  * cmb_process_set_priority : Changes the priority for the process, returning the
  * old priority value.
  */
-extern int16_t cmb_process_set_priority(struct cmb_process *pp, int16_t pri);
+extern int64_t cmb_process_set_priority(struct cmb_process *pp, int64_t pri);
 
 /*
  * cmb_process_get_exit_value : Returns the stored exit value from the process,
@@ -172,22 +173,23 @@ extern void cmb_process_exit(void *retval);
  */
 extern void cmb_process_interrupt(struct cmb_process *pp,
                                   int64_t sig,
-                                  int16_t pri);
+                                  int64_t pri);
 
 /*
- * cmb_process_wait : Wait for some other proceess to finish.
+ * cmb_process_wait_process : Wait for some other proceess to finish.
  * Returns immediately if awaited already is finished.
  * Similar to pthreads join.
  */
 #define CMB_PROCESS_WAIT_NORMAL (0LL)
 #define CMB_PROCESS_WAIT_STOPPED (1LL)
-extern int64_t cmb_process_wait(struct cmb_process *pp,
-                                struct cmb_process *awaited);
+extern int64_t cmb_process_wait_process(struct cmb_process *pp,
+                                        struct cmb_process *awaited);
 
 /*
- * cmb_process_wait_cancel : Remove pp from awaited's wait list.
+ * cmb_process_wait_process_cancel : Remove pp from awaited's wait list.
  */
-extern void cmb_process_wait_cancel(const struct cmb_process *pp, const struct cmb_process *awaited);
+extern void cmb_process_wait_process_cancel(const struct cmb_process *pp,
+                                            const struct cmb_process *awaited);
 
 /*
  * cmb_process_stop : Terminate the target process by scheduling a stop event.

@@ -35,18 +35,17 @@ struct process_tag;
 struct cmb_process {
     struct cmi_coroutine cr;
     char name[CMB_PROCESS_NAMEBUF_SZ];
-    int16_t priority;
+    int64_t priority;
     uint64_t wakeup_handle;
     struct process_tag *waiter_tag;
 };
 
 /*
- * struct process_tag : A tag for the linked list of processes waiting for
- * some process.
+ * struct process_tag : A tag for the singly linked list of processes waiting
+ * for some process or event.
  */
 struct process_tag {
     struct process_tag *next;
-    struct process_tag *prev;
     struct cmb_process *proc;
 };
 
@@ -62,7 +61,7 @@ static CMB_THREAD_LOCAL struct cmi_mempool *tag_pool = NULL;
 struct cmb_process *cmb_process_create(const char *name,
                                        cmb_process_func foo,
                                        void *context,
-                                       const int16_t priority)
+                                       const int64_t priority)
 {
     /* Allocate memory and initialize the cmi_coroutine parts */
     struct cmb_process *pp = cmi_malloc(sizeof(*pp));
@@ -88,11 +87,13 @@ struct cmb_process *cmb_process_create(const char *name,
  */
 void cmb_process_destroy(struct cmb_process *pp)
 {
-    cmb_assert_debug(pp != NULL);
+    cmb_assert_release(pp != NULL);
+    cmb_assert_release(pp->waiter_tag == NULL);
 
     const struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     cmb_assert_debug(cp != cmi_coroutine_get_main());
     cmb_assert_debug(cp != cmi_coroutine_get_current());
+    cmb_assert_debug(cp->status != CMI_COROUTINE_RUNNING);
 
     if (cp->stack != NULL) {
         cmi_free(cp->stack);
@@ -115,115 +116,15 @@ static void process_start_event(void *vp, void *arg)
 }
 
 /*
- * process_hold_wakeup_event : The event handler that actually resumes the
- * process coroutine after being scheduled by cmb_process_hold.
- */
-static void process_hold_wakeup_event(void *vp, void *arg)
-{
-    cmb_assert_debug(vp != NULL);
-
-    struct cmb_process *pp = (struct cmb_process *)vp;
-    pp->wakeup_handle = 0ull;
-
-    struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
-    cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
-    (void)cmi_coroutine_resume(cp, arg);
-}
-
-/*
- * process_hold_interrupt_event : The event handler that actually interrupts the
- * process coroutine after being scheduled by cmb_process_interrupt.
- *
- * Note that some other interrupt may have been scheduled in the meantime,
- * possibly executing first due to higher priority. If so, the target process
- * will already have been interrupted and no longer holding. That is not an
- * error but a foreseeable circumstance. Hence, check for it, issue a warning,
- * and otherwise do nothing.
- */
-static void process_hold_interrupt_event(void *vp, void *arg)
-{
-    cmb_assert_debug(vp != NULL);
-    cmb_assert_debug((int64_t)arg != CMB_PROCESS_HOLD_NORMAL);
-
-    struct cmb_process *tgt = (struct cmb_process *)vp;
-    if (tgt->wakeup_handle != 0ull) {
-        cmb_event_cancel(tgt->wakeup_handle);
-        tgt->wakeup_handle = 0ull;
-        struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
-        cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
-        (void)cmi_coroutine_resume(cp, arg);
-    }
-    else {
-        /* Someone else got it first, no longer holding */
-        cmb_logger_warning(stdout,
-                          "process_hold_interrupt_event: tgt %s not holding",
-                          tgt->name);
-    }
-}
-
-/*
- * process_wait_wakeup_event : The event handler that actually resumes the
- * process coroutine after being scheduled by cmb_process_hold.
- */
-static void process_wait_wakeup_event(void *vp, void *arg)
-{
-    cmb_assert_debug(vp != NULL);
-
-    struct cmi_coroutine *cp = (struct cmi_coroutine *)vp;
-    (void)cmi_coroutine_resume(cp, arg);
-}
-
-/*
- * process_stop_event : The event handler that actually stops the process
- * coroutine after being scheduled by cmb_process_stop.
- */
-static void process_stop_event(void *vp, void *arg) {
-    cmb_assert_debug(vp != NULL);
-
-    struct cmb_process *tgt = (struct cmb_process *)vp;
-    if (tgt->wakeup_handle != 0ull) {
-        cmb_event_cancel(tgt->wakeup_handle);
-        tgt->wakeup_handle = 0ull;
-    }
-    else {
-        cmb_logger_warning(stdout,
-                          "process_stop_event: tgt %s not holding",
-                          tgt->name);
-    }
-
-    /* Is there anyone waiting for us? */
-    struct process_tag *ptag;
-    while ((ptag = tgt->waiter_tag) != NULL) {
-        tgt->waiter_tag = ptag->next;
-        const double t = cmb_time();
-        const int64_t p = ptag->proc->priority;
-        const int64_t s = CMB_PROCESS_WAIT_STOPPED;
-        (void)cmb_event_schedule(process_wait_wakeup_event, ptag->proc, (void *)s, t, p);
-        cmi_mempool_put(tag_pool, ptag);
-    }
-
-
-    struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
-    if (cp->status == CMI_COROUTINE_RUNNING) {
-        cmi_coroutine_stop(cp, arg);
-    }
-    else {
-        cmb_logger_warning(stdout,
-                           "process_stop_event: tgt %s not running",
-                           tgt->name);
-    }
- }
-
-/*
  * cmb_process_start : Schedule a start event for the process
  */
 void cmb_process_start(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    cmb_logger_info(stdout, "Starting %s", pp->name);
+    cmb_logger_info(stdout, "Start %s", pp->name);
     const double t = cmb_time();
-    const int16_t pri = pp->priority;
+    const int64_t pri = pp->priority;
 
     cmb_event_schedule(process_start_event, pp, NULL, t, pri);
 }
@@ -273,18 +174,18 @@ void *cmb_process_set_context(struct cmb_process *pp, void *context)
     return cmi_coroutine_set_context((struct cmi_coroutine *)pp, context);
 }
 
-int16_t cmb_process_get_priority(const struct cmb_process *pp)
+int64_t cmb_process_get_priority(const struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
     return pp->priority;
 }
 
-int16_t cmb_process_set_priority(struct cmb_process *pp, const int16_t pri)
+int64_t cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
 {
     cmb_assert_release(pp != NULL);
 
-    const int16_t oldpri = pp->priority;
+    const int64_t oldpri = pp->priority;
     pp->priority = pri;
 
     return oldpri;
@@ -332,6 +233,22 @@ struct cmb_process *cmb_process_get_current(void)
 }
 
 /*
+ * process_hold_wakeup_event : The event handler that actually resumes the
+ * process coroutine after being scheduled by cmb_process_hold.
+ */
+static void process_hold_wakeup_event(void *vp, void *arg)
+{
+    cmb_assert_debug(vp != NULL);
+
+    struct cmb_process *pp = (struct cmb_process *)vp;
+    pp->wakeup_handle = 0ull;
+
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
+    cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
+    (void)cmi_coroutine_resume(cp, arg);
+}
+
+/*
  * cmb_process_hold : Suspend process for specified duration of simulated time.
  *
  * Returns 0 (CMB_PROCESS_HOLD_NORMAL) when returning normally after the
@@ -348,10 +265,10 @@ int64_t cmb_process_hold(const double dur)
 
     /* Not already holding, are we? */
     cmb_assert_debug(pp->wakeup_handle == 0ull);
-    cmb_logger_info(stdout, "Holding until time %f", t);
+    cmb_logger_info(stdout, "Hold until time %f", t);
 
     /* Set an alarm clock */
-    const int16_t pri = cmb_process_get_priority(pp);
+    const int64_t pri = cmb_process_get_priority(pp);
     pp->wakeup_handle = cmb_event_schedule(process_hold_wakeup_event,
                                     pp, NULL, t, pri);
 
@@ -366,6 +283,18 @@ int64_t cmb_process_hold(const double dur)
 }
 
 /*
+ * process_wait_wakeup_event : The event handler that actually resumes the
+ * process coroutine after being scheduled by cmb_process_hold.
+ */
+static void process_wait_wakeup_event(void *vp, void *arg)
+{
+    cmb_assert_debug(vp != NULL);
+
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)vp;
+    (void)cmi_coroutine_resume(cp, arg);
+}
+
+/*
  * cmb_process_exit : Terminate the current process with the given return value.
  */
 void cmb_process_exit(void *retval)
@@ -374,20 +303,55 @@ void cmb_process_exit(void *retval)
     const struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     cmb_assert_debug(cp != cmi_coroutine_get_main());
 
-    cmb_logger_info(stdout, "Exiting, value %p", retval);
+    cmb_logger_info(stdout, "Exit with value %p", retval);
 
     /* Is there anyone waiting for us? */
     struct process_tag *ptag;
     while ((ptag = pp->waiter_tag) != NULL) {
-        pp->waiter_tag = ptag->next;
+        struct cmb_process *pw = ptag->proc;
         const double t = cmb_time();
         const int64_t p = ptag->proc->priority;
         const int64_t s = CMB_PROCESS_WAIT_NORMAL;
-        (void)cmb_event_schedule(process_wait_wakeup_event, pp, (void *)s, t, p);
+        cmb_logger_info(stdout, "Scheduling wakeup for waiting process %s", pw->name);
+        (void)cmb_event_schedule(process_wait_wakeup_event, pw, (void *)s, t, p);
+
+        pp->waiter_tag = ptag->next;
         cmi_mempool_put(tag_pool, ptag);
     }
 
     cmi_coroutine_exit(retval);
+}
+
+/*
+ * process_hold_interrupt_event : The event handler that actually interrupts the
+ * process coroutine after being scheduled by cmb_process_interrupt.
+ *
+ * Note that some other interrupt may have been scheduled in the meantime,
+ * possibly executing first due to higher priority. If so, the target process
+ * will already have been interrupted and no longer holding. That is not an
+ * error but a foreseeable circumstance. Hence, check for it, issue a warning,
+ * and otherwise do nothing.
+ */
+static void process_hold_interrupt_event(void *vp, void *arg)
+{
+    cmb_assert_debug(vp != NULL);
+    cmb_assert_debug((int64_t)arg != CMB_PROCESS_HOLD_NORMAL);
+
+    struct cmb_process *tgt = (struct cmb_process *)vp;
+    cmb_logger_info(stdout, "Hold interrupt event for process %s", tgt->name);
+    if (tgt->wakeup_handle != 0ull) {
+        cmb_event_cancel(tgt->wakeup_handle);
+        tgt->wakeup_handle = 0ull;
+        struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
+        cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
+        (void)cmi_coroutine_resume(cp, arg);
+    }
+    else {
+        /* Someone else got it first, no longer holding */
+        cmb_logger_warning(stdout,
+                          "process_hold_interrupt_event: tgt %s not holding",
+                          tgt->name);
+    }
 }
 
 /*
@@ -397,11 +361,11 @@ void cmb_process_exit(void *retval)
  */
 void cmb_process_interrupt(struct cmb_process *pp,
                            const int64_t sig,
-                           const int16_t pri)
+                           const int64_t pri)
 {
     cmb_assert_debug(pp != NULL);
     cmb_assert_debug(sig != 0);
-    cmb_logger_info(stdout, "Tnterrupting %s with signal %lld priority %d", pp->name, sig, pri);
+    cmb_logger_info(stdout, "Tnterrupt %s signal %lld priority %llu", pp->name, sig, pri);
 
     if (pp->wakeup_handle != 0ull) {
         const double t = cmb_time();
@@ -415,15 +379,15 @@ void cmb_process_interrupt(struct cmb_process *pp,
 }
 
 /*
- * cmb_process_wait : Wait for some other proceess to finish.
+ * cmb_process_wait_process : Wait for some other process (awaited) to finish.
  * Returns immediately if the awaited process already is finished.
  */
-int64_t cmb_process_wait(struct cmb_process *pp, struct cmb_process *awaited)
+int64_t cmb_process_wait_process(struct cmb_process *pp, struct cmb_process *awaited)
 {
     cmb_assert_release(pp != NULL);
     cmb_assert_release(awaited != NULL);
     cmb_assert_debug(pp->wakeup_handle == 0ull);
-    cmb_logger_info(stdout, "Waiting for process %s", awaited->name);
+    cmb_logger_info(stdout, "Wait for process %s", awaited->name);
 
     /* Is it already done? */
     const struct cmi_coroutine *cp = (struct cmi_coroutine *)awaited;
@@ -439,9 +403,7 @@ int64_t cmb_process_wait(struct cmb_process *pp, struct cmb_process *awaited)
     /* Create and link up a tag for the waiting process */
     struct process_tag *ptag = cmi_mempool_get(tag_pool);
     ptag->proc = pp;
-    ptag->prev = NULL;
     ptag->next = awaited->waiter_tag;
-    awaited->waiter_tag->prev = ptag;
     awaited->waiter_tag = ptag;
 
     /* Yield to the scheduler and collect the return signal value */
@@ -452,33 +414,74 @@ int64_t cmb_process_wait(struct cmb_process *pp, struct cmb_process *awaited)
 }
 
 /*
- * cmb_process_wait_cancel : Remove pp from awaited's wait list.
+ * cmb_process_wait_process_cancel : Remove pp from awaited's wait list.
  * Loops through entire list looking for duplicates.
  */
-void cmb_process_wait_cancel(const struct cmb_process *pp,
+void cmb_process_wait_process_cancel(const struct cmb_process *pp,
                              const struct cmb_process *awaited)
 {
     cmb_assert_release(pp != NULL);
     cmb_assert_release(awaited != NULL);
+    cmb_logger_info(stdout, "Cancel wait for process %s", awaited->name);
 
     bool found = false;
     struct process_tag *ptag = awaited->waiter_tag;
+    struct process_tag *prev = NULL;
     while (ptag != NULL) {
         if (ptag->proc == pp) {
-            cmb_assert_debug(found == false);
-            ptag->prev->next = ptag->next;
-            ptag->next->prev = ptag->prev;
-            struct process_tag *tmp = ptag->next;
-            cmi_mempool_put(tag_pool, ptag);
-            ptag = tmp;
             found = true;
+            if (prev != NULL) {
+                prev->next = ptag->next;
+            }
+            cmi_mempool_put(tag_pool, ptag);
         }
         else {
+            prev = ptag;
             ptag = ptag->next;
         }
     }
 
-    cmb_assert_release(found == true);
+    cmb_assert_debug(found == true);
+}
+
+/*
+ * process_stop_event : The event handler that actually stops the process
+ * coroutine after being scheduled by cmb_process_stop.
+ */
+static void process_stop_event(void *vp, void *arg) {
+    cmb_assert_debug(vp != NULL);
+
+    struct cmb_process *tgt = (struct cmb_process *)vp;
+    if (tgt->wakeup_handle != 0ull) {
+        cmb_event_cancel(tgt->wakeup_handle);
+        tgt->wakeup_handle = 0ull;
+    }
+    else {
+        cmb_logger_warning(stdout,
+                          "process_stop_event: tgt %s not holding",
+                          tgt->name);
+    }
+
+    /* Is there anyone waiting for us? */
+    struct process_tag *ptag;
+    while ((ptag = tgt->waiter_tag) != NULL) {
+        tgt->waiter_tag = ptag->next;
+        const double t = cmb_time();
+        const int64_t p = ptag->proc->priority;
+        const int64_t s = CMB_PROCESS_WAIT_STOPPED;
+        (void)cmb_event_schedule(process_wait_wakeup_event, ptag->proc, (void *)s, t, p);
+        cmi_mempool_put(tag_pool, ptag);
+    }
+
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
+    if (cp->status == CMI_COROUTINE_RUNNING) {
+        cmi_coroutine_stop(cp, arg);
+    }
+    else {
+        cmb_logger_warning(stdout,
+                           "process_stop_event: tgt %s not running",
+                           tgt->name);
+    }
 }
 
 /*
@@ -495,7 +498,7 @@ void cmb_process_wait_cancel(const struct cmb_process *pp,
 void cmb_process_stop(struct cmb_process *pp, void *retval)
 {
     cmb_assert_debug(pp != NULL);
-    cmb_logger_info(stdout, "Stopping %s value %p", pp->name, retval);
+    cmb_logger_info(stdout, "Stop %s value %p", pp->name, retval);
 
     const double t = cmb_time();
     const int16_t pri = 5;

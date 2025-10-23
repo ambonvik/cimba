@@ -67,6 +67,14 @@ void *procfunc2(struct cmb_process *me, void *ctx)
     return (void *)0xBADF00D;
 }
 
+void *procfunc3(struct cmb_process *me, void *ctx)
+{
+    cmb_logger_user(USERFLAG, stdout, "procfunc3 running, me %p ctx %p", (void *)me, ctx);
+    struct cmb_process *tgt = (struct cmb_process *)ctx;
+    cmb_process_wait_process(me, tgt);
+    cmb_logger_user(USERFLAG, stdout, "procfunc3 resumed, me %p ctx %p", (void *)me, ctx);
+    cmb_process_exit(NULL);
+}
 
 int main(void)
 {
@@ -82,6 +90,15 @@ int main(void)
     cmb_event_queue_init(0.0);
     cmb_process_start(cpp1);
     cmb_process_start(cpp2);
+
+    printf("Creating a few more ...\n");
+    char buf[32];
+    struct cmb_process *cpp3 = NULL;
+    for (unsigned ui = 0u; ui < 3u; ui++) {
+        sprintf(buf, "Waiter_%u", ui);
+        cpp3 = cmb_process_create(buf, procfunc3, cpp2, cmb_random_dice(-5, 5));
+        cmb_process_start(cpp3);
+    }
 
     printf("cmb_run ...\n");
     cmb_run();
