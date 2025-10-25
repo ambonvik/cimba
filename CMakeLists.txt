@@ -15,6 +15,7 @@ set(SOURCES  src/cmb_data.c
         src/cmi_coroutine.c
         src/cmi_hashheap.c
         src/cmi_mempool.c
+        src/cmi_processtag.c
         src/cmi_random_exp_zig.inc
         src/cmi_random_nor_zig.inc
         src/arch/cmi_memutils_Win64.c
@@ -30,7 +31,8 @@ set(HEADERS include/cmb_data.h
         src/cmi_config.h
         src/cmi_hashheap.h
         src/cmi_memutils.h
-        src/cmi_mempool.h)
+        src/cmi_mempool.h
+        src/cmi_processtag.h)
 
 set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm src/arch/cmi_random_hwseed_Win64.asm)
 set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM_NASM)

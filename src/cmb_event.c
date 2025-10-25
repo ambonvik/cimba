@@ -21,12 +21,13 @@
 
 #include "cmb_assert.h"
 #include "cmb_event.h"
-#include "cmb_process.h"
 #include "cmb_logger.h"
+#include "cmb_process.h"
 
 #include "cmi_config.h"
 #include "cmi_hashheap.h"
 #include "cmi_memutils.h"
+#include "cmi_processtag.h"
 
 /*
  * sim_time : The simulation clock. It can be initiated to start from a
@@ -194,14 +195,14 @@ int64_t cmb_event_priority(const uint64_t handle)
  * item, to be used for a list of processes waiting for this event.
  * Not part of the public API for the cmb_event module, used by cmb_process.c
  */
-void **cmi_event_tag_loc(const uint64_t handle)
+struct cmi_processtag **cmi_event_tag_loc(const uint64_t handle)
 {
     cmb_assert_release(event_queue != NULL);
 
     void **tmp = cmi_hashheap_get_item(event_queue, handle);
     cmb_assert_debug(tmp != NULL);
 
-    return &(tmp[3]);
+    return (struct cmi_processtag **)&(tmp[3]);
 }
 
 /*
@@ -209,7 +210,6 @@ void **cmi_event_tag_loc(const uint64_t handle)
  * cmi_hashheap_dequeue returns a pointer to the location of the event.
  * Copy the values to local variables before executing the event.
  */
-extern void cmi_process_tags(void **ptloc, int64_t signal);
 
 bool cmb_event_execute_next(void)
 {
@@ -227,7 +227,8 @@ bool cmb_event_execute_next(void)
     void *object = tmp[2];
     void **wait_loc = &(tmp[3]);
     if (*wait_loc != NULL) {
-        cmi_process_tags(wait_loc, CMB_PROCESS_WAIT_NORMAL);
+        cmi_processtag_list_wake_all((struct cmi_processtag **)wait_loc,
+                                     CMB_PROCESS_WAIT_NORMAL);
     }
 
     /* Execute the event */
@@ -267,7 +268,8 @@ void cmb_event_cancel(const uint64_t handle)
     cmb_assert_debug(tmp != NULL);
     void **wait_loc = &(tmp[3]);
     if (*wait_loc != NULL) {
-        cmi_process_tags(wait_loc, CMB_PROCESS_WAIT_CANCELLED);
+        cmi_processtag_list_wake_all((struct cmi_processtag **)wait_loc,
+                                     CMB_PROCESS_WAIT_CANCELLED);
     }
 
     (void)cmi_hashheap_cancel(event_queue, handle);
@@ -392,7 +394,6 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
 /*
  * cmb_event_queue_print : Print content of event heap, useful for debugging
  */
-extern void cmi_process_tags_print(void **ptloc, FILE *fp);
 void cmb_event_queue_print(FILE *fp)
 {
     cmb_assert_release(event_queue != NULL);
@@ -410,7 +411,7 @@ void cmb_event_queue_print(FILE *fp)
                 htp->item[2],
                 htp->item[3]);
         if (htp->item[3] != NULL) {
-            cmi_process_tags_print(&(htp->item[3]), fp);
+            cmi_processtag_list_print((struct cmi_processtag **)&(htp->item[3]), fp);
         }
     }
     fprintf(fp, "---------------------------------------------\n");

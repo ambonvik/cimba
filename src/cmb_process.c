@@ -1,5 +1,5 @@
 /*
- * cmi_process.c - the simulated processes
+ * cmb_process.c - the simulated processes
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -22,10 +22,8 @@
 #include "cmb_process.h"
 
 #include "cmi_coroutine.h"
-#include "cmi_mempool.h"
 #include "cmi_memutils.h"
-
-struct process_tag;
+#include "cmi_processtag.h"
 
 /*
  * struct cmb_process : Inherits all properties from struct cmi_coroutine by
@@ -37,22 +35,9 @@ struct cmb_process {
     char name[CMB_PROCESS_NAMEBUF_SZ];
     int64_t priority;
     uint64_t wakeup_handle;
-    struct process_tag *waiter_tag;
+    struct cmi_processtag *waiter_tag;
 };
 
-/*
- * struct process_tag : A tag for the singly linked list of processes waiting
- * for some process or event.
- */
-struct process_tag {
-    struct process_tag *next;
-    struct cmb_process *proc;
-};
-
-/*
- * tag_pool : Memory pool of process tags
- */
-static CMB_THREAD_LOCAL struct cmi_mempool *tag_pool = NULL;
 
 /*
  * cmb_process_create : Allocate memory for the process, including its
@@ -283,24 +268,6 @@ int64_t cmb_process_hold(const double dur)
 }
 
 /*
- * pwwuevt : The event handler that actually resumes the process coroutine after
- * being scheduled by cmb_process_wait_*.
- */
-static void pwwuevt(void *vp, void *arg)
-{
-    cmb_assert_debug(vp != NULL);
-
-    struct cmi_coroutine *cp = (struct cmi_coroutine *)vp;
-    if (cp->status == CMI_COROUTINE_RUNNING) {
-        (void)cmi_coroutine_resume(cp, arg);
-    }
-    else {
-        struct cmb_process *pp = (struct cmb_process *)vp;
-        cmb_logger_warning(stdout, "pwwuevt found process %s dead", pp->name);
-    }
-}
-
-/*
  * cmb_process_wait_process : Wait for some other process (awaited) to finish.
  * Returns immediately if the awaited process already is finished.
  */
@@ -319,16 +286,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
         return CMB_PROCESS_WAIT_NORMAL;
     }
 
-    /* Lazy initalization of the memory pool for process tags */
-    if (tag_pool == NULL) {
-        tag_pool = cmi_mempool_create(64u, sizeof(struct process_tag));
-    }
-
-    /* Create and link up a tag for the waiting process */
-    struct process_tag *ptag = cmi_mempool_get(tag_pool);
-    ptag->proc = pp;
-    ptag->next = awaited->waiter_tag;
-    awaited->waiter_tag = ptag;
+    cmi_processtag_list_add(&(awaited->waiter_tag), pp);
 
     /* Yield to the scheduler and collect the return signal value */
     const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
@@ -342,67 +300,23 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
  */
 int64_t cmb_process_wait_event(const uint64_t ev_handle)
 {
-    extern void **cmi_event_tag_loc(uint64_t handle);
+    cmb_assert_release(ev_handle != 0ull);
     cmb_assert_release(cmb_event_is_scheduled(ev_handle));
+
+    /* Friendly function in cmi_event.c, not part of public interface */
+    extern struct cmi_processtag **cmi_event_tag_loc(uint64_t handle);
 
     struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_release(pp != NULL);
 
-    /* Lazy initalization of the memory pool for process tags */
-    if (tag_pool == NULL) {
-        tag_pool = cmi_mempool_create(64u, sizeof(struct process_tag));
-    }
-
-    /* Create and link up a tag for the waiting process */
-    struct process_tag *ptag = cmi_mempool_get(tag_pool);
-    ptag->proc = pp;
-    void **loc = cmi_event_tag_loc(ev_handle);
-    ptag->next = *loc;
-    *loc = ptag;
+    struct cmi_processtag **loc = cmi_event_tag_loc(ev_handle);
+    cmi_processtag_list_add(loc, pp);
 
     /* Yield to the scheduler and collect the return signal value */
     const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
 
     /* Possibly much later */
     return ret;
-}
-
-void cmi_process_tags_print(void **ptloc, FILE *fp) {
-    fprintf(fp, "\t\t\twait list at %p\n", (void *)ptloc);
-    struct process_tag *ptag = *ptloc;
-    while (ptag != NULL) {
-        fprintf(fp, "\t\t\t\tptp %p proc %p", (void *)ptag, (void *)ptag->proc);
-        cmb_assert_debug(ptag->proc != NULL);
-        fprintf(fp, " name %s\n", ptag->proc->name);
-        ptag = ptag->next;
-    }
-}
-
-void cmi_process_tags(void **ptloc, const int64_t signal)
-{
-    cmb_assert_debug(ptloc != NULL);
-
-    /* Unlink the tag chain from the event queue to avoid any mutating-while-iterating bugs */
-    struct process_tag *ptag = *ptloc;
-    *ptloc = NULL;
-
-    while (ptag != NULL) {
-        struct cmb_process *pw = ptag->proc;
-        cmb_assert_debug(pw != NULL);
-        const double time = cmb_time();
-        const int64_t priority = pw->priority;
-        (void)cmb_event_schedule(pwwuevt, pw,
-                                (void *)signal,
-                                time, priority);
-
-        struct process_tag *tmp = ptag->next;
-        ptag->next = NULL;
-        ptag->proc = NULL;
-        cmi_mempool_put(tag_pool, ptag);
-        ptag = tmp;
-    }
-
-    cmb_assert_debug(*ptloc == NULL);
 }
 
 /*
@@ -417,7 +331,7 @@ void cmb_process_exit(void *retval)
     cmb_logger_info(stdout, "Exit with value %p", retval);
 
     if (pp->waiter_tag != NULL) {
-        cmi_process_tags((void**)&(pp->waiter_tag), CMB_PROCESS_WAIT_NORMAL);
+        cmi_processtag_list_wake_all(&(pp->waiter_tag), CMB_PROCESS_WAIT_NORMAL);
     }
 
     cmi_coroutine_exit(retval);
@@ -497,7 +411,7 @@ static void pstopevt(void *vp, void *arg) {
     }
 
     if (tgt->waiter_tag != NULL) {
-        cmi_process_tags((void **)&(tgt->waiter_tag), CMB_PROCESS_WAIT_STOPPED);
+        cmi_processtag_list_wake_all(&(tgt->waiter_tag), CMB_PROCESS_WAIT_STOPPED);
     }
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
