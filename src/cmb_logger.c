@@ -80,7 +80,7 @@ int cmb_vfprintf(const uint32_t flags,
             ret += r;
         }
         else {
-            r = fprintf(fp, "main_process\t");
+            r = fprintf(fp, "dispatcher\t");
             assert(r > 0);
             ret += r;
         }
@@ -108,6 +108,8 @@ int cmb_vfprintf(const uint32_t flags,
         r += fprintf(fp, "\n");
         assert(r > 0);
         ret += r;
+
+        fflush(fp);
     }
 
     return ret;

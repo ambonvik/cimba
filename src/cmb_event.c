@@ -21,6 +21,7 @@
 
 #include "cmb_assert.h"
 #include "cmb_event.h"
+#include "cmb_process.h"
 #include "cmb_logger.h"
 
 #include "cmi_config.h"
@@ -148,8 +149,9 @@ uint64_t cmb_event_schedule(cmb_event_func *action,
     cmb_assert_release(event_queue != NULL);
 
     /* Use contrived cast to suppress warning about converting function ptr. */
+    void *vaction = *(void**)(&(action));
     return  cmi_hashheap_enqueue(event_queue,
-                                 *(void**)(&(action)),
+                                 vaction,
                                  subject,
                                  object,
                                  NULL,
@@ -180,7 +182,7 @@ double cmb_event_time(const uint64_t handle)
 /*
  * cmb_event_priority : The current priority for the given event
  */
-int64_t cmb_event_priority(uint64_t handle)
+int64_t cmb_event_priority(const uint64_t handle)
 {
     cmb_assert_release(event_queue != NULL);
 
@@ -188,10 +190,27 @@ int64_t cmb_event_priority(uint64_t handle)
 }
 
 /*
+ * cmi_event_tag_loc : Get a pointer to the location of the fourth payload
+ * item, to be used for a list of processes waiting for this event.
+ * Not part of the public API for the cmb_event module, used by cmb_process.c
+ */
+void **cmi_event_tag_loc(const uint64_t handle)
+{
+    cmb_assert_release(event_queue != NULL);
+
+    void **tmp = cmi_hashheap_get_item(event_queue, handle);
+    cmb_assert_debug(tmp != NULL);
+
+    return &(tmp[3]);
+}
+
+/*
  * cmb_event_execute_next : Remove and execute the next event, update clock.
  * cmi_hashheap_dequeue returns a pointer to the location of the event.
  * Copy the values to local variables before executing the event.
  */
+extern void cmi_process_tags(void **ptloc, int64_t signal);
+
 bool cmb_event_execute_next(void)
 {
     if (cmb_event_queue_is_empty()) {
@@ -206,6 +225,10 @@ bool cmb_event_execute_next(void)
     cmb_event_func *action = *(cmb_event_func **)(&tmp[0]);
     void *subject = tmp[1];
     void *object = tmp[2];
+    void **wait_loc = &(tmp[3]);
+    if (*wait_loc != NULL) {
+        cmi_process_tags(wait_loc, CMB_PROCESS_WAIT_NORMAL);
+    }
 
     /* Execute the event */
     (*action)(subject, object);
@@ -220,12 +243,18 @@ bool cmb_event_execute_next(void)
  */
 void cmb_run(void)
 {
+    cmb_assert_release(event_queue != NULL);
+
+    cmb_logger_info(stdout, "Starting simulation run");
     while (cmb_event_execute_next()) { }
+
+    cmb_logger_info(stdout, "No more events in queue");
 }
 
 
 /*
- * cmb_event_cancel : Cancel the given event and reshuffle heap
+ * cmb_event_cancel : Cancel the given event and reshuffle heap. Notifies any
+ * processes waiting for the event that it is cancelled.
  * Precondition: Event must be in heap.
  */
 void cmb_event_cancel(const uint64_t handle)
@@ -233,6 +262,13 @@ void cmb_event_cancel(const uint64_t handle)
     cmb_assert_release(event_queue != NULL);
     cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
     cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
+
+    void **tmp = cmi_hashheap_get_item(event_queue, handle);
+    cmb_assert_debug(tmp != NULL);
+    void **wait_loc = &(tmp[3]);
+    if (*wait_loc != NULL) {
+        cmi_process_tags(wait_loc, CMB_PROCESS_WAIT_CANCELLED);
+    }
 
     (void)cmi_hashheap_cancel(event_queue, handle);
 }
@@ -284,7 +320,6 @@ uint64_t cmb_event_pattern_find(cmb_event_func *action,
     cmb_assert_release(event_queue != NULL);
 
     const void *vaction = *(void**)(&(action));
-
     return cmi_hashheap_pattern_find(event_queue,
                                  vaction,
                                  subject,
@@ -303,7 +338,6 @@ uint64_t cmb_event_pattern_count(cmb_event_func *action,
     cmb_assert_release(event_queue != NULL);
 
     const void *vaction = *(void**)(&(action));
-
     return cmi_hashheap_pattern_count(event_queue,
                                   vaction,
                                  subject,
@@ -313,11 +347,11 @@ uint64_t cmb_event_pattern_count(cmb_event_func *action,
 
 /*
  * cmb_event_cancel_all : Cancel all matching events.
- * Two-pass approach: Allocate temporary storage for the list of
- * matching handles in the first pass, then cancel these in the
- * second pass. Avoids any possible issues caused by modification
- * (reshuffling) of the heap while iterating over it.
+ * Two-pass approach: Allocate temporary storage for the list of matching
+ * handles in the first pass, then cancel these in the second pass.
  * Returns the number of events cancelled, possibly zero.
+ * Duplicating code from cmi_hashheap in order to also cancel any processes
+ * waiting for cancelled events.
  */
 uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
                         const void *subject,
@@ -325,21 +359,60 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
 {
     cmb_assert_release(event_queue != NULL);
 
-    const void *vaction = *(void**)(&(action));
+    uint64_t cnt = 0u;
+    if ((event_queue->heap == NULL) || (event_queue->heap_count == 0u)) {
+        return cnt;
+    }
 
-    return cmi_hashheap_pattern_cancel(event_queue,
-                                 vaction,
-                                 subject,
-                                 object,
-                                 CMI_ANY_ITEM);
+    /* Allocate space enough to match everything in the heap */
+    const uint64_t hcnt = event_queue->heap_count;
+    uint64_t *tmp = cmi_malloc(hcnt * sizeof(*tmp));
+
+    /* First pass, recording the matches */
+    const void *vaction = *(void**)(&(action));
+    for (uint64_t ui = 1; ui <= hcnt; ui++) {
+        const struct cmi_heap_tag *htp = &(event_queue->heap[ui]);
+        if (((vaction == htp->item[0]) || (action == CMB_ANY_ACTION))
+               && ((subject == htp->item[1]) || (object == CMB_ANY_SUBJECT))
+               && ((object == htp->item[2]) || (object == CMB_ANY_OBJECT))) {
+             /* Matched, note it on the list */
+            tmp[cnt++] = htp->handle;
+        }
+    }
+
+    /* Second pass, cancel the matching events */
+    for (uint64_t ui = 0u; ui < cnt; ui++) {
+        cmb_event_cancel(tmp[ui]);
+    }
+
+    cmi_free(tmp);
+    return cnt;
 }
 
 /*
  * cmb_event_queue_print : Print content of event heap, useful for debugging
  */
+extern void cmi_process_tags_print(void **ptloc, FILE *fp);
 void cmb_event_queue_print(FILE *fp)
 {
     cmb_assert_release(event_queue != NULL);
+    const uint64_t hcnt = event_queue->heap_count;
 
-    cmi_hashheap_print(event_queue, fp);
+    fprintf(fp, "---------------- Event queue ----------------\n");
+    for (uint64_t ui = 1u; ui <= hcnt; ui++) {
+        struct cmi_heap_tag *htp = &(event_queue->heap[ui]);
+        fprintf(fp, "time %#8.4g prio %lld : handle %llu %p %p %p %p\n",
+                htp->dkey,
+                htp->ikey,
+                htp->handle,
+                htp->item[0],
+                htp->item[1],
+                htp->item[2],
+                htp->item[3]);
+        if (htp->item[3] != NULL) {
+            cmi_process_tags_print(&(htp->item[3]), fp);
+        }
+    }
+    fprintf(fp, "---------------------------------------------\n");
+    fflush(fp);
 }

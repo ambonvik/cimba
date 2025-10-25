@@ -17,6 +17,7 @@
  */
 #include <stdio.h>
 
+#include "cmb_event.h"
 #include "cmb_logger.h"
 #include "cmb_process.h"
 #include "cmb_random.h"
@@ -25,9 +26,28 @@
 
 #define USERFLAG 0x00000001
 
+uint64_t cuckoo_clock_handle = 0u;
+
+void cuckooevtfunc(void *sub, void *obj)
+{
+    cmb_logger_user(USERFLAG, stdout,"Cuckoo event occurred");
+}
+
+void cnclevtfunc(void *sub, void *obj)
+{
+     cmb_assert_release(cuckoo_clock_handle != 0u);
+     if (cmb_event_is_scheduled(cuckoo_clock_handle)) {
+        cmb_logger_user(USERFLAG, stdout,"Cancelling cuckoo event");
+        cmb_event_cancel(cuckoo_clock_handle);
+     }
+     else {
+        cmb_logger_user(USERFLAG, stdout,"Cuckoo event already cancelled");
+     }
+}
+
 void *procfunc1(struct cmb_process *me, void *ctx)
 {
-    cmb_logger_user(USERFLAG, stdout, "procfunc1 running, me %p ctx %p", (void *)me, ctx);
+    cmb_logger_user(USERFLAG, stdout, "Running");
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         const double dur = cmb_random_exponential(5.0);
@@ -39,19 +59,13 @@ void *procfunc1(struct cmb_process *me, void *ctx)
             cmb_logger_user(USERFLAG, stdout, "Hold was interrupted signal %lld", sig);
         }
     }
-
-    // ReSharper disable once CppDFAUnreachableCode
-    cmb_process_exit((void *)0x5EAF00D);
-
-    /* Not reached */
-    return (void *)0xBADF00D;
 }
 
 void *procfunc2(struct cmb_process *me, void *ctx)
 {
-    cmb_logger_user(USERFLAG, stdout, "procfunc2 running, me %p ctx %p", (void *)me, ctx);
     struct cmb_process *tgt = (struct cmb_process *)ctx;
-    const int16_t pri = cmb_process_get_priority(me);
+    cmb_logger_user(USERFLAG, stdout, "Running, tgt %s", cmb_process_get_name(tgt));
+    const int64_t pri = cmb_process_get_priority(me);
     for (unsigned ui = 0u; ui < 5u; ui++) {
         const double dur = cmb_random_exponential(10.0);
         (void)cmb_process_hold(dur);
@@ -63,25 +77,39 @@ void *procfunc2(struct cmb_process *me, void *ctx)
     cmb_process_stop(tgt, (void *)0xABBA);
 
     cmb_process_exit((void *)0x5EAF00D);
+
     /* not reached */
-    return (void *)0xBADF00D;
+    return NULL;
 }
 
 void *procfunc3(struct cmb_process *me, void *ctx)
 {
-    cmb_logger_user(USERFLAG, stdout, "procfunc3 running, me %p ctx %p", (void *)me, ctx);
     struct cmb_process *tgt = (struct cmb_process *)ctx;
-    cmb_process_wait_process(me, tgt);
-    cmb_logger_user(USERFLAG, stdout, "procfunc3 resumed, me %p ctx %p", (void *)me, ctx);
+    cmb_logger_user(USERFLAG, stdout, "Running, tgt %s", cmb_process_get_name(tgt));
+    int64_t r = cmb_process_wait_event(cuckoo_clock_handle);
+    cmb_logger_user(USERFLAG, stdout, "Got cuckoo, received %llu", r);
+
+    cmb_process_hold(cmb_random());
+    cmb_logger_user(USERFLAG, stdout, "Waiting for process %s", cmb_process_get_name(tgt));
+    r = cmb_process_wait_process(tgt);
+    cmb_logger_user(USERFLAG, stdout, "Tgt %s ended, we received signal %llu", cmb_process_get_name(tgt), r);
+
     cmb_process_exit(NULL);
+
+    /* not reached */
+    return NULL;
 }
 
 int main(void)
 {
+    const uint64_t seed = cmb_random_get_hwseed();
+    // const uint64_t seed = 12226027105743675623;
+    cmb_random_init(seed);
+
     cmi_test_print_line("*");
     printf("****************************   Testing processes   *****************************\n");
     cmi_test_print_line("*");
-
+    printf("seed: %llu\n", seed);
     printf("cmb_process_create ...\n");
     struct cmb_process *cpp1 = cmb_process_create("Testproc", procfunc1, NULL, 0);
     struct cmb_process *cpp2 = cmb_process_create("Nuisance", procfunc2, cpp1, 1);
@@ -91,7 +119,11 @@ int main(void)
     cmb_process_start(cpp1);
     cmb_process_start(cpp2);
 
-    printf("Creating a few more ...\n");
+    printf("Creating an event about midway and a race condition to cancel it...\n");
+    cuckoo_clock_handle = cmb_event_schedule(cuckooevtfunc, NULL, NULL, cmb_random_exponential(25.0), 0);
+    cmb_event_schedule(cnclevtfunc, NULL, NULL, cmb_random_exponential(25.0), 0);
+
+    printf("Creating waiting processes ...\n");
     char buf[32];
     struct cmb_process *cpp3 = NULL;
     for (unsigned ui = 0u; ui < 3u; ui++) {

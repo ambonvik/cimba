@@ -137,7 +137,6 @@ extern bool cmb_event_is_scheduled(uint64_t handle);
 /*
  * cmb_event_time : Get the currently scheduled time for an event
  * Precondition: The event is in the event queue.
- * If in doubt, call cmb_event_is_scheduled(handle) first to verify.
  */
 extern double cmb_event_time(uint64_t handle);
 

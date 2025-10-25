@@ -63,8 +63,7 @@ extern struct cmb_process *cmb_process_create(const char *name,
 
 /*
  * cmb_process_destroy : Deallocates memory for the process struct and its
- * underlying coroutine. The process cannot be in a running state and no other
- * process can be waiting for it.
+ * underlying coroutine.
  */
 extern void cmb_process_destroy(struct cmb_process *pp);
 
@@ -124,7 +123,7 @@ extern int64_t cmb_process_set_priority(struct cmb_process *pp, int64_t pri);
 /*
  * cmb_process_get_exit_value : Returns the stored exit value from the process,
  * as set by cmb_process_exit, cmb_process_stop, or simply returned by the
- * process function. Will issue a warning adn return NULL if the process has not
+ * process function. Will issue a warning and return NULL if the process has not
  * yet finished.
  */
 extern void *cmb_process_get_exit_value(const struct cmb_process *pp);
@@ -148,6 +147,25 @@ extern struct cmb_process *cmb_process_get_current(void);
 #define CMB_PROCESS_HOLD_NORMAL (0LL)
 #define CMB_PROCESS_HOLD_INTERRUPTED (1LL)
 extern int64_t cmb_process_hold(double dur);
+
+/*
+ * cmb_process_wait_process : Wait for some other proceess to finish.
+ * Returns immediately if the awaited process already is finished.
+ * Returns CMB_PROCESS_WAIT_NORMAL if awaited exited normally,
+ * CMB_PROCESS_WAIT_STOPPED if it was stopped by some other process.
+ * Similar to pthreads join.
+ */
+#define CMB_PROCESS_WAIT_NORMAL (0LL)
+#define CMB_PROCESS_WAIT_STOPPED (1LL)
+extern int64_t cmb_process_wait_process(struct cmb_process *awaited);
+
+/*
+ * cmb_process_wait_event : Wait for an event to occur.
+ * Returns CMB_PROCESS_WAIT_NORMAL when the event executes normally,
+ * CMB_PROCESS_WAIT_CANCELLED if the event was cancelled for some reason.
+ */
+#define CMB_PROCESS_WAIT_CANCELLED (2LL)
+extern int64_t cmb_process_wait_event(uint64_t ev_handle);
 
 /*
  * cmb_process_exit : Terminate the process with the given return value.
@@ -174,22 +192,6 @@ extern void cmb_process_exit(void *retval);
 extern void cmb_process_interrupt(struct cmb_process *pp,
                                   int64_t sig,
                                   int64_t pri);
-
-/*
- * cmb_process_wait_process : Wait for some other proceess to finish.
- * Returns immediately if awaited already is finished.
- * Similar to pthreads join.
- */
-#define CMB_PROCESS_WAIT_NORMAL (0LL)
-#define CMB_PROCESS_WAIT_STOPPED (1LL)
-extern int64_t cmb_process_wait_process(struct cmb_process *pp,
-                                        struct cmb_process *awaited);
-
-/*
- * cmb_process_wait_process_cancel : Remove pp from awaited's wait list.
- */
-extern void cmb_process_wait_process_cancel(const struct cmb_process *pp,
-                                            const struct cmb_process *awaited);
 
 /*
  * cmb_process_stop : Terminate the target process by scheduling a stop event.

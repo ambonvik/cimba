@@ -38,7 +38,7 @@
     #elif CMB_COMPILER == MSVC
         extern __declspec(noreturn) void cmi_assert_failed(const char *sourcefile,
                                       const char *func, int line,
-                                      const char *condition) __attribute__((noreturn));
+                                      const char *condition);
     #else
         extern void cmi_assert_failed(const char *sourcefile, const char *func,
                               int line, const char *condition);
