@@ -373,7 +373,7 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
     for (uint64_t ui = 1; ui <= hcnt; ui++) {
         const struct cmi_heap_tag *htp = &(event_queue->heap[ui]);
         if (((vaction == htp->item[0]) || (action == CMB_ANY_ACTION))
-               && ((subject == htp->item[1]) || (object == CMB_ANY_SUBJECT))
+               && ((subject == htp->item[1]) || (subject == CMB_ANY_SUBJECT))
                && ((object == htp->item[2]) || (object == CMB_ANY_OBJECT))) {
              /* Matched, note it on the list */
             tmp[cnt++] = htp->handle;
