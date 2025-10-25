@@ -748,7 +748,7 @@ void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
     fprintf(fp, "Heap section:\n");
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
-        fprintf(fp, "heap index %llu: handle %llu dkey %#8.4g ikey %lld : hash %llu : %p %p %p %p\n",
+        fprintf(fp, "%llu: handle %llu dkey %#8.4g ikey %lld : hash idx %llu : %p %p %p %p\n",
                 ui,
                 htp->handle,
                 htp->dkey,
@@ -763,7 +763,7 @@ void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
     fprintf(fp, "\nHash map section:\n");
     for (uint64_t ui = 0u; ui < hp->hash_size; ui++) {
         const struct cmi_hash_tag *htp = &(hp->hash_map[ui]);
-        fprintf(fp, "hash index %llu: handle %llu heap %llu\n", ui,
+        fprintf(fp, "%llu: handle %llu heap idx %llu\n", ui,
                 htp->handle,
                 htp->heap_index);
     }
