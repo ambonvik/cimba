@@ -296,7 +296,7 @@ void test_timeseries(void)
     printf("cmb_timeseries_max:\t%#8.4g\n", cmb_timeseries_max(tsp));
     cmi_test_print_line("-");
 
-    printf("\nSummarizing: cmb_timeseries_summarize, cmb_wsummary_print, cmb_timeseries_print_fivenum\n");
+    printf("\nSummarizing: cmb_timeseries_summarize, cmb_wsummary_print, cmb_timeseries_print_fivenum ...\n");
     struct cmb_wsummary ws = { 0 };
     cmb_timeseries_summarize(tsp, &ws);
     cmb_wsummary_print(&ws, stdout, true);

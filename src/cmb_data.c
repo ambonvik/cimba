@@ -32,36 +32,6 @@
 
 #include "cmi_memutils.h"
 
-/* If the compiler decides to issue code for the inlines, do it here */
-extern uint64_t cmb_summary_count(const struct cmb_summary *sup);
-extern double cmb_summary_max(const struct cmb_summary *sup);
-extern double cmb_summary_min(const struct cmb_summary *sup);
-extern double cmb_summary_mean(const struct cmb_summary *sup);
-extern double cmb_summary_variance(const struct cmb_summary *sup);
-extern double cmb_summary_stddev(const struct cmb_summary *sup);
-
-extern void cmb_wsummary_init(struct cmb_wsummary *wsup);
-extern void cmb_wsummary_clear(struct cmb_wsummary *wsup);
-extern uint64_t cmb_wsummary_count(const struct cmb_wsummary *wsup);
-extern double cmb_wsummary_max(const struct cmb_wsummary *wsup);
-extern double cmb_wsummary_min(const struct cmb_wsummary *wsup);
-extern double cmb_wsummary_mean(const struct cmb_wsummary *wsup);
-extern double cmb_wsummary_variance(const struct cmb_wsummary *wsup);
-extern double cmb_wsummary_stddev(const struct cmb_wsummary *wsup);
-extern double cmb_wsummary_skewness(const struct cmb_wsummary *wsup);
-extern double cmb_wsummary_kurtosis(const struct cmb_wsummary *wsup);
-extern void cmb_wsummary_print(const struct cmb_wsummary *wsup, FILE *fp, bool lead_ins);
-
-extern void cmb_dataset_clear(struct cmb_dataset *dsp);
-extern uint64_t cmb_dataset_count(const struct cmb_dataset *dsp);
-extern double cmb_dataset_min(const struct cmb_dataset *dsp);
-extern double cmb_dataset_max(const struct cmb_dataset *dsp);
-
-extern void cmb_timeseries_clear(struct cmb_timeseries *tsp);
-extern uint64_t cmb_timeseries_count(const struct cmb_timeseries *tsp);
-extern double cmb_timeseries_min(const struct cmb_timeseries *tsp);
-extern double cmb_timeseries_max(const struct cmb_timeseries *tsp);
-
 static const uint64_t cmb_dataset_init_size = 1024;
 
 /**************************** Data summary methods ****************************/
