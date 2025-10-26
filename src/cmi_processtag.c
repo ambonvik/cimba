@@ -27,6 +27,15 @@
 #include "cmi_processtag.h"
 
 /*
+ * struct process_tag : A tag for the singly linked list of processes waiting
+ * for some process or event.
+ */
+struct cmi_processtag {
+    struct cmi_processtag *next;
+    struct cmb_process *proc;
+};
+
+/*
  * tag_pool : Memory pool of process tags
  */
 static CMB_THREAD_LOCAL struct cmi_mempool *tag_pool = NULL;
@@ -51,14 +60,22 @@ static void pwwuevt(void *vp, void *arg)
     }
 }
 
+/*
+ * cmi_processtag_list_wake_all : Schedules a wakeup call for each process in
+ * the given list.
+ *
+ * Unlink the tag chain from the event queue before iteration to avoid any
+ * obscure mutating-while-iterating bugs.
+ */
 void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc, const int64_t signal)
 {
     cmb_assert_debug(ptloc != NULL);
 
-    /* Unlink the tag chain from the event queue to avoid any mutating-while-iterating bugs */
+    /* Unlink the tag chain */
     struct cmi_processtag *ptag = *ptloc;
     *ptloc = NULL;
 
+    /* Process it, scheduling a wakeup call for each process */
     while (ptag != NULL) {
         struct cmb_process *pp = ptag->proc;
         cmb_assert_debug(pp != NULL);
@@ -78,6 +95,9 @@ void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc, const int64_t s
     cmb_assert_debug(*ptloc == NULL);
 }
 
+/*
+ * cmi_processtag_list_add : Add a waiting process to the given list location.
+ */
 void cmi_processtag_list_add(struct cmi_processtag **ptloc, struct cmb_process *pp) {
     cmb_assert_debug(ptloc != NULL);
     cmb_assert_debug(pp != NULL);
@@ -94,6 +114,9 @@ void cmi_processtag_list_add(struct cmi_processtag **ptloc, struct cmb_process *
     *ptloc = ptag;
 }
 
+/*
+ * cmi_processtag_list_print : Print the list of waiting processes
+ */
 void cmi_processtag_list_print(struct cmi_processtag **ptloc, FILE *fp)
 {
     fprintf(fp, "\t\t\twait list at %p\n", (void *)ptloc);

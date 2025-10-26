@@ -103,7 +103,6 @@ void *procfunc3(struct cmb_process *me, void *ctx)
 int main(void)
 {
     const uint64_t seed = cmb_random_get_hwseed();
-    // const uint64_t seed = 12226027105743675623;
     cmb_random_init(seed);
 
     cmi_test_print_line("*");

@@ -20,18 +20,27 @@
 #define CIMBA_CMI_PROCESSTAG_H
 
 /*
- * struct process_tag : A tag for the singly linked list of processes waiting
- * for some process or event.
+ * struct cmi_processtag : opaque struct, see cmi_processtag.c for details.
  */
-struct cmi_processtag {
-    struct cmi_processtag *next;
-    struct cmb_process *proc;
-};
+struct cmi_processtag;
 
-extern void cmi_processtag_list_add(struct cmi_processtag **ptloc, struct cmb_process *pp);
+/*
+ * cmi_processtag_list_add : Add a waiting process to the given list location.
+ */
+extern void cmi_processtag_list_add(struct cmi_processtag **ptloc,
+                                    struct cmb_process *pp);
 
-extern void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc, int64_t signal);
+/*
+ * cmi_processtag_list_wake_all : Schedules a wakeup call for each process in
+ * the given list location.
+ */
+extern void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc,
+                                         int64_t signal);
 
-extern void cmi_processtag_list_print(struct cmi_processtag **ptloc, FILE *fp);
+/*
+ * cmi_processtag_list_print : Print the list of waiting processes
+ */
+extern void cmi_processtag_list_print(struct cmi_processtag **ptloc,
+                                      FILE *fp);
 
 #endif // CIMBA_CMI_PROCESSTAG_H
