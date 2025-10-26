@@ -24,10 +24,20 @@
 
 #include <stdint.h>
 
+#include "cmb_assert.h"
+
 /*
- * struct cmi_mempool : Opaque struct, only handled through API below.
+ * struct cmi_mempool : The memory pool for a particular size object.
  */
-struct cmi_mempool;
+struct cmi_mempool {
+    size_t obj_sz;
+    size_t incr_num;
+    size_t incr_sz;
+    uint64_t area_list_len;
+    uint64_t area_list_cnt;
+    void **area_list;
+    void *next_obj;
+};
 
 /*
  * cmi_mempool_create : Set up a memory pool for objects of size obj_sz bytes.
@@ -41,21 +51,47 @@ struct cmi_mempool;
 extern struct cmi_mempool *cmi_mempool_create(uint64_t obj_num, size_t obj_sz);
 
 /*
+ * cmi_mempool_expand : Increase the memory pool size by the same amount as
+ * originally allocated, obj_sz * obj_num. The allocated memory is aligned to
+ * the system memory page size.
+ */
+extern void cmi_mempool_expand(struct cmi_mempool *mp);
+
+/*
  * cmi_mempool_destroy : Free all memory allocated to the memory pool.
  * All allocated objects from the pool will become invalid.
  */
 extern void cmi_mempool_destroy(struct cmi_mempool *mp);
 
 /*
- * cmi_mempool_get : Get an object of size obj_sz from the pool, expanding the
- * pool if necessary.
+ * cmi_mempool_get : Pop an object off the pool stack, allocating more objects
+ * if necessary.
  */
-extern void *cmi_mempool_get(struct cmi_mempool *mp);
+static inline void *cmi_mempool_get(struct cmi_mempool *mp)
+{
+    cmb_assert_release(mp != NULL);
+    if (mp->next_obj == NULL) {
+        /* Pool empty, refill it */
+        cmi_mempool_expand(mp);
+    }
+
+    void *op = mp->next_obj;
+    cmb_assert_debug(op != NULL);
+    mp->next_obj = *(void **)op;
+
+    return op;
+}
 
 /*
- * cmi_mempool_put : Return an object to the pool. The object must be one
- * previously obtained from this pool. Do not put back the same object twice.
+ * cmi_mempool_put : Push an object back on the pool stack.
  */
-extern void cmi_mempool_put(struct cmi_mempool *mp, void *op);
+static inline void cmi_mempool_put(struct cmi_mempool *mp, void *op)
+{
+    cmb_assert_release(mp != NULL);
+    cmb_assert_release(op != NULL);
+
+    *(void **)op = mp->next_obj;
+    mp->next_obj = op;
+}
 
 #endif //CIMBA_CMI_MEMPOOL_H

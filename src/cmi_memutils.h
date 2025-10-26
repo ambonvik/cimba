@@ -28,7 +28,7 @@
 /*
   * Convenience functions to encapsulate repetitive error handling
   */
-inline void *cmi_malloc(const size_t sz)
+static inline void *cmi_malloc(const size_t sz)
 {
     cmb_assert_debug(sz > 0);
 
@@ -38,7 +38,7 @@ inline void *cmi_malloc(const size_t sz)
     return rp;
 }
 
-inline void *cmi_calloc(const unsigned n, const size_t sz)
+static inline void *cmi_calloc(const unsigned n, const size_t sz)
 {
     cmb_assert_debug(n > 0);
     cmb_assert_debug(sz > 0);
@@ -49,7 +49,7 @@ inline void *cmi_calloc(const unsigned n, const size_t sz)
     return rp;
 }
 
-inline void *cmi_realloc(void* restrict p, const size_t sz)
+static inline void *cmi_realloc(void* restrict p, const size_t sz)
 {
     cmb_assert_debug(p != NULL);
     cmb_assert_debug(sz > 0);
@@ -60,14 +60,14 @@ inline void *cmi_realloc(void* restrict p, const size_t sz)
     return rp;
 }
 
-inline void cmi_free(void *p)
+static inline void cmi_free(void *p)
 {
     cmb_assert_debug(p != NULL);
 
     free(p);
 }
 
-inline void *cmi_memcpy(void* restrict dest, const void* restrict src, const size_t sz)
+static inline void *cmi_memcpy(void* restrict dest, const void* restrict src, const size_t sz)
 {
     cmb_assert_debug(dest != NULL);
     cmb_assert_debug(src != NULL);
@@ -79,7 +79,7 @@ inline void *cmi_memcpy(void* restrict dest, const void* restrict src, const siz
     return rp;
 }
 
-inline void *cmi_memset(void* restrict ptr, const int c, const size_t n)
+static inline void *cmi_memset(void* restrict ptr, const int c, const size_t n)
 {
     cmb_assert_debug(ptr != NULL);
     cmb_assert_debug(n > 0);
@@ -94,12 +94,11 @@ inline void *cmi_memset(void* restrict ptr, const int c, const size_t n)
 /*
  * cmi_is_power_of_two : Predicate helper function
  */
-inline bool cmi_is_power_of_two(const size_t n)
+static inline bool cmi_is_power_of_two(const size_t n)
 {
     /* A power of two has only one bit set */
     return (n == 0u) ? false : (n & (n - 1)) == 0u;
 }
-
 
 /* System dependent utility functions in src/arch/cmi_memutils_*.c */
 extern size_t cmi_get_pagesize(void);

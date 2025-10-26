@@ -30,19 +30,6 @@
 #define AREA_LIST_SIZE 64u
 
 /*
- * struct cmi_mempool : The memory pool for a particular size object.
- */
-struct cmi_mempool {
-    size_t obj_sz;
-    size_t incr_num;
-    size_t incr_sz;
-    uint64_t area_list_len;
-    uint64_t area_list_cnt;
-    void **area_list;
-    void *next_obj;
-};
-
-/*
  * cmi_mempool_create : Set up a memory pool for objects of size obj_sz bytes.
  * area_list keeps track of the allocated memory to be able to free it later.
  * The area_list resizes as needed, starting from AREA_LIST_SIZE defined above.
@@ -100,11 +87,11 @@ void cmi_mempool_destroy(struct cmi_mempool *mp)
 }
 
 /*
- * mempool_expand : Increase the memory pool size by the same amount as
+ * cmi_mempool_expand : Increase the memory pool size by the same amount as
  * originally allocated, obj_sz * obj_num. The allocated memory is aligned to
  * the system memory page size.
  */
-static void mempool_expand(struct cmi_mempool *mp)
+void cmi_mempool_expand(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp->next_obj == NULL);
 
@@ -132,35 +119,4 @@ static void mempool_expand(struct cmi_mempool *mp)
     *vp = NULL;
 
     cmb_assert_debug(mp->next_obj != NULL);
-}
-
-/*
- * cmi_mempool_get : Pop an object off the pool stack, allocating more objects
- * if necessary.
- */
-void *cmi_mempool_get(struct cmi_mempool *mp)
-{
-    cmb_assert_release(mp != NULL);
-    if (mp->next_obj == NULL) {
-        /* Pool empty, refill it */
-        mempool_expand(mp);
-    }
-
-    void *op = mp->next_obj;
-    cmb_assert_debug(op != NULL);
-    mp->next_obj = *(void **)op;
-
-    return op;
-}
-
-/*
- * cmi_mempool_put : Push an object back on the pool stack.
- */
-void cmi_mempool_put(struct cmi_mempool *mp, void *op)
-{
-    cmb_assert_release(mp != NULL);
-    cmb_assert_release(op != NULL);
-
-    *(void **)op = mp->next_obj;
-    mp->next_obj = op;
 }
