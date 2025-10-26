@@ -26,20 +26,6 @@
 #include "cmi_processtag.h"
 
 /*
- * struct cmb_process : Inherits all properties from struct cmi_coroutine by
- * composition and adds the name, priority, and the handle of wakeup event (if
- * the process is holding, i.e. scheduled for a wakeup event, otherwise zero).
- */
-struct cmb_process {
-    struct cmi_coroutine cr;
-    char name[CMB_PROCESS_NAMEBUF_SZ];
-    int64_t priority;
-    uint64_t wakeup_handle;
-    struct cmi_processtag *waiter_tag;
-};
-
-
-/*
  * cmb_process_create : Allocate memory for the process, including its
  * constituent coroutine with stack. Does not start the process yet.
  */
@@ -112,19 +98,6 @@ void cmb_process_start(struct cmb_process *pp)
     const int64_t pri = pp->priority;
 
     cmb_event_schedule(pstartevt, pp, NULL, t, pri);
-}
-
-/*
- * cmb_process_get_name : Return the process name as a const char *
- *
- * If the name for some reason needs to be changed, use cmb_process_set_name to
- * do it safely.
- */
-const char *cmb_process_get_name(const struct cmb_process *pp)
-{
-    cmb_assert_release(pp != NULL);
-
-    return pp->name;
 }
 
 /*

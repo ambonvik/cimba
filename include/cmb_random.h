@@ -57,7 +57,7 @@ extern uint64_t cmb_random_sfc64(void);
  * See also IEEE 754 Standard for Floating-Point Arithmetic, or
  * https://en.wikipedia.org/wiki/Double-precision_floating-point_format
  */
-inline double cmb_random(void)
+static inline double cmb_random(void)
 {
     return ldexp((double)(cmb_random_sfc64() >> 11), -53);
 }
@@ -69,7 +69,7 @@ inline double cmb_random(void)
  * reasonable, but see also cmb_random_triangular, cmb_random_PERT, and
  * cmb_random_PERT_mod as other possible empirical distributions.
  */
-inline double cmb_random_uniform(const double min, const double max)
+static inline double cmb_random_uniform(const double min, const double max)
 {
     cmb_assert_release(min < max);
 
@@ -102,7 +102,7 @@ extern const uint8_t cmi_random_nor_zig_max;
 extern const double cmi_random_nor_zig_pdf_x[];
 extern double cmi_random_nor_not_hot(int64_t i_cand_x);
 
-inline double cmb_random_std_normal(void)
+static inline double cmb_random_std_normal(void)
 {
     uint64_t bits = cmb_random_sfc64();
     const int64_t i_cand_x = *(int64_t *) &bits;
@@ -113,7 +113,7 @@ inline double cmb_random_std_normal(void)
         cmi_random_nor_not_hot(i_cand_x);
 }
 
-inline double cmb_random_normal(const double mu, const double sigma)
+static inline double cmb_random_normal(const double mu, const double sigma)
 {
     cmb_assert_release(sigma > 0.0);
 
@@ -126,7 +126,7 @@ inline double cmb_random_normal(const double mu, const double sigma)
  * Occurs naturally for effects that are the product of many small non-negative
  * sources of variation, including multiplicative measurement errors.
  */
-inline double cmb_random_lognormal(const double m, const double s)
+static inline double cmb_random_lognormal(const double m, const double s)
 {
     cmb_assert_release(s > 0.0);
     const double r = exp(cmb_random_normal(m, s));
@@ -139,7 +139,7 @@ inline double cmb_random_lognormal(const double m, const double s)
  * Logistic distribution with location m and scale s. Similar to normal
  * distribution, but with fatter tails. Mean = median = mode = m.
  */
-inline double cmb_random_logistic(const double m, const double s)
+static inline double cmb_random_logistic(const double m, const double s)
 {
     cmb_assert_release(s > 0.0);
     const double x = cmb_random();
@@ -156,7 +156,7 @@ inline double cmb_random_logistic(const double m, const double s)
  * Witch of Agnesi. It is evil. Mostly useful as a practical joke, or as a
  * patological test case to break assumptions.
  */
- inline double cmb_random_cauchy(const double mode, const double scale)
+static inline double cmb_random_cauchy(const double mode, const double scale)
 {
     cmb_assert_release(scale > 0.0);
 
@@ -179,7 +179,7 @@ extern const uint8_t cmi_random_exp_zig_max;
 extern const double cmi_random_exp_zig_pdf_x[];
 extern double cmi_random_exp_not_hot(uint64_t u_cand_x);
 
-inline double cmb_random_std_exponential(void)
+static inline double cmb_random_std_exponential(void)
 {
     const uint64_t u_cand_x = cmb_random_sfc64();
     const uint8_t idx = u_cand_x & 0xff;
@@ -191,7 +191,7 @@ inline double cmb_random_std_exponential(void)
     return r;
 }
 
-inline double cmb_random_exponential(const double mean)
+static inline double cmb_random_exponential(const double mean)
 {
     cmb_assert_release(mean > 0.0);
 
@@ -207,7 +207,7 @@ inline double cmb_random_exponential(const double mean)
  * The mean is k m, the variance k m^2.
  * Used for modeling more complex service times than the simple exponential.
  */
-inline double cmb_random_erlang(const unsigned k, const double m)
+static inline double cmb_random_erlang(const unsigned k, const double m)
 {
     cmb_assert_release(k > 0u);
     cmb_assert_release(m > 0.0);
@@ -229,7 +229,7 @@ inline double cmb_random_erlang(const unsigned k, const double m)
  * variation than a single exponential, hence the name.
  * The mean equals the sum of ma[i], the variance the sum of ma[i]^2.
  */
-inline double cmb_random_hypoexponential(const unsigned n, const double ma[n])
+static inline double cmb_random_hypoexponential(const unsigned n, const double ma[n])
 {
     cmb_assert_release(n > 0);
     cmb_assert_release(ma != NULL);
@@ -269,7 +269,7 @@ extern double cmb_random_hyperexponential(unsigned n,
  */
 extern double cmb_random_std_gamma(double shape);
 
-inline double cmb_random_gamma(const double shape, const double scale)
+static inline double cmb_random_gamma(const double shape, const double scale)
 {
     cmb_assert_release(shape > 0.0);
     cmb_assert_release(scale > 0.0);
@@ -288,7 +288,7 @@ inline double cmb_random_gamma(const double shape, const double scale)
  * parameters a and b, where a > 0 and b > 0. The mean is a/(a + b).
  * Used to model various proportions and percentages of something.
  */
-inline double cmb_random_std_beta(const double a, const double b)
+static inline double cmb_random_std_beta(const double a, const double b)
 {
     cmb_assert_release(a > 0.0);
     cmb_assert_release(b > 0.0);
@@ -302,7 +302,7 @@ inline double cmb_random_std_beta(const double a, const double b)
 }
 
 /* Shifted and scaled beta to arbitrary interval [min, max] */
-inline double cmb_random_beta(const double a, const double b,
+static inline double cmb_random_beta(const double a, const double b,
                               const double min, const double max)
 {
     cmb_assert_release(a > 0.0);
@@ -327,7 +327,7 @@ extern double cmb_random_PERT_mod(double min,
                                   double max,
                                   double lambda);
 
-inline double cmb_random_PERT(const double min,
+static inline double cmb_random_PERT(const double min,
                               const double mode,
                               const double max)
 {
@@ -348,7 +348,7 @@ inline double cmb_random_PERT(const double min,
  * decrease with time for shape > 1. Looks like a normal distribution for shape
  * around 4.
  */
-inline double cmb_random_weibull(const double shape, const double scale)
+static inline double cmb_random_weibull(const double shape, const double scale)
 {
     cmb_assert_release(shape > 0.0);
     cmb_assert_release(scale > 0.0);
@@ -368,7 +368,7 @@ inline double cmb_random_weibull(const double shape, const double scale)
  * Setting shape = log4(5) = ln(5)/ln(4) = 1.16 gives the 80:20 rule.
  * Higher values of the shape parameter give steeper distributions.
  */
-inline double cmb_random_pareto(const double shape, const double mode)
+static inline double cmb_random_pareto(const double shape, const double mode)
 {
     cmb_assert_release(shape > 0.0);
     cmb_assert_release(mode > 0.0);
@@ -385,7 +385,7 @@ inline double cmb_random_pareto(const double shape, const double mode)
  * variances for normally distributed samples.
  * Generalized by permitting real-valued k, not just integer values.
  */
-inline double cmb_random_chisquare(const double k)
+static inline double cmb_random_chisquare(const double k)
 {
     cmb_assert_release(k > 0.0);
 
@@ -401,7 +401,7 @@ inline double cmb_random_chisquare(const double k)
  * useful in a discrete event simulation context, included for completeness.
  * Generalized by allowing real-valued a and b, not just integer values.
  */
-inline double cmb_random_f_dist(const double a, const double b)
+static inline double cmb_random_f_dist(const double a, const double b)
 {
     cmb_assert_release(a > 0.0);
     cmb_assert_release(b > 0.0);
@@ -424,7 +424,7 @@ inline double cmb_random_f_dist(const double a, const double b)
  * distribution as v -> oo.
  * Mean 0.0 for v > 1, variance v / (v - 2) for v > 2, otherwise undefined.
  */
-inline double cmb_random_std_t_dist(const double v)
+static inline double cmb_random_std_t_dist(const double v)
 {
     cmb_assert_release(v > 0.0);
 
@@ -443,7 +443,7 @@ inline double cmb_random_std_t_dist(const double v)
  * normal distributions if fatter tails are needed. Converges to
  * a normal distribution N(m, s) for v -> oo.
  */
-inline double cmb_random_t_dist(const double m,
+static inline double cmb_random_t_dist(const double m,
                                 const double s,
                                 const double v)
 {
@@ -459,7 +459,7 @@ inline double cmb_random_t_dist(const double m,
  * Occurs in natural phenomena like the amplitude of wind or waves summing from
  * several directions.
  */
-inline double cmb_random_rayleigh(const double s)
+static inline double cmb_random_rayleigh(const double s)
 {
     cmb_assert_release(s > 0.0);
 
@@ -489,7 +489,7 @@ extern int cmb_random_flip(void);
  * 0 < p < 1. Used for any binary yes/no outcome of independent and
  * identically distributed trials. A fair coin flip if p = 0.5.
  */
-inline unsigned cmb_random_bernoulli(const double p)
+static inline unsigned cmb_random_bernoulli(const double p)
 {
     cmb_assert_release((p > 0.0) && (p <= 1.0));
 
@@ -521,7 +521,7 @@ extern unsigned cmb_random_binomial(unsigned n, double p);
  */
 extern unsigned cmb_random_negative_binomial(unsigned m, double p);
 
-inline unsigned cmb_random_pascal(const unsigned m, const double p)
+static inline unsigned cmb_random_pascal(const unsigned m, const double p)
 {
     return cmb_random_negative_binomial(m, p);
 }
@@ -591,7 +591,7 @@ extern struct cmb_random_alias *cmb_random_alias_create(unsigned n,
  * sample. Returns values on [0, (pa->n) - 1], typically used for array indices
  * and the like.
  */
-inline unsigned cmb_random_alias_sample(const struct cmb_random_alias *pa)
+static inline unsigned cmb_random_alias_sample(const struct cmb_random_alias *pa)
 {
     cmb_assert_release(pa != NULL);
 

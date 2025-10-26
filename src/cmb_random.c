@@ -30,34 +30,6 @@
 #include "cmi_config.h"
 #include "cmi_memutils.h"
 
-/* Declarations of inlined functions from cmb_random.h */
-extern double cmb_random(void);
-extern double cmb_random_uniform(double min, double max);
-extern double cmb_random_std_exponential(void);
-extern double cmb_random_exponential(double mean);
-extern double cmb_random_erlang(unsigned k, double m);
-extern double cmb_random_hypoexponential(unsigned n, const double ma[n]);
-extern double cmb_random_std_normal(void);
-extern double cmb_random_normal(double mu, double sigma);
-extern double cmb_random_gamma(double shape, double scale);
-extern double cmb_random_lognormal(double m, double s);
-extern double cmb_random_logistic(double m, double s);
-extern double cmb_random_cauchy(double mode, double scale);
-extern double cmb_random_PERT(double min, double mode, double max);
-extern double cmb_random_weibull(double shape, double scale);
-extern double cmb_random_pareto(double shape, double mode);
-extern double cmb_random_chisquare(double k);
-extern double cmb_random_std_t_dist(double v);
-extern double cmb_random_t_dist(double m, double s, double v);
-extern double cmb_random_f_dist(double a, double b);
-extern double cmb_random_rayleigh(double s);
-extern unsigned cmb_random_bernoulli(double p);
-extern double cmb_random_std_beta(double a, double b);
-extern double cmb_random_beta(double a, double b, double min, double max);
-extern unsigned cmb_random_pascal(unsigned m, double p);
-extern long cmb_random_dice(long a, long b);
-extern unsigned cmb_random_alias_sample(const struct cmb_random_alias *pa);
-
 /*
  * Thread-local pseudo-random generator state, i.e. each thread has its own
  * instance, but all coroutines within the thread share from the same stream

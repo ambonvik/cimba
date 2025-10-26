@@ -104,6 +104,7 @@ int main(void)
         (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, NULL, d, i);
     }
 
+    printf("We now have %llu items\n", cmi_hashheap_count(hhp));
     cmi_hashheap_print(hhp, stdout);
 
     while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {

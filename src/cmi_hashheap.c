@@ -31,15 +31,7 @@
 #include <stdbool.h>
 
 #include "cmi_hashheap.h"
-#include "cmi_config.h"
 #include "cmi_memutils.h"
-
-/* Inlined functions from cmi_hashheap.h */
-extern uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp);
-extern bool cmi_hashheap_is_empty(const struct cmi_hashheap *hp);
-extern void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp);
-extern double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp);
-extern int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp);
 
 /*
  * hash_handle : Fibonacci hash function.
@@ -77,23 +69,19 @@ uint64_t hash_find_handle(const struct cmi_hashheap *hp, const uint64_t handle)
             return hm[hash].heap_index;
         }
 
-        /* Check if this slot has never been used (handle == 0 means virgin slot) */
+        /* If we reached a never-used slot, the handle is not in hash map */
         if (hm[hash].handle == 0u) {
-            /* Got to a never-used slot, the handle is not in hash map */
             return 0u;
         }
 
-        /* Not there, linear probing, try next, possibly looping around */
+        /* Not in slot, use linear probing, try next, possibly looping around */
         hash = (hash + 1u) & bitmap;
 
-        /* If we've wrapped around to where we started, the handle is not found */
+        /* If we've wrapped around to where we started, the handle is not here */
         if (hash == hash_start) {
             return 0u;
         }
     }
-
-    /* Got to an empty slot, the handle is not in hash map */
-    return 0u;
 }
 
 /*

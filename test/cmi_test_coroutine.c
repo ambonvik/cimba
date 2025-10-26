@@ -111,7 +111,7 @@ static void *corofunc_1(struct cmi_coroutine *myself, void *context)
 
     /* Return is caught and redirected to cmi_coroutine_exit(ret) */
     printf("corofunc_1: Wut, no more cookies?\n");
-    return (void *)0xBADF00D;
+    return (void *)0x5EAF00D;
 }
 
 static void test_asymmetric(void)

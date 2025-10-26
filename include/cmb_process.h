@@ -35,13 +35,26 @@
 #ifndef CIMBA_CMB_PROCESS_H
 #define CIMBA_CMB_PROCESS_H
 
+#include "cmb_assert.h"
 #include "cmb_event.h"
 
+#include "cmi_coroutine.h"
+
+/* Maximum length of a process name, anything longer will be truncated */
+#define CMB_PROCESS_NAMEBUF_SZ 32
+
 /*
- * struct cmb_process : Opaque struct. See cmb_process.c for implementation
- * details.
+ * struct cmb_process : Inherits all properties from struct cmi_coroutine by
+ * composition and adds the name, priority, and the handle of wakeup event (if
+ * the process is holding, i.e. scheduled for a wakeup event, otherwise zero).
  */
-struct cmb_process;
+struct cmb_process {
+    struct cmi_coroutine cr;
+    char name[CMB_PROCESS_NAMEBUF_SZ];
+    int64_t priority;
+    uint64_t wakeup_handle;
+    struct cmi_processtag *waiter_tag;
+};
 
 /*
  * typedef cmb_process_func : The generic process function type is a function
@@ -77,8 +90,17 @@ extern void cmb_process_start(struct cmb_process *pp);
 /*
  * cmb_process_get_name : Return the process name as a const char *,
  * since it is kept in a fixed size buffer and should not be changed directly.
+ *
+ * If the name for some reason needs to be changed, use cmb_process_set_name to
+ * do it safely.
  */
-extern const char *cmb_process_get_name(const struct cmb_process *pp);
+static inline const char *cmb_process_get_name(const struct cmb_process *pp)
+{
+    cmb_assert_release(pp != NULL);
+
+    return pp->name;
+}
+
 
 /*
  * cmb_process_set_name : Set a new name for the process, returning a const
@@ -87,7 +109,6 @@ extern const char *cmb_process_get_name(const struct cmb_process *pp);
  * be truncated at one less than the buffer size, leaving space for the
  * terminating zero char.
  */
-#define CMB_PROCESS_NAMEBUF_SZ 32
 extern const char *cmb_process_set_name(struct cmb_process *cp,
                                         const char *name);
 

@@ -170,7 +170,7 @@ extern void **cmi_hashheap_dequeue(struct cmi_hashheap *hp);
 /*
  * cmi_hashheap_count : Returns the number of items currently in the queue.
  */
-inline uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp)
+static inline uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
 
@@ -180,7 +180,7 @@ inline uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp)
 /*
  * cmi_hashheap_is_empty : Returns true if count = 0, false otherwise
  */
-inline bool cmi_hashheap_is_empty(const struct cmi_hashheap *hp)
+static inline bool cmi_hashheap_is_empty(const struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
 
@@ -191,7 +191,7 @@ inline bool cmi_hashheap_is_empty(const struct cmi_hashheap *hp)
  * cmi_hashheap_peek_item : Returns a pointer to the location of the item
  * currently at the top of the priority queue, without removing it.
  */
-inline void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp)
+static inline void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
 
@@ -211,7 +211,7 @@ inline void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp)
  * These functions have no good way to return an out-of-band error value, will
  * fire an assert instead if called on an empty hashheap. Check first.
  */
-inline double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp)
+static inline double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
     cmb_assert_release(hp->heap != NULL);
@@ -222,7 +222,7 @@ inline double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp)
     return first->dkey;
 }
 
-inline int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
+static inline int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
     cmb_assert_release(hp->heap != NULL);
