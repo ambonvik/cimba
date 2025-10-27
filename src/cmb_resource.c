@@ -16,3 +16,28 @@
  * limitations under the License.
  */
 #include "cmb_resource.h"
+
+
+/*
+ * guard_check : Test if heap_tag *a should go before *b. If so, return true.
+ * Ranking higher priority (dkey) before lower, then FIFO based on handle value.
+ */
+static bool guard_check(const struct cmi_heap_tag *a,
+                             const struct cmi_heap_tag *b)
+{
+    cmb_assert_debug(a != NULL);
+    cmb_assert_debug(b != NULL);
+
+    bool ret = false;
+    if (a->ikey > b->ikey) {
+        ret = true;
+    }
+    else if (a->ikey == b->ikey) {
+        if (a->handle < b->handle) {
+            ret = true;
+        }
+    }
+
+    return ret;
+}
+

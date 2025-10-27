@@ -31,8 +31,7 @@
  * Below, we describe the cmb_resourcequard and cmb_resourcecore "classes", and
  * combine these to generic models of semaphore-type resources, finite-capacity
  * buffers, and finite-sized object queues. A user application can extend this
- * further by inheritance, using C's object oriented features. (Seriously, see
- * examples in the code below.)
+ * further using inheritance by composition, also used in the code below.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -59,5 +58,39 @@
 #include "cmi_hashheap.h"
 #include "cmb_process.h"
 #include "cmi_processtag.h"
+
+struct cmb_resource;
+
+struct cmi_resource_guard {
+    struct cmi_hashheap priority_queue;
+};
+
+typedef bool (cmb_resource_demand_func)(struct cmb_resource *res,
+                                        struct cmb_process *pp,
+                                        void *ctx);
+
+/*
+ * We have up to four 64-bit payload fields in the hash_heap entries.
+ * Mapping:
+ * item[0] - pointer to the process itself
+ * item[1] - pointer to its demand function
+ * item[2] - its context pointer
+ */
+
+struct cmi_resource_guard *cmi_resource_guard_create(void);
+
+extern void cmi_resource_guard_init(struct cmi_resource_guard *rgp);
+
+extern void cmi_resource_guard_clear(struct cmi_resource_guard *rgp);
+
+extern void cmi_resource_guard_destroy(struct cmi_resource_guard *rgp);
+
+extern void cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
+                                    struct cmb_process *pp,
+                                    cmb_resource_demand_func *demfun,
+                                    void *ctx);
+
+extern void cmi_resource_guard_signal(struct cmi_resource_guard *rgp,
+                                      int64_t sig);
 
 #endif // CIMBA_CMB_RESOURCE_H
