@@ -54,9 +54,9 @@ double cmb_time(void)
 
 /*
  * heap_order_check : Test if heap_tag *a should go before *b. If so, return true.
- * Prioritization corresponds to event queue order, where the heap tag fields
- * dkey = reactivation time, ikey = priority, ukey = not used, uses FIFO based
- * on the event handle value instead.
+ * Prioritization corresponds to event queue order, where lower reactivation
+ * time (dkey) go before higher, if equal then higher priority (ikey) before
+ * lower, and if that also equal FIFO order based on handle value.
  */
 static bool heap_order_check(const struct cmi_heap_tag *a,
                              const struct cmi_heap_tag *b)
