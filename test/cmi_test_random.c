@@ -67,7 +67,7 @@
     cmb_dataset_print_correlogram(&ds, stdout, ACFS, pacf)
 
 #define QTEST_FINISH() \
-    cmb_dataset_reset(&ds); \
+    cmb_dataset_terminate(&ds); \
     cmi_test_print_line("=")
 
 static void print_single(const char *lead, const bool has_val, const double val)
