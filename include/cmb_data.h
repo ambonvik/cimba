@@ -47,12 +47,6 @@ struct cmb_summary {
     double m4;
 };
 
-/* Initialize a given data summary, not necessarily allocated on the heap */
-extern void cmb_summary_init(struct cmb_summary *sup);
-
-/* Reset a previously used data summary, re-initializing all counters */
-extern void cmb_summary_clear(struct cmb_summary *sup);
-
 /*
  * Allocate a data summary object on the heap and initialize it.
  * Note that this does not allocate from a thread local memory pool,
@@ -60,10 +54,17 @@ extern void cmb_summary_clear(struct cmb_summary *sup);
  */
 extern struct cmb_summary *cmb_summary_create(void);
 
-/*
- * A matching function to free the heap area again if created there.
- */
+/* A matching function to free the heap area again if created there. */
 extern void cmb_summary_destroy(struct cmb_summary *sup);
+
+/* Initialize a given data summary, not necessarily allocated on the heap */
+extern void cmb_summary_initialize(struct cmb_summary *sup);
+
+/* Reset a previously used data summary to newly initialized state */
+extern void cmb_summary_reset(struct cmb_summary *sup);
+
+/* Un-initialize the data summary, returning it to newly created state */
+extern void cmb_summary_terminate(struct cmb_summary *sup);
 
 /*
  * Add a single value to a data summary, updating running statistics.
@@ -155,20 +156,10 @@ struct cmb_wsummary {
     double wsum;
 };
 
-static inline void cmb_wsummary_init(struct cmb_wsummary *wsup)
-{
-    cmb_assert_release(wsup != NULL);
-    cmb_summary_init((struct cmb_summary *)wsup);
-    wsup->wsum = 0.0;
-}
-
-static inline void cmb_wsummary_clear(struct cmb_wsummary *wsup)
-{
-    cmb_assert_release(wsup != NULL);
-    cmb_wsummary_init(wsup);
-}
-
 extern struct cmb_wsummary *cmb_wsummary_create(void);
+extern void cmb_wsummary_initialize(struct cmb_wsummary *wsup);
+extern void cmb_wsummary_reset(struct cmb_wsummary *wsup);
+extern void cmb_wsummary_terminate(struct cmb_wsummary *wsup);
 extern void cmb_wsummary_destroy(struct cmb_wsummary *wsup);
 extern uint64_t cmb_wsummary_add(struct cmb_wsummary *wsup, double y, double w);
 extern uint64_t cmb_wsummary_merge(struct cmb_wsummary *tgt,
@@ -219,18 +210,15 @@ static inline double cmb_wsummary_kurtosis(const struct cmb_wsummary *wsup)
     return cmb_summary_kurtosis((struct cmb_summary *)wsup);
 }
 
-static inline void cmb_wsummary_print(const struct cmb_wsummary *wsup,
+extern void cmb_wsummary_print(const struct cmb_wsummary *wsup,
                                FILE *fp,
-                               const bool lead_ins)
-{
-    cmb_summary_print((struct cmb_summary *)wsup, fp, lead_ins);
-}
+                               const bool lead_ins);
 
 /******************************************************************************
  * cmb_dataset - a conveniently resizing array for keeping the sample values.
  * It does not keep a running tally, use cmb_dataset_summarize() to compute
  * the statistics when needed. The data array is allocated from the heap as
- * needed and free'd by either cmb_dataset_clear or cmb_dataset_destroy.
+ * needed and free'd by either cmb_dataset_reset or cmb_dataset_destroy.
  * Use the init/clear pair for data series declared as local variables on the
  * stack, use create/destroy to allocate and free data series on the heap.
  * The internal data array will be created on the heap even if the data series
@@ -254,7 +242,12 @@ struct cmb_dataset {
 extern struct cmb_dataset *cmb_dataset_create(void);
 
 /* Initialize the dataset, clearing any data values. */
-extern void cmb_dataset_init(struct cmb_dataset *dsp);
+extern void cmb_dataset_initialize(struct cmb_dataset *dsp);
+
+extern void cmb_dataset_reset(struct cmb_dataset *dsp);
+
+/* Uni-initialize it, returning it to newly created state */
+extern void cmb_dataset_terminate(struct cmb_dataset *tgt);
 
 /* Copy tgt into src, overwriting whatever was in tgt */
 extern uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
@@ -269,20 +262,9 @@ extern uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
                                   const struct cmb_dataset *s2);
 
 /*
- * Clears (re-initializes) the dataset, frees memory automatically
- * allocated for the data arrays, but does not free the memory allocated for
- * the dataset itself.
- */
-static inline void cmb_dataset_clear(struct cmb_dataset *dsp)
-{
-    cmb_assert_release(dsp != NULL);
-    cmb_dataset_init(dsp);
-}
-
-/*
  * Free memory allocated by cmb_dataset_create for the dataset and its arrays.
  * Do not call for a dataset that was just declared on the stack without no
- * cmb_dataset_create. Use cmb_dataset_clear instead to free the arrays only.
+ * cmb_dataset_create. Use cmb_dataset_reset instead to free the arrays only.
  */
 extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
 
@@ -393,12 +375,13 @@ struct cmb_timeseries {
 
 /* Manage the timeseries themselves */
 extern struct cmb_timeseries *cmb_timeseries_create(void);
-extern void cmb_timeseries_init(struct cmb_timeseries *tsp);
+extern void cmb_timeseries_initialize(struct cmb_timeseries *tsp);
+extern void cmb_timeseries_terminate(struct cmb_timeseries *tsp);
 
-static inline void cmb_timeseries_clear(struct cmb_timeseries *tsp)
+static inline void cmb_timeseries_reset(struct cmb_timeseries *tsp)
 {
     cmb_assert_release(tsp != NULL);
-    cmb_timeseries_init(tsp);
+    cmb_timeseries_initialize(tsp);
 }
 
 extern void cmb_timeseries_destroy(struct cmb_timeseries *tsp);

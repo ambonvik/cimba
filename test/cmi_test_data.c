@@ -33,9 +33,9 @@
 static void test_summary(void)
 {
     printf("\nTesting data summaries\n");
-    printf("Declaring local variable data summary on stack and initializing it: cmb_summary_init\n");
+    printf("Declaring local variable data summary on stack and initializing it: cmb_summary_initialize\n");
     struct cmb_summary ds;
-    cmb_summary_init(&ds);
+    cmb_summary_initialize(&ds);
 
     printf("Drawing %u U(0,1) samples and adding to data summary: cmb_summary_add\n", MAX_ITER);
         for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
@@ -76,9 +76,9 @@ static void test_summary(void)
     printf("Merged summary: cmb_summary_print\n");
     cmb_summary_print(dsp, stdout, true);
 
-    printf("\nCleaning up: cmb_summary_clear, cmb_summary_destroy\n");
-    cmb_summary_clear(&ds);
-    cmb_summary_clear(dsp);
+    printf("\nCleaning up: cmb_summary_terminate, cmb_summary_destroy\n");
+    cmb_summary_terminate(&ds);
+    cmb_summary_terminate(dsp);
     cmb_summary_destroy(dsp);
 
     cmi_test_print_line("=");
@@ -89,9 +89,9 @@ static void test_wsummary(void)
     printf("\nTesting weighted data summaries\n");
     printf("Weighted and unweighted in parallel, all weights set to 1.0\n");
     struct cmb_summary ds;
-    cmb_summary_init(&ds);
+    cmb_summary_initialize(&ds);
     struct cmb_wsummary dws;
-    cmb_wsummary_init(&dws);
+    cmb_wsummary_initialize(&dws);
 
     printf("Drawing %u U(0,1) samples...\n", MAX_ITER);
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
@@ -117,9 +117,9 @@ static void test_wsummary(void)
     printf("Summary without lead-ins, tab separated:\n");
     cmb_wsummary_print(&dws, stdout, false);
 
-    printf("\nCleaning up: cmb_summary_clear, cmb_wsummary_clear\n");
-    cmb_summary_clear(&ds);
-    cmb_wsummary_clear(&dws);
+    printf("\nCleaning up: cmb_summary_reset, cmb_wsummary_reset\n");
+    cmb_summary_reset(&ds);
+    cmb_wsummary_reset(&dws);
     cmi_test_print_line("-");
 
     printf("\nDrawing %u new x ~ U(0,1) samples weighted by 1.5 - x\n", MAX_ITER);
@@ -135,7 +135,7 @@ static void test_wsummary(void)
     cmb_wsummary_print(&dws, stdout, true);
     printf("Unweighted: ");;
     cmb_summary_print(&ds, stdout, true);
-    cmb_summary_clear(&ds);
+    cmb_summary_reset(&ds);
     cmi_test_print_line("-");
 
 
@@ -159,8 +159,8 @@ static void test_wsummary(void)
     printf("Returned %llu\n", nm);
     printf("Merged summary: cmb_wsummary_print\n");
     cmb_wsummary_print(dwp, stdout, true);
-    printf("Cleaning up: cmb_wsummary_clear, cmb_wsummary_destroy\n");
-    cmb_wsummary_clear(&dws);
+    printf("Cleaning up: cmb_wsummary_terminate, cmb_wsummary_destroy\n");
+    cmb_wsummary_terminate(&dws);
     cmb_wsummary_destroy(dwp);
 
     cmi_test_print_line("=");
@@ -169,10 +169,10 @@ static void test_wsummary(void)
 void test_dataset(void)
 {
     printf("\nTesting datasets\n");
-    printf("Local variable dataset on stack: cmb_dataset_init\n");
+    printf("Local variable dataset on stack: cmb_dataset_initialize\n");
 
     struct cmb_dataset ds = { 0 };
-    cmb_dataset_init(&ds);
+    cmb_dataset_initialize(&ds);
 
     printf("Drawing %u U(0,1) samples: cmb_dataset_add\n", SORT_SAMPLES);
     for (uint32_t ui = 0; ui < SORT_SAMPLES; ui++) {
@@ -191,8 +191,8 @@ void test_dataset(void)
     cmb_dataset_sort(&dsc);
     printf("Content of copy: cmb_dataset_print:\n");
     cmb_dataset_print(&dsc, stdout);
-    printf("\nClearing the copy: cmb_dataset_clear\n");
-    cmb_dataset_clear(&dsc);
+    printf("\nClearing the copy: cmb_dataset_reset\n");
+    cmb_dataset_reset(&dsc);
 
     printf("\nBasic dataset reporting functions:\n");
     cmi_test_print_line("-");
@@ -205,8 +205,8 @@ void test_dataset(void)
     printf("Five number summary of dataset: cmb_dataset_print_fivenum ...\n");
     cmb_dataset_print_fivenum(&ds, stdout, true);
 
-    printf("\nClearing the dataset; cmb_dataset_clear\n");
-    cmb_dataset_clear(&ds);
+    printf("\nClearing the dataset; cmb_dataset_reset\n");
+    cmb_dataset_reset(&ds);
 
     printf("\nDrawing %u U(0,1) samples: cmb_dataset_add\n", MAX_ITER);
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
@@ -238,6 +238,7 @@ void test_dataset(void)
 
     printf("\nCreating a new dataset on the heap: cmb_dataset_create\n");
     struct cmb_dataset *dsp = cmb_dataset_create();
+    cmb_dataset_initialize(dsp);
     printf("Filling it with noisy sine curves ...\n");
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
         const double period = 10.0;
@@ -248,7 +249,7 @@ void test_dataset(void)
         cmb_dataset_add(dsp, x);
     }
 
-    cmb_summary_clear(&dsum);
+    cmb_summary_reset(&dsum);
     (void)cmb_dataset_summarize(dsp, &dsum);
     cmb_summary_print(&dsum, stdout, true);
     cmb_dataset_print_histogram(dsp, stdout, 20u, 0, 0);
@@ -261,8 +262,8 @@ void test_dataset(void)
     cmb_dataset_PACF(dsp, MAX_LAG, pacf, acf);
     cmb_dataset_print_correlogram(dsp, stdout, MAX_LAG, pacf);
 
-    printf("\nCleaning up: cmb_summary_clear, cmb_dataset_destroy\n");
-    cmb_summary_clear(&dsum);
+    printf("\nCleaning up: cmb_summary_terminate, cmb_dataset_destroy\n");
+    cmb_summary_terminate(&dsum);
     cmb_dataset_destroy(dsp);
 
     cmi_test_print_line("=");
@@ -274,7 +275,7 @@ void test_timeseries(void)
     printf("Creating timeseries: cmb_timeseries_create\n");
 
     struct cmb_timeseries *tsp = cmb_timeseries_create();
-    cmb_timeseries_init(tsp);
+    cmb_timeseries_initialize(tsp);
 
     printf("Drawing %u x = U(0,1) samples at intervals Exp(2 - x): cmb_timeseries_add\n", MAX_ITER);
     double t = 0.0;
@@ -309,9 +310,9 @@ void test_timeseries(void)
     cmb_dataset_print_histogram(dsp, stdout, NUM_BINS, 0.0, 0.0);
     cmi_test_print_line("=");
 
-    printf("\nDeclaring another timeseries on the stack: cmb_timeseries_init\n");
+    printf("\nDeclaring another timeseries on the stack: cmb_timeseries_initialize\n");
     struct cmb_timeseries ts = { 0 };
-    cmb_timeseries_init(&ts);
+    cmb_timeseries_initialize(&ts);
     printf("Drawing %u x = U(1,2) samples at intervals Exp(1): cmb_timeseries_add\n", MAX_ITER);
     t = 0.0;
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
@@ -340,13 +341,13 @@ void test_timeseries(void)
     cmb_timeseries_summarize(&ts, &ws);
     cmb_wsummary_print(&ws, stdout, true);
 
-    printf("\nCleaning up: cmb_timeseries_clear, cmb_timeseries_destroy\n");
-    cmb_timeseries_clear(&ts);
+    printf("\nCleaning up: cmb_timeseries_reset, cmb_timeseries_destroy\n");
+    cmb_timeseries_reset(&ts);
     cmb_timeseries_destroy(tsp);
     cmi_test_print_line("-");
 
     printf("\nTesting sorting functions\n");
-    cmb_timeseries_init(&ts);
+    cmb_timeseries_initialize(&ts);
     printf("Drawing %u x = U(1,2) samples at intervals Exp(1): cmb_timeseries_add\n", SORT_SAMPLES);
     t = 0.0;
     for (uint32_t ui = 0; ui < SORT_SAMPLES; ui++) {
@@ -373,8 +374,8 @@ void test_timeseries(void)
     printf("cmb_timeseries_print_fivenum:\n");
     cmb_timeseries_print_fivenum(&ts, stdout, true);
 
-    printf("\nCleaning up: cmb_timeseries_clear\n");
-    cmb_timeseries_clear(&ts);
+    printf("\nCleaning up: cmb_timeseries_terminate\n");
+    cmb_timeseries_terminate(&ts);
 
     cmi_test_print_line("=");
 }

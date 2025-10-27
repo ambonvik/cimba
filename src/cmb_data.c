@@ -39,17 +39,11 @@ static const uint64_t cmb_dataset_init_size = 1024;
 struct cmb_summary *cmb_summary_create(void)
 {
     struct cmb_summary *sup = cmi_malloc(sizeof *sup);
-    cmb_summary_init(sup);
+
     return sup;
 }
 
-void cmb_summary_destroy(struct cmb_summary *sup)
-{
-    cmb_assert_release(sup != NULL);
-    cmi_free(sup);
-}
-
-void cmb_summary_init(struct cmb_summary *sup)
+void cmb_summary_initialize(struct cmb_summary *sup)
 {
     cmb_assert_release(sup != NULL);
 
@@ -59,11 +53,27 @@ void cmb_summary_init(struct cmb_summary *sup)
     sup->m1 = sup->m2 = sup->m3 = sup->m4 = 0.0;
 }
 
-void cmb_summary_clear(struct cmb_summary *sup)
+void cmb_summary_reset(struct cmb_summary *sup)
 {
     cmb_assert_release(sup != NULL);
-    cmb_summary_init(sup);
+
+    cmb_summary_terminate(sup);
+    cmb_summary_initialize(sup);
 }
+
+void cmb_summary_terminate(struct cmb_summary *sup)
+{
+    cmb_assert_release(sup != NULL);
+}
+
+void cmb_summary_destroy(struct cmb_summary *sup)
+{
+    cmb_assert_release(sup != NULL);
+
+    cmb_summary_terminate(sup);
+    cmi_free(sup);
+}
+
 
 /*
  * Merge two data summaries, updating the statistics.
@@ -236,13 +246,39 @@ double cmb_summary_kurtosis(const struct cmb_summary *sup)
 struct cmb_wsummary *cmb_wsummary_create(void)
 {
     struct cmb_wsummary *wsup = cmi_malloc(sizeof *wsup);
-    cmb_wsummary_init(wsup);
+
     return wsup;
+}
+
+void cmb_wsummary_initialize(struct cmb_wsummary *wsup)
+{
+    cmb_assert_release(wsup != NULL);
+
+    cmb_summary_initialize((struct cmb_summary *)wsup);
+    wsup->wsum = 0.0;
+}
+
+void cmb_wsummary_reset(struct cmb_wsummary *wsup)
+{
+    cmb_assert_release(wsup != NULL);
+
+    cmb_summary_reset((struct cmb_summary *)wsup);
+    wsup->wsum = 0.0;
+
+}
+
+void cmb_wsummary_terminate(struct cmb_wsummary *wsup)
+{
+    cmb_assert_release(wsup != NULL);
+
+    cmb_summary_terminate((struct cmb_summary *)wsup);
 }
 
 void cmb_wsummary_destroy(struct cmb_wsummary *wsup)
 {
     cmb_assert_release(wsup != NULL);
+
+    cmb_wsummary_terminate(wsup);
     cmi_free(wsup);
 }
 
@@ -337,41 +373,58 @@ uint64_t cmb_wsummary_merge(struct cmb_wsummary *tgt,
     return ts->cnt;
 }
 
+void cmb_wsummary_print(const struct cmb_wsummary *wsup,
+                        FILE *fp,
+                        const bool lead_ins)
+{
+    cmb_summary_print((struct cmb_summary *)wsup, fp, lead_ins);
+}
+
+
+
 /****************************** Data set methods ******************************/
 
 struct cmb_dataset *cmb_dataset_create(void)
 {
     struct cmb_dataset *dsp = cmi_malloc(sizeof *dsp);
+
+    return dsp;
+}
+
+void cmb_dataset_initialize(struct cmb_dataset *dsp)
+{
+    cmb_assert_release(dsp != NULL);
+
     dsp->cursize = 0u;
     dsp->cnt = 0u;
     dsp->min = DBL_MAX;
     dsp->max = -DBL_MAX;
     dsp->xa = NULL;
-
-    return dsp;
 }
 
-void cmb_dataset_init(struct cmb_dataset *dsp)
+void cmb_dataset_reset(struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
 
+    cmb_dataset_terminate(dsp);
+    cmb_dataset_initialize(dsp);
+}
+
+void cmb_dataset_terminate(struct cmb_dataset *dsp)
+{
+    cmb_assert_release(dsp != NULL);
     if (dsp->cursize > 0u) {
         cmb_assert_debug(dsp->xa != NULL);
         cmi_free(dsp->xa);
         dsp->xa = NULL;
     }
-
-    dsp->cursize = 0u;
-    dsp->cnt = 0u;
-    dsp->min = DBL_MAX;
-    dsp->max = -DBL_MAX;
 }
 
 void cmb_dataset_destroy(struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
 
-    cmb_dataset_clear(dsp);
+    cmb_dataset_terminate(dsp);
     cmi_free(dsp);
 }
 
@@ -581,7 +634,7 @@ uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsump != NULL);
 
-    cmb_summary_init(dsump);
+    cmb_summary_initialize(dsump);
 
     for (uint64_t ui = 0; ui < dsp->cnt; ui++) {
         cmb_summary_add(dsump, dsp->xa[ui]);
@@ -615,7 +668,7 @@ double cmb_dataset_median(const struct cmb_dataset *dsp)
         cmb_dataset_copy(&dup, dsp);
         cmb_dataset_sort(&dup);
         r = data_array_median(dup.cnt, dup.xa);
-        cmb_dataset_clear(&dup);
+        cmb_dataset_reset(&dup);
     }
     else {
         cmb_logger_warning(stderr, "Cannot take median without any data.");
@@ -662,7 +715,7 @@ void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
                 ((lead_ins) ? "  Quartile_3 " : "\t"), q3,
                 ((lead_ins) ? "  Max " : "\t"), max);
         cmb_assert_release(r > 0);
-        cmb_dataset_clear(&dsc);
+        cmb_dataset_reset(&dsc);
     }
     else {
         cmb_logger_warning(fp, "No data to display in five-number summary");
@@ -1107,24 +1160,24 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
 struct cmb_timeseries *cmb_timeseries_create(void)
 {
     struct cmb_timeseries *tsp = cmi_malloc(sizeof *tsp);
-    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
-    dsp->cursize = 0u;
-    dsp->cnt = 0u;
-    dsp->min = DBL_MAX;
-    dsp->max = -DBL_MAX;
-    dsp->xa = NULL;
-    tsp->ta = NULL;
-    tsp->wa = NULL;
-    cmb_timeseries_init(tsp);
 
     return tsp;
 }
 
-void cmb_timeseries_init(struct cmb_timeseries *tsp)
+void cmb_timeseries_initialize(struct cmb_timeseries *tsp)
 {
     cmb_assert_release(tsp != NULL);
 
-    cmb_dataset_init((struct cmb_dataset *)tsp);
+    cmb_dataset_initialize((struct cmb_dataset *)tsp);
+
+    tsp->ta = NULL;
+    tsp->wa = NULL;
+}
+
+void cmb_timeseries_terminate(struct cmb_timeseries *tsp)
+{
+    cmb_assert_release(tsp != NULL);
+
     if (tsp->ta != NULL) {
         cmi_free(tsp->ta);
         tsp->ta = NULL;
@@ -1134,13 +1187,15 @@ void cmb_timeseries_init(struct cmb_timeseries *tsp)
         cmi_free(tsp->wa);
         tsp->wa = NULL;
     }
+
+    cmb_dataset_terminate((struct cmb_dataset *)tsp);
 }
 
 void cmb_timeseries_destroy(struct cmb_timeseries *tsp)
 {
     cmb_assert_release(tsp != NULL);
 
-    cmb_timeseries_clear(tsp);
+    cmb_timeseries_terminate(tsp);
     cmi_free(tsp);
 }
 
@@ -1230,7 +1285,7 @@ uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp,
     cmb_assert_release(tsp->ta != NULL);
     cmb_assert_release(wsp != NULL);
 
-    cmb_wsummary_clear(wsp);
+    cmb_wsummary_reset(wsp);
 
     const struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     cmb_assert_debug(dsp->xa != NULL);
@@ -1507,7 +1562,7 @@ double cmb_timeseries_median(const struct cmb_timeseries *tsp)
     }
 
     cmi_free(wcum);
-    cmb_timeseries_clear(&tmp_ts);
+    cmb_timeseries_reset(&tmp_ts);
     return r;
 }
 
@@ -1577,5 +1632,5 @@ void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp,
     cmb_assert_release(r > 0);
 
     cmi_free(wcum);
-    cmb_timeseries_clear(&tmp_ts);
+    cmb_timeseries_reset(&tmp_ts);
 }
