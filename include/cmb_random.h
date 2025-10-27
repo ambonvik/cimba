@@ -316,11 +316,12 @@ static inline double cmb_random_beta(const double a, const double b,
 }
 
 /*
- * PERT and modified PERT distributions
+ * PERT and modified PERT distributions.
  * Scaled and shifted beta distributions to get a mean at m.
  * Can be used as a heuristically determined distribution where the parameters
- * are "at least minl", "most likely mode", and "not more than max". The additional
- * parameter lambda determines the peakiness around mode, with lambda = 4.0 default.
+ * are "at least min", "most likely around mode", and "not more than max".
+ * The additional parameter lambda determines the peakiness around mode, with
+ * lambda = 4.0 default.
  */
 extern double cmb_random_PERT_mod(double min,
                                   double mode,
@@ -335,6 +336,7 @@ static inline double cmb_random_PERT(const double min,
     cmb_assert_release(mode < max);
 
     const double x = cmb_random_PERT_mod(min, mode, max, 4.0);
+
 
     cmb_assert_debug((x >= min) && (x <= max));
     return x;
