@@ -85,21 +85,19 @@ int cmb_vfprintf(const uint32_t flags,
             ret += r;
         }
 
-        char *label;
-        if (flags >= CMI_LOGGER_FATAL)
-            label = "Fatal";
-        else if (flags >= CMI_LOGGER_ERROR)
-            label = "Error";
-        else if (flags >= CMI_LOGGER_WARNING)
-            label = "Warning";
-        else if (flags >= CMI_LOGGER_INFO)
-            label = "Info";
-        else
-            label = "User";
+        if (flags >= CMI_LOGGER_WARNING) {
+            char *label;
+            if (flags >= CMI_LOGGER_FATAL)
+                label = "Fatal";
+            else if (flags >= CMI_LOGGER_ERROR)
+                label = "Error";
+            else
+                label = "Warning";
 
-        r = fprintf(fp, "%s: ", label);
-        assert(r > 0);
-        ret += r;
+            r = fprintf(fp, "%s: ", label);
+            assert(r > 0);
+            ret += r;
+        }
 
         r = vfprintf (fp, fmtstr, args);
         assert(r > 0);
