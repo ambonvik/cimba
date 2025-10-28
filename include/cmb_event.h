@@ -84,10 +84,10 @@ extern void cmb_run(void);
 typedef void (cmb_event_func)(void *subject, void *object);
 
 /*
- * cmb_event_queue_init : Initialize the event queue itself.
+ * cmb_event_queue_initialize : Initialize the event queue itself.
  * Must be called before any events can be scheduled or executed.
  */
-extern void cmb_event_queue_init(double start_time);
+extern void cmb_event_queue_initialize(double start_time);
 
 /*
  * cmb_event_queue_clear : Clears out all scheduled events from the queue.

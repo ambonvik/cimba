@@ -83,18 +83,18 @@ static bool heap_order_check(const struct cmi_heap_tag *a,
 }
 
 /*
- * cmb_event_queue_init : Set starting simulation time, allocate and initialize
+ * cmb_event_queue_initialize : Set starting simulation time, allocate and initialize
  * hashheap for use. Allocates contiguous memory aligned to an integer number
  * of memory pages for efficiency.
  */
-void cmb_event_queue_init(const double start_time)
+void cmb_event_queue_initialize(const double start_time)
 {
     cmb_assert_release(event_queue == NULL);
 
     sim_time = start_time;
 
     event_queue = cmi_hashheap_create();
-    cmi_hashheap_init(event_queue, QUEUE_INIT_EXP, heap_order_check);
+    cmi_hashheap_initialize(event_queue, QUEUE_INIT_EXP, heap_order_check);
 }
 
 /*

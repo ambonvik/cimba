@@ -385,7 +385,7 @@ int main(void)
     cmi_test_print_line("*");
     printf("**********************      Testing data collectors       **********************\n");
     cmi_test_print_line("*");
-    cmb_random_init(cmb_random_get_hwseed());
+    cmb_random_initialize(cmb_random_get_hwseed());
 
     test_summary();
     test_wsummary();

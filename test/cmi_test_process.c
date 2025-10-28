@@ -103,7 +103,7 @@ void *procfunc3(struct cmb_process *me, void *ctx)
 int main(void)
 {
     const uint64_t seed = cmb_random_get_hwseed();
-    cmb_random_init(seed);
+    cmb_random_initialize(seed);
 
     cmi_test_print_line("*");
     printf("****************************   Testing processes   *****************************\n");
@@ -114,7 +114,7 @@ int main(void)
     struct cmb_process *cpp2 = cmb_process_create("Nuisance", procfunc2, cpp1, 1);
 
     printf("cmb_process_start ...\n");
-    cmb_event_queue_init(0.0);
+    cmb_event_queue_initialize(0.0);
     cmb_process_start(cpp1);
     cmb_process_start(cpp2);
 

@@ -103,7 +103,7 @@ static void test_getsetseed(void)
     printf("Getting hardware entropy seed ... ");
     const uint64_t seed = cmb_random_get_hwseed();
     printf("%#llx\n", seed);
-    cmb_random_init(seed);
+    cmb_random_initialize(seed);
 }
 
 static void test_quality_random(void)
@@ -187,7 +187,7 @@ static void test_speed_exponential(const double m)
 {
     const uint64_t seed = cmb_random_get_hwseed();
     printf("\nSpeed testing standard exponential distribution, seed = %#llx\n", seed);
-    cmb_random_init(seed);
+    cmb_random_initialize(seed);
     printf("\nInversion method, drawing %llu samples...", MAX_ITER);
 
     const clock_t csi = clock();
@@ -198,7 +198,7 @@ static void test_speed_exponential(const double m)
     const double ti = (double)(cei - csi) / CLOCKS_PER_SEC;
     printf("\t%.3e samples per second\n", (double)MAX_ITER / ti);
 
-    cmb_random_init(seed);
+    cmb_random_initialize(seed);
     printf("Ziggurat method, drawing %llu samples...", MAX_ITER);
     const clock_t csz = clock();
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
@@ -340,7 +340,7 @@ static void test_speed_normal(const double m, const double s)
 {
     const uint64_t seed = cmb_random_get_hwseed();
     printf("\nSpeed testing normal distribution, seed = %#llx\n", seed);
-    cmb_random_init(seed);
+    cmb_random_initialize(seed);
     printf("\nBox Muller method, drawing %llu samples...", MAX_ITER);
 
     const clock_t csi = clock();
@@ -351,7 +351,7 @@ static void test_speed_normal(const double m, const double s)
     const double ti = (double)(cei - csi) / CLOCKS_PER_SEC;
     printf("\t%.3e samples per second\n", (double)MAX_ITER / ti);
 
-    cmb_random_init(seed);
+    cmb_random_initialize(seed);
     printf("Ziggurat method, drawing %llu samples...", MAX_ITER);
     const clock_t csz = clock();
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
@@ -875,7 +875,7 @@ static void test_quality_vose_alias(const unsigned n, const double pa[n])
 static void test_speed_vose_alias(const unsigned init, const unsigned end, const unsigned step)
 {
     const uint64_t seed = cmb_random_get_hwseed();
-    cmb_random_init(seed);
+    cmb_random_initialize(seed);
     printf("\nSpeed testing vose alias sampling, %llu samples, seed = %#llx.\n", MAX_ITER, seed);
     printf("Iterations per second (ips)\n");
     printf("n\tips simple\tips alias\tspeedup\n");

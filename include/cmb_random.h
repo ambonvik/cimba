@@ -35,7 +35,7 @@
  * number generator only used for this purpose. Call before any sampling.
  * Can be called again later to reset seed to initial (or some other) state.
  */
-extern void cmb_random_init(uint64_t seed);
+extern void cmb_random_initialize(uint64_t seed);
 
 /*
  * Get a suitable 64-bit seed from hardware entropy source.

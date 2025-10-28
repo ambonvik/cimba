@@ -45,14 +45,14 @@ uint64_t hash_handle(const struct cmi_hashheap *hp, const uint64_t handle)
 {
     cmb_assert_debug(hp != NULL);
 
-    return (handle * 11400714819323198485llu) >> (64u - (hp->heap_exp + 1));
+    return (handle * 11400714819323198485llu) >> (64u - (hp->heap_exp_cur + 1));
 }
 
 /*
  * hash_find_handle : Find the heap index of a given handle, zero if not found.
  * Uses a bitmap with all ones in the first positions to wrap around fast,
  * instead of using the modulo operator. In effect, simulates overflow in an
- * unsigned integer of (heap_exp + 1) bits.
+ * unsigned integer of (heap_exp_cur + 1) bits.
  */
 uint64_t hash_find_handle(const struct cmi_hashheap *hp, const uint64_t handle)
 {
@@ -230,9 +230,9 @@ static void hashheap_grow(struct cmi_hashheap *hp)
     cmb_assert_debug(cmi_is_power_of_two(hp->hash_size));
 
     /* Set the new heap size, i.e. the max number of events in the queue */
-    hp->heap_exp++;
+    hp->heap_exp_cur++;
     const uint64_t old_heapsz = hp->heap_size;
-    hp->heap_size = 1u << hp->heap_exp;
+    hp->heap_size = 1u << hp->heap_exp_cur;
     cmb_assert_debug(hp->heap_size == 2 * old_heapsz);
     const uint64_t old_hashsz = hp->hash_size;
     hp->hash_size = 2u * hp->heap_size;
@@ -271,7 +271,8 @@ static void hashheap_nullify(struct cmi_hashheap *hp)
     cmb_assert_debug(hp != NULL);
 
     hp->heap = NULL;
-    hp->heap_exp = 0u;
+    hp->heap_exp_init = 0u;
+    hp->heap_exp_cur = 0u;
     hp->heap_size = 0u;
     hp->heap_count = 0u;
     hp->heap_compare = NULL;
@@ -289,23 +290,23 @@ struct cmi_hashheap *cmi_hashheap_create(void)
 }
 
 /*
- * cmi_hashheap_init : Initialize hashheap for use.
+ * cmi_hashheap_initialize : Initialize hashheap for use.
  *
  * Allocates a contiguous memory array aligned to an integer number of memory
  * pages for efficiency.
  */
-void cmi_hashheap_init(struct cmi_hashheap *hp,
-                      const uint16_t hexp,
-                      cmi_heap_compare_func *cmp)
+void cmi_hashheap_initialize(struct cmi_hashheap *hp,
+                             const uint16_t hexp,
+                             cmi_heap_compare_func *cmp)
 {
     cmb_assert_release(hp != NULL);
     cmb_assert_release(hp->heap == NULL);
     cmb_assert_release(hp->hash_map == NULL);
     cmb_assert_release(hexp > 0u);
 
-    /* Use initial value of heap_exp for sizing */
-    hp->heap_exp = hexp;
-    hp->heap_size = 1u << hp->heap_exp;
+    hp->heap_exp_init = hexp;
+    hp->heap_exp_cur = hexp;
+    hp->heap_size = 1u << hp->heap_exp_cur;
     hp->hash_size = 2u * hp->heap_size;
     hp->heap_count = 0u;
 
@@ -328,7 +329,7 @@ void cmi_hashheap_init(struct cmi_hashheap *hp,
 }
 
 /*
- * cmi_hashheap_clear : Zero out the hashheap. Does not reset the item counter
+ * cmi_hashheap_clear : Flush out the hashheap. Does not reset the item counter
  * for issuing new handles, does not free space, does not shrink the heap to its
  * initial size, just empties it.
  */
@@ -345,6 +346,31 @@ void cmi_hashheap_clear(struct cmi_hashheap *hp)
     hp->heap_count = 0u;
 }
 
+void cmi_hashheap_reset(struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(hp->heap != NULL);
+
+    const uint16_t hexp = hp->heap_exp_init;
+    cmi_heap_compare_func *cmp = hp->heap_compare;
+
+    cmi_hashheap_terminate(hp);
+    cmi_hashheap_initialize(hp, hexp, cmp);
+}
+
+
+/*
+ * cmi_hashheap_terminate : Deallocate the internal structures
+ */
+void cmi_hashheap_terminate(struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+
+    cmi_aligned_free(hp->heap);
+    hp->heap = NULL;
+    hp->hash_map = NULL;
+}
+
 /*
  * cmi_hashheap_destroy : Clean up, deallocating space.
  */
@@ -352,7 +378,7 @@ void cmi_hashheap_destroy(struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
 
-    cmi_hashheap_clear(hp);
+    cmi_hashheap_terminate(hp);
     cmi_free(hp);
 }
 

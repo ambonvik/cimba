@@ -53,21 +53,21 @@ static bool heap_order_check(const struct cmi_heap_tag *a,
 
 int main(void)
 {
-    cmb_random_init(cmb_random_get_hwseed());
+    cmb_random_initialize(cmb_random_get_hwseed());
 
     cmi_test_print_line("-");
     printf("Testing event queue\n");
     printf("Creating hash heap: cmi_hashheap_create ...\n");
     struct cmi_hashheap *hhp = cmi_hashheap_create();
-    printf("Initializing hash heap: cmi_hashheap_init ...\n");
-    cmi_hashheap_init(hhp, 3u, heap_order_check);
+    printf("Initializing hash heap: cmi_hashheap_initialize ...\n");
+    cmi_hashheap_initialize(hhp, 3u, heap_order_check);
     printf("Destroying hash heap: cmi_hashheap_destroy ...\n");
     cmi_hashheap_destroy(hhp);
 
     printf("\nCreating another hash heap: cmi_hashheap_create ...\n");
     hhp = cmi_hashheap_create();
-    printf("Initializing hash heap: cmi_hashheap_init ...\n");
-    cmi_hashheap_init(hhp, 3u, heap_order_check);
+    printf("Initializing hash heap: cmi_hashheap_initialize ...\n");
+    cmi_hashheap_initialize(hhp, 3u, heap_order_check);
     printf("Adding an item: cmi_hashheap_enqueue ... ");
     uint64_t handle = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, NULL, 1.0, 1);
     printf("returned handle %llu\n", handle);
@@ -80,8 +80,8 @@ int main(void)
 
     printf("\nCreating another hash heap: cmi_hashheap_create ...\n");
     hhp = cmi_hashheap_create();
-    printf("Initializing hash heap: cmi_hashheap_init ...\n");
-    cmi_hashheap_init(hhp, 3u, heap_order_check);
+    printf("Initializing hash heap: cmi_hashheap_initialize ...\n");
+    cmi_hashheap_initialize(hhp, 3u, heap_order_check);
     printf("Adding 5 items: cmi_hashheap_enqueue ... \n");
     uint64_t itemcnt = 0u;
     for (unsigned ui = 0; ui < 5; ui++) {

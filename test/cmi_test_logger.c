@@ -65,8 +65,8 @@ static char *myformatter(const double t)
 
 int main(void)
 {
-    cmb_random_init(cmb_random_get_hwseed());
-    cmb_event_queue_init(0.0);
+    cmb_random_initialize(cmb_random_get_hwseed());
+    cmb_event_queue_initialize(0.0);
     cmb_set_timeformatter(myformatter);
 
     for (int i = 0; i < 3; i++) {

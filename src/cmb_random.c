@@ -67,7 +67,7 @@ uint64_t cmb_random_sfc64(void)
  */
 static CMB_THREAD_LOCAL uint64_t splitmix_state = DUMMY_SEED;
 
-static void splitmix_init(const uint64_t seed)
+static void splitmix_initialize(const uint64_t seed)
 {
     splitmix_state = seed;
 }
@@ -87,9 +87,9 @@ static uint64_t splitmix64(void)
  * Intentionally randomizes the counter (.d) to start at random place in cycle.
  * Pulls a few samples from the generator to get rid of any initial transient.
  */
-void cmb_random_init(const uint64_t seed)
+void cmb_random_initialize(const uint64_t seed)
 {
-    splitmix_init(seed);
+    splitmix_initialize(seed);
     prng_state.a = splitmix64();
     prng_state.b = splitmix64();
     prng_state.c = splitmix64();
