@@ -104,7 +104,8 @@ void cmi_processtag_list_add(struct cmi_processtag **ptloc, struct cmb_process *
 
     /* Lazy initalization of the memory pool for process tags */
     if (tag_pool == NULL) {
-        tag_pool = cmi_mempool_create(64u, sizeof(struct cmi_processtag));
+        tag_pool = cmi_mempool_create();
+        cmi_mempool_initialize(tag_pool, 64u, sizeof(struct cmi_processtag));
     }
 
     /* Get one and add it to the head of the list */

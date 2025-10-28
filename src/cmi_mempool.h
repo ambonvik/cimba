@@ -33,14 +33,20 @@ struct cmi_mempool {
     size_t obj_sz;
     size_t incr_num;
     size_t incr_sz;
-    uint64_t area_list_len;
-    uint64_t area_list_cnt;
-    void **area_list;
+    uint64_t chunk_list_len;
+    uint64_t chunk_list_cnt;
+    void **chunk_list;
     void *next_obj;
 };
 
 /*
- * cmi_mempool_create : Set up a memory pool for objects of size obj_sz bytes.
+ * cmi_mempool_create : Allocate a (zero-initialzied) cmi_mempool object.
+ */
+extern struct cmi_mempool *cmi_mempool_create(void);
+
+/*
+ * cmi_mempool_initialize : Set up memory pool for objects of size obj_sz bytes.
+ *
  * The initial memory allocation is obj_sz * obj_num bytes, later incrementing
  * by the same amount whenever needed. obj_sz must be a multiple of 8 bytes.
  * The memory allocation will be aligned to a page boundary. This will require
@@ -48,7 +54,23 @@ struct cmi_mempool {
  * adjust obj_num upwards to make this happen. Hence, obj_num should be seen as
  * indicating a minimum initial (and later increment) number, not an absolute.
  */
-extern struct cmi_mempool *cmi_mempool_create(uint64_t obj_num, size_t obj_sz);
+extern void cmi_mempool_initialize(struct cmi_mempool *mp,
+                                   uint64_t obj_num,
+                                   size_t obj_sz);
+
+/*
+ * cmi_mempool_terminate : Free all memory allocated to the memory pool except
+ * the cmi_mempool object itself. All allocated objects from the pool will
+ * become invalid.
+ */
+extern void cmi_mempool_terminate(struct cmi_mempool *mp);
+
+/*
+ * cmi_mempool_destroy : Free all memory allocated to the memory pool and the
+ * cmi_mempool object itself. All allocated objects from the pool will become
+ * invalid.
+ */
+extern void cmi_mempool_destroy(struct cmi_mempool *mp);
 
 /*
  * cmi_mempool_expand : Increase the memory pool size by the same amount as
@@ -56,12 +78,6 @@ extern struct cmi_mempool *cmi_mempool_create(uint64_t obj_num, size_t obj_sz);
  * the system memory page size.
  */
 extern void cmi_mempool_expand(struct cmi_mempool *mp);
-
-/*
- * cmi_mempool_destroy : Free all memory allocated to the memory pool.
- * All allocated objects from the pool will become invalid.
- */
-extern void cmi_mempool_destroy(struct cmi_mempool *mp);
 
 /*
  * cmi_mempool_get : Pop an object off the pool stack, allocating more objects
