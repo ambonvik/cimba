@@ -79,9 +79,9 @@ typedef bool (cmb_resource_demand_func)(struct cmb_resource *res,
 
 struct cmi_resource_guard *cmi_resource_guard_create(void);
 
-extern void cmi_resource_guard_init(struct cmi_resource_guard *rgp);
+extern void cmi_resource_guard_initialize(struct cmi_resource_guard *rgp);
 
-extern void cmi_resource_guard_clear(struct cmi_resource_guard *rgp);
+extern void cmi_resource_guard_terminate(struct cmi_resource_guard *rgp);
 
 extern void cmi_resource_guard_destroy(struct cmi_resource_guard *rgp);
 
