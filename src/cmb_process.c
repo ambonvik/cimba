@@ -26,24 +26,34 @@
 #include "cmi_processtag.h"
 
 /*
- * cmb_process_create : Allocate memory for the process, including its
- * constituent coroutine with stack. Does not start the process yet.
+ * cmb_process_create : Allocate memory for the process.
  */
-struct cmb_process *cmb_process_create(const char *name,
+struct cmb_process *cmb_process_create(void)
+{
+    struct cmb_process *pp = cmi_malloc(sizeof(*pp));
+    cmi_memset(pp, 0, sizeof(*pp));
+
+    return pp;
+}
+
+/*
+ * cmb_process_initialize : Set up process object and allocate coroutine stack.
+ * Does not start the process yet.
+ */
+struct cmb_process *cmb_process_initialize(struct cmb_process *pp,
+                                       const char *name,
                                        cmb_process_func foo,
                                        void *context,
                                        const int64_t priority)
 {
-    /* Allocate memory and initialize the cmi_coroutine parts */
-    struct cmb_process *pp = cmi_malloc(sizeof(*pp));
-    cmi_memset(pp, 0, sizeof(*pp));
-    cmi_coroutine_init((struct cmi_coroutine *)pp,
+    cmb_assert_release(pp != NULL);
+
+    cmi_coroutine_initialize((struct cmi_coroutine *)pp,
                        (cmi_coroutine_func *)foo,
                        context,
                        (cmi_coroutine_exit_func *)cmb_process_exit,
                        CMB_PROCESS_STACK_SIZE);
 
-    /* Initialize the cmi_process parts */
     (void)cmb_process_set_name(pp, name);
     pp->priority = priority;
     pp->wakeup_handle = 0ull;
@@ -53,23 +63,31 @@ struct cmb_process *cmb_process_create(const char *name,
 }
 
 /*
+ * cmb_process_terminate : Deallocates memory for the underlying coroutine stack
+ * but not for the process object itself. The process exit value is still there.
+ *
+ * If necessary, the terminated process can still be restarted by first calling
+ * _initialize and then _start, but until a use case for this is identified, we
+ * do not bother to provide a cmb_process_reset function.
+ */
+extern void cmb_process_terminate(struct cmb_process *pp)
+{
+    cmb_assert_release(pp != NULL);
+    cmb_assert_release(pp->waiter_tag == NULL);
+
+    cmi_coroutine_terminate((struct cmi_coroutine *)pp);
+}
+
+/*
  * cmb_process_destroy : Free allocated memory, including the coroutine stack
- * if present.
+ * if still present.
  */
 void cmb_process_destroy(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
     cmb_assert_release(pp->waiter_tag == NULL);
 
-    const struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
-    cmb_assert_debug(cp != cmi_coroutine_get_main());
-    cmb_assert_debug(cp != cmi_coroutine_get_current());
-    cmb_assert_debug(cp->status != CMI_COROUTINE_RUNNING);
-
-    if (cp->stack != NULL) {
-        cmi_free(cp->stack);
-    }
-
+    cmb_process_terminate(pp);
     cmi_free(pp);
 }
 

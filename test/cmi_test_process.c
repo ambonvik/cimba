@@ -109,12 +109,16 @@ int main(void)
     printf("****************************   Testing processes   *****************************\n");
     cmi_test_print_line("*");
     printf("seed: %llu\n", seed);
+    printf("cmb_event_queue_initialize ...\n");
+    cmb_event_queue_initialize(0.0);
     printf("cmb_process_create ...\n");
-    struct cmb_process *cpp1 = cmb_process_create("Testproc", procfunc1, NULL, 0);
-    struct cmb_process *cpp2 = cmb_process_create("Nuisance", procfunc2, cpp1, 1);
+    struct cmb_process *cpp1 = cmb_process_create();
+    struct cmb_process *cpp2 = cmb_process_create();
+    printf("cmb_process_initialize ...\n");
+    cmb_process_initialize(cpp1, "Testproc", procfunc1, NULL, 0);
+    cmb_process_initialize(cpp2,"Nuisance", procfunc2, cpp1, 1);
 
     printf("cmb_process_start ...\n");
-    cmb_event_queue_initialize(0.0);
     cmb_process_start(cpp1);
     cmb_process_start(cpp2);
 
@@ -127,12 +131,13 @@ int main(void)
     struct cmb_process *cpp3 = NULL;
     for (unsigned ui = 0u; ui < 3u; ui++) {
         sprintf(buf, "Waiter_%u", ui);
-        cpp3 = cmb_process_create(buf, procfunc3, cpp2, cmb_random_dice(-5, 5));
+        cpp3 = cmb_process_create();
+        cmb_process_initialize(cpp3, buf, procfunc3, cpp2, cmb_random_dice(-5, 5));
         cmb_process_start(cpp3);
     }
 
-    printf("cmb_run ...\n");
-    cmb_run();
+    printf("cmb_event_queue_execute ...\n");
+    cmb_event_queue_execute();
 
     printf("%s returned %p\n", cmb_process_get_name(cpp1), cmb_process_get_exit_value(cpp1));
     printf("%s returned %p\n", cmb_process_get_name(cpp2), cmb_process_get_exit_value(cpp2));
@@ -141,7 +146,8 @@ int main(void)
     cmb_process_destroy(cpp1);
     cmb_process_destroy(cpp2);
 
-    cmb_event_queue_destroy();
+    printf("cmb_event_queue_terminate ...\n");
+    cmb_event_queue_terminate();
     cmi_test_print_line("*");
     return 0;
 }

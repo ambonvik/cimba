@@ -65,20 +65,40 @@ struct cmb_process {
 typedef void *(cmb_process_func)(struct cmb_process *cp, void *context);
 
 /*
- * cmb_process_create : Allocates memory for the process and its underlying
- * coroutine. Uses a default 64 kB stack size per process, #defined here.
+ * cmb_process_create : Allocates memory for the process object. Separated from
+ * initialization to enable object-oriented inheritance by composition, where
+ * derived "classes" from cmb_process can repeat the same pattern as is done
+ * here with parent class cmi_coroutine and derived class cmb_process.
+ */
+extern struct cmb_process *cmb_process_create(void);
+
+/*
+ * cmb_process_initialize : Initializes process parameters and allocates memory
+ * for the underlying coroutine stack. Uses a default 64 kB stack size per
+ * process, #defined here. Does not start the process yet.
  */
 #define CMB_PROCESS_STACK_SIZE (64u * 1024u)
-extern struct cmb_process *cmb_process_create(const char *name,
-                                              cmb_process_func foo,
-                                              void *context,
-                                              int64_t priority);
+extern struct cmb_process *cmb_process_initialize(struct cmb_process *pp,
+                                                  const char *name,
+                                                  cmb_process_func foo,
+                                                  void *context,
+                                                  int64_t priority);
+
+/*
+ * cmb_process_terminate : Deallocates memory for the underlying coroutine stack
+ * but not for the process object itself. The process exit value is still there.
+ * The process must be finished (exited, stopped, returned) before getting here.
+ * Do not confuse this object destructor function with cmb_process_stop to force
+ * a running process to exit non-voluntarily. Call that first.
+ */
+extern void cmb_process_terminate(struct cmb_process *pp);
 
 /*
  * cmb_process_destroy : Deallocates memory for the process struct and its
- * underlying coroutine.
+ * underlying coroutine object.
  */
 extern void cmb_process_destroy(struct cmb_process *pp);
+
 
 /*
  * cmb_process_start : Schedules the process to start execution at the current
@@ -86,75 +106,6 @@ extern void cmb_process_destroy(struct cmb_process *pp);
  * to continue execution until it explicitly yields to some other process.
  */
 extern void cmb_process_start(struct cmb_process *pp);
-
-/*
- * cmb_process_get_name : Return the process name as a const char *,
- * since it is kept in a fixed size buffer and should not be changed directly.
- *
- * If the name for some reason needs to be changed, use cmb_process_set_name to
- * do it safely.
- */
-static inline const char *cmb_process_get_name(const struct cmb_process *pp)
-{
-    cmb_assert_release(pp != NULL);
-
-    return pp->name;
-}
-
-
-/*
- * cmb_process_set_name : Set a new name for the process, returning a const
- * char * to the new name. The name is held in a fixed size buffer of size
- * CMB_PROCESS_NAMEBUF_SZ. If the new name is too large for the buffer, it will
- * be truncated at one less than the buffer size, leaving space for the
- * terminating zero char.
- */
-extern const char *cmb_process_set_name(struct cmb_process *cp,
-                                        const char *name);
-
-/*
- * cmb_process_get_context : Return a pointer to the context. Not const, the
- * caller may change the content of the context data through this pointer.
- */
-extern void *cmb_process_get_context(const struct cmb_process *pp);
-
-/*
- * cmb_process_set_context : Replace the process context with something else.
- * Returns the old context pointer. The intended use is for cases where the
- * context is not ready when the process is created, e.g. because it will
- * contain a pointer to some obejct that has not been created yet.
- *
- * Use with extreme care if changing the context of a running process. An
- * optimizing compiler may not expect it to be changed and cause unexpected
- * behavior.
- */
-extern void *cmb_process_set_context(struct cmb_process *pp, void *context);
-
-/*
- * cmb_process_get_priority : Returns the current priority for the process.
- */
-extern int64_t cmb_process_get_priority(const struct cmb_process *pp);
-
-/*
- * cmb_process_set_priority : Changes the priority for the process, returning the
- * old priority value.
- */
-extern int64_t cmb_process_set_priority(struct cmb_process *pp, int64_t pri);
-
-/*
- * cmb_process_get_exit_value : Returns the stored exit value from the process,
- * as set by cmb_process_exit, cmb_process_stop, or simply returned by the
- * process function. Will issue a warning and return NULL if the process has not
- * yet finished.
- */
-extern void *cmb_process_get_exit_value(const struct cmb_process *pp);
-
-/*
- * cmb_process_get_current : Returns a pointer to the currently executing
- * process, i.e. the calling process itself. Returns NULL if called from outside
- * a named process, such as the main process that executes the event scheduler.
- */
-extern struct cmb_process *cmb_process_get_current(void);
 
 /*
  * cmb_process_hold : Wait for a specified duration. Returns 0 (NORMAL) when
@@ -224,5 +175,74 @@ extern void cmb_process_interrupt(struct cmb_process *pp,
  * cmb_process_start(pp) again.
  */
 extern void cmb_process_stop(struct cmb_process *pp, void *retval);
+
+/*
+ * cmb_process_get_name : Return the process name as a const char *,
+ * since it is kept in a fixed size buffer and should not be changed directly.
+ *
+ * If the name for some reason needs to be changed, use cmb_process_set_name to
+ * do it safely.
+ */
+static inline const char *cmb_process_get_name(const struct cmb_process *pp)
+{
+    cmb_assert_release(pp != NULL);
+
+    return pp->name;
+}
+
+/*
+ * cmb_process_set_name : Set a new name for the process, returning a const
+ * char * to the new name. The name is held in a fixed size buffer of size
+ * CMB_PROCESS_NAMEBUF_SZ. If the new name is too large for the buffer, it will
+ * be truncated at one less than the buffer size, leaving space for the
+ * terminating zero char.
+ */
+extern const char *cmb_process_set_name(struct cmb_process *cp,
+                                        const char *name);
+
+/*
+ * cmb_process_get_context : Return a pointer to the context. Not const, the
+ * caller may change the content of the context data through this pointer.
+ */
+extern void *cmb_process_get_context(const struct cmb_process *pp);
+
+/*
+ * cmb_process_set_context : Replace the process context with something else.
+ * Returns the old context pointer. The intended use is for cases where the
+ * context is not ready when the process is created, e.g. because it will
+ * contain a pointer to some obejct that has not been created yet.
+ *
+ * Use with extreme care if changing the context of a running process. An
+ * optimizing compiler may not expect it to be changed and cause unexpected
+ * behavior.
+ */
+extern void *cmb_process_set_context(struct cmb_process *pp, void *context);
+
+/*
+ * cmb_process_get_priority : Returns the current priority for the process.
+ */
+extern int64_t cmb_process_get_priority(const struct cmb_process *pp);
+
+/*
+ * cmb_process_set_priority : Changes the priority for the process, returning the
+ * old priority value.
+ */
+extern int64_t cmb_process_set_priority(struct cmb_process *pp, int64_t pri);
+
+/*
+ * cmb_process_get_exit_value : Returns the stored exit value from the process,
+ * as set by cmb_process_exit, cmb_process_stop, or simply returned by the
+ * process function. Will issue a warning and return NULL if the process has not
+ * yet finished.
+ */
+extern void *cmb_process_get_exit_value(const struct cmb_process *pp);
+
+/*
+ * cmb_process_get_current : Returns a pointer to the currently executing
+ * process, i.e. the calling process itself. Returns NULL if called from outside
+ * a named process, such as the main process that executes the event scheduler.
+ */
+extern struct cmb_process *cmb_process_get_current(void);
+
 
 #endif // CIMBA_CMB_PROCESS_H

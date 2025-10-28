@@ -129,7 +129,7 @@ struct cmi_coroutine *cmi_coroutine_create(void)
     return cp;
 }
 
-void cmi_coroutine_init(struct cmi_coroutine *cp,
+void cmi_coroutine_initialize(struct cmi_coroutine *cp,
                         cmi_coroutine_func *crfoo,
                         void *context,
                         cmi_coroutine_exit_func *crbar,
@@ -163,6 +163,52 @@ void cmi_coroutine_init(struct cmi_coroutine *cp,
 }
 
 /*
+ * cmi_coroutine_reset : Reset the coroutine to initial state.
+ * Can be restarted from the beginning by calling cmi_coroutine_start.
+ */
+void cmi_coroutine_reset(struct cmi_coroutine *cp)
+{
+    cmb_assert_release(cp != NULL);
+    cmb_assert_debug(cp != coroutine_main);
+    cmb_assert_debug(cp != coroutine_current);
+
+    cp->status = CMI_COROUTINE_CREATED;
+    cp->exit_value = NULL;
+}
+
+/*
+ * cmi_coroutine_terminate : Reset the coroutine to initial state.
+ */
+void cmi_coroutine_terminate(struct cmi_coroutine *cp)
+{
+    cmb_assert_release(cp != NULL);
+    cmb_assert_debug(cp != coroutine_main);
+    cmb_assert_debug(cp != coroutine_current);
+    cmb_assert_release(cp->status != CMI_COROUTINE_RUNNING);
+
+    if (cp->stack != NULL) {
+        cmi_free(cp->stack);
+        cp->stack = NULL;
+    }
+}
+
+/*
+ * cmi_coroutine_destroy : Free memory allocated for coroutine and its stack.
+ * The given coroutine cannot be main or the currently executing.
+ */
+void cmi_coroutine_destroy(struct cmi_coroutine *cp)
+{
+    cmb_assert_debug(cp != NULL);
+    cmb_assert_debug(cp != coroutine_main);
+    cmb_assert_debug(cp != coroutine_current);
+    cmb_assert_release(cp->status != CMI_COROUTINE_RUNNING);
+
+    cmi_coroutine_terminate(cp);
+    cmi_free(cp);
+}
+
+
+/*
  * cmi_coroutine_start : Load the given function and argument into the given
  * coroutine stack, and launch it by transferring control into it.
  * Note that restarting a finished coroutine with the original function and
@@ -194,38 +240,6 @@ void *cmi_coroutine_start(struct cmi_coroutine *cp, void *msg)
     void *ret = cmi_coroutine_transfer(cp, msg);
 
     return ret;
-}
-
-/*
- * cmi_coroutine_clear : Reset the coroutine to initial state.
- * Can be restarted from the beginning by calling cmi_coroutine_start.
- */
-void cmi_coroutine_clear(struct cmi_coroutine *cp)
-{
-    cmb_assert_release(cp != NULL);
-    cmb_assert_debug(cp != coroutine_main);
-    cmb_assert_debug(cp != coroutine_current);
-
-    cp->status = CMI_COROUTINE_CREATED;
-    cp->exit_value = NULL;
-}
-
-/*
- * cmi_coroutine_destroy : Free memory allocated for coroutine and its stack.
- * The given coroutine cannot be main or the currently executing.
- */
-void cmi_coroutine_destroy(struct cmi_coroutine *cp)
-{
-    cmb_assert_debug(cp != NULL);
-    cmb_assert_debug(cp != coroutine_main);
-    cmb_assert_debug(cp != coroutine_current);
-
-    if (cp->stack != NULL) {
-        cmi_free(cp->stack);
-        cp->stack = NULL;
-   }
-
-   cmi_free(cp);
 }
 
 /*

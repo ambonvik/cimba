@@ -366,9 +366,11 @@ void cmi_hashheap_terminate(struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
 
-    cmi_aligned_free(hp->heap);
-    hp->heap = NULL;
-    hp->hash_map = NULL;
+    if (hp->heap != NULL) {
+        cmi_aligned_free(hp->heap);
+        hp->heap = NULL;
+        hp->hash_map = NULL;
+    }
 }
 
 /*

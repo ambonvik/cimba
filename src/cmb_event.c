@@ -98,6 +98,19 @@ void cmb_event_queue_initialize(const double start_time)
 }
 
 /*
+ * cmb_event_queue_terminate : Clean up, deallocating space.
+ */
+void cmb_event_queue_terminate(void)
+{
+    cmb_assert_release(event_queue != NULL);
+    cmb_assert_debug(event_queue != NULL);
+
+    cmi_hashheap_terminate(event_queue);
+    cmi_hashheap_destroy(event_queue);
+    event_queue = NULL;
+}
+
+/*
  * cmb_event_queue_clear : Clean up, deallocating space.
  */
 void cmb_event_queue_clear(void)
@@ -106,17 +119,6 @@ void cmb_event_queue_clear(void)
     cmb_assert_debug(event_queue != NULL);
 
     cmi_hashheap_clear(event_queue);
-}
-
-/*
- * cmb_event_queue_destroy : Clean up, deallocating space.
- */
-void cmb_event_queue_destroy(void)
-{
-    cmb_assert_release(event_queue != NULL);
-    cmb_assert_debug(event_queue != NULL);
-
-    cmi_hashheap_destroy(event_queue);
 }
 
 /*
@@ -238,11 +240,11 @@ bool cmb_event_execute_next(void)
 }
 
 /*
- * cmb_run : Executes event list until empty or otherwise stopped.
- * Schedule an event containing cmb_event_list_destroy to terminate the
- * simulation at a given point, or use cmb_event_cancel_all.
+ * cmb_event_queue_execute : Executes event queue until empty.
+ * Schedule an event containing cmb_event_queue_clear to terminate the
+ * simulation at the corect time or other conditions.
  */
-void cmb_run(void)
+void cmb_event_queue_execute(void)
 {
     cmb_assert_release(event_queue != NULL);
 
@@ -251,7 +253,6 @@ void cmb_run(void)
 
     cmb_logger_info(stdout, "No more events in queue");
 }
-
 
 /*
  * cmb_event_cancel : Cancel the given event and reshuffle heap. Notifies any

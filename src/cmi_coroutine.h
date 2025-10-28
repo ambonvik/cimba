@@ -131,51 +131,49 @@ struct cmi_coroutine {
     void *exit_value;
 };
 
-
-/*
- * cmi_coroutine_get_current : Return a pointer to the currently executing
- * coroutine, i.e. a self pointer for where the function is called from.
- * Will return NULL if no coroutines have yet been initiated.
- */
-extern struct cmi_coroutine *cmi_coroutine_get_current(void);
-
-/*
- * cmi_coroutine_get_main : Return a pointer to the main coroutine, possibly
- * NULL if it has not yet been created.
- */
-extern struct cmi_coroutine *cmi_coroutine_get_main(void);
-
-/*****************************************************************************/
-/*         Functions acting on some (other) coroutine                        */
-/*****************************************************************************/
-
 /*
  * cmi_coroutine_create : Create a new coroutine object.
  */
 extern struct cmi_coroutine *cmi_coroutine_create(void);
 
 /*
- * cmi_coroutine_init : Initialize a coroutine object, creating a new stack
- * and initializing the pointers to it. Helper function to separate the
- * memory allocation for the coroutine object from the initialization including
- * allocating the stack memory in this function, allowing inheritance by
- * composition.
+ * cmi_coroutine_initialize : Initialize a coroutine object, creating a new stack
+ * and initializing the pointers to it. Separates the memory allocation for a
+ * coroutine object from the initialization (including allocating the stack
+ * memory) in this function, allowing inheritance by composition.
  *
- * The coroutine function will eventually be called as crfoo(cp, context).
- * The stack size should be large enough for the functions running in the
- * coroutine. For a simple case without deeply nested function calls and
- * many local variables, 10 kB could be sufficient, 24 kB probably on the
- * safe side. The program will either trigger an assert or segfault if the
- * stack was too small.
+ * The coroutine function given as the second argument will eventually be called
+ * as crfoo(cp, context). The stack size should be large enough for the
+ * functions running in the coroutine. For a simple case without deeply nested
+ * function calls and many local variables, 10 kB could be sufficient, 24 kB
+ * probably on the safe side. The program will either trigger an assert or
+ * segfault if the stack was too small.
  *
  * The exit function crbar will be called when/if the coroutine returns from
  * crfoo by intercepting the return and calling crbar from assembly.
  */
-extern void cmi_coroutine_init(struct cmi_coroutine *cp,
-                               cmi_coroutine_func *crfoo,
-                               void *context,
-                               cmi_coroutine_exit_func *crbar,
-                               size_t stack_size);
+extern void cmi_coroutine_initialize(struct cmi_coroutine *cp,
+                                     cmi_coroutine_func *crfoo,
+                                     void *context,
+                                     cmi_coroutine_exit_func *crbar,
+                                     size_t stack_size);
+
+/*
+ * cmi_coroutine_reset : Returns coroutine to a newly initialized state.
+ */
+extern void cmi_coroutine_reset(struct cmi_coroutine *cp);
+
+/*
+ * cmi_coroutine_terminate : Destroys stack memory, not coroutine object itself.
+ * The coroutine exit value pointer is still preserved (and had better not
+ * point to a location on its now-deleted stack).
+ */
+extern void cmi_coroutine_terminate(struct cmi_coroutine *cp);
+
+/*
+ * cmi_coroutine_destroy : Free memory allocated to coroutine.
+ */
+extern void cmi_coroutine_destroy(struct cmi_coroutine *cp);
 
 /*
  * cmi_coroutine_start : Launch the given coroutine, launching cr_foo(cp, context)
@@ -195,44 +193,6 @@ extern void *cmi_coroutine_start(struct cmi_coroutine *cp, void *msg);
  * cmi_coroutine_exit(retval).
  */
 extern void cmi_coroutine_stop(struct cmi_coroutine *cp, void *retval);
-
-/*
- * cmi_coroutine_get_status : Return the current state of the given coroutine.
- */
-extern enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp);
-
-/*
- * cmi_coroutine_get_context : Return the current context pointer of the given
- * coroutine
- */
-extern void *cmi_coroutine_get_context(const struct cmi_coroutine *cp);
-/*
- * cmi_coroutine_set_context : Overwrite the current context pointer of the
- * given coroutine, e.g. for retrofitting context that was not available when
- * the coroutine was first created. Returns the old context pointer.
- */
-extern void *cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context);
-
-/*
- * cmi_coroutine_get_exit_value : Return the exit value of the given coroutine,
- * NULL if it has not yet returned (or if it returned NULL).
- */
-extern void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp);
-
-/*
- * cmi_coroutine_clear : Destroys stack memory, not coroutine object itself.
- * Coroutine can be restarted from the beginning by calling cmi_coroutine_start.
- */
-extern void cmi_coroutine_clear(struct cmi_coroutine *cp);
-
-/*
- * cmi_coroutine_destroy : Free memory allocated to coroutine.
- */
-extern void cmi_coroutine_destroy(struct cmi_coroutine *cp);
-
-/*****************************************************************************/
-/*         Functions called from within the coroutine                        */
-/*****************************************************************************/
 
 /*
  * cmi_coroutine_transfer : Symmetric coroutine pattern, transferring control
@@ -261,5 +221,41 @@ extern void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *msg);
  * function with the return value retval.
  */
 extern void cmi_coroutine_exit(void *retval);
+
+/*
+ * cmi_coroutine_get_status : Return the current state of the given coroutine.
+ */
+extern enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp);
+
+/*
+ * cmi_coroutine_get_context : Return the current context pointer of the given
+ * coroutine
+ */
+extern void *cmi_coroutine_get_context(const struct cmi_coroutine *cp);
+/*
+ * cmi_coroutine_set_context : Overwrite the current context pointer of the
+ * given coroutine, e.g. for retrofitting context that was not available when
+ * the coroutine was first created. Returns the old context pointer.
+ */
+extern void *cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context);
+
+/*
+ * cmi_coroutine_get_exit_value : Return the exit value of the given coroutine,
+ * NULL if it has not yet returned (or if it returned NULL).
+ */
+extern void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp);
+
+/*
+ * cmi_coroutine_get_current : Return a pointer to the currently executing
+ * coroutine, i.e. a self pointer for where the function is called from.
+ * Will return NULL if no coroutines have yet been initiated.
+ */
+extern struct cmi_coroutine *cmi_coroutine_get_current(void);
+
+/*
+ * cmi_coroutine_get_main : Return a pointer to the main coroutine, possibly
+ * NULL if it has not yet been created.
+ */
+extern struct cmi_coroutine *cmi_coroutine_get_main(void);
 
 #endif /* CIMBA_CMI_COROUTINE_H */

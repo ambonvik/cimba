@@ -39,7 +39,7 @@ static void end_sim(void *subject, void *object)
 {
     cmb_logger_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);
     cmb_logger_warning(stdout, "===> end_sim: game over <===");
-    cmb_event_queue_destroy();
+    cmb_event_queue_terminate();
 }
 
 /* Format time values as if they are decimal minutes, print in DD HH:MM:SS.sss format */

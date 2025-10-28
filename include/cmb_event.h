@@ -64,19 +64,9 @@
 #include <stdint.h>
 
 /*
- * cmb_time : Get the current simulation time, read-only for the user application
+ * cmb_time : Get the current simulation time, read-only for user application.
  */
 extern double cmb_time(void);
-
-/*
- * cmb_run : Executes the event list until empty or otherwise stopped.
- *
- * Schedule an event calling cmb_event_list_clear() or cmb_event_cancel_all(...)
- * to zero out the event queue and stop the simulation. This can either be pre-
- * scheduled for some particular time or triggered by some other condition such
- * as reaching a certain number of samples in some data collector.
- */
-extern void cmb_run(void);
 
 /*
  * typedef cmb_event_func : The generic event function type
@@ -86,18 +76,28 @@ typedef void (cmb_event_func)(void *subject, void *object);
 /*
  * cmb_event_queue_initialize : Initialize the event queue itself.
  * Must be called before any events can be scheduled or executed.
+ *
+ * Note that there is no cmb_event_queue_create, _reset, or _destroy. There
+ * should only be one (thread local) event queue per thread. It is created and
+ * destroyed automatically, no need to create another one. Each thread should be
+ * one simulation run, where the event queue lasts for the same period as the
+ * thread itself. Hence no need to reset and restart either.
  */
 extern void cmb_event_queue_initialize(double start_time);
 
 /*
- * cmb_event_queue_clear : Clears out all scheduled events from the queue.
+ * cmb_event_queue_terminate : Free memory allocated for internal workings of
+ * the event queue, but not the event queue object itself.
  */
-extern void cmb_event_queue_clear(void);
+extern void cmb_event_queue_terminate(void);
 
 /*
- * cmb_event_queue_destroy : Free memory allocated for event queue and heap.
+ * cmb_event_queue_clear : Clears out all scheduled events from the queue. Does
+ * not deallocate any memory or reset any counters, just cancels all events in
+ * the queue. Call this function from an event to stop a simulation running as
+ * cmb_event_queue_execute().
  */
-extern void cmb_event_queue_destroy(void);
+extern void cmb_event_queue_clear(void);
 
 /*
  * cmb_event_queue_is_empty : Is the event queue empty?
@@ -128,6 +128,17 @@ extern uint64_t cmb_event_schedule(cmb_event_func *action,
  *  use in loops like while(cmb_event_execute_next()) { ... }
  */
 extern bool cmb_event_execute_next(void);
+
+/*
+ * cmb_event_queue_execute : Executes events from the event queue until empty.
+ *
+ * Schedule an event calling cmb_event_queue_clear() to zero out the event queue
+ * and stop the simulation. This can either be pre-scheduled for some particular
+ * time or triggered by some other condition such as reaching a certain number
+ * of samples in some data collector, a confidence interval being sufficiently
+ * narrow, or anything else.
+ */
+extern void cmb_event_queue_execute(void);
 
 /*
  * cmb_event_is_scheduled : Is the given event currently in the event queue?

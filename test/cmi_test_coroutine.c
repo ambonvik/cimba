@@ -38,7 +38,7 @@ static void test_simple_event(void)
     printf("Create a coroutine\n");
     struct cmi_coroutine *cp = cmi_coroutine_create();
     printf("Got %p, initialize it, stack size %llu\n", (void *)cp, stksz);
-    cmi_coroutine_init(cp, corofunc, (void *)0x5EAF00D, NULL, stksz);
+    cmi_coroutine_initialize(cp, corofunc, (void *)0x5EAF00D, NULL, stksz);
 
     /* The next call may look simple, but it exercises a lot of stuff.
      * cmi_coroutine_start() transfers control into the new coroutine,
@@ -121,8 +121,8 @@ static void test_asymmetric(void)
     printf("Create two coroutines, stack size %llu\n", stksz);
     struct cmi_coroutine *cp1 = cmi_coroutine_create();
     struct cmi_coroutine *cp2 = cmi_coroutine_create();
-    cmi_coroutine_init(cp2, corofunc_2, NULL, NULL, stksz);
-    cmi_coroutine_init(cp1, corofunc_1, cp2, NULL, stksz);
+    cmi_coroutine_initialize(cp2, corofunc_2, NULL, NULL, stksz);
+    cmi_coroutine_initialize(cp1, corofunc_1, cp2, NULL, stksz);
 
     /* Start cp1 and hence the entire circus */
     printf("Start %p\n", (void *)cp1);
