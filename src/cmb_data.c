@@ -39,6 +39,7 @@ static const uint64_t cmb_dataset_init_size = 1024;
 struct cmb_summary *cmb_summary_create(void)
 {
     struct cmb_summary *sup = cmi_malloc(sizeof *sup);
+    cmb_summary_initialize(sup);
 
     return sup;
 }
@@ -246,6 +247,7 @@ double cmb_summary_kurtosis(const struct cmb_summary *sup)
 struct cmb_wsummary *cmb_wsummary_create(void)
 {
     struct cmb_wsummary *wsup = cmi_malloc(sizeof *wsup);
+    cmb_wsummary_initialize(wsup);
 
     return wsup;
 }
@@ -262,8 +264,8 @@ void cmb_wsummary_reset(struct cmb_wsummary *wsup)
 {
     cmb_assert_release(wsup != NULL);
 
-    cmb_summary_reset((struct cmb_summary *)wsup);
-    wsup->wsum = 0.0;
+    cmb_wsummary_terminate(wsup);
+    cmb_wsummary_initialize(wsup);
 
 }
 
@@ -387,6 +389,7 @@ void cmb_wsummary_print(const struct cmb_wsummary *wsup,
 struct cmb_dataset *cmb_dataset_create(void)
 {
     struct cmb_dataset *dsp = cmi_malloc(sizeof *dsp);
+    cmb_dataset_initialize(dsp);
 
     return dsp;
 }
@@ -811,8 +814,8 @@ struct data_histogram {
 };
 
 static struct data_histogram *data_create_histogram(const unsigned num_bins,
-                                                        const double low_lim,
-                                                        const double high_lim)
+                                                    const double low_lim,
+                                                    const double high_lim)
 {
     cmb_assert_debug(num_bins > 0u);
     const double range = high_lim - low_lim;
@@ -1160,6 +1163,7 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
 struct cmb_timeseries *cmb_timeseries_create(void)
 {
     struct cmb_timeseries *tsp = cmi_malloc(sizeof *tsp);
+    cmb_timeseries_initialize(tsp);
 
     return tsp;
 }
@@ -1172,6 +1176,13 @@ void cmb_timeseries_initialize(struct cmb_timeseries *tsp)
 
     tsp->ta = NULL;
     tsp->wa = NULL;
+}
+
+void cmb_timeseries_reset(struct cmb_timeseries *tsp)
+{
+    cmb_assert_release(tsp != NULL);
+    cmb_timeseries_terminate(tsp);
+    cmb_timeseries_initialize(tsp);
 }
 
 void cmb_timeseries_terminate(struct cmb_timeseries *tsp)

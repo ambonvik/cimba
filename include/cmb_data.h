@@ -376,14 +376,8 @@ struct cmb_timeseries {
 /* Manage the timeseries themselves */
 extern struct cmb_timeseries *cmb_timeseries_create(void);
 extern void cmb_timeseries_initialize(struct cmb_timeseries *tsp);
+extern void cmb_timeseries_reset(struct cmb_timeseries *tsp);
 extern void cmb_timeseries_terminate(struct cmb_timeseries *tsp);
-
-static inline void cmb_timeseries_reset(struct cmb_timeseries *tsp)
-{
-    cmb_assert_release(tsp != NULL);
-    cmb_timeseries_initialize(tsp);
-}
-
 extern void cmb_timeseries_destroy(struct cmb_timeseries *tsp);
 
 /* Copy tgt into src, overwriting whatever was in tgt */
