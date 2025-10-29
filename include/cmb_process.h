@@ -226,6 +226,7 @@ extern int64_t cmb_process_get_priority(const struct cmb_process *pp);
 /*
  * cmb_process_set_priority : Changes the priority for the process, returning the
  * old priority value.
+ * TODO: reshuffle event queue / waiting lists if changed.
  */
 extern int64_t cmb_process_set_priority(struct cmb_process *pp, int64_t pri);
 

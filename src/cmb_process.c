@@ -164,6 +164,8 @@ int64_t cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
     const int64_t oldpri = pp->priority;
     pp->priority = pri;
 
+    /* TODO: WHat happens to the event/wait list here? */
+
     return oldpri;
 }
 

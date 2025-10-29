@@ -19,10 +19,10 @@
 #include "cmb_assert.h"
 #include "cmb_logger.h"
 #include "cmb_process.h"
+#include "cmb_mempool.h"
 
 #include "cmi_config.h"
 #include "cmi_coroutine.h"
-#include "cmi_mempool.h"
 #include "cmi_memutils.h"
 #include "cmi_processtag.h"
 
@@ -38,7 +38,7 @@ struct cmi_processtag {
 /*
  * tag_pool : Memory pool of process tags
  */
-static CMB_THREAD_LOCAL struct cmi_mempool *tag_pool = NULL;
+static CMB_THREAD_LOCAL struct cmb_mempool *tag_pool = NULL;
 
 /*
  * pwwuevt : The event handler that actually resumes the process coroutine after
@@ -88,7 +88,7 @@ void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc, const int64_t s
         struct cmi_processtag *tmp = ptag->next;
         ptag->next = NULL;
         ptag->proc = NULL;
-        cmi_mempool_put(tag_pool, ptag);
+        cmb_mempool_put(tag_pool, ptag);
         ptag = tmp;
     }
 
@@ -104,12 +104,12 @@ void cmi_processtag_list_add(struct cmi_processtag **ptloc, struct cmb_process *
 
     /* Lazy initalization of the memory pool for process tags */
     if (tag_pool == NULL) {
-        tag_pool = cmi_mempool_create();
-        cmi_mempool_initialize(tag_pool, 64u, sizeof(struct cmi_processtag));
+        tag_pool = cmb_mempool_create();
+        cmb_mempool_initialize(tag_pool, 64u, sizeof(struct cmi_processtag));
     }
 
     /* Get one and add it to the head of the list */
-    struct cmi_processtag *ptag = cmi_mempool_get(tag_pool);
+    struct cmi_processtag *ptag = cmb_mempool_get(tag_pool);
     ptag->proc = pp;
     ptag->next = *ptloc;
     *ptloc = ptag;

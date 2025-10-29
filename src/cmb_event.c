@@ -152,7 +152,7 @@ uint64_t cmb_event_schedule(cmb_event_func *action,
     cmb_assert_release(event_queue != NULL);
 
     /* Use contrived cast to suppress warning about converting function ptr. */
-    void *vaction = *(void**)(&(action));
+    void *vaction = *(void **)&action;
     return  cmi_hashheap_enqueue(event_queue,
                                  vaction,
                                  subject,
@@ -322,7 +322,7 @@ uint64_t cmb_event_pattern_find(cmb_event_func *action,
 {
     cmb_assert_release(event_queue != NULL);
 
-    const void *vaction = *(void**)(&(action));
+    const void *vaction = *(void**)&action;
     return cmi_hashheap_pattern_find(event_queue,
                                  vaction,
                                  subject,
@@ -340,7 +340,7 @@ uint64_t cmb_event_pattern_count(cmb_event_func *action,
 {
     cmb_assert_release(event_queue != NULL);
 
-    const void *vaction = *(void**)(&(action));
+    const void *vaction = *(void**)&action;
     return cmi_hashheap_pattern_count(event_queue,
                                   vaction,
                                  subject,
@@ -372,7 +372,7 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
     uint64_t *tmp = cmi_malloc(hcnt * sizeof(*tmp));
 
     /* First pass, recording the matches */
-    const void *vaction = *(void**)(&(action));
+    const void *vaction = *(void**)&action;
     for (uint64_t ui = 1; ui <= hcnt; ui++) {
         const struct cmi_heap_tag *htp = &(event_queue->heap[ui]);
         if (((vaction == htp->item[0]) || (action == CMB_ANY_ACTION))
