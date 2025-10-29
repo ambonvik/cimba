@@ -11,10 +11,10 @@ set(SOURCES  src/cmb_data.c
         src/cmb_process.c
         src/cmb_random.c
         src/cmb_assert.c
+        src/cmb_mempool.c
         src/cmb_logger.c
         src/cmi_coroutine.c
         src/cmi_hashheap.c
-        src/cmi_mempool.c
         src/cmi_processtag.c
         src/cmi_random_exp_zig.inc
         src/cmi_random_nor_zig.inc
@@ -26,12 +26,12 @@ set(HEADERS include/cmb_data.h
         include/cmb_random.h
         include/cmb_assert.h
         include/cmb_logger.h
+        include/cmb_mempool.h
         include/cmb_resource.h
         src/cmi_coroutine.h
         src/cmi_config.h
         src/cmi_hashheap.h
         src/cmi_memutils.h
-        src/cmi_mempool.h
         src/cmi_processtag.h)
 
 set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm src/arch/cmi_random_hwseed_Win64.asm)
