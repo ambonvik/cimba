@@ -47,6 +47,7 @@
  * struct cmb_process : Inherits all properties from struct cmi_coroutine by
  * composition and adds the name, priority, and the handle of wakeup event (if
  * the process is holding, i.e. scheduled for a wakeup event, otherwise zero).
+ * TODO: Add detailed state enum and a union of things it can be waiting for incl list.
  */
 struct cmb_process {
     struct cmi_coroutine cr;

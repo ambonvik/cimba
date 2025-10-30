@@ -3,10 +3,12 @@
  *
  * A generic resource consists of two or three parts:
  * - A front end (the guard) that contains the priority queue for processes
- *   that want to use the resource and may have to wait for availability
+ *   that want to use the resource and may have to wait for availability.
+ *
  * - A middle part (the core) that is the actual resource, perhaps as simple as
  *   a limited number of available slots (a semaphore). This part also maintains
  *   a list of processes currently using the resource.
+ *
  * - Optionally, a back end symmetrical to the front end for processes waiting
  *   to refill the resource core. For example, the core could be a fixed size
  *   buffer between two machines in a workshop, where the upstream machine may
@@ -59,10 +61,19 @@
 #include "cmb_process.h"
 #include "cmi_processtag.h"
 
-struct cmb_resource;
+struct cmi_resource_core {
+    uint64_t capacity;
+    uint64_t in_use;
+    struct process_tag *holders;
+};
 
 struct cmi_resource_guard {
     struct cmi_hashheap priority_queue;
+};
+
+struct cmb_resource {
+    struct cmi_resource_core core;
+    struct cmi_resource_guard front;
 };
 
 typedef bool (cmb_resource_demand_func)(struct cmb_resource *res,
@@ -70,38 +81,15 @@ typedef bool (cmb_resource_demand_func)(struct cmb_resource *res,
                                         void *ctx);
 
 /*
- * We have up to four 64-bit payload fields in the hash_heap entries.
- * Mapping:
- * item[0] - pointer to the process itself
- * item[1] - pointer to its demand function
- * item[2] - its context pointer
- * item[3] - not used for now
- */
-
-/*
- * cmi_resource_guard_create : Allocate memory for a resource guard object
- */
-struct cmi_resource_guard *cmi_resource_guard_create(void);
-
-/*
  * cmi_resource_guard_initialize : Make an already allocated resource guard
- * object ready for use. Separated from the _create function to allow
- * inheritance by composition.
+ * object ready for use.
  */
 extern void cmi_resource_guard_initialize(struct cmi_resource_guard *rgp);
 
 /*
  * cmi_resource_guard_terminate : Un-initializes a resource guard object.
- * Separated from the _destroy function to allow inheritance by composition.
  */
 extern void cmi_resource_guard_terminate(struct cmi_resource_guard *rgp);
-
-/*
- * cmi_resource_guard_destroy : Deallocates (frees) memory allocated to a
- * resource guard object by _create. Separated from the _destroy function to
- * allow inheritance by composition, i.e. avoid freeing the same memory twice.
- */
-extern void cmi_resource_guard_destroy(struct cmi_resource_guard *rgp);
 
 /*
  * cmi_resource_guard_wait : Enqueue and suspend the calling process until it
@@ -113,7 +101,6 @@ extern void cmi_resource_guard_destroy(struct cmi_resource_guard *rgp);
  * Cannot be called from the main process.
  */
 extern int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
-                                       struct cmb_resource *rp,
                                        cmb_resource_demand_func *demand,
                                        void *ctx);
 
@@ -121,27 +108,30 @@ extern int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
  * cmi_resource_guard_signal : Plings the bell for a resource guard to check if
  * any of the waiting processes should be resumed. Will evaluate the demand
  * function for the first process in the queue, if any, and will resume it if
- * (and only if) its demand function (*demand)(pp, rp, ctx) returns true.
+ * (and only if) its demand function (*demand)(rp, pp, ctx) returns true.
  *
  * Resumes zero or one waiting processes. Call it again if there is a chance
  * that more than one process could be ready, e.g. if some process just returned
  * five units of a resource and there are several processes waiting for one
  * unit each.
  *
+ * Returns true if some process was resumed, false otherwise.
+ *
  * In cases where some waiting process needs to bypass another, e.g. if there
  * are three available units of the resource, the first process in the queue
  * demands five, and there are three more behind it that demands one each, it is
  * up to the application to dynamically change process priorities to bring the
- * correct process to the front of the queue. Use
+ * correct process to the front of the queue.
+ * TODO: Ensure that process_set_priority triggers queue reshuffle
  */
-extern void cmi_resource_guard_signal(struct cmi_resource_guard *rgp,
-                                      int64_t sig);
+extern bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp);
 
 /*
  * cmi_resource_guard_cancel : Remove this process from the priority queue
- * without resuming it.
+ * and resume it with a CMB_PROCESS_WAIT_CANCELLED signal.
+ * Returns true if the found, false if not.
  */
-extern uint64_t cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
-                                          struct cmb_process *pp);
+extern bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
+                                      struct cmb_process *pp);
 
 #endif // CIMBA_CMB_RESOURCE_H
