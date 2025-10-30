@@ -260,6 +260,8 @@ int64_t cmb_process_hold(const double dur)
     return ret;
 }
 
+/* The pwwuevt wakeup event is in cmi_processtag.c instead of here */
+
 /*
  * cmb_process_wait_process : Wait for some other process (awaited) to finish.
  * Returns immediately if the awaited process already is finished.
