@@ -61,10 +61,13 @@
 #include "cmb_process.h"
 #include "cmi_processtag.h"
 
+/*
+ * cmi_resource : the datastructure with core and guard
+ */
 struct cmi_resource_core {
     uint64_t capacity;
     uint64_t in_use;
-    struct process_tag *holders;
+    struct cmi_processtag *holders;
 };
 
 struct cmi_resource_guard {
@@ -76,9 +79,24 @@ struct cmb_resource {
     struct cmi_resource_guard front;
 };
 
+/*
+ * typedef cmb_resource_demand_func : function prototype for a resource demand
+ */
 typedef bool (cmb_resource_demand_func)(struct cmb_resource *res,
                                         struct cmb_process *pp,
                                         void *ctx);
+
+/*
+ * cmi_resource_core_initialize : Make an already allocated resource core
+ * object ready for use with a given capacity.
+ */
+extern void cmi_resource_core_initialize(struct cmi_resource_core *rcp,
+                                         uint64_t capacity);
+
+/*
+ * cmi_resource_core_terminate : Un-initializes a resource core object.
+ */
+extern void cmi_resource_core_terminate(struct cmi_resource_core *rcp);
 
 /*
  * cmi_resource_guard_initialize : Make an already allocated resource guard
@@ -133,5 +151,42 @@ extern bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp);
  */
 extern bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
                                       struct cmb_process *pp);
+
+/*
+ * cmb_resource_create : Allocate memory for a resource object.
+ */
+extern struct cmb_resource *cmb_resource_create(void);
+
+/*
+ * cmb_resource_initialize : Make an already allocated resource object ready for
+ * use with a given capacity.
+ */
+extern void cmb_resource_initialize(struct cmb_resource *rp,
+                                    uint64_t capacity);
+
+/*
+ * cmb_resource_terminate : Un-initializes a resource object.
+ */
+extern void cmb_resource_terminate(struct cmb_resource *rp);
+
+/*
+ * cmb_resource_destroy : Deallocates memory for a resource object.
+ */
+extern void cmb_resource_destroy(struct cmb_resource *rp);
+
+/*
+ * cmb_resource_acquire : Request and if necessary wait for a given amount of
+ * the resource. Returns CMB_RESOURCE_ACQUIRE_NORMAL if all is well,
+ * CMB_RESOURCE_ACQUIRE_DENIED if the request for some reason was unsuccessful.
+ */
+#define CMB_RESOURCE_ACQUIRE_NORMAL (0LL)
+#define CMB_RESOURCE_ACQUIRE_DENIED (1LL)
+#define CMB_RESOURCE_ACQUIRE_CANCELLED (2LL)
+extern int64_t cmb_resource_acquire(struct cmb_resource *rp, uint64_t amount);
+
+/*
+ * cmb_resource_release : Release a given amount of the resource.
+ */
+extern void cmb_resource_release(struct cmb_resource *rp, uint64_t amount);
 
 #endif // CIMBA_CMB_RESOURCE_H

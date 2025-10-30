@@ -26,9 +26,11 @@ struct cmi_processtag;
 
 /*
  * cmi_processtag_list_add : Add a waiting process to the given list location.
+ * The 64-bit payload field is available for various housekeeping.
  */
 extern void cmi_processtag_list_add(struct cmi_processtag **ptloc,
-                                    struct cmb_process *pp);
+                                    struct cmb_process *pp,
+                                    void *payload);
 
 /*
  * cmi_processtag_list_wake_all : Schedules a wakeup call for each process in

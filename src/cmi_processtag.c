@@ -33,6 +33,7 @@
 struct cmi_processtag {
     struct cmi_processtag *next;
     struct cmb_process *proc;
+    void *payload;
 };
 
 /*
@@ -81,13 +82,16 @@ void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc, const int64_t s
         cmb_assert_debug(pp != NULL);
         const double time = cmb_time();
         const int64_t priority = cmb_process_get_priority(pp);
-        (void)cmb_event_schedule(pwwuevt, pp,
+        (void)cmb_event_schedule(pwwuevt,
+                                pp,
                                 (void *)signal,
-                                time, priority);
+                                 time,
+                                 priority);
 
         struct cmi_processtag *tmp = ptag->next;
         ptag->next = NULL;
         ptag->proc = NULL;
+        ptag->payload = NULL;
         cmb_mempool_put(tag_pool, ptag);
         ptag = tmp;
     }
@@ -98,20 +102,26 @@ void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc, const int64_t s
 /*
  * cmi_processtag_list_add : Add a waiting process to the given list location.
  */
-void cmi_processtag_list_add(struct cmi_processtag **ptloc, struct cmb_process *pp) {
+void cmi_processtag_list_add(struct cmi_processtag **ptloc,
+                             struct cmb_process *pp,
+                             void *payload)
+{
     cmb_assert_debug(ptloc != NULL);
     cmb_assert_debug(pp != NULL);
 
     /* Lazy initalization of the memory pool for process tags */
     if (tag_pool == NULL) {
         tag_pool = cmb_mempool_create();
-        cmb_mempool_initialize(tag_pool, 64u, sizeof(struct cmi_processtag));
+        cmb_mempool_initialize(tag_pool,
+                              64u,
+                              sizeof(struct cmi_processtag));
     }
 
     /* Get one and add it to the head of the list */
     struct cmi_processtag *ptag = cmb_mempool_get(tag_pool);
-    ptag->proc = pp;
     ptag->next = *ptloc;
+    ptag->proc = pp;
+    ptag->payload = payload;
     *ptloc = ptag;
 }
 

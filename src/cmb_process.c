@@ -281,7 +281,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
         return CMB_PROCESS_WAIT_NORMAL;
     }
 
-    cmi_processtag_list_add(&(awaited->waiter_tag), pp);
+    cmi_processtag_list_add(&(awaited->waiter_tag), pp, NULL);
 
     /* Yield to the scheduler and collect the return signal value */
     const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
@@ -305,7 +305,7 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     cmb_assert_release(pp != NULL);
 
     struct cmi_processtag **loc = cmi_event_tag_loc(ev_handle);
-    cmi_processtag_list_add(loc, pp);
+    cmi_processtag_list_add(loc, pp, NULL);
 
     /* Yield to the scheduler and collect the return signal value */
     const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
