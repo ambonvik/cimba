@@ -33,7 +33,6 @@
 struct cmi_processtag {
     struct cmi_processtag *next;
     struct cmb_process *proc;
-    void *payload;
 };
 
 /*
@@ -91,7 +90,6 @@ void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc, const int64_t s
         struct cmi_processtag *tmp = ptag->next;
         ptag->next = NULL;
         ptag->proc = NULL;
-        ptag->payload = NULL;
         cmb_mempool_put(tag_pool, ptag);
         ptag = tmp;
     }
@@ -103,8 +101,7 @@ void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc, const int64_t s
  * cmi_processtag_list_add : Add a waiting process to the given list location.
  */
 void cmi_processtag_list_add(struct cmi_processtag **ptloc,
-                             struct cmb_process *pp,
-                             void *payload)
+                             struct cmb_process *pp)
 {
     cmb_assert_debug(ptloc != NULL);
     cmb_assert_debug(pp != NULL);
@@ -121,7 +118,6 @@ void cmi_processtag_list_add(struct cmi_processtag **ptloc,
     struct cmi_processtag *ptag = cmb_mempool_get(tag_pool);
     ptag->next = *ptloc;
     ptag->proc = pp;
-    ptag->payload = payload;
     *ptloc = ptag;
 }
 

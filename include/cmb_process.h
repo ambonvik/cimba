@@ -119,6 +119,7 @@ extern void cmb_process_start(struct cmb_process *pp);
  */
 #define CMB_PROCESS_HOLD_NORMAL (0LL)
 #define CMB_PROCESS_HOLD_INTERRUPTED (1LL)
+#define CMB_PROCESS_HOLD_PREEMPTED (2LL)
 extern int64_t cmb_process_hold(double dur);
 
 /*
@@ -129,7 +130,7 @@ extern int64_t cmb_process_hold(double dur);
  * Similar to pthreads join.
  */
 #define CMB_PROCESS_WAIT_NORMAL (0LL)
-#define CMB_PROCESS_WAIT_STOPPED (1LL)
+#define CMB_PROCESS_WAIT_STOPPED (3LL)
 extern int64_t cmb_process_wait_process(struct cmb_process *awaited);
 
 /*
@@ -137,7 +138,7 @@ extern int64_t cmb_process_wait_process(struct cmb_process *awaited);
  * Returns CMB_PROCESS_WAIT_NORMAL when the event executes normally,
  * CMB_PROCESS_WAIT_CANCELLED if the event was cancelled for some reason.
  */
-#define CMB_PROCESS_WAIT_CANCELLED (2LL)
+#define CMB_PROCESS_WAIT_CANCELLED (4LL)
 extern int64_t cmb_process_wait_event(uint64_t ev_handle);
 
 /*
@@ -192,14 +193,14 @@ static inline const char *cmb_process_get_name(const struct cmb_process *pp)
 }
 
 /*
- * cmb_process_set_name : Set a new name for the process, returning a const
- * char * to the new name. The name is held in a fixed size buffer of size
- * CMB_PROCESS_NAMEBUF_SZ. If the new name is too large for the buffer, it will
- * be truncated at one less than the buffer size, leaving space for the
- * terminating zero char.
+ * cmb_process_set_name : Set a new name for the process.
+ *
+ * The name is held in a fixed size buffer of size CMB_PROCESS_NAMEBUF_SZ.
+ * If the new name is too large for the buffer, it will be truncated at one less
+ * than the buffer size, leaving space for the terminating zero char.
  */
-extern const char *cmb_process_set_name(struct cmb_process *cp,
-                                        const char *name);
+extern void cmb_process_set_name(struct cmb_process *cp,
+                                 const char *name);
 
 /*
  * cmb_process_get_context : Return a pointer to the context. Not const, the

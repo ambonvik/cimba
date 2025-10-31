@@ -23,31 +23,6 @@
 #include "cmi_memutils.h"
 
 /*
- * cmi_resource_core_initialize : Make an already allocated resource core
- * object ready for use with a given capacity.
- */
-void cmi_resource_core_initialize(struct cmi_resource_core *rcp,
-                                  const uint64_t capacity)
-{
-    cmb_assert_release(rcp != NULL);
-    cmb_assert_release(capacity > 0u);
-
-    rcp->capacity = capacity;
-    rcp->in_use = 0u;
-    rcp->holders = NULL;
-}
-
-/*
- * cmi_resource_core_terminate : Un-initializes a resource core object.
- */
-void cmi_resource_core_terminate(struct cmi_resource_core *rcp)
-{
-    cmb_assert_release(rcp != NULL);
-    cmb_assert_release(rcp->holders == NULL);
-}
-
-
-/*
  * guard_queue_check : Test if heap_tag *a should go before *b. If so, return true.
  * Ranking higher priority (dkey) before lower, then FIFO based on handle value.
  */
@@ -111,8 +86,10 @@ int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
     cmb_assert_release(pp != NULL);
 
     /* Check if demand is already satisfied */
-    struct cmb_resource *rp = cmi_container_of(rgp, struct cmb_resource, front);
-    if ((*demand)(rp, pp, ctx) == true) {
+    const struct cmi_resource_base *rbp = cmi_container_of(rgp,
+                                                     struct cmi_resource_base,
+                                                     front_guard);
+    if ((*demand)(rbp, pp, ctx) == true) {
         return CMB_RESOURCE_ACQUIRE_NORMAL;
     }
 
@@ -196,11 +173,13 @@ bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp)
     void **item = cmi_hashheap_peek_item(hp);
     struct cmb_process *pp = (struct cmb_process *)(item[0]);
     cmb_resource_demand_func *demand = *(cmb_resource_demand_func **)&(item[1]);
-    void *ctx = item[2];
+    const void *ctx = item[2];
 
     /* Is the demand met? */
-    struct cmb_resource *rp = cmi_container_of(rgp, struct cmb_resource, front);
-    if ((*demand)(rp, pp, ctx)) {
+    struct cmi_resource_base *rbp = cmi_container_of(rgp,
+                                                     struct cmi_resource_base,
+                                                     front_guard);
+    if ((*demand)(rbp, pp, ctx)) {
         /* Yes, pull the process off the queue and schedule a wakeup event */
         (void)cmi_hashheap_dequeue(hp);
         const double time = cmb_time();
@@ -253,6 +232,43 @@ bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
 }
 
 /*
+ * cmi_resource_base_initialize : Make an already allocated resource core
+ * object ready for use with a given capacity.
+ */
+void cmi_resource_base_initialize(struct cmi_resource_base *rbp,
+                                  const char *name)
+{
+    cmb_assert_release(rbp != NULL);
+
+    (void)cmb_resource_base_set_name(rbp, name);
+
+}
+
+/*
+ * cmi_resource_base_terminate : Un-initializes a resource core object.
+ */
+void cmi_resource_base_terminate(struct cmi_resource_base *rcp)
+{
+    cmb_assert_release(rcp != NULL);
+}
+
+/*
+ * cmb_resource_set_name : Change the resource name.
+ *
+ * Note that the name is contained in a fixed size buffer and may be truncated
+ * if too long to fit into the buffer.
+ */
+void cmb_resource_base_set_name(struct cmi_resource_base *rbp,
+                                  const char *name)
+{
+    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(name != NULL);
+
+    const int r = snprintf(rbp->name, CMB_RESOURCE_NAMEBUF_SZ, "%s", name);
+    cmb_assert_release(r >= 0);
+}
+
+/*
  * cmb_resource_create : Allocate memory for a resource object.
  */
 struct cmb_resource *cmb_resource_create(void)
@@ -264,15 +280,16 @@ struct cmb_resource *cmb_resource_create(void)
 }
 
 /*
- * cmb_resource_initialize : Make an already allocated resource object ready for
- * use with a given capacity.
+ * cmb_resource_initialize : Make an allocated resource object ready for use.
  */
-void cmb_resource_initialize(struct cmb_resource *rp, uint64_t capacity)
+#define HOLDER_INIT_EXP 3u
+
+void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
 {
     cmb_assert_release(rp != NULL);
 
-    cmi_resource_core_initialize(&(rp->core), capacity);
-    cmi_resource_guard_initialize(&(rp->front));
+    cmi_resource_base_initialize(&(rp->core), name);
+    rp->holder = NULL;
 }
 
 /*
@@ -281,9 +298,9 @@ void cmb_resource_initialize(struct cmb_resource *rp, uint64_t capacity)
 void cmb_resource_terminate(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
+    cmb_assert_release(rp->holder == NULL);
 
-    cmi_resource_core_terminate(&(rp->core));
-    cmi_resource_guard_terminate(&(rp->front));
+    cmi_resource_base_terminate(&(rp->core));
 }
 
 /*
@@ -295,46 +312,138 @@ void cmb_resource_destroy(struct cmb_resource *rp)
     cmi_free(rp);
 }
 
-static bool resource_available(struct cmb_resource *rp,
-                               struct cmb_process *pp,
-                               void *ctx)
+static bool resource_available(const struct cmi_resource_base *rbp,
+                               const struct cmb_process *pp,
+                               const void *ctx)
 {
-    const uint64_t amnt = (uint64_t)ctx;
-    const uint64_t avail = rp->core.capacity - rp->core.in_use;
+    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(pp != NULL);
 
-    return (avail >= amnt);
+    const struct cmb_resource *rp = (struct cmb_resource *)rbp;
+
+    return (rp->holder == NULL);
 }
 
-int64_t cmb_resource_acquire(struct cmb_resource *rp,
-                             const uint64_t amount)
+int64_t cmb_resource_acquire(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
-    cmb_assert_release(amount > 0u);
-    cmb_assert_release(amount <= rp->core.capacity);
 
-    const int64_t ret = cmi_resource_guard_wait(&(rp->front),
+    struct cmb_process *pp = cmb_process_get_current();
+    if (rp->holder == NULL) {
+        /* Easy, grab it */
+        rp->holder = pp;
+        return CMB_RESOURCE_ACQUIRE_NORMAL;
+    }
+
+    /* Wait at the front door until resource becomes available */
+    struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
+    const int64_t ret = cmi_resource_guard_wait(&(rbp->front_guard),
                                                 resource_available,
-                                                (void *)amount);
+                                                NULL);
 
+    /* Now we got past the front door, or perhaps thrown out by the guard */
     if (ret == CMB_RESOURCE_ACQUIRE_NORMAL) {
-        rp->core.in_use -= amount;
-        struct cmb_process *pp = cmb_process_get_current();
-        cmi_processtag_list_add(&(rp->core.holders), pp, (void *)amount);
+        /* All good, grab the resource */
+        cmb_assert_debug(rp->holder == NULL);
+        rp->holder = pp;
+        cmb_logger_info(stdout, "Acquired resource %s", rbp->name);
+    }
+    else {
+        cmb_logger_info(stdout,
+                        "Cancelled from acquiring resource %s, code %lld",
+                        rbp->name,
+                        ret);
     }
 
     return ret;
 }
 
 /*
- * cmb_resource_release : Release a given amount of the resource.
+ * cmb_resource_release : Release a resource.
  */
-void cmb_resource_release(struct cmb_resource *rp, uint64_t amount) {
+void cmb_resource_release(struct cmb_resource *rp) {
     cmb_assert_release(rp != NULL);
-    cmb_assert_release(amount > 0u);
-    cmb_assert_release(amount <= rp->core.in_use);
 
-    /* find holder, check that it has that much, decrement, remove from holders
-     * if it was everything it held, signal front gate to let in someone else
-     */
+    struct cmb_process *pp = cmb_process_get_current();
+    cmb_assert_debug(rp->holder == pp);
+    rp->holder = NULL;
+
+    struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
+    struct cmi_resource_guard *rgp = &(rbp->front_guard);
+    cmi_resource_guard_signal(rgp);
 }
 
+int64_t cmb_resource_preempt(struct cmb_resource *rp)
+{
+    cmb_assert_release(rp != NULL);
+
+    int64_t ret;
+    struct cmb_process *pp = cmb_process_get_current();
+    const int64_t myprio = pp->priority;
+    struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
+    const struct cmb_process *victim = rp->holder;
+    if (victim == NULL) {
+        /* Easy, grab it */
+        cmb_logger_info(stdout, "Preempt found resource %s free", rbp->name);
+        rp->holder = pp;
+        ret = CMB_RESOURCE_ACQUIRE_NORMAL;
+    }
+    else if (myprio > victim->priority) {
+        /* Kick it out */
+        (void)cmb_event_schedule(prwuevt,
+                                (void *)victim,
+                                (void *)CMB_RESOURCE_HOLD_PREEMPTED,
+                                 cmb_time(),
+                                 victim->priority);
+
+        /* Take its place */
+        rp->holder = pp;
+        cmb_logger_info(stdout,
+                       "Preempted resource %s from process %s",
+                        rbp->name,
+                        victim->name);
+        ret = CMB_RESOURCE_ACQUIRE_NORMAL;
+    }
+    else {
+        /* Wait politely at the front door until resource becomes available */
+        cmb_logger_info(stdout,
+                        "Resource %s not preempted from process %s with priority %lld > my priority %lld",
+                         rbp->name,
+                         victim->name,
+                         victim->priority,
+                         myprio);
+        ret = cmb_resource_acquire(rp);
+    }
+
+    return ret;
+}
+
+#if 0
+
+/*
+ * holder_queue_check : Test if heap_tag *a should go before *b. If so, return true.
+ * Ranking lower priority (dkey) before lower, then LIFO based on handle value.
+ * Used to identify most likely victim for a resource preemption.
+ */
+static bool holder_queue_check(const struct cmi_heap_tag *a,
+                                const struct cmi_heap_tag *b)
+{
+    cmb_assert_debug(a != NULL);
+    cmb_assert_debug(b != NULL);
+
+    bool ret = false;
+    if (a->ikey < b->ikey) {
+        ret = true;
+    }
+    else if (a->ikey == b->ikey) {
+        if (a->handle > b->handle) {
+            ret = true;
+        }
+    }
+
+    return ret;
+}
+
+/
+/* todo: Alternative interface to resource cmb_semaphore, with explicit handles */
+#endif

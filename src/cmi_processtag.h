@@ -29,8 +29,7 @@ struct cmi_processtag;
  * The 64-bit payload field is available for various housekeeping.
  */
 extern void cmi_processtag_list_add(struct cmi_processtag **ptloc,
-                                    struct cmb_process *pp,
-                                    void *payload);
+                                    struct cmb_process *pp);
 
 /*
  * cmi_processtag_list_wake_all : Schedules a wakeup call for each process in

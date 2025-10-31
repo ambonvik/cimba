@@ -125,15 +125,13 @@ void cmb_process_start(struct cmb_process *pp)
  * Note that the name is contained in a fixed size buffer and may be truncated
  * if too long to fit into the buffer.
  */
-const char *cmb_process_set_name(struct cmb_process *cp, const char *name)
+void cmb_process_set_name(struct cmb_process *cp, const char *name)
 {
     cmb_assert_release(cp != NULL);
     cmb_assert_release(name != NULL);
 
     const int r = snprintf(cp->name, CMB_PROCESS_NAMEBUF_SZ, "%s", name);
     cmb_assert_release(r >= 0);
-
-    return cp->name;
 }
 
 void *cmb_process_get_context(const struct cmb_process *pp)
@@ -281,7 +279,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
         return CMB_PROCESS_WAIT_NORMAL;
     }
 
-    cmi_processtag_list_add(&(awaited->waiter_tag), pp, NULL);
+    cmi_processtag_list_add(&(awaited->waiter_tag), pp);
 
     /* Yield to the scheduler and collect the return signal value */
     const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
@@ -305,7 +303,7 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     cmb_assert_release(pp != NULL);
 
     struct cmi_processtag **loc = cmi_event_tag_loc(ev_handle);
-    cmi_processtag_list_add(loc, pp, NULL);
+    cmi_processtag_list_add(loc, pp);
 
     /* Yield to the scheduler and collect the return signal value */
     const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);

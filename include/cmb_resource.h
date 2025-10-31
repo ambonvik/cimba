@@ -56,47 +56,24 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "cmb_assert.h"
 #include "cmi_hashheap.h"
 #include "cmb_process.h"
-#include "cmi_processtag.h"
 
-/*
- * cmi_resource : the datastructure with core and guard
- */
-struct cmi_resource_core {
-    uint64_t capacity;
-    uint64_t in_use;
-    struct cmi_processtag *holders;
-};
-
+/******************************************************************************
+ * cmi_resource_guard: The hashheap that handles a resource wait list
+ *****************************************************************************/
 struct cmi_resource_guard {
     struct cmi_hashheap priority_queue;
-};
-
-struct cmb_resource {
-    struct cmi_resource_core core;
-    struct cmi_resource_guard front;
 };
 
 /*
  * typedef cmb_resource_demand_func : function prototype for a resource demand
  */
-typedef bool (cmb_resource_demand_func)(struct cmb_resource *res,
-                                        struct cmb_process *pp,
-                                        void *ctx);
+struct cmi_resource_base;
 
-/*
- * cmi_resource_core_initialize : Make an already allocated resource core
- * object ready for use with a given capacity.
- */
-extern void cmi_resource_core_initialize(struct cmi_resource_core *rcp,
-                                         uint64_t capacity);
-
-/*
- * cmi_resource_core_terminate : Un-initializes a resource core object.
- */
-extern void cmi_resource_core_terminate(struct cmi_resource_core *rcp);
+typedef bool (cmb_resource_demand_func)(const struct cmi_resource_base *res,
+                                        const struct cmb_process *pp,
+                                        const void *ctx);
 
 /*
  * cmi_resource_guard_initialize : Make an already allocated resource guard
@@ -133,13 +110,14 @@ extern int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
  * five units of a resource and there are several processes waiting for one
  * unit each.
  *
- * Returns true if some process was resumed, false otherwise.
+ * Returns true if some process was resumed, false otherwise, hence easy to
+ * wrap in a loop like while (cmb_resource_guard_signal(rgp)) { ... }
  *
  * In cases where some waiting process needs to bypass another, e.g. if there
  * are three available units of the resource, the first process in the queue
  * demands five, and there are three more behind it that demands one each, it is
  * up to the application to dynamically change process priorities to bring the
- * correct process to the front of the queue.
+ * correct process to the front of the queue and make it eligible to resume.
  * TODO: Ensure that process_set_priority triggers queue reshuffle
  */
 extern bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp);
@@ -152,17 +130,71 @@ extern bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp);
 extern bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
                                       struct cmb_process *pp);
 
+/******************************************************************************
+ * cmi_resource_base: The parent "class" of the different resource types
+ *****************************************************************************/
+
+/* Maximum length of a resource name, anything longer will be truncated */
+#define CMB_RESOURCE_NAMEBUF_SZ 32
+
+struct cmi_resource_base {
+    char name[CMB_PROCESS_NAMEBUF_SZ];
+    struct cmi_resource_guard front_guard;
+};
+
+/*
+ * cmi_resource_base_initialize : Make an already allocated resource core
+ * object ready for use
+ */
+extern void cmi_resource_base_initialize(struct cmi_resource_base *rbp,
+                                         const char *name);
+
+/*
+ * cmi_resource_base_terminate : Un-initializes a resource core object.
+ */
+extern void cmi_resource_base_terminate(struct cmi_resource_base *rcp);
+
+/*
+ * cmb_resource_base_get_name : Return the process name as a const char *,
+ * since it is kept in a fixed size buffer and should not be changed directly.
+ *
+ * If the name for some reason needs to be changed, use cmb_process_set_name to
+ * do it safely.
+ */
+static inline const char *cmi_resource_base_get_name(const struct cmi_resource_base *rbp)
+{
+    cmb_assert_release(rbp != NULL);
+
+    return rbp->name;
+}
+
+/*
+ * cmb_resource_set_name : Set a new name for the resource.
+ *
+ * The name is held in a fixed size buffer of size  CMB_RESOURCE_NAMEBUF_SZ.
+ * If the new name is too large for the buffer, it will be truncated at one less
+ * than the buffer size, leaving space for the terminating zero char.
+ */
+extern void cmb_resource_base_set_name(struct cmi_resource_base *rbp,
+                                       const char *name);
+
+/******************************************************************************
+ * cmb_resource : A simple resource object, formally a binary semaphore
+ *****************************************************************************/
+struct cmb_resource {
+    struct cmi_resource_base core;
+    struct cmb_process *holder;
+};
 /*
  * cmb_resource_create : Allocate memory for a resource object.
  */
 extern struct cmb_resource *cmb_resource_create(void);
 
 /*
- * cmb_resource_initialize : Make an already allocated resource object ready for
- * use with a given capacity.
+ * cmb_resource_initialize : Make an allocated resource object ready for use.
  */
 extern void cmb_resource_initialize(struct cmb_resource *rp,
-                                    uint64_t capacity);
+                                    const char *name);
 
 /*
  * cmb_resource_terminate : Un-initializes a resource object.
@@ -175,18 +207,25 @@ extern void cmb_resource_terminate(struct cmb_resource *rp);
 extern void cmb_resource_destroy(struct cmb_resource *rp);
 
 /*
- * cmb_resource_acquire : Request and if necessary wait for a given amount of
- * the resource. Returns CMB_RESOURCE_ACQUIRE_NORMAL if all is well,
- * CMB_RESOURCE_ACQUIRE_DENIED if the request for some reason was unsuccessful.
+ * cmb_resource_acquire : Request and if necessary wait for the resource.
+ * Returns CMB_RESOURCE_ACQUIRE_NORMAL if all is well,
+ * CMB_RESOURCE_ACQUIRE_CANCELLED if someone kicked us out of the queue.
  */
 #define CMB_RESOURCE_ACQUIRE_NORMAL (0LL)
-#define CMB_RESOURCE_ACQUIRE_DENIED (1LL)
-#define CMB_RESOURCE_ACQUIRE_CANCELLED (2LL)
-extern int64_t cmb_resource_acquire(struct cmb_resource *rp, uint64_t amount);
+#define CMB_RESOURCE_ACQUIRE_CANCELLED (5LL)
+extern int64_t cmb_resource_acquire(struct cmb_resource *rp);
 
 /*
- * cmb_resource_release : Release a given amount of the resource.
+ * cmb_resource_release : Release the resource.
  */
-extern void cmb_resource_release(struct cmb_resource *rp, uint64_t amount);
+extern void cmb_resource_release(struct cmb_resource *rp);
+
+/*
+ * cmb_resource_preempt : Preempt the current holder and grab the resource, if
+ * the calling process has higher priority than the current holder. Otherwise,
+ * it politely waits for its turn at the front gate.
+ */
+#define CMB_RESOURCE_HOLD_PREEMPTED (2LL)
+extern int64_t cmb_resource_preempt(struct cmb_resource *rp);
 
 #endif // CIMBA_CMB_RESOURCE_H
