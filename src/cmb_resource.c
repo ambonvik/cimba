@@ -284,9 +284,9 @@ void cmb_resource_base_set_name(struct cmi_resource_base *rbp, const char *name)
     cmb_assert_release(r >= 0);
 }
 
-/******************************************************************************
+/*******************************************************************************
  * cmb_resource : A simple resource object, formally a binary semaphore
- *****************************************************************************/
+ ******************************************************************************/
 
 /*
  * resource_scram : forcibly eject holder process without resuming it.
@@ -465,11 +465,20 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     return ret;
 }
 
-/******************************************************************************
+/*******************************************************************************
  * cmb_semaphore : Resource with integer-valued capacity, a counting semaphore
- *****************************************************************************/
+ ******************************************************************************/
 
-#if 0
+/*
+ * cmb_semaphore_create : Allocate memory for a semaphore object.
+ */
+struct cmb_semaphore *cmb_semaphore_create(void)
+{
+    struct cmb_semaphore *sp = cmi_malloc(sizeof(*sp));
+    cmi_memset(sp, 0, sizeof(*sp));
+
+    return sp;
+}
 
 /*
  * holder_queue_check : Test if heap_tag *a should go before *b. If so, return true.
@@ -477,7 +486,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
  * Used to identify most likely victim for a resource preemption.
  */
 static bool holder_queue_check(const struct cmi_heap_tag *a,
-                                const struct cmi_heap_tag *b)
+                               const struct cmi_heap_tag *b)
 {
     cmb_assert_debug(a != NULL);
     cmb_assert_debug(b != NULL);
@@ -495,6 +504,46 @@ static bool holder_queue_check(const struct cmi_heap_tag *a,
     return ret;
 }
 
-/
-/* todo: Alternative interface to resource cmb_semaphore, with explicit handles */
-#endif
+/*
+ * cmb_semaphore_initialize : Make an allocated semaphore object ready for use.
+ */
+#define HOLDERS_INIT_EXP 3u
+
+void cmb_semaphore_initialize(struct cmb_semaphore *sp,
+                              const char *name,
+                              uint64_t capacity)
+{
+    cmb_assert_release(sp != NULL);
+
+    cmi_resource_base_initialize(&(sp->core), name);
+    cmi_resource_guard_initialize(&(sp->front_guard), &(sp->core));
+    cmi_hashheap_initialize(&(sp->holders),
+                            HOLDERS_INIT_EXP,
+                            holder_queue_check);
+    sp->capacity = capacity;
+    sp->in_use = 0u;
+}
+
+/*
+ * cmb_semaphore_terminate : Un-initializes a semaphore object.
+ */
+void cmb_semaphore_terminate(struct cmb_semaphore *sp)
+{
+    cmb_assert_release(sp != NULL);
+
+    cmi_hashheap_terminate(&(sp->holders));
+    cmi_resource_guard_terminate(&(sp->front_guard));
+    cmi_resource_base_terminate(&(sp->core));
+}
+
+/*
+ * cmb_semaphore_destroy : Deallocates memory for a semaphore object.
+ */
+void cmb_semaphore_destroy(struct cmb_semaphore *sp)
+{
+    cmb_semaphore_terminate(sp);
+    cmi_free(sp);
+}
+
+
+

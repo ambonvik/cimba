@@ -195,9 +195,9 @@ extern void cmi_resource_base_terminate(struct cmi_resource_base *rcp);
 extern void cmb_resource_base_set_name(struct cmi_resource_base *rbp,
                                        const char *name);
 
-/******************************************************************************
+/*******************************************************************************
  * cmb_resource : A simple resource object, formally a binary semaphore
- *****************************************************************************/
+ ******************************************************************************/
 
 struct cmb_resource {
     struct cmi_resource_base core;
@@ -258,14 +258,15 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
     return rbp->name;
 }
 
-/******************************************************************************
+/*******************************************************************************
  * cmb_semaphore : Resource with integer-valued capacity, a counting semaphore
- *****************************************************************************/
+ ******************************************************************************/
 
 /*
- * We add numeric values for capacity and usage. These ar unsigned integers to
- * avoid any rounding issues from floating-point calculations, faster, and
- * higher resolution (if scaled properly to 64-bit range).
+ * This class adds numeric values for capacity and usage to the basic resource.
+ * These values are unsigned integers to avoid any rounding issues from
+ * floating-point calculations, both faster and higher resolution (if scaled
+ * properly to 64-bit range).
  *
  * The holders list is now a hashheap, since we may need to handle many separate
  * processes acquiring, holding, releasing, and preempting various amounts of
@@ -274,9 +275,10 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
  */
 struct cmb_semaphore {
     struct cmi_resource_base core;
+    struct cmi_resource_guard front_guard;
+    struct cmi_hashheap holders;
     uint64_t capacity;
     uint64_t in_use;
-    struct cmi_hashheap holders;
 };
 
 /*
@@ -288,7 +290,8 @@ extern struct cmb_semaphore *cmb_semaphore_create(void);
  * cmb_semaphore_initialize : Make an allocated semaphore object ready for use.
  */
 extern void cmb_semaphore_initialize(struct cmb_semaphore *sp,
-                                    const char *name);
+                                    const char *name,
+                                    uint64_t capacity);
 
 /*
  * cmb_semaphore_terminate : Un-initializes a semaphore object.
