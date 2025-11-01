@@ -19,14 +19,16 @@
 #ifndef CIMBA_CMI_PROCESSTAG_H
 #define CIMBA_CMI_PROCESSTAG_H
 
+#include <stdio.h>
+
 /*
  * struct cmi_processtag : opaque struct, see cmi_processtag.c for details.
  */
 struct cmi_processtag;
+struct cmb_process;
 
 /*
  * cmi_processtag_list_add : Add a waiting process to the given list location.
- * The 64-bit payload field is available for various housekeeping.
  */
 extern void cmi_processtag_list_add(struct cmi_processtag **ptloc,
                                     struct cmb_process *pp);
@@ -41,7 +43,6 @@ extern void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc,
 /*
  * cmi_processtag_list_print : Print the list of waiting processes
  */
-extern void cmi_processtag_list_print(struct cmi_processtag **ptloc,
-                                      FILE *fp);
+extern void cmi_processtag_list_print(struct cmi_processtag **ptloc, FILE *fp);
 
 #endif // CIMBA_CMI_PROCESSTAG_H

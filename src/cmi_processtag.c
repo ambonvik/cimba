@@ -1,5 +1,5 @@
 /*
- * cmi_processtag.c - singly linked lsit of tags pointing to processes
+ * cmi_processtag.c - singly linked list of tags pointing to processes
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -67,7 +67,8 @@ static void pwwuevt(void *vp, void *arg)
  * Unlink the tag chain from the event queue before iteration to avoid any
  * obscure mutating-while-iterating bugs.
  */
-void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc, const int64_t signal)
+void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc,
+                                  const int64_t signal)
 {
     cmb_assert_debug(ptloc != NULL);
 
@@ -132,7 +133,7 @@ void cmi_processtag_list_print(struct cmi_processtag **ptloc, FILE *fp)
         const struct cmb_process *pp = ptag->proc;
         fprintf(fp, "\t\t\t\tptp %p proc %p", (void *)ptag, (void *)pp);
         cmb_assert_debug(pp != NULL);
-        fprintf(fp, " name %s\n", cmb_process_get_name(pp));
+        fprintf(fp, " name %s\n", pp->name);
         ptag = ptag->next;
     }
 }

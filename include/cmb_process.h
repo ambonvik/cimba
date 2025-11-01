@@ -39,6 +39,8 @@
 #include "cmb_event.h"
 
 #include "cmi_coroutine.h"
+#include "cmi_processtag.h"
+#include "cmi_resourcetag.h"
 
 /* Maximum length of a process name, anything longer will be truncated */
 #define CMB_PROCESS_NAMEBUF_SZ 32
@@ -47,6 +49,9 @@
  * struct cmb_process : Inherits all properties from struct cmi_coroutine by
  * composition and adds the name, priority, and the handle of wakeup event (if
  * the process is holding, i.e. scheduled for a wakeup event, otherwise zero).
+ * The waiter_listhead contains any processes that are waiting for this process
+ * to finish. The resource_listhead contains any resources held by this process,
+ * to be released if the process is stopped by someone else.
  * TODO: Add detailed state enum and a union of things it can be waiting for incl list.
  */
 struct cmb_process {
@@ -54,7 +59,8 @@ struct cmb_process {
     char name[CMB_PROCESS_NAMEBUF_SZ];
     int64_t priority;
     uint64_t wakeup_handle;
-    struct cmi_processtag *waiter_tag;
+    struct cmi_processtag *waiter_listhead;
+    struct cmi_resourcetag *resource_listhead;
 };
 
 /*

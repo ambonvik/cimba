@@ -85,14 +85,6 @@ int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
     struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_release(pp != NULL);
 
-    /* Check if demand is already satisfied */
-    const struct cmi_resource_base *rbp = cmi_container_of(rgp,
-                                                     struct cmi_resource_base,
-                                                     front_guard);
-    if ((*demand)(rbp, pp, ctx) == true) {
-        return CMB_RESOURCE_ACQUIRE_NORMAL;
-    }
-
     /* Contrived cast to suppress compiler warning about pointer conversion */
     void *vdemand = *(void **)&demand;
 
@@ -110,10 +102,7 @@ int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
     /* Yield to the scheduler, collect the return signal value when resumed */
     const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
 
-    /*
-     * Back here again, possibly much later. Return whatever signal was passed
-     * through the resume call that took us back here.
-     */
+    /* Back here, possibly much later. Return the signal that resumed us. */
     return ret;
 }
 
@@ -232,6 +221,21 @@ bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
 }
 
 /*
+ * base_scram : dummy scram function, to be replaced by appropriate scram in
+ * derived classes.
+ */
+void base_scram(struct cmi_resource_base *rbp, const struct cmb_process *pp)
+{
+    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(pp != NULL);
+
+    cmb_logger_error(stderr,
+                    "Resource base scram, process %s resource %s, unknown derived class",
+                    pp->name,
+                    rbp->name);
+}
+
+/*
  * cmi_resource_base_initialize : Make an already allocated resource core
  * object ready for use with a given capacity.
  */
@@ -240,32 +244,49 @@ void cmi_resource_base_initialize(struct cmi_resource_base *rbp,
 {
     cmb_assert_release(rbp != NULL);
 
-    (void)cmb_resource_base_set_name(rbp, name);
-
+    cmb_resource_base_set_name(rbp, name);
+    cmi_resource_guard_initialize(&(rbp->front_guard));
+    rbp->scram = base_scram;
 }
 
 /*
- * cmi_resource_base_terminate : Un-initializes a resource core object.
+ * cmi_resource_base_terminate : Un-initializes a resource base object.
  */
-void cmi_resource_base_terminate(struct cmi_resource_base *rcp)
+void cmi_resource_base_terminate(struct cmi_resource_base *rbp)
 {
-    cmb_assert_release(rcp != NULL);
+    cmb_assert_release(rbp != NULL);
+
+    cmi_resource_guard_terminate(&(rbp->front_guard));
 }
 
 /*
  * cmb_resource_set_name : Change the resource name.
  *
- * Note that the name is contained in a fixed size buffer and may be truncated
- * if too long to fit into the buffer.
+ * The name is contained in a fixed size buffer and will be truncated if it is
+ * too long to fit into the buffer, leaving one char for the \0 at the end.
  */
-void cmb_resource_base_set_name(struct cmi_resource_base *rbp,
-                                  const char *name)
+void cmb_resource_base_set_name(struct cmi_resource_base *rbp, const char *name)
 {
     cmb_assert_release(rbp != NULL);
     cmb_assert_release(name != NULL);
 
     const int r = snprintf(rbp->name, CMB_RESOURCE_NAMEBUF_SZ, "%s", name);
     cmb_assert_release(r >= 0);
+}
+
+/*
+ * resource_scram : forcibly eject holder process without resuming it.
+ */
+void resource_scram(struct cmi_resource_base *rbp, const struct cmb_process *pp)
+{
+    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(pp != NULL);
+
+    struct cmb_resource *rp = (struct cmb_resource *)rbp;
+    cmb_assert_debug(rp->holder == pp);
+    rp->holder = NULL;
+
+    cmi_resource_guard_signal(&(rbp->front_guard));
 }
 
 /*
@@ -289,6 +310,7 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
     cmb_assert_release(rp != NULL);
 
     cmi_resource_base_initialize(&(rp->core), name);
+    rp->core.scram = resource_scram;
     rp->holder = NULL;
 }
 

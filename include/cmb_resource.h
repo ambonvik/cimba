@@ -134,17 +134,28 @@ extern bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
  * cmi_resource_base: The parent "class" of the different resource types
  *****************************************************************************/
 
+/*
+ * typedef cmi_resource_scram_func : function prototype for a resource scram,
+ * to be used e.g. when a process is killed and needs to release all held
+ * resources no matter what type these are. We let the resource base class
+ * contain a pointer to a scram function and each derived class populate it with
+ * a pointer to a function that does appropriate handling for the derived class.
+ */
+typedef void (cmi_resource_scram_func)(struct cmi_resource_base *res,
+                                       const struct cmb_process *pp);
+
 /* Maximum length of a resource name, anything longer will be truncated */
 #define CMB_RESOURCE_NAMEBUF_SZ 32
 
 struct cmi_resource_base {
     char name[CMB_PROCESS_NAMEBUF_SZ];
     struct cmi_resource_guard front_guard;
+    cmi_resource_scram_func *scram;
 };
 
 /*
  * cmi_resource_base_initialize : Make an already allocated resource core
- * object ready for use
+ * object ready for use.
  */
 extern void cmi_resource_base_initialize(struct cmi_resource_base *rbp,
                                          const char *name);
@@ -171,7 +182,7 @@ static inline const char *cmi_resource_base_get_name(const struct cmi_resource_b
 /*
  * cmb_resource_set_name : Set a new name for the resource.
  *
- * The name is held in a fixed size buffer of size  CMB_RESOURCE_NAMEBUF_SZ.
+ * The name is held in a fixed size buffer of size CMB_RESOURCE_NAMEBUF_SZ.
  * If the new name is too large for the buffer, it will be truncated at one less
  * than the buffer size, leaving space for the terminating zero char.
  */
