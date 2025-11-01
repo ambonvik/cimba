@@ -78,15 +78,16 @@
  * cmi_resource_guard: The hashheap that handles a resource wait list
  ******************************************************************************/
 
+struct cmi_resource_base;
+
 struct cmi_resource_guard {
     struct cmi_hashheap priority_queue;
+    struct cmi_resource_base *guarded_resource;
 };
 
 /*
  * typedef cmb_resource_demand_func : function prototype for a resource demand
  */
-struct cmi_resource_base;
-
 typedef bool (cmb_resource_demand_func)(const struct cmi_resource_base *res,
                                         const struct cmb_process *pp,
                                         const void *ctx);
@@ -95,7 +96,8 @@ typedef bool (cmb_resource_demand_func)(const struct cmi_resource_base *res,
  * cmi_resource_guard_initialize : Make an already allocated resource guard
  * object ready for use.
  */
-extern void cmi_resource_guard_initialize(struct cmi_resource_guard *rgp);
+extern void cmi_resource_guard_initialize(struct cmi_resource_guard *rgp,
+                                          struct cmi_resource_base *rbp);
 
 /*
  * cmi_resource_guard_terminate : Un-initializes a resource guard object.
@@ -168,7 +170,6 @@ typedef void (cmi_resource_scram_func)(struct cmi_resource_base *res,
 
 struct cmi_resource_base {
     char name[CMB_PROCESS_NAMEBUF_SZ];
-    struct cmi_resource_guard front_guard;
     cmi_resource_scram_func *scram;
 };
 
@@ -200,8 +201,10 @@ extern void cmb_resource_base_set_name(struct cmi_resource_base *rbp,
 
 struct cmb_resource {
     struct cmi_resource_base core;
+    struct cmi_resource_guard front_guard;
     struct cmb_process *holder;
 };
+
 /*
  * cmb_resource_create : Allocate memory for a resource object.
  */
@@ -251,9 +254,80 @@ extern int64_t cmb_resource_preempt(struct cmb_resource *rp);
 static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
+    const struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
+    return rbp->name;
+}
 
-    struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
+/******************************************************************************
+ * cmb_semaphore : Resource with integer-valued capacity, a counting semaphore
+ *****************************************************************************/
 
+/*
+ * We add numeric values for capacity and usage. These ar unsigned integers to
+ * avoid any rounding issues from floating-point calculations, faster, and
+ * higher resolution (if scaled properly to 64-bit range).
+ *
+ * The holders list is now a hashheap, since we may need to handle many separate
+ * processes acquiring, holding, releasing, and preempting various amounts of
+ * the resource capacity. The hashheap is sorted to keep the holder most likely
+ * to be preempted at the front, i.e. lowest priority and last in.
+ */
+struct cmb_semaphore {
+    struct cmi_resource_base core;
+    uint64_t capacity;
+    uint64_t in_use;
+    struct cmi_hashheap holders;
+};
+
+/*
+ * cmb_semaphore_create : Allocate memory for a semaphore object.
+ */
+extern struct cmb_semaphore *cmb_semaphore_create(void);
+
+/*
+ * cmb_semaphore_initialize : Make an allocated semaphore object ready for use.
+ */
+extern void cmb_semaphore_initialize(struct cmb_semaphore *sp,
+                                    const char *name);
+
+/*
+ * cmb_semaphore_terminate : Un-initializes a semaphore object.
+ */
+extern void cmb_semaphore_terminate(struct cmb_semaphore *sp);
+
+/*
+ * cmb_semaphore_destroy : Deallocates memory for a semaphore object.
+ */
+extern void cmb_semaphore_destroy(struct cmb_semaphore *sp);
+
+/*
+ * cmb_semaphore_acquire : Request and if necessary wait for an amount of the
+ * semaphore resource. The calling process may already hold some and try to
+ * increase its holding with this call, or to obtain its first helping.
+ */
+extern int64_t cmb_semaphore_acquire(struct cmb_semaphore *sp, uint64_t amount);
+
+/*
+ * cmb_semaphore_release : Release an amount of the resource, not necessarily
+ * everything that the calling process holds.
+ */
+extern void cmb_semaphore_release(struct cmb_semaphore *sp, uint64_t amount);
+
+/*
+ * cmb_semaphoree_preempt : Preempt the current holders and grab the resource
+ * amount, starting from the lowest priority holder. If there is not enough to
+ * cover the amount before it runs into holders with higher priority than the
+ * caller, it will politely wait in line for the remainder.
+ */
+extern int64_t cmb_semaphore_preempt(struct cmb_semaphore *sp, uint64_t amount);
+
+/*
+ * cmb_semaphore_get_name : Returns name of semaphore as const char *.
+ */
+static inline const char *cmb_semaphore_get_name(struct cmb_semaphore *sp)
+{
+    cmb_assert_debug(sp != NULL);
+    const struct cmi_resource_base *rbp = (struct cmi_resource_base *)sp;
     return rbp->name;
 }
 

@@ -87,11 +87,11 @@ int main(void) {
     printf("seed: %llu\n", seed);
     cmb_event_queue_initialize(0.0);
 
-    printf("Creating a resource\n");
+    printf("Create a resource\n");
     struct cmb_resource *rp = cmb_resource_create();
     cmb_resource_initialize(rp, "Resource_1");
 
-    printf("Creates three processes to compete for the resource\n");
+    printf("Create three processes to compete for the resource\n");
     struct cmb_process *cpp[4];
     for (unsigned ui = 0; ui < 3; ui++) {
         cpp[ui] = cmb_process_create();
@@ -102,18 +102,18 @@ int main(void) {
         cmb_process_start(cpp[ui]);
     }
 
-    printf("Creates a fourth process trying to preempt the resource\n");
+    printf("Create a fourth process trying to preempt the resource\n");
     cpp[3] = cmb_process_create();
     cmb_process_initialize(cpp[3], "Process_4", procfunc2, rp, 0);
     cmb_process_start(cpp[3]);
 
-    printf("Scheduling end event\n");
+    printf("Schedule end event\n");
     (void)cmb_event_schedule(end_sim_evt, cpp, NULL, 100.0, 0);
 
-    printf("Executing simulation\n");
+    printf("Execute simulation\n");
     cmb_event_queue_execute();
 
-    printf("Cleaning up\n");
+    printf("Clean up\n");
     for (unsigned ui = 0; ui < 4; ui++) {
         cmb_process_terminate(cpp[ui]);
         cmb_process_destroy(cpp[ui]);

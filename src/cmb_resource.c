@@ -22,6 +22,10 @@
 #include "cmi_hashheap.h"
 #include "cmi_memutils.h"
 
+/*******************************************************************************
+ * cmi_resource_guard: The hashheap that handles a resource wait list
+ ******************************************************************************/
+
 /*
  * guard_queue_check : Test if heap_tag *a should go before *b. If so, return true.
  * Ranking higher priority (dkey) before lower, then FIFO based on handle value.
@@ -48,13 +52,17 @@ static bool guard_queue_check(const struct cmi_heap_tag *a,
 /* Start very small and fast, 2^GUARD_INIT_EXP = 8 slots in the initial queue */
 #define GUARD_INIT_EXP 3u
 
-void cmi_resource_guard_initialize(struct cmi_resource_guard *rgp)
+void cmi_resource_guard_initialize(struct cmi_resource_guard *rgp,
+                                   struct cmi_resource_base *rbp)
 {
     cmb_assert_release(rgp != NULL);
+    cmb_assert_release(rbp != NULL);
 
     cmi_hashheap_initialize((struct cmi_hashheap *)rgp,
                             GUARD_INIT_EXP,
                             guard_queue_check);
+
+    rgp->guarded_resource = rbp;
 }
 
 void cmi_resource_guard_terminate(struct cmi_resource_guard *rgp)
@@ -98,16 +106,15 @@ int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
                          entry_time,
                          priority);
 
-    const struct cmi_resource_base *rbp = cmi_container_of(rgp,
-                                                       struct cmi_resource_base,
-                                                       front_guard);
-    cmb_logger_info(stdout, "Waiting in line for %s", rbp->name);
+    cmb_logger_info(stdout,
+                   "Waits in line for %s",
+                    rgp->guarded_resource->name);
 
     /* Yield to the scheduler, collect the return signal value when resumed */
-    const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
+    const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
 
     /* Back here, possibly much later. Return the signal that resumed us. */
-    return ret;
+    return sig;
 }
 
 /*
@@ -169,9 +176,7 @@ bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp)
     const void *ctx = item[2];
 
     /* Is the demand met? */
-    const struct cmi_resource_base *rbp = cmi_container_of(rgp,
-                                                     struct cmi_resource_base,
-                                                     front_guard);
+    const struct cmi_resource_base *rbp = rgp->guarded_resource;
     if ((*demand)(rbp, pp, ctx)) {
         /* Yes, pull the process off the queue and schedule a wakeup event */
         (void)cmi_hashheap_dequeue(hp);
@@ -224,6 +229,10 @@ bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
     }
 }
 
+/*******************************************************************************
+ * cmi_resource_base: The virtual parent "class" of the different resource types
+ ******************************************************************************/
+
 /*
  * base_scram : dummy scram function, to be replaced by appropriate scram in
  * derived classes.
@@ -249,7 +258,6 @@ void cmi_resource_base_initialize(struct cmi_resource_base *rbp,
     cmb_assert_release(rbp != NULL);
 
     cmb_resource_base_set_name(rbp, name);
-    cmi_resource_guard_initialize(&(rbp->front_guard));
     rbp->scram = base_scram;
 }
 
@@ -259,8 +267,6 @@ void cmi_resource_base_initialize(struct cmi_resource_base *rbp,
 void cmi_resource_base_terminate(struct cmi_resource_base *rbp)
 {
     cmb_assert_release(rbp != NULL);
-
-    cmi_resource_guard_terminate(&(rbp->front_guard));
 }
 
 /*
@@ -278,6 +284,10 @@ void cmb_resource_base_set_name(struct cmi_resource_base *rbp, const char *name)
     cmb_assert_release(r >= 0);
 }
 
+/******************************************************************************
+ * cmb_resource : A simple resource object, formally a binary semaphore
+ *****************************************************************************/
+
 /*
  * resource_scram : forcibly eject holder process without resuming it.
  */
@@ -290,7 +300,7 @@ void resource_scram(struct cmi_resource_base *rbp, const struct cmb_process *pp)
     cmb_assert_debug(rp->holder == pp);
     rp->holder = NULL;
 
-    cmi_resource_guard_signal(&(rbp->front_guard));
+    cmi_resource_guard_signal(&(rp->front_guard));
 }
 
 /*
@@ -314,6 +324,8 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
     cmb_assert_release(rp != NULL);
 
     cmi_resource_base_initialize(&(rp->core), name);
+    cmi_resource_guard_initialize(&(rp->front_guard), &(rp->core));
+
     rp->core.scram = resource_scram;
     rp->holder = NULL;
 }
@@ -325,6 +337,7 @@ void cmb_resource_terminate(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
 
+    cmi_resource_guard_terminate(&(rp->front_guard));
     cmi_resource_base_terminate(&(rp->core));
 }
 
@@ -364,7 +377,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     }
 
     /* Wait at the front door until resource becomes available */
-     const int64_t ret = cmi_resource_guard_wait(&(rbp->front_guard),
+     const int64_t ret = cmi_resource_guard_wait(&(rp->front_guard),
                                                 resource_available,
                                                 NULL);
 
@@ -392,12 +405,16 @@ void cmb_resource_release(struct cmb_resource *rp) {
     cmb_assert_release(rp != NULL);
 
     struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
-    const struct cmb_process *pp = cmb_process_get_current();
+    #ifndef NDEBUG
+        const struct cmb_process *pp = cmb_process_get_current();
+        cmb_assert_debug(pp != NULL);
+    #endif
     cmb_assert_debug(rp->holder == pp);
+
     rp->holder = NULL;
     cmb_logger_info(stdout, "Released %s", rbp->name);
 
-    struct cmi_resource_guard *rgp = &(rbp->front_guard);
+    struct cmi_resource_guard *rgp = &(rp->front_guard);
     cmi_resource_guard_signal(rgp);
 }
 
@@ -409,6 +426,8 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     struct cmb_process *pp = cmb_process_get_current();
     const int64_t myprio = pp->priority;
     struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
+    cmb_logger_info(stdout, "Preempting resource %s", rbp->name);
+
     const struct cmb_process *victim = rp->holder;
     if (victim == NULL) {
         /* Easy, grab it */
@@ -416,7 +435,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
         rp->holder = pp;
         ret = CMB_RESOURCE_ACQUIRE_NORMAL;
     }
-    else if (myprio > victim->priority) {
+    else if (myprio >= victim->priority) {
         /* Kick it out */
         (void)cmb_event_schedule(prwuevt,
                                 (void *)victim,
@@ -445,6 +464,10 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
 
     return ret;
 }
+
+/******************************************************************************
+ * cmb_semaphore : Resource with integer-valued capacity, a counting semaphore
+ *****************************************************************************/
 
 #if 0
 

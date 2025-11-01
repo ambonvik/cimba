@@ -51,7 +51,7 @@ void cmi_resourcetag_list_scram_all(struct cmi_resourcetag **rtloc)
     struct cmi_resourcetag *rtag = *rtloc;
     *rtloc = NULL;
 
-    struct cmb_process *pp = cmi_container_of(rtloc,
+    const struct cmb_process *pp = cmi_container_of(rtloc,
                                               struct cmb_process,
                                               resource_listhead);
     cmb_assert_debug(pp != NULL);

@@ -212,7 +212,7 @@ static inline double cmb_wsummary_kurtosis(const struct cmb_wsummary *wsup)
 
 extern void cmb_wsummary_print(const struct cmb_wsummary *wsup,
                                FILE *fp,
-                               const bool lead_ins);
+                               bool lead_ins);
 
 /******************************************************************************
  * cmb_dataset - a conveniently resizing array for keeping the sample values.
