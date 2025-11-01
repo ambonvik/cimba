@@ -177,14 +177,13 @@ void cmi_coroutine_reset(struct cmi_coroutine *cp)
 }
 
 /*
- * cmi_coroutine_terminate : Reset the coroutine to initial state.
+ * cmi_coroutine_terminate : Reset the coroutine to newly created state.
  */
 void cmi_coroutine_terminate(struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
     cmb_assert_debug(cp != coroutine_main);
     cmb_assert_debug(cp != coroutine_current);
-    cmb_assert_release(cp->status != CMI_COROUTINE_RUNNING);
 
     if (cp->stack != NULL) {
         cmi_free(cp->stack);
@@ -201,7 +200,6 @@ void cmi_coroutine_destroy(struct cmi_coroutine *cp)
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp != coroutine_main);
     cmb_assert_debug(cp != coroutine_current);
-    cmb_assert_release(cp->status != CMI_COROUTINE_RUNNING);
 
     cmi_coroutine_terminate(cp);
     cmi_free(cp);

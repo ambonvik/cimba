@@ -64,3 +64,7 @@ target_link_libraries(cmi_test_process PRIVATE cimba)
 
 add_executable(cmi_test_hashheap test/cmi_test_hashheap.c test/cmi_test.h)
 target_link_libraries(cmi_test_hashheap PRIVATE cimba)
+
+add_executable(cmi_test_resource test/cmi_test_resource.c test/cmi_test.h)
+target_link_libraries(cmi_test_resource PRIVATE cimba)
+

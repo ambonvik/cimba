@@ -249,13 +249,18 @@ int64_t cmb_process_hold(const double dur)
                                     pp, NULL, t, pri);
 
     /* Yield to the scheduler and collect the return signal value */
-    const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
+    const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
 
-    /*
-     * Back here again, possibly much later. Return whatever signal was passed
-     * through the resume call that got us back here.
-     */
-    return ret;
+    /* Back here again, possibly much later. */
+    if (sig != CMB_PROCESS_HOLD_NORMAL) {
+        /* Whatever woke us up was not the scheduled wakeup call, cancel it */
+        cmb_assert_debug(pp->wakeup_handle != 0ull);
+        cmb_event_cancel(pp->wakeup_handle);
+        pp->wakeup_handle = 0ull;
+    }
+
+    /* Pass on whatever signal we received */
+    return sig;
 }
 
 /* The pwwuevt wakeup event is in cmi_processtag.c instead of here */
@@ -397,11 +402,6 @@ static void pstopevt(void *vp, void *arg) {
     if (tgt->wakeup_handle != 0ull) {
         cmb_event_cancel(tgt->wakeup_handle);
         tgt->wakeup_handle = 0ull;
-    }
-    else {
-        cmb_logger_warning(stdout,
-                          "pstopevt: tgt %s not holding",
-                          tgt->name);
     }
 
     /* Release any resources held by this process */

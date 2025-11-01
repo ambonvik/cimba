@@ -79,7 +79,6 @@ int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
 {
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(demand != NULL);
-    cmb_assert_release(ctx != NULL);
 
     /* cmb_process_get_current returns NULL if called from the main process */
     struct cmb_process *pp = cmb_process_get_current();
@@ -98,6 +97,11 @@ int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
                          NULL,
                          entry_time,
                          priority);
+
+    const struct cmi_resource_base *rbp = cmi_container_of(rgp,
+                                                       struct cmi_resource_base,
+                                                       front_guard);
+    cmb_logger_info(stdout, "Waiting in line for %s", rbp->name);
 
     /* Yield to the scheduler, collect the return signal value when resumed */
     const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
@@ -165,7 +169,7 @@ bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp)
     const void *ctx = item[2];
 
     /* Is the demand met? */
-    struct cmi_resource_base *rbp = cmi_container_of(rgp,
+    const struct cmi_resource_base *rbp = cmi_container_of(rgp,
                                                      struct cmi_resource_base,
                                                      front_guard);
     if ((*demand)(rbp, pp, ctx)) {
@@ -320,7 +324,6 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
 void cmb_resource_terminate(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
-    cmb_assert_release(rp->holder == NULL);
 
     cmi_resource_base_terminate(&(rp->core));
 }
@@ -350,6 +353,9 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
 
+    struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
+    cmb_logger_info(stdout, "Acquiring resource %s", rbp->name);
+
     struct cmb_process *pp = cmb_process_get_current();
     if (rp->holder == NULL) {
         /* Easy, grab it */
@@ -358,8 +364,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     }
 
     /* Wait at the front door until resource becomes available */
-    struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
-    const int64_t ret = cmi_resource_guard_wait(&(rbp->front_guard),
+     const int64_t ret = cmi_resource_guard_wait(&(rbp->front_guard),
                                                 resource_available,
                                                 NULL);
 
@@ -368,11 +373,11 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
         /* All good, grab the resource */
         cmb_assert_debug(rp->holder == NULL);
         rp->holder = pp;
-        cmb_logger_info(stdout, "Acquired resource %s", rbp->name);
+        cmb_logger_info(stdout, "Acquired %s", rbp->name);
     }
     else {
         cmb_logger_info(stdout,
-                        "Cancelled from acquiring resource %s, code %lld",
+                        "Cancelled from acquiring %s, code %lld",
                         rbp->name,
                         ret);
     }
@@ -386,11 +391,12 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
 void cmb_resource_release(struct cmb_resource *rp) {
     cmb_assert_release(rp != NULL);
 
-    struct cmb_process *pp = cmb_process_get_current();
+    struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
+    const struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_debug(rp->holder == pp);
     rp->holder = NULL;
+    cmb_logger_info(stdout, "Released %s", rbp->name);
 
-    struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
     struct cmi_resource_guard *rgp = &(rbp->front_guard);
     cmi_resource_guard_signal(rgp);
 }
@@ -406,7 +412,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     const struct cmb_process *victim = rp->holder;
     if (victim == NULL) {
         /* Easy, grab it */
-        cmb_logger_info(stdout, "Preempt found resource %s free", rbp->name);
+        cmb_logger_info(stdout, "Preempt found %s free", rbp->name);
         rp->holder = pp;
         ret = CMB_RESOURCE_ACQUIRE_NORMAL;
     }
@@ -421,7 +427,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
         /* Take its place */
         rp->holder = pp;
         cmb_logger_info(stdout,
-                       "Preempted resource %s from process %s",
+                       "Preempted %s from process %s",
                         rbp->name,
                         victim->name);
         ret = CMB_RESOURCE_ACQUIRE_NORMAL;
@@ -429,7 +435,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     else {
         /* Wait politely at the front door until resource becomes available */
         cmb_logger_info(stdout,
-                        "Resource %s not preempted from process %s with priority %lld > my priority %lld",
+                        "%s not preempted from %s, priority %lld > my priority %lld",
                          rbp->name,
                          victim->name,
                          victim->priority,

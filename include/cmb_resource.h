@@ -1,39 +1,54 @@
 /*
  * cmi_resource.h - guarded resources that the processes can queue for.
  *
- * A generic resource consists of two or three parts:
- * - A front end (the guard) that contains the priority queue for processes
- *   that want to use the resource and may have to wait for availability.
+ * Implements four externally available "classes".
+ * - cmb_resource - a simple binary semaphore supporting acquire, release, and
+ *   preempt methods. Similar to a Simula67 resource. Can only be held by one
+ *   process at a time. Assigned to waiting processes in priority order, then
+ *   FIFO tie-breaker order.
  *
- * - A middle part (the core) that is the actual resource, perhaps as simple as
- *   a limited number of available slots (a semaphore). This part also maintains
- *   a list of processes currently using the resource.
+ * - cmb_semaphore - a counting semaphore that supports acquire, release, and
+ *   preempt in specific amounts against a fixed resource capacity, where a
+ *   process also can acquire more of a resoure it already holds some amount of,
+ *   or release parts of its holding. Several processes can be holding parts of
+ *   the resource capacity at the same time, possibly also different amounts.
  *
- * - Optionally, a back end symmetrical to the front end for processes waiting
- *   to refill the resource core. For example, the core could be a fixed size
- *   buffer between two machines in a workshop, where the upstream machine may
- *   have to wait for space in the buffer and the downstream machine may have to
- *   wait for parts in the buffer.
+ * - cmb_buffer - a two-headed fixed-capacity resource where one or more
+ *   producer processes can put an amount into the one end, and one or more
+ *   consumer processes can get amounts out of the other end. If enough space is
+ *   not available, the producers wait, and if there is not enough content, the
+ *   consumers wait.
+ *
+ * - cmb_queue - as the cmb_buffer, but the content is represented by a linked
+ *   list of pointers to void, allowing arbitrary objects to be passed between
+ *   the producer and consumer.
+ *
+ * These classes are built on a virtual base class cmi_resource_base, allowing
+ * processes to maintain lists of held resources without necessarily caring
+ * which exact resource class this is. The priority queues for waiting processes
+ * are instances of the class cmi_resource_guard, derived from cmi_hashheap.
  *
  * A process will register itself and a predicate demand function when first
  * joining the priority queue. The demand function evaluates whether the
  * necessary condition to grab the resource is in place, such as at least one
  * part being available in a buffer or semaphore slot being available. If true
  * initially, the wait returns immediately. If not, the process waits in line.
+ *
  * When some other process signals the resource, it evaluates the demand
  * function for the first process in the priority queue. If true, the process is
  * resumed and can grab the resource. When done, it puts it back and signals the
  * quard to evaluate waiting demand again.
  *
  * A process holding a resource may in some cases be preempted by a higher
- * priority process. It is for this purpose that the resource core maintains a
- * list of processes currently holding (parts of) the resource, to enable use
- * cases like machine breakdowns or priority interrupts.
+ * priority process. For this purpose, the resources maintain a list of
+ * processes currently holding (parts of) the resource, to enable use cases like
+ * machine breakdowns, priority interrupts, or holding processes getting killed
+ * in more violent use cases.
  *
- * Below, we describe the cmb_resourcequard and cmb_resourcecore "classes", and
- * combine these to generic models of semaphore-type resources, finite-capacity
+ * Below, we implement the cmb_resource_guard and cmb_resource_base "classes",
+ * then combining these to generic semaphore-type resources, finite-capacity
  * buffers, and finite-sized object queues. A user application can extend this
- * further using inheritance by composition, also used in the code below.
+ * further using inheritance by composition, as used in the code below.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -59,9 +74,10 @@
 #include "cmi_hashheap.h"
 #include "cmb_process.h"
 
-/******************************************************************************
+/*******************************************************************************
  * cmi_resource_guard: The hashheap that handles a resource wait list
- *****************************************************************************/
+ ******************************************************************************/
+
 struct cmi_resource_guard {
     struct cmi_hashheap priority_queue;
 };
@@ -130,9 +146,9 @@ extern bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp);
 extern bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
                                       struct cmb_process *pp);
 
-/******************************************************************************
- * cmi_resource_base: The parent "class" of the different resource types
- *****************************************************************************/
+/*******************************************************************************
+ * cmi_resource_base: The virtual parent "class" of the different resource types
+ ******************************************************************************/
 
 /*
  * typedef cmi_resource_scram_func : function prototype for a resource scram,
@@ -140,6 +156,9 @@ extern bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
  * resources no matter what type these are. We let the resource base class
  * contain a pointer to a scram function and each derived class populate it with
  * a pointer to a function that does appropriate handling for the derived class.
+ *
+ * The process pointer argument is needed since the calling (current) process is
+ * not the victim process here.
  */
 typedef void (cmi_resource_scram_func)(struct cmi_resource_base *res,
                                        const struct cmb_process *pp);
@@ -166,20 +185,6 @@ extern void cmi_resource_base_initialize(struct cmi_resource_base *rbp,
 extern void cmi_resource_base_terminate(struct cmi_resource_base *rcp);
 
 /*
- * cmb_resource_base_get_name : Return the process name as a const char *,
- * since it is kept in a fixed size buffer and should not be changed directly.
- *
- * If the name for some reason needs to be changed, use cmb_process_set_name to
- * do it safely.
- */
-static inline const char *cmi_resource_base_get_name(const struct cmi_resource_base *rbp)
-{
-    cmb_assert_release(rbp != NULL);
-
-    return rbp->name;
-}
-
-/*
  * cmb_resource_set_name : Set a new name for the resource.
  *
  * The name is held in a fixed size buffer of size CMB_RESOURCE_NAMEBUF_SZ.
@@ -192,6 +197,7 @@ extern void cmb_resource_base_set_name(struct cmi_resource_base *rbp,
 /******************************************************************************
  * cmb_resource : A simple resource object, formally a binary semaphore
  *****************************************************************************/
+
 struct cmb_resource {
     struct cmi_resource_base core;
     struct cmb_process *holder;
@@ -238,5 +244,17 @@ extern void cmb_resource_release(struct cmb_resource *rp);
  */
 #define CMB_RESOURCE_HOLD_PREEMPTED (2LL)
 extern int64_t cmb_resource_preempt(struct cmb_resource *rp);
+
+/*
+ * cmb_resource_get_name : Returns name of resource as const char *.
+ */
+static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
+{
+    cmb_assert_debug(rp != NULL);
+
+    struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
+
+    return rbp->name;
+}
 
 #endif // CIMBA_CMB_RESOURCE_H

@@ -15,5 +15,113 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <stdio.h>
+#include <stdint.h>
+#include <time.h>
+
+#include "cmb_event.h"
+#include "cmb_random.h"
+#include "cmb_logger.h"
+#include "cmb_process.h"
 #include "cmb_resource.h"
+
 #include "cmi_test.h"
+
+#define USERFLAG 0x00000001
+
+static void end_sim_evt(void *subject, void *object)
+{
+    struct cmb_process **cpp = subject;
+    cmb_logger_info(stdout, "===> end_sim: game over <===");
+    for (unsigned ui = 0; ui < 4; ui++) {
+        cmb_process_stop(cpp[ui], object);
+    }
+}
+
+void *procfunc1(struct cmb_process *me, void *ctx)
+{
+    struct cmb_resource *rp = ctx;
+
+    // ReSharper disable once CppDFAEndlessLoop
+    for (;;) {
+        int64_t sig = cmb_resource_acquire(rp);
+        if (sig == CMB_RESOURCE_ACQUIRE_NORMAL) {
+            sig = cmb_process_hold(cmb_random_exponential(1.0));
+            if (sig == CMB_PROCESS_HOLD_NORMAL) {
+                cmb_resource_release(rp);
+            }
+            else {
+                cmb_logger_user(USERFLAG, stdout,
+                                "Someone stole %s from me, sig %lld!",
+                                cmb_resource_get_name(rp), sig);
+            }
+        }
+
+        cmb_process_hold(cmb_random_exponential(1.0));
+    }
+}
+
+void *procfunc2(struct cmb_process *me, void *ctx)
+{
+    struct cmb_resource *rp = ctx;
+
+    // ReSharper disable once CppDFAEndlessLoop
+    for (;;) {
+        const int64_t sig = cmb_resource_preempt(rp);
+        cmb_logger_user(USERFLAG, stdout, "Preempt %s returned signal %lld",
+                        cmb_resource_get_name(rp), sig);
+        cmb_process_hold(cmb_random_exponential(1.0));
+        cmb_resource_release(rp);
+        cmb_process_hold(cmb_random_exponential(1.0));
+    }
+}
+
+int main(void) {
+    const uint64_t seed = cmb_random_get_hwseed();
+    cmb_random_initialize(seed);
+
+    cmi_test_print_line("*");
+    printf("****************************   Testing resources   *****************************\n");
+    cmi_test_print_line("*");
+    printf("seed: %llu\n", seed);
+    cmb_event_queue_initialize(0.0);
+
+    printf("Creating a resource\n");
+    struct cmb_resource *rp = cmb_resource_create();
+    cmb_resource_initialize(rp, "Resource_1");
+
+    printf("Creates three processes to compete for the resource\n");
+    struct cmb_process *cpp[4];
+    for (unsigned ui = 0; ui < 3; ui++) {
+        cpp[ui] = cmb_process_create();
+        char buf[32];
+        snprintf(buf, sizeof(buf), "Process_%u", ui + 1u);
+        const int64_t pri = cmb_random_dice(-5, 5);
+        cmb_process_initialize(cpp[ui], buf, procfunc1, rp, pri);
+        cmb_process_start(cpp[ui]);
+    }
+
+    printf("Creates a fourth process trying to preempt the resource\n");
+    cpp[3] = cmb_process_create();
+    cmb_process_initialize(cpp[3], "Process_4", procfunc2, rp, 0);
+    cmb_process_start(cpp[3]);
+
+    printf("Scheduling end event\n");
+    (void)cmb_event_schedule(end_sim_evt, cpp, NULL, 100.0, 0);
+
+    printf("Executing simulation\n");
+    cmb_event_queue_execute();
+
+    printf("Cleaning up\n");
+    for (unsigned ui = 0; ui < 4; ui++) {
+        cmb_process_terminate(cpp[ui]);
+        cmb_process_destroy(cpp[ui]);
+    }
+
+    cmb_resource_destroy(rp);
+    cmb_event_queue_terminate();
+
+    cmi_test_print_line("*");
+    return 0;
+}
