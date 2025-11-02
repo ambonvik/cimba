@@ -1,23 +1,26 @@
 /*
- * cmi_resource.h - guarded resources that the processes can queue for.
+ * cmi_resource.h - guarded resources that the processes can queue for, enabling
+ * complex process interactions modelling real-world patterns.
  *
  * Implements four externally available "classes".
  * - cmb_resource - a simple binary semaphore supporting acquire, release, and
- *   preempt methods. Similar to a Simula67 resource. Can only be held by one
- *   process at a time. Assigned to waiting processes in priority order, then
- *   FIFO tie-breaker order.
+ *   preempt methods. Can only be held by one process at a time. Assigned to
+ *   waiting processes in priority order, then FIFO tie-breaker order.
  *
- * - cmb_semaphore - a counting semaphore that supports acquire, release, and
+ * - cmb_store - a counting semaphore that supports acquire, release, and
  *   preempt in specific amounts against a fixed resource capacity, where a
- *   process also can acquire more of a resoure it already holds some amount of,
- *   or release parts of its holding. Several processes can be holding parts of
- *   the resource capacity at the same time, possibly also different amounts.
+ *   process also can acquire more of a resource it already holds some amount
+ *   of, or release parts of its holding. Several processes can be holding parts
+ *   of the resource capacity at the same time, possibly also different amounts.
+ *   Assigns in a greedy fashion, where the acquiring process will first grab
+ *   whatever amount is available, then wait for some more to become available,
+ *   and repeat until the requested amount is acquired.
  *
  * - cmb_buffer - a two-headed fixed-capacity resource where one or more
  *   producer processes can put an amount into the one end, and one or more
  *   consumer processes can get amounts out of the other end. If enough space is
  *   not available, the producers wait, and if there is not enough content, the
- *   consumers wait.
+ *   consumers wait. Twice the complexity of cmb_store.
  *
  * - cmb_queue - as the cmb_buffer, but the content is represented by a linked
  *   list of pointers to void, allowing arbitrary objects to be passed between
@@ -31,7 +34,7 @@
  * A process will register itself and a predicate demand function when first
  * joining the priority queue. The demand function evaluates whether the
  * necessary condition to grab the resource is in place, such as at least one
- * part being available in a buffer or semaphore slot being available. If true
+ * part being available in a buffer or store slot being available. If true
  * initially, the wait returns immediately. If not, the process waits in line.
  *
  * When some other process signals the resource, it evaluates the demand
@@ -48,7 +51,18 @@
  * Below, we implement the cmb_resource_guard and cmb_resource_base "classes",
  * then combining these to generic semaphore-type resources, finite-capacity
  * buffers, and finite-sized object queues. A user application can extend this
- * further using inheritance by composition, as used in the code below.
+ * further using inheritance by composition, as used in the code below, and/or
+ * by replacing the precedence-checking predicate functions guard_queue_check
+ * and holder_queue_check with priority ranking more suitable for the specific
+ * purpose.
+ *
+ * We have tried to build simple and clear resource assignment algorithms. It is
+ * not a goal to build "optimal" or guaranteed deadlock-free resource allocation,
+ * since this is a simulation library, not an operating system. If the details
+ * of resource allocation strategies are important in your use case, kindly make
+ * the necessary extensions or modifications. It might be your research goal to
+ * investigate the effects of different algorithms here. (Your humble author has
+ * written both a Master's and a PhD thesis doing exactly that.)
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -160,10 +174,12 @@ extern bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
  * a pointer to a function that does appropriate handling for the derived class.
  *
  * The process pointer argument is needed since the calling (current) process is
- * not the victim process here.
+ * not the victim process here. The handle arg is for cases where the resource
+ * can look it up in its hash map for efficiency.
  */
 typedef void (cmi_resource_scram_func)(struct cmi_resource_base *res,
-                                       const struct cmb_process *pp);
+                                       const struct cmb_process *pp,
+                                       uint64_t handle);
 
 /* Maximum length of a resource name, anything longer will be truncated */
 #define CMB_RESOURCE_NAMEBUF_SZ 32
@@ -259,7 +275,7 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
 }
 
 /*******************************************************************************
- * cmb_semaphore : Resource with integer-valued capacity, a counting semaphore
+ * cmb_store : Resource with integer-valued capacity, a counting semaphore
  ******************************************************************************/
 
 /*
@@ -273,7 +289,7 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
  * the resource capacity. The hashheap is sorted to keep the holder most likely
  * to be preempted at the front, i.e. lowest priority and last in.
  */
-struct cmb_semaphore {
+struct cmb_store {
     struct cmi_resource_base core;
     struct cmi_resource_guard front_guard;
     struct cmi_hashheap holders;
@@ -282,52 +298,52 @@ struct cmb_semaphore {
 };
 
 /*
- * cmb_semaphore_create : Allocate memory for a semaphore object.
+ * cmb_store_create : Allocate memory for a store object.
  */
-extern struct cmb_semaphore *cmb_semaphore_create(void);
+extern struct cmb_store *cmb_store_create(void);
 
 /*
- * cmb_semaphore_initialize : Make an allocated semaphore object ready for use.
+ * cmb_store_initialize : Make an allocated store object ready for use.
  */
-extern void cmb_semaphore_initialize(struct cmb_semaphore *sp,
+extern void cmb_store_initialize(struct cmb_store *sp,
                                     const char *name,
                                     uint64_t capacity);
 
 /*
- * cmb_semaphore_terminate : Un-initializes a semaphore object.
+ * cmb_store_terminate : Un-initializes a store object.
  */
-extern void cmb_semaphore_terminate(struct cmb_semaphore *sp);
+extern void cmb_store_terminate(struct cmb_store *sp);
 
 /*
- * cmb_semaphore_destroy : Deallocates memory for a semaphore object.
+ * cmb_store_destroy : Deallocates memory for a store object.
  */
-extern void cmb_semaphore_destroy(struct cmb_semaphore *sp);
+extern void cmb_store_destroy(struct cmb_store *sp);
 
 /*
- * cmb_semaphore_acquire : Request and if necessary wait for an amount of the
- * semaphore resource. The calling process may already hold some and try to
+ * cmb_store_acquire : Request and if necessary wait for an amount of the
+ * store resource. The calling process may already hold some and try to
  * increase its holding with this call, or to obtain its first helping.
  */
-extern int64_t cmb_semaphore_acquire(struct cmb_semaphore *sp, uint64_t amount);
+extern int64_t cmb_store_acquire(struct cmb_store *sp, uint64_t amount);
 
 /*
- * cmb_semaphore_release : Release an amount of the resource, not necessarily
+ * cmb_store_release : Release an amount of the resource, not necessarily
  * everything that the calling process holds.
  */
-extern void cmb_semaphore_release(struct cmb_semaphore *sp, uint64_t amount);
+extern void cmb_store_release(struct cmb_store *sp, uint64_t amount);
 
 /*
- * cmb_semaphoree_preempt : Preempt the current holders and grab the resource
+ * cmb_storee_preempt : Preempt the current holders and grab the resource
  * amount, starting from the lowest priority holder. If there is not enough to
  * cover the amount before it runs into holders with higher priority than the
  * caller, it will politely wait in line for the remainder.
  */
-extern int64_t cmb_semaphore_preempt(struct cmb_semaphore *sp, uint64_t amount);
+extern int64_t cmb_store_preempt(struct cmb_store *sp, uint64_t amount);
 
 /*
- * cmb_semaphore_get_name : Returns name of semaphore as const char *.
+ * cmb_store_get_name : Returns name of store as const char *.
  */
-static inline const char *cmb_semaphore_get_name(struct cmb_semaphore *sp)
+static inline const char *cmb_store_get_name(struct cmb_store *sp)
 {
     cmb_assert_debug(sp != NULL);
     const struct cmi_resource_base *rbp = (struct cmi_resource_base *)sp;

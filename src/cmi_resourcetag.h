@@ -33,7 +33,15 @@ struct cmi_resource_base;
  * derived classes.
  */
 extern void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
-                                     struct cmi_resource_base *rbp);
+                                     struct cmi_resource_base *rbp,
+                                     uint64_t handle);
+
+/*
+ * cmi_resourcetag_list_remove : Find and remove a resource from the given list
+ * location.
+ */
+extern void cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
+                                        const struct cmi_resource_base *rbp);
 
 /*
  * cmi_resourcetag_list_scram_all : Calls the respective scram function for each

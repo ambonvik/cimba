@@ -111,6 +111,14 @@ static inline bool cmi_is_power_of_two(const size_t n)
 #define cmi_container_of(ptr, type, member) \
                         ((type *)((char *)(ptr) - cmi_offset_of(type, member)))
 
+/*
+ * cmi_unused : macro to suppress "unused argument" compiler warnings for cases
+ * where some generic argument is intentionally unused in that instance.
+ * __attribute__ ((unused)) could be used, but it is a GCC extension, not
+ * portable. In C23 [[maybe_unused]] will do the trick, but again, MVSC.
+ */
+#define cmi_unused(x) ((void)(x))
+
 /* System dependent utility functions in src/arch/cmi_memutils_*.c */
 extern size_t cmi_get_pagesize(void);
 extern void *cmi_aligned_alloc(size_t align, size_t sz);

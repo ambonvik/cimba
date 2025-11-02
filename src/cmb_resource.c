@@ -237,10 +237,13 @@ bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
  * base_scram : dummy scram function, to be replaced by appropriate scram in
  * derived classes.
  */
-void base_scram(struct cmi_resource_base *rbp, const struct cmb_process *pp)
+void base_scram(struct cmi_resource_base *rbp,
+                const struct cmb_process *pp,
+                const uint64_t handle)
 {
     cmb_assert_release(rbp != NULL);
     cmb_assert_release(pp != NULL);
+    cmi_unused(handle);
 
     cmb_logger_error(stderr,
                     "Resource base scram, process %s resource %s, unknown derived class",
@@ -266,7 +269,7 @@ void cmi_resource_base_initialize(struct cmi_resource_base *rbp,
  */
 void cmi_resource_base_terminate(struct cmi_resource_base *rbp)
 {
-    cmb_assert_release(rbp != NULL);
+    cmi_unused(rbp);
 }
 
 /*
@@ -289,21 +292,6 @@ void cmb_resource_base_set_name(struct cmi_resource_base *rbp, const char *name)
  ******************************************************************************/
 
 /*
- * resource_scram : forcibly eject holder process without resuming it.
- */
-void resource_scram(struct cmi_resource_base *rbp, const struct cmb_process *pp)
-{
-    cmb_assert_release(rbp != NULL);
-    cmb_assert_release(pp != NULL);
-
-    struct cmb_resource *rp = (struct cmb_resource *)rbp;
-    cmb_assert_debug(rp->holder == pp);
-    rp->holder = NULL;
-
-    cmi_resource_guard_signal(&(rp->front_guard));
-}
-
-/*
  * cmb_resource_create : Allocate memory for a resource object.
  */
 struct cmb_resource *cmb_resource_create(void)
@@ -319,9 +307,28 @@ struct cmb_resource *cmb_resource_create(void)
  */
 #define HOLDER_INIT_EXP 3u
 
+/*
+ * resource_scram : forcibly eject holder process without resuming it.
+ */
+void resource_scram(struct cmi_resource_base *rbp,
+                    const struct cmb_process *pp,
+                    const uint64_t handle)
+{
+    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(pp != NULL);
+    cmi_unused(handle);
+
+    struct cmb_resource *rp = (struct cmb_resource *)rbp;
+    cmb_assert_debug(rp->holder == pp);
+    rp->holder = NULL;
+
+    cmi_resource_guard_signal(&(rp->front_guard));
+}
+
 void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
 {
     cmb_assert_release(rp != NULL);
+    cmb_assert_release(name != NULL);
 
     cmi_resource_base_initialize(&(rp->core), name);
     cmi_resource_guard_initialize(&(rp->front_guard), &(rp->core));
@@ -356,10 +363,18 @@ static bool resource_available(const struct cmi_resource_base *rbp,
 {
     cmb_assert_release(rbp != NULL);
     cmb_assert_release(pp != NULL);
+    cmi_unused(ctx);
 
     const struct cmb_resource *rp = (struct cmb_resource *)rbp;
 
     return (rp->holder == NULL);
+}
+
+static void resource_grab(struct cmb_resource *rp, struct cmb_process *pp)
+{
+    rp->holder = pp;
+    struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
+    cmi_resourcetag_list_add(&(pp->resource_listhead), rbp, 0u);
 }
 
 int64_t cmb_resource_acquire(struct cmb_resource *rp)
@@ -372,7 +387,8 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     struct cmb_process *pp = cmb_process_get_current();
     if (rp->holder == NULL) {
         /* Easy, grab it */
-        rp->holder = pp;
+        resource_grab(rp, pp);
+        cmb_logger_info(stdout, "Acquired %s", rbp->name);
         return CMB_RESOURCE_ACQUIRE_NORMAL;
     }
 
@@ -384,8 +400,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     /* Now we got past the front door, or perhaps thrown out by the guard */
     if (ret == CMB_RESOURCE_ACQUIRE_NORMAL) {
         /* All good, grab the resource */
-        cmb_assert_debug(rp->holder == NULL);
-        rp->holder = pp;
+        resource_grab(rp, pp);
         cmb_logger_info(stdout, "Acquired %s", rbp->name);
     }
     else {
@@ -405,15 +420,14 @@ void cmb_resource_release(struct cmb_resource *rp) {
     cmb_assert_release(rp != NULL);
 
     struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
-    #ifndef NDEBUG
-        const struct cmb_process *pp = cmb_process_get_current();
-        cmb_assert_debug(pp != NULL);
-    #endif
+    struct cmb_process *pp = cmb_process_get_current();
+    cmb_assert_debug(pp != NULL);
+    cmi_resourcetag_list_remove(&(pp->resource_listhead), rbp);
+
     cmb_assert_debug(rp->holder == pp);
-
     rp->holder = NULL;
-    cmb_logger_info(stdout, "Released %s", rbp->name);
 
+    cmb_logger_info(stdout, "Released %s", rbp->name);
     struct cmi_resource_guard *rgp = &(rp->front_guard);
     cmi_resource_guard_signal(rgp);
 }
@@ -428,15 +442,17 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
     cmb_logger_info(stdout, "Preempting resource %s", rbp->name);
 
-    const struct cmb_process *victim = rp->holder;
+    struct cmb_process *victim = rp->holder;
     if (victim == NULL) {
         /* Easy, grab it */
         cmb_logger_info(stdout, "Preempt found %s free", rbp->name);
-        rp->holder = pp;
+        resource_grab(rp, pp);
         ret = CMB_RESOURCE_ACQUIRE_NORMAL;
     }
     else if (myprio >= victim->priority) {
         /* Kick it out */
+        cmi_resourcetag_list_remove(&(victim->resource_listhead), rbp);
+        rp->holder = NULL;
         (void)cmb_event_schedule(prwuevt,
                                 (void *)victim,
                                 (void *)CMB_RESOURCE_HOLD_PREEMPTED,
@@ -444,7 +460,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
                                  victim->priority);
 
         /* Take its place */
-        rp->holder = pp;
+        resource_grab(rp, pp);
         cmb_logger_info(stdout,
                        "Preempted %s from process %s",
                         rbp->name,
@@ -466,24 +482,25 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
 }
 
 /*******************************************************************************
- * cmb_semaphore : Resource with integer-valued capacity, a counting semaphore
+ * cmb_store : Resource with integer-valued capacity, a counting semaphore
  ******************************************************************************/
 
 /*
- * cmb_semaphore_create : Allocate memory for a semaphore object.
+ * cmb_store_create : Allocate memory for a store object.
  */
-struct cmb_semaphore *cmb_semaphore_create(void)
+struct cmb_store *cmb_store_create(void)
 {
-    struct cmb_semaphore *sp = cmi_malloc(sizeof(*sp));
+    struct cmb_store *sp = cmi_malloc(sizeof(*sp));
     cmi_memset(sp, 0, sizeof(*sp));
 
     return sp;
 }
 
 /*
- * holder_queue_check : Test if heap_tag *a should go before *b. If so, return true.
- * Ranking lower priority (dkey) before lower, then LIFO based on handle value.
- * Used to identify most likely victim for a resource preemption.
+ * holder_queue_check : Test if heap_tag *a should go before *b. If so, return
+ * true. Ranking lower priority (dkey) before higher, then LIFO based on handle
+ * value. Used to identify most likely victim for a resource preemption, hence
+ * opposite order of the waiting room.
  */
 static bool holder_queue_check(const struct cmi_heap_tag *a,
                                const struct cmi_heap_tag *b)
@@ -505,29 +522,64 @@ static bool holder_queue_check(const struct cmi_heap_tag *a,
 }
 
 /*
- * cmb_semaphore_initialize : Make an allocated semaphore object ready for use.
+ * store_scram : forcibly eject a holder process without resuming it.
+ */
+void store_scram(struct cmi_resource_base *rbp,
+                    const struct cmb_process *pp,
+                    const uint64_t handle)
+{
+    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(pp != NULL);
+    cmb_assert_release(handle != 0u);
+
+    struct cmb_store *sp = (struct cmb_store *)rbp;
+    struct cmi_hashheap *hp = &(sp->holders);
+    void **item = cmi_hashheap_get_item(hp, handle);
+    cmb_assert_debug(item[0] == pp);
+
+    const uint64_t held = (uint64_t)item[1];
+    cmb_assert_debug(held > 0u);
+    cmb_assert_debug(held <= sp->in_use);
+
+    const bool ret = cmi_hashheap_cancel(hp, handle);
+    cmb_assert_debug(ret == true);
+
+    sp->in_use -= held;
+    cmb_assert_debug(sp->in_use < sp->capacity);
+    cmi_resource_guard_signal(&(sp->front_guard));
+}
+
+
+
+/*
+ * cmb_store_initialize : Make an allocated store object ready for use.
  */
 #define HOLDERS_INIT_EXP 3u
 
-void cmb_semaphore_initialize(struct cmb_semaphore *sp,
-                              const char *name,
-                              uint64_t capacity)
+void cmb_store_initialize(struct cmb_store *sp,
+                          const char *name,
+                          const uint64_t capacity)
 {
     cmb_assert_release(sp != NULL);
+    cmb_assert_release(name != NULL);
+    cmb_assert_release(capacity > 0u);
 
     cmi_resource_base_initialize(&(sp->core), name);
+    sp->core.scram = store_scram;
+
     cmi_resource_guard_initialize(&(sp->front_guard), &(sp->core));
     cmi_hashheap_initialize(&(sp->holders),
                             HOLDERS_INIT_EXP,
                             holder_queue_check);
+
     sp->capacity = capacity;
     sp->in_use = 0u;
 }
 
 /*
- * cmb_semaphore_terminate : Un-initializes a semaphore object.
+ * cmb_store_terminate : Un-initializes a store object.
  */
-void cmb_semaphore_terminate(struct cmb_semaphore *sp)
+void cmb_store_terminate(struct cmb_store *sp)
 {
     cmb_assert_release(sp != NULL);
 
@@ -537,11 +589,11 @@ void cmb_semaphore_terminate(struct cmb_semaphore *sp)
 }
 
 /*
- * cmb_semaphore_destroy : Deallocates memory for a semaphore object.
+ * cmb_store_destroy : Deallocates memory for a store object.
  */
-void cmb_semaphore_destroy(struct cmb_semaphore *sp)
+void cmb_store_destroy(struct cmb_store *sp)
 {
-    cmb_semaphore_terminate(sp);
+    cmb_store_terminate(sp);
     cmi_free(sp);
 }
 
