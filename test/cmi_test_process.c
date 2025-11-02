@@ -23,6 +23,7 @@
 #include "cmb_random.h"
 
 #include "cmi_test.h"
+#include "cmi_memutils.h"
 
 #define USERFLAG 0x00000001
 
@@ -30,12 +31,18 @@ uint64_t cuckoo_clock_handle = 0u;
 
 void cuckooevtfunc(void *sub, void *obj)
 {
+    cmi_unused(sub);
+    cmi_unused(obj);
+
     cmb_logger_user(USERFLAG, stdout,"Cuckoo event occurred");
 }
 
 void cnclevtfunc(void *sub, void *obj)
 {
-     cmb_assert_release(cuckoo_clock_handle != 0u);
+    cmi_unused(sub);
+    cmi_unused(obj);
+
+    cmb_assert_release(cuckoo_clock_handle != 0u);
      if (cmb_event_is_scheduled(cuckoo_clock_handle)) {
         cmb_logger_user(USERFLAG, stdout,"Cancelling cuckoo event");
         cmb_event_cancel(cuckoo_clock_handle);
@@ -47,6 +54,9 @@ void cnclevtfunc(void *sub, void *obj)
 
 void *procfunc1(struct cmb_process *me, void *ctx)
 {
+    cmi_unused(me);
+    cmi_unused(ctx);
+
     cmb_logger_user(USERFLAG, stdout, "Running");
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
@@ -84,6 +94,8 @@ void *procfunc2(struct cmb_process *me, void *ctx)
 
 void *procfunc3(struct cmb_process *me, void *ctx)
 {
+    cmi_unused(me);
+
     struct cmb_process *tgt = (struct cmb_process *)ctx;
     cmb_logger_user(USERFLAG, stdout, "Running, tgt %s", cmb_process_get_name(tgt));
     int64_t r = cmb_process_wait_event(cuckoo_clock_handle);

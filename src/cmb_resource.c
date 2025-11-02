@@ -91,6 +91,9 @@ int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
     /* cmb_process_get_current returns NULL if called from the main process */
     struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_release(pp != NULL);
+    cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
+    cmb_assert_debug(pp->waitsfor.ptr == NULL);
+    cmb_assert_debug(pp->waitsfor.handle == 0ull);
 
     /* Contrived cast to suppress compiler warning about pointer conversion */
     void *vdemand = *(void **)&demand;
@@ -98,13 +101,17 @@ int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
     const double entry_time = cmb_time();
     const int64_t priority = cmb_process_get_priority(pp);
 
-    cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
+    uint64_t handle = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
                          (void *)pp,
                          vdemand,
                          ctx,
                          NULL,
                          entry_time,
                          priority);
+
+    pp->waitsfor.type = CMI_WAITABLE_RESOURCE;
+    pp->waitsfor.ptr = rgp;
+    pp->waitsfor.handle = handle;
 
     cmb_logger_info(stdout,
                    "Waits in line for %s",
@@ -114,6 +121,10 @@ int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
 
     /* Back here, possibly much later. Return the signal that resumed us. */
+    pp->waitsfor.type = CMI_WAITABLE_NONE;
+    pp->waitsfor.ptr = NULL;
+    pp->waitsfor.handle = 0ull;
+
     return sig;
 }
 
@@ -125,15 +136,10 @@ static void prwuevt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
-    struct cmi_coroutine *cp = (struct cmi_coroutine *)vp;
+    struct cmb_process *pp = (struct cmb_process *)vp;
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
         (void)cmi_coroutine_resume(cp, arg);
-    }
-    else {
-        const struct cmb_process *pp = (struct cmb_process *)vp;
-        cmb_logger_warning(stdout,
-                          "process wait wakeup call found process %s dead",
-                           cmb_process_get_name(pp));
     }
 }
 
@@ -201,17 +207,13 @@ bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp)
  * Returns true if found and successfully cancelled, false if not.
  */
 bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
-                                   struct cmb_process *pp)
+                               struct cmb_process *pp)
 {
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(pp != NULL);
 
     struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
-    const uint64_t handle = cmi_hashheap_pattern_find(hp,
-                                                     (void *)pp,
-                                                     CMI_ANY_ITEM,
-                                                     CMI_ANY_ITEM,
-                                                     CMI_ANY_ITEM);
+    const uint64_t handle = pp->waitsfor.handle;
 
     if (handle != 0u) {
         (void)cmi_hashheap_cancel(hp, handle);
@@ -374,7 +376,7 @@ static void resource_grab(struct cmb_resource *rp, struct cmb_process *pp)
 {
     rp->holder = pp;
     struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
-    cmi_resourcetag_list_add(&(pp->resource_listhead), rbp, 0u);
+    cmi_resourcetag_list_add(&(pp->resources_listhead), rbp, 0u);
 }
 
 int64_t cmb_resource_acquire(struct cmb_resource *rp)
@@ -422,7 +424,7 @@ void cmb_resource_release(struct cmb_resource *rp) {
     struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
     struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_debug(pp != NULL);
-    cmi_resourcetag_list_remove(&(pp->resource_listhead), rbp);
+    cmi_resourcetag_list_remove(&(pp->resources_listhead), rbp);
 
     cmb_assert_debug(rp->holder == pp);
     rp->holder = NULL;
@@ -451,7 +453,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     }
     else if (myprio >= victim->priority) {
         /* Kick it out */
-        cmi_resourcetag_list_remove(&(victim->resource_listhead), rbp);
+        cmi_resourcetag_list_remove(&(victim->resources_listhead), rbp);
         rp->holder = NULL;
         (void)cmb_event_schedule(prwuevt,
                                 (void *)victim,
@@ -470,7 +472,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     else {
         /* Wait politely at the front door until resource becomes available */
         cmb_logger_info(stdout,
-                        "%s not preempted from %s, priority %lld > my priority %lld",
+                        "%s not preempted, holder %s priority %lld > my priority %lld",
                          rbp->name,
                          victim->name,
                          victim->priority,

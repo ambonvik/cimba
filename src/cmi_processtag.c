@@ -36,9 +36,9 @@ struct cmi_processtag {
 };
 
 /*
- * tag_pool : Memory pool of process tags
+ * process_tag_pool : Memory pool of process tags
  */
-static CMB_THREAD_LOCAL struct cmb_mempool *tag_pool = NULL;
+static CMB_THREAD_LOCAL struct cmb_mempool *process_tag_pool = NULL;
 
 /*
  * pwwuevt : The event handler that actually resumes the process coroutine after
@@ -89,9 +89,7 @@ void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc,
                                  priority);
 
         struct cmi_processtag *tmp = ptag->next;
-        ptag->next = NULL;
-        ptag->proc = NULL;
-        cmb_mempool_put(tag_pool, ptag);
+        cmb_mempool_put(process_tag_pool, ptag);
         ptag = tmp;
     }
 
@@ -108,18 +106,44 @@ void cmi_processtag_list_add(struct cmi_processtag **ptloc,
     cmb_assert_debug(pp != NULL);
 
     /* Lazy initalization of the memory pool for process tags */
-    if (tag_pool == NULL) {
-        tag_pool = cmb_mempool_create();
-        cmb_mempool_initialize(tag_pool,
+    if (process_tag_pool == NULL) {
+        process_tag_pool = cmb_mempool_create();
+        cmb_mempool_initialize(process_tag_pool,
                               64u,
                               sizeof(struct cmi_processtag));
     }
 
     /* Get one and add it to the head of the list */
-    struct cmi_processtag *ptag = cmb_mempool_get(tag_pool);
+    struct cmi_processtag *ptag = cmb_mempool_get(process_tag_pool);
     ptag->next = *ptloc;
     ptag->proc = pp;
     *ptloc = ptag;
+}
+
+/*
+ * cmi_processtag_list_remove : Find and remove a process from the given list
+ * location.
+ */
+bool cmi_processtag_list_remove(struct cmi_processtag **ptloc,
+                                const struct cmb_process *pp)
+{
+    cmb_assert_debug(ptloc != NULL);
+    cmb_assert_debug(pp != NULL);
+
+    struct cmi_processtag **ptpp = ptloc;
+    while (*ptpp != NULL) {
+        struct cmi_processtag *ptag = *ptpp;
+        if (ptag->proc == pp) {
+            *ptpp = ptag->next;
+            cmb_mempool_put(process_tag_pool, ptag);
+            return true;
+        }
+        else {
+            ptpp = &(ptag->next);
+        }
+    }
+
+    return false;
 }
 
 /*

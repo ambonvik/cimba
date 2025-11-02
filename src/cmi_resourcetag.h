@@ -38,9 +38,9 @@ extern void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
 
 /*
  * cmi_resourcetag_list_remove : Find and remove a resource from the given list
- * location.
+ * location. Returns true if found, false if not.
  */
-extern void cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
+extern bool cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
                                         const struct cmi_resource_base *rbp);
 
 /*

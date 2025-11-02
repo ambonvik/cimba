@@ -27,6 +27,7 @@
 #include "cmb_resource.h"
 
 #include "cmi_test.h"
+#include "cmi_memutils.h"
 
 #define USERFLAG 0x00000001
 
@@ -41,6 +42,7 @@ static void end_sim_evt(void *subject, void *object)
 
 void *procfunc1(struct cmb_process *me, void *ctx)
 {
+    cmi_unused(me);
     struct cmb_resource *rp = ctx;
 
     // ReSharper disable once CppDFAEndlessLoop
@@ -64,6 +66,7 @@ void *procfunc1(struct cmb_process *me, void *ctx)
 
 void *procfunc2(struct cmb_process *me, void *ctx)
 {
+    cmi_unused(me);
     struct cmb_resource *rp = ctx;
 
     // ReSharper disable once CppDFAEndlessLoop

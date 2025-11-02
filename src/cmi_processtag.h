@@ -34,6 +34,12 @@ extern void cmi_processtag_list_add(struct cmi_processtag **ptloc,
                                     struct cmb_process *pp);
 
 /*
+ * cmi_processtag_list_remove : Remove a waiting process from the given list
+ * location. Returns true if found, false if not.
+ */
+extern bool cmi_processtag_list_remove(struct cmi_processtag **ptloc,
+                                       const struct cmb_process *pp);
+/*
  * cmi_processtag_list_wake_all : Schedules a wakeup call for each process in
  * the given list location.
  */

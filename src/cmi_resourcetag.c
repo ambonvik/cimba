@@ -36,9 +36,9 @@ struct cmi_resourcetag {
 };
 
 /*
- * tag_pool : Memory pool of resource tags
+ * process_tag_pool : Memory pool of resource tags
  */
-static CMB_THREAD_LOCAL struct cmb_mempool *tag_pool = NULL;
+static CMB_THREAD_LOCAL struct cmb_mempool *process_tag_pool = NULL;
 
 /*
  * cmi_resourcetag_list_scram_all : Calls the scram function for each resource
@@ -54,7 +54,7 @@ void cmi_resourcetag_list_scram_all(struct cmi_resourcetag **rtloc)
 
     const struct cmb_process *pp = cmi_container_of(rtloc,
                                               struct cmb_process,
-                                              resource_listhead);
+                                              resources_listhead);
     cmb_assert_debug(pp != NULL);
 
     /* Process it, calling scram() for each resource */
@@ -64,10 +64,7 @@ void cmi_resourcetag_list_scram_all(struct cmi_resourcetag **rtloc)
         (*(rbp->scram))(rbp, pp, handle);
 
         struct cmi_resourcetag *tmp = rtag->next;
-        rtag->next = NULL;
-        rtag->res = NULL;
-        rtag->handle = 0u;
-        cmb_mempool_put(tag_pool, rtag);
+        cmb_mempool_put(process_tag_pool, rtag);
         rtag = tmp;
     }
 
@@ -85,15 +82,15 @@ void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
     cmb_assert_debug(rbp != NULL);
 
     /* Lazy initalization of the memory pool for process tags */
-    if (tag_pool == NULL) {
-        tag_pool = cmb_mempool_create();
-        cmb_mempool_initialize(tag_pool,
+    if (process_tag_pool == NULL) {
+        process_tag_pool = cmb_mempool_create();
+        cmb_mempool_initialize(process_tag_pool,
                               64u,
                               sizeof(struct cmi_resourcetag));
     }
 
     /* Get one and add it to the head of the list */
-    struct cmi_resourcetag *rtag = cmb_mempool_get(tag_pool);
+    struct cmi_resourcetag *rtag = cmb_mempool_get(process_tag_pool);
     rtag->next = *rtloc;
     rtag->res = rbp;
     rtag->handle = handle;
@@ -104,7 +101,7 @@ void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
  * cmi_resourcetag_list_remove : Find and remove a resource from the given list
  * location.
  */
-void cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
+bool cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
                                  const struct cmi_resource_base *rbp)
 {
     cmb_assert_debug(rtloc != NULL);
@@ -115,27 +112,16 @@ void cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
         struct cmi_resourcetag *rtag = *rtpp;
         if (rtag->res == rbp) {
             *rtpp = rtag->next;
-            rtag->next = NULL;
-            rtag->res = NULL;
-            rtag->handle = 0u;
-            cmb_mempool_put(tag_pool, rtag);
-            return;
+            cmb_mempool_put(process_tag_pool, rtag);
+            return true;
         }
         else {
             rtpp = &(rtag->next);
         }
     }
 
-    #ifndef NDEBUG
-        const struct cmb_process *pp = cmi_container_of(rtloc,
-                                              struct cmb_process,
-                                              resource_listhead);
-        cmb_assert_debug(pp != NULL);
-        cmb_logger_error(stderr,
-                         "Resource %s not found in resource list of process %s",
-                         rbp->name,
-                         pp->name);
-    #endif
+    /* Not found */
+    return false;
 }
 
 /*
