@@ -44,6 +44,13 @@ extern bool cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
                                         const struct cmi_resource_base *rbp);
 
 /*
+ * cmi_resourcetag_list_find : Find a resource from the given list location.
+ * Returns the associated handle value if found, zero if not.
+ */
+extern uint64_t cmi_resourcetag_list_find(struct cmi_resourcetag **rtloc,
+                                          const struct cmi_resource_base *rbp);
+
+/*
  * cmi_resourcetag_list_scram_all : Calls the respective scram function for each
  * resource in the given list location, removing them from the list.
  */

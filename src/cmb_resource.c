@@ -359,6 +359,9 @@ void cmb_resource_destroy(struct cmb_resource *rp)
     cmi_free(rp);
 }
 
+/*
+ * resource_available : pre-packaged demand function for a cmb_resource
+ */
 static bool resource_available(const struct cmi_resource_base *rbp,
                                const struct cmb_process *pp,
                                const void *ctx)
@@ -527,8 +530,8 @@ static bool holder_queue_check(const struct cmi_heap_tag *a,
  * store_scram : forcibly eject a holder process without resuming it.
  */
 void store_scram(struct cmi_resource_base *rbp,
-                    const struct cmb_process *pp,
-                    const uint64_t handle)
+                 const struct cmb_process *pp,
+                 const uint64_t handle)
 {
     cmb_assert_release(rbp != NULL);
     cmb_assert_release(pp != NULL);
@@ -550,8 +553,6 @@ void store_scram(struct cmi_resource_base *rbp,
     cmb_assert_debug(sp->in_use < sp->capacity);
     cmi_resource_guard_signal(&(sp->front_guard));
 }
-
-
 
 /*
  * cmb_store_initialize : Make an allocated store object ready for use.
@@ -599,5 +600,130 @@ void cmb_store_destroy(struct cmb_store *sp)
     cmi_free(sp);
 }
 
+/*
+ * store_available : pre-packaged demand function for a cmb_store, allowing the
+ * requesting process to grab some whenever there is something to grab,
+ */
+static bool store_available(const struct cmi_resource_base *rbp,
+                            const struct cmb_process *pp,
+                            const void *ctx)
+{
+    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(pp != NULL);
+    cmi_unused(ctx);
+
+    const struct cmb_store *sp = (struct cmb_store *)rbp;
+    const uint64_t avail = sp->capacity - sp->in_use;
+
+    return (avail > 0u);
+}
+
+/*
+ * store_update_record : update bookkeping for assignment
+ */
+static uint64_t store_update_record(struct cmb_store *sp,
+                                    struct cmb_process *pp,
+                                    const uint64_t handle,
+                                    const uint64_t amount)
+{
+    cmb_assert_release(sp != NULL);
+
+    uint64_t ret = handle;
+    if (handle != 0u) {
+        /* Just increase the amount in its holders record */
+        const struct cmi_hashheap *hp = &(sp->holders);
+        void **item = cmi_hashheap_get_item(hp, handle);
+        const uint64_t cramt = (uint64_t)item[1];
+        const uint64_t nwamt = cramt + amount;
+        item[1] = (void *)nwamt;
+    }
+    else {
+        /* Add a new holder record */
+        struct cmi_hashheap *hp = &(sp->holders);
+        ret = cmi_hashheap_enqueue(hp,
+                                   (void *)pp,
+                                   (void *)amount,
+                                   NULL,
+                                   NULL,
+                                   cmb_time(),
+                                   pp->priority);
+    }
+
+    return ret;
+}
+
+/*
+ * cmb_store_acquire : Request and if necessary wait for an amount of the
+ * store resource. The calling process may already hold some and try to
+ * increase its holding with this call, or to obtain its first helping.
+ */
+int64_t cmb_store_acquire(struct cmb_store *sp, const uint64_t amount)
+{
+    cmb_assert_release(sp != NULL);
+    cmb_assert_release(amount > 0u);
+
+    struct cmi_resource_base *rbp = (struct cmi_resource_base *)sp;
+    struct cmb_process *pp = cmb_process_get_current();
+    cmb_logger_info(stdout, "Acquiring %llu from store %s", amount, rbp->name);
+
+    /* Does the caller already hold some? */
+    uint64_t caller_held = 0u;
+    struct cmi_hashheap *hp = &(sp->holders);
+    uint64_t handle = cmi_resourcetag_list_find(&(pp->resources_listhead), rbp);
+    if (handle != 0u) {
+        /* Note the orginal amount in case we need to roll back */
+        void **item = cmi_hashheap_get_item(hp, handle);
+        caller_held = (uint64_t)item[1];
+    }
+
+    uint64_t remainder = amount;
+    for (;;) {
+        const uint64_t available = sp->capacity - sp->in_use;
+        if (available >= remainder) {
+            /* Easy, grab what we need */
+            sp->in_use += remainder;
+            remainder = 0u;
+            handle = store_update_record(sp, pp, handle, remainder);
+            cmb_logger_info(stdout, "Got %llu", remainder);
+
+            return CMB_RESOURCE_ACQUIRE_NORMAL;
+        }
+        else if (available > 0u) {
+            /* Grab what is there */
+            sp->in_use += available;
+            remainder -= available;
+            handle = store_update_record(sp, pp, handle, available);
+        }
+
+        /* Wait at the front door until some more becomes available */
+        const int64_t sig = cmi_resource_guard_wait(&(sp->front_guard),
+                                                   store_available,
+                                                   NULL);
+
+        if (sig != CMB_RESOURCE_ACQUIRE_NORMAL) {
+            /* Got thrown out instead, rollback to original state */
+            if (caller_held > 0u) {
+                /* It had some, so it must be in the holders list */
+                cmb_assert_debug(handle != 0u);
+                void **item = cmi_hashheap_get_item(hp, handle);
+                cmb_assert_debug(item[0] == pp);
+                item[1] = (void *)caller_held;
+            }
+            else if (handle != 0u) {
+                /* It did not, but now there is a handle. */
+                cmi_hashheap_cancel(hp, handle);
+                handle = 0u;
+            }
+
+            cmb_logger_info(stdout,
+                            "Cancelled from acquiring %s, code %lld",
+                            rbp->name,
+                            sig);
+
+            /* Bail out */
+            return sig;
+        }
+    }
+}
 
 
