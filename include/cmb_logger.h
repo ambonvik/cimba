@@ -54,12 +54,16 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
      */
     extern int cmb_vfprintf(uint32_t flags,
                             FILE *fp,
+                            const char *func,
+                            int line,
                             const char *fmtstr,
                             va_list args)
                             __attribute__((format(printf, 3, 0)));
 #else
     extern int cmb_vfprintf(uint32_t flags,
                             FILE *fp,
+                            const char *func,
+                            int line,
                             const char *fmtstr,
                             va_list args);
 #endif
@@ -72,28 +76,41 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
  * Use appropriate function attributes to avoid spurious compiler warnings in
  * unreachable code. No portable way to do this more elegantly, unfortunately.
  */
+
+#define cmb_logger_fatal(fp, fmtstr, ...) \
+    cmi_logger_fatal(fp, __func__, __LINE__, fmtstr,##__VA_ARGS__)
+#define cmb_logger_error(fp, fmtstr, ...) \
+    cmi_logger_error(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+#define cmb_logger_warning(fp, fmtstr, ...) \
+    cmi_logger_fatal(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+#define cmb_logger_info(fp, fmtstr, ...) \
+    cmi_logger_info(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+#define cmb_logger_user(flags, fp, fmtstr, ...) \
+    cmi_logger_user(flags, fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+
+
 #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
-    extern void cmb_logger_fatal(FILE *fp, char *fmtstr, ...)
-                          __attribute__((noreturn, format(printf,2,3)));
-    extern void cmb_logger_error(FILE *fp, char *fmtstr, ...)
-                          __attribute__((noreturn, format(printf,2,3)));
-    extern void cmb_logger_warning(FILE *fp, char *fmtstr, ...)
-                          __attribute__((format(printf,2,3)));
-    extern void cmb_logger_info(FILE *fp, char *fmtstr, ...)
-                          __attribute__((format(printf,2,3)));
-    extern void cmb_logger_user(uint32_t flags, FILE *fp, char *fmtstr, ...)
-                          __attribute__((format(printf,3,4)));
+    extern void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...)
+                          __attribute__((noreturn, format(printf,4,5)));
+    extern void cmi_logger_error(FILE *fp, const char *func, int line, char *fmtstr, ...)
+                          __attribute__((noreturn, format(printf,4,5)));
+    extern void cmi_logger_warning(FILE *fp, const char *func, int line, char *fmtstr, ...)
+                          __attribute__((format(printf,4,5)));
+    extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...)
+                          __attribute__((format(printf,4,5)));
+    extern void cmi_logger_user(uint32_t flags, FILE *fp, const char *func, int line, char *fmtstr, ...)
+                          __attribute__((format(printf,5,6)));
 #elif CMB_COMPILER == MSVC
-    extern __declspec(noreturn) void cmb_fatal(FILE *fp, char *fmtstr, ...);
-    extern __declspec(noreturn) void cmb_error(FILE *fp, char *fmtstr, ...);
-    extern void cmb_warning(FILE *fp, char *fmtstr, ...);
-    extern void cmb_info(FILE *fp, char *fmtstr, ...);
-    extern void cmb_logger_user(uint32_t flags, FILE *fp, char *fmtstr, ...)
+    extern __declspec(noreturn) void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...);
+    extern __declspec(noreturn) void cmi_logger_error(FILE *fp, const char *func, int line, char *fmtstr, ...);
+    extern void cmi_logger_warning(FILE *fp, const char *func, int line, char *fmtstr, ...);
+    extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...);
+    extern void cmi_logger_user(uint32_t flags, FILE *fp, const char *func, int line, char *fmtstr, ...)
 #else
     #warning "CMB_COMPILER does not match any predefined values"
-    extern void cmb_fatal(FILE *fp, char *fmtstr, ...);
-    extern void cmb_warning(FILE *fp, char *fmtstr, ...);
-    extern void cmb_info(FILE *fp, char *fmtstr, ...);
-    extern void cmb_logger_user(uint32_t flags, FILE *fp, char *fmtstr, ...);
+    extern void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...);
+    extern void cmi_logger_warning(FILE *fp, const char *func, int line, char *fmtstr, ...);
+    extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...);
+    extern void cmi_logger_user(uint32_t flags, FILE *fp, const char *func, int line, char *fmtstr, ...);
 #endif
 #endif /* CIMBA_CMB_LOGGER_H */
