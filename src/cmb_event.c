@@ -230,7 +230,7 @@ bool cmb_event_execute_next(void)
     void **wait_loc = &(tmp[3]);
     if (*wait_loc != NULL) {
         cmi_processtag_list_wake_all((struct cmi_processtag **)wait_loc,
-                                     CMB_PROCESS_WAIT_NORMAL);
+                                     CMB_PROCESS_SUCCESS);
     }
 
     /* Execute the event */
@@ -270,7 +270,7 @@ void cmb_event_cancel(const uint64_t handle)
     void **wait_loc = &(tmp[3]);
     if (*wait_loc != NULL) {
         cmi_processtag_list_wake_all((struct cmi_processtag **)wait_loc,
-                                     CMB_PROCESS_WAIT_CANCELLED);
+                                     CMB_PROCESS_CANCELLED);
     }
 
     (void)cmi_hashheap_cancel(event_queue, handle);

@@ -234,7 +234,7 @@ static void phwuevt(void *vp, void *arg)
 /*
  * cmb_process_hold : Suspend process for specified duration of simulated time.
  *
- * Returns 0 (CMB_PROCESS_HOLD_NORMAL) when returning normally after the
+ * Returns 0 (CMB_PROCESS_SUCCESS) when returning normally after the
  * specified duration, something else if not.
  */
 int64_t cmb_process_hold(const double dur)
@@ -262,7 +262,7 @@ int64_t cmb_process_hold(const double dur)
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
 
     /* Back here again, possibly much later. */
-    if (sig != CMB_PROCESS_HOLD_NORMAL) {
+    if (sig != CMB_PROCESS_SUCCESS) {
         /* Whatever woke us up was not the scheduled wakeup call */
         cmb_logger_info(stdout, "Woken up, signal %lld", sig);
         if (pp->waitsfor.handle != 0ull) {
@@ -297,7 +297,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
     /* Is it already done? */
     const struct cmi_coroutine *cp = (struct cmi_coroutine *)awaited;
     if (cp->status == CMI_COROUTINE_FINISHED) {
-        return CMB_PROCESS_WAIT_NORMAL;
+        return CMB_PROCESS_SUCCESS;
     }
     else {
         /* Nope, register it both here and there */
@@ -360,7 +360,7 @@ void cmb_process_exit(void *retval)
     cmb_logger_info(stdout, "Exit with value %p", retval);
 
     if (pp->waiters_listhead != NULL) {
-        cmi_processtag_list_wake_all(&(pp->waiters_listhead), CMB_PROCESS_WAIT_NORMAL);
+        cmi_processtag_list_wake_all(&(pp->waiters_listhead), CMB_PROCESS_SUCCESS);
     }
 
     cmi_coroutine_exit(retval);
@@ -405,7 +405,7 @@ static void cmi_process_cease_and_desist(struct cmb_process *tgt)
 static void phintevt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
-    cmb_assert_debug((int64_t)arg != CMB_PROCESS_HOLD_NORMAL);
+    cmb_assert_debug((int64_t)arg != CMB_PROCESS_SUCCESS);
 
     struct cmb_process *tgt = (struct cmb_process *)vp;
     cmi_process_cease_and_desist(tgt);
@@ -449,7 +449,7 @@ static void pstopevt(void *vp, void *arg) {
 
     /* Wake up any processes waiting for this process to finish */
     if (tgt->waiters_listhead != NULL) {
-        cmi_processtag_list_wake_all(&(tgt->waiters_listhead), CMB_PROCESS_WAIT_STOPPED);
+        cmi_processtag_list_wake_all(&(tgt->waiters_listhead), CMB_PROCESS_STOPPED);
     }
 
     /* Stop the underlying coroutine */

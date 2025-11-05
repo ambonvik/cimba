@@ -156,7 +156,7 @@ extern bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp);
 
 /*
  * cmi_resource_guard_cancel : Remove this process from the priority queue
- * and resume it with a CMB_PROCESS_WAIT_CANCELLED signal.
+ * and resume it with a CMB_PROCESS_CANCELLED signal.
  * Returns true if the found, false if not.
  */
 extern bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
@@ -244,11 +244,8 @@ extern void cmb_resource_destroy(struct cmb_resource *rp);
 
 /*
  * cmb_resource_acquire : Request and if necessary wait for the resource.
- * Returns CMB_RESOURCE_ACQUIRE_NORMAL if all is well,
- * CMB_RESOURCE_ACQUIRE_CANCELLED if someone kicked us out of the queue.
+ * Returns CMB_PROCESS_SUCCESS if all is well.
  */
-#define CMB_RESOURCE_ACQUIRE_NORMAL (0LL)
-#define CMB_RESOURCE_ACQUIRE_CANCELLED (5LL)
 extern int64_t cmb_resource_acquire(struct cmb_resource *rp);
 
 /*
@@ -256,8 +253,6 @@ extern int64_t cmb_resource_acquire(struct cmb_resource *rp);
  */
 extern void cmb_resource_release(struct cmb_resource *rp);
 
-/* Note that CMB_RESOURCE_HOLD_PREEMPTED == CMB_PROCESS_HOLD_PREEMPTED */
-#define CMB_RESOURCE_HOLD_PREEMPTED (2LL)
 
 /*
  * cmb_resource_preempt : Preempt the current holder and grab the resource, if
@@ -328,7 +323,7 @@ extern void cmb_store_destroy(struct cmb_store *sp);
  * store resource. The calling process may already hold some and try to
  * increase its holding with this call, or to obtain its first helping.
  *
- * Will either get the required amount and return CMB_RESOURCE_ACQUIRE_NORMAL,
+ * Will either get the required amount and return CMB_PROCESS_SUCCESS,
  * or fail and return some other value. If failed, the calling process has the
  * same amount of the resource as before the call. There is no partial
  * fulfillment, just all or nothing.

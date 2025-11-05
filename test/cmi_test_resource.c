@@ -49,9 +49,9 @@ void *procfunc1(struct cmb_process *me, void *ctx)
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         int64_t sig = cmb_resource_acquire(rp);
-        if (sig == CMB_RESOURCE_ACQUIRE_NORMAL) {
+        if (sig == CMB_PROCESS_SUCCESS) {
             sig = cmb_process_hold(cmb_random_exponential(1.0));
-            if (sig == CMB_PROCESS_HOLD_NORMAL) {
+            if (sig == CMB_PROCESS_SUCCESS) {
                 cmb_resource_release(rp);
             }
             else {
@@ -142,19 +142,18 @@ void *procfunc3(struct cmb_process *me, void *ctx)
         cmb_logger_user(USERFLAG, stdout, "Requests %llu", amount_req);
         int64_t sig = cmb_store_acquire(sp, amount_req);
         cmb_logger_user(USERFLAG, stdout, "Acquire returned %lld", sig);
-        if (sig == CMB_RESOURCE_ACQUIRE_NORMAL) {
+        if (sig == CMB_PROCESS_SUCCESS) {
             amount_held += amount_req;
             cmb_logger_user(USERFLAG, stdout, "Success, new amount held: %llu", amount_held);
             sig = cmb_process_hold(cmb_random_exponential(1.0));
             cmb_logger_user(USERFLAG, stdout, "Hold returned %lld", sig);
-            cmb_logger_user(USERFLAG, stdout, "Amount held: %llu", amount_held);
 
-            if (sig == CMB_PROCESS_HOLD_NORMAL) {
+            if (sig == CMB_PROCESS_SUCCESS) {
                 uint64_t amount_rel = cmb_random_dice(1, 10);
                 if (amount_rel > amount_held) {
                     amount_rel = amount_held;
                 }
-                cmb_logger_user(USERFLAG, stdout, "Has %llu, releasing %llu", amount_held, amount_rel);
+                cmb_logger_user(USERFLAG, stdout, "Holds %llu, releasing %llu", amount_held, amount_rel);
                 cmb_store_release(sp, amount_rel);
                 amount_held -= amount_rel;
             }
@@ -166,14 +165,16 @@ void *procfunc3(struct cmb_process *me, void *ctx)
             }
         }
         else {
-            cmb_logger_user(USERFLAG, stdout, "Acquire failed");
+            cmb_logger_user(USERFLAG, stdout,
+                            "Acquire failed, all my %s is gone",
+                            cmb_store_get_name(sp));
             amount_held = 0u;
         }
 
         cmb_logger_user(USERFLAG, stdout, "Amount held: %llu", amount_held);
         sig = cmb_process_hold(cmb_random_exponential(1.0));
         cmb_logger_user(USERFLAG, stdout, "Hold returned %lld", sig);
-        if (sig == CMB_PROCESS_HOLD_PREEMPTED) {
+        if (sig == CMB_PROCESS_PREEMPTED) {
             cmb_logger_user(USERFLAG, stdout,
                             "Someone stole the rest of my %s from me, sig %lld!",
                             cmb_store_get_name(sp), sig);
@@ -191,20 +192,27 @@ void *procfunc4(struct cmb_process *me, void *ctx)
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         const uint64_t amount_req = cmb_random_dice(1, 10);
+        cmb_logger_user(USERFLAG, stdout, "Preempts %llu", amount_req);
         int64_t sig = cmb_store_preempt(sp, amount_req);
-        if (sig == CMB_RESOURCE_ACQUIRE_NORMAL) {
+        cmb_logger_user(USERFLAG, stdout, "Preempt returned %lld", sig);
+
+        if (sig == CMB_PROCESS_SUCCESS) {
             amount_held += amount_req;
-            cmb_logger_user(USERFLAG, stdout, "Amount held: %llu", amount_held);
+            cmb_logger_user(USERFLAG, stdout, "Success, new amount held: %llu", amount_held);
             sig = cmb_process_hold(cmb_random_exponential(1.0));
-            if (sig == CMB_PROCESS_HOLD_NORMAL) {
+            cmb_logger_user(USERFLAG, stdout, "Hold returned %lld", sig);
+
+            if (sig == CMB_PROCESS_SUCCESS) {
                 uint64_t amount_rel = cmb_random_dice(1, 10);
                 if (amount_rel > amount_held) {
                     amount_rel = amount_held;
                 }
+
+                cmb_logger_user(USERFLAG, stdout, "Holds %llu, releasing %llu", amount_held, amount_rel);
                 cmb_store_release(sp, amount_rel);
                 amount_held -= amount_rel;
             }
-            else if (sig == CMB_PROCESS_HOLD_PREEMPTED) {
+            else if (sig == CMB_PROCESS_PREEMPTED) {
                 cmb_logger_user(USERFLAG, stdout,
                                 "Someone stole my %s from me, sig %lld!",
                                 cmb_store_get_name(sp), sig);
@@ -216,7 +224,9 @@ void *procfunc4(struct cmb_process *me, void *ctx)
             }
         }
 
-        cmb_process_hold(cmb_random_exponential(1.0));
+        cmb_logger_user(USERFLAG, stdout, "Amount held: %llu", amount_held);
+        sig = cmb_process_hold(cmb_random_exponential(1.0));
+        cmb_logger_user(USERFLAG, stdout, "Hold returned %lld", sig);
     }
 }
 

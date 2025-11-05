@@ -62,7 +62,7 @@ void *procfunc1(struct cmb_process *me, void *ctx)
     for (;;) {
         const double dur = cmb_random_exponential(5.0);
         const int64_t sig = cmb_process_hold(dur);
-        if (sig == CMB_PROCESS_HOLD_NORMAL) {
+        if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(USERFLAG, stdout, "Hold returned normal signal %lld", sig);
         }
         else {
@@ -79,7 +79,7 @@ void *procfunc2(struct cmb_process *me, void *ctx)
     for (unsigned ui = 0u; ui < 5u; ui++) {
         const double dur = cmb_random_exponential(10.0);
         (void)cmb_process_hold(dur);
-        cmb_process_interrupt(tgt, CMB_PROCESS_HOLD_INTERRUPTED, pri);
+        cmb_process_interrupt(tgt, CMB_PROCESS_INTERRUPTED, pri);
     }
 
     const double dur = cmb_random_exponential(10.0);

@@ -45,6 +45,13 @@
 /* Maximum length of a process name, anything longer will be truncated */
 #define CMB_PROCESS_NAMEBUF_SZ 32
 
+/* Return codes from various process context switching calls */
+#define CMB_PROCESS_SUCCESS (0LL)
+#define CMB_PROCESS_INTERRUPTED (1LL)
+#define CMB_PROCESS_PREEMPTED (2LL)
+#define CMB_PROCESS_STOPPED (3LL)
+#define CMB_PROCESS_CANCELLED (4LL)
+
 /* enum cmb_waitable_type : things a process may be waiting for */
 enum cmi_process_waitable_type {
     CMI_WAITABLE_NONE = 0,
@@ -119,7 +126,6 @@ extern void cmb_process_terminate(struct cmb_process *pp);
  */
 extern void cmb_process_destroy(struct cmb_process *pp);
 
-
 /*
  * cmb_process_start : Schedules the process to start execution at the current
  * simulation time. This is a non-blocking call, allowing the calling process
@@ -136,28 +142,22 @@ extern void cmb_process_start(struct cmb_process *pp);
  * types of interrupts an application may need, or what the different values
  * will mean in the application. Called from within the process.
  */
-#define CMB_PROCESS_HOLD_NORMAL (0LL)
-#define CMB_PROCESS_HOLD_INTERRUPTED (1LL)
-#define CMB_PROCESS_HOLD_PREEMPTED (2LL)
 extern int64_t cmb_process_hold(double dur);
 
 /*
  * cmb_process_wait_process : Wait for some other proceess to finish.
  * Returns immediately if the awaited process already is finished.
  * Returns CMB_PROCESS_WAIT_NORMAL if awaited exited normally,
- * CMB_PROCESS_WAIT_STOPPED if it was stopped by some other process.
+ * CMB_PROCESS_STOPPED if it was stopped by some other process.
  * Similar to pthreads join.
  */
-#define CMB_PROCESS_WAIT_NORMAL (0LL)
-#define CMB_PROCESS_WAIT_STOPPED (3LL)
 extern int64_t cmb_process_wait_process(struct cmb_process *awaited);
 
 /*
  * cmb_process_wait_event : Wait for an event to occur.
  * Returns CMB_PROCESS_WAIT_NORMAL when the event executes normally,
- * CMB_PROCESS_WAIT_CANCELLED if the event was cancelled for some reason.
+ * CMB_PROCESS_CANCELLED if the event was cancelled for some reason.
  */
-#define CMB_PROCESS_WAIT_CANCELLED (4LL)
 extern int64_t cmb_process_wait_event(uint64_t ev_handle);
 
 /*
@@ -169,7 +169,7 @@ extern void cmb_process_exit(void *retval);
 /*
  * cmb_process_interrupt : Interrupt a holding process, passing the non-zero
  * signal value sig, which will appear as return value from cmb_process_hold.
- * The signal cannot be CMB_PROCESS_HOLD_NORMAL, since that would appear as a
+ * The signal cannot be CMB_PROCESS_SUCCESS, since that would appear as a
  * normal, non-interrupted return from cmb_process_hold.
  *
  * Enters an interrupt event with priority pri at the current simulation time,
