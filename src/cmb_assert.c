@@ -27,8 +27,8 @@ void cmi_assert_failed(const char *sourcefile,
                        const int line,
                        const char *condition)
 {
-    cmb_logger_fatal(stderr,
-        "Assert failed: %s source file %s function %s line %d ",
-              condition, sourcefile, func, line);
+    cmi_logger_fatal(stderr, func, line,
+        "Assert \"%s\" failed, source file %s",
+              condition, sourcefile);
 }
 #endif
