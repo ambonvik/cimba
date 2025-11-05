@@ -263,10 +263,12 @@ int64_t cmb_process_hold(const double dur)
 
     /* Back here again, possibly much later. */
     if (sig != CMB_PROCESS_HOLD_NORMAL) {
-        /* Whatever woke us up was not the scheduled wakeup call, cancel it */
+        /* Whatever woke us up was not the scheduled wakeup call */
         cmb_logger_info(stdout, "Woken up, signal %lld", sig);
-        cmb_assert_debug(pp->waitsfor.handle != 0ull);
-        cmb_event_cancel(pp->waitsfor.handle);
+        if (pp->waitsfor.handle != 0ull) {
+            /* Should be handled already by wakeup event, but just in case */
+            cmb_event_cancel(pp->waitsfor.handle);
+        }
     }
 
     pp->waitsfor.type = CMI_WAITABLE_NONE;
@@ -364,50 +366,16 @@ void cmb_process_exit(void *retval)
     cmi_coroutine_exit(retval);
 }
 
-/*
- * phintevt : The event handler that actually interrupts the
- * process coroutine after being scheduled by cmb_process_interrupt.
- */
-static void phintevt(void *vp, void *arg)
+static void cmi_process_cease_and_desist(struct cmb_process *tgt)
 {
-    cmb_assert_debug(vp != NULL);
-    cmb_assert_debug((int64_t)arg != CMB_PROCESS_HOLD_NORMAL);
+    cmb_assert_debug(tgt != NULL);
 
-    struct cmb_process *tgt = (struct cmb_process *)vp;
-    struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
-    cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
-    (void)cmi_coroutine_resume(cp, arg);
-}
-
-/*
- * cmb_process_interrupt : Schedule an interrupt event for the target process
- * at the current time with priority pri. Non-blocking call, returns to the
- * calling process immediately.
- */
-void cmb_process_interrupt(struct cmb_process *pp,
-                           const int64_t sig,
-                           const int64_t pri)
-{
-    cmb_assert_debug(pp != NULL);
-    cmb_assert_debug(sig != 0);
-    cmb_logger_info(stdout, "Tnterrupt %s signal %lld priority %llu", pp->name, sig, pri);
-
-    const double t = cmb_time();
-    (void)cmb_event_schedule(phintevt,
-                             pp, (void *)sig, t, pri);
-}
-
-/*
- * pstopevt : The event handler that actually stops the process
- * coroutine after being scheduled by cmb_process_stop.
- */
-static void pstopevt(void *vp, void *arg) {
-    cmb_assert_debug(vp != NULL);
-
-    struct cmb_process *tgt = (struct cmb_process *)vp;
-
-    /* Cancel our next wakeup call if scheduled */
-    if (tgt->waitsfor.type == CMI_WAITABLE_CLOCK) {
+    if (tgt->waitsfor.type == CMI_WAITABLE_NONE) {
+        cmb_assert_debug(tgt->waitsfor.ptr == NULL);
+        cmb_assert_debug(tgt->waitsfor.handle == 0ull);
+        return;
+    }
+    else if (tgt->waitsfor.type == CMI_WAITABLE_CLOCK) {
         cmb_event_cancel(tgt->waitsfor.handle);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_EVENT) {
@@ -425,10 +393,54 @@ static void pstopevt(void *vp, void *arg) {
         cmb_assert_debug(found == true);
     }
 
-    /* Not anymore */
     tgt->waitsfor.type = CMI_WAITABLE_NONE;
     tgt->waitsfor.ptr = NULL;
     tgt->waitsfor.handle = 0ull;
+}
+
+/*
+ * phintevt : The event handler that actually interrupts the
+ * process coroutine after being scheduled by cmb_process_interrupt.
+ */
+static void phintevt(void *vp, void *arg)
+{
+    cmb_assert_debug(vp != NULL);
+    cmb_assert_debug((int64_t)arg != CMB_PROCESS_HOLD_NORMAL);
+
+    struct cmb_process *tgt = (struct cmb_process *)vp;
+    cmi_process_cease_and_desist(tgt);
+
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
+    cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
+    (void)cmi_coroutine_resume(cp, arg);
+}
+
+/*
+ * cmb_process_interrupt : Schedule an interrupt event for the target process
+ * at the current time with priority pri. Non-blocking call, returns to the
+ * calling process immediately.
+ */
+void cmb_process_interrupt(struct cmb_process *pp,
+                           const int64_t sig,
+                           const int64_t pri)
+{
+    cmb_assert_debug(pp != NULL);
+    cmb_assert_debug(sig != 0);
+    cmb_logger_info(stdout, "Interrupt %s signal %lld priority %lld", pp->name, sig, pri);
+
+    const double t = cmb_time();
+    (void)cmb_event_schedule(phintevt, pp, (void *)sig, t, pri);
+}
+
+/*
+ * pstopevt : The event handler that actually stops the process
+ * coroutine after being scheduled by cmb_process_stop.
+ */
+static void pstopevt(void *vp, void *arg) {
+    cmb_assert_debug(vp != NULL);
+
+    struct cmb_process *tgt = (struct cmb_process *)vp;
+    cmi_process_cease_and_desist(tgt);
 
     /* Release any resources held by this process */
     if (tgt->resources_listhead != NULL) {

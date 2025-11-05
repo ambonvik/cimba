@@ -761,7 +761,9 @@ void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
     cmb_assert_debug(hp != NULL);
 
     fprintf(fp, "----------------- Hash heap -----------------\n");
+#if 0
     fprintf(fp, "Heap section:\n");
+#endif
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
         fprintf(fp, "%llu: handle %llu dkey %#8.4g ikey %lld : hash idx %llu : %p %p %p %p\n",
@@ -775,7 +777,7 @@ void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
                 htp->item[2],
                 htp->item[3]);
     }
-
+#if 0
     fprintf(fp, "\nHash map section:\n");
     for (uint64_t ui = 0u; ui < hp->hash_size; ui++) {
         const struct cmi_hash_tag *htp = &(hp->hash_map[ui]);
@@ -783,7 +785,7 @@ void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
                 htp->handle,
                 htp->heap_index);
     }
-
+#endif
     fprintf(fp, "---------------------------------------------\n");
     fflush(fp);
 }

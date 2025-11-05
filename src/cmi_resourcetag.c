@@ -125,10 +125,10 @@ bool cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
 }
 
 /*
- * cmi_resourcetag_list_find : Find a resource from the given list location.
+ * cmi_resourcetag_list_find_handle : Find a resource from the given list location.
  * Returns the associated handle value if found, zero if not.
  */
-uint64_t cmi_resourcetag_list_find(struct cmi_resourcetag **rtloc,
+uint64_t cmi_resourcetag_list_find_handle(struct cmi_resourcetag **rtloc,
                                    const struct cmi_resource_base *rbp)
 {
     cmb_assert_debug(rtloc != NULL);

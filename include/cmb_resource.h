@@ -256,12 +256,14 @@ extern int64_t cmb_resource_acquire(struct cmb_resource *rp);
  */
 extern void cmb_resource_release(struct cmb_resource *rp);
 
+/* Note that CMB_RESOURCE_HOLD_PREEMPTED == CMB_PROCESS_HOLD_PREEMPTED */
+#define CMB_RESOURCE_HOLD_PREEMPTED (2LL)
+
 /*
  * cmb_resource_preempt : Preempt the current holder and grab the resource, if
  * the calling process has higher priority than the current holder. Otherwise,
  * it politely waits for its turn at the front gate.
  */
-#define CMB_RESOURCE_HOLD_PREEMPTED (2LL)
 extern int64_t cmb_resource_preempt(struct cmb_resource *rp);
 
 /*
@@ -270,7 +272,9 @@ extern int64_t cmb_resource_preempt(struct cmb_resource *rp);
 static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
+
     const struct cmi_resource_base *rbp = (struct cmi_resource_base *)rp;
+
     return rbp->name;
 }
 
@@ -320,11 +324,28 @@ extern void cmb_store_terminate(struct cmb_store *sp);
 extern void cmb_store_destroy(struct cmb_store *sp);
 
 /*
- * cmb_store_acquire : Request and if necessary wait for an amount of the
+ * cmb_store_acquire : Request and if necessary wait for an claim_amount of the
  * store resource. The calling process may already hold some and try to
  * increase its holding with this call, or to obtain its first helping.
+ *
+ * Will either get the required amount and return CMB_RESOURCE_ACQUIRE_NORMAL,
+ * or fail and return some other value. If failed, the calling process has the
+ * same amount of the resource as before the call. There is no partial
+ * fulfillment, just all or nothing.
  */
 extern int64_t cmb_store_acquire(struct cmb_store *sp, uint64_t amount);
+
+/*
+ * cmb_store_preempt : Preempt the current holders and grab the resource
+ * amount, starting from the lowest priority holder. If there is not enough to
+ * cover the amount before it runs into holders with equal or higher priority
+ * than the caller, it will politely wait in line for the remainder. It only
+ * preempts processes with strictly lower priority than itself, otherwise acts
+ * like cmb_store_acquire.
+ *
+ * As for cmb_store_acquire, it is full amount or nothing.
+ */
+extern int64_t cmb_store_preempt(struct cmb_store *sp, uint64_t amount);
 
 /*
  * cmb_store_release : Release an amount of the resource, not necessarily
@@ -333,20 +354,14 @@ extern int64_t cmb_store_acquire(struct cmb_store *sp, uint64_t amount);
 extern void cmb_store_release(struct cmb_store *sp, uint64_t amount);
 
 /*
- * cmb_storee_preempt : Preempt the current holders and grab the resource
- * amount, starting from the lowest priority holder. If there is not enough to
- * cover the amount before it runs into holders with higher priority than the
- * caller, it will politely wait in line for the remainder.
- */
-extern int64_t cmb_store_preempt(struct cmb_store *sp, uint64_t amount);
-
-/*
  * cmb_store_get_name : Returns name of store as const char *.
  */
 static inline const char *cmb_store_get_name(struct cmb_store *sp)
 {
     cmb_assert_debug(sp != NULL);
+
     const struct cmi_resource_base *rbp = (struct cmi_resource_base *)sp;
+
     return rbp->name;
 }
 
