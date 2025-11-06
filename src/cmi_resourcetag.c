@@ -26,16 +26,6 @@
 #include "cmi_resourcetag.h"
 
 /*
- * struct resource_tag : A tag for the singly linked list of resources held by
- * some process.
- */
-struct cmi_resourcetag {
-    struct cmi_resourcetag *next;
-    struct cmi_resource_base *res;
-    uint64_t handle;
-};
-
-/*
  * process_tag_pool : Memory pool of resource tags
  */
 static CMB_THREAD_LOCAL struct cmb_mempool *resource_tag_pool = NULL;

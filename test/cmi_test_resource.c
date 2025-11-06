@@ -145,6 +145,7 @@ void *procfunc3(struct cmb_process *me, void *ctx)
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         const uint64_t amount_req = cmb_random_dice(1, 10);
+        (void)cmb_process_set_priority(me, cmb_random_dice(-10, 10));
         cmb_logger_user(USERFLAG, stdout, "Acquires %llu", amount_req);
         int64_t sig = cmb_store_acquire(sp, amount_req);
         cmb_logger_user(USERFLAG, stdout, "Acquire returned signal %lld", sig);

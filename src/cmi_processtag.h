@@ -22,10 +22,13 @@
 #include <stdio.h>
 
 /*
- * struct cmi_processtag : opaque struct, see cmi_processtag.c for details.
+ * struct process_tag : A tag for the singly linked list of processes waiting
+ * for some process or event.
  */
-struct cmi_processtag;
-struct cmb_process;
+struct cmi_processtag {
+    struct cmi_processtag *next;
+    struct cmb_process *proc;
+};
 
 /*
  * cmi_processtag_list_add : Add a waiting process to the given list location.

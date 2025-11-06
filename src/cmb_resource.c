@@ -276,6 +276,16 @@ void base_scram(struct cmi_resource_base *rbp,
 }
 
 /*
+ * base_reprio : dummy reprio function. Does nothing.
+ */
+void base_reprio(struct cmi_resource_base *rbp, const uint64_t handle, const int64_t pri)
+{
+    cmb_assert_release(rbp != NULL);
+    cmi_unused(handle);
+    cmi_unused(pri);
+}
+
+/*
  * cmi_resource_base_initialize : Make an already allocated resource core
  * object ready for use with a given capacity.
  */
@@ -577,6 +587,21 @@ void store_scram(struct cmi_resource_base *rbp,
 }
 
 /*
+ * storee_reprio : dummy reprio function. Does nothing.
+ */
+void store_reprio(struct cmi_resource_base *rbp, const uint64_t handle, const int64_t pri)
+{
+    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(handle != 0u);
+
+    struct cmb_store *sp = (struct cmb_store *)rbp;
+    struct cmi_hashheap *hp = &(sp->holders);
+    const double dkey = cmi_hashheap_get_dkey(hp, handle);
+    cmi_hashheap_reprioritize(hp, handle, dkey, pri);
+}
+
+
+/*
  * cmb_store_initialize : Make an allocated store object ready for use.
  */
 #define HOLDERS_INIT_EXP 3u
@@ -591,6 +616,7 @@ void cmb_store_initialize(struct cmb_store *sp,
 
     cmi_resource_base_initialize(&(sp->core), name);
     sp->core.scram = store_scram;
+    sp->core.reprio = store_reprio;
 
     cmi_resource_guard_initialize(&(sp->front_guard), &(sp->core));
     cmi_hashheap_initialize(&(sp->holders),

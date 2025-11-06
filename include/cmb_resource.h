@@ -92,8 +92,6 @@
  * cmi_resource_guard: The hashheap that handles a resource wait list
  ******************************************************************************/
 
-struct cmi_resource_base;
-
 struct cmi_resource_guard {
     struct cmi_hashheap priority_queue;
     struct cmi_resource_base *guarded_resource;
@@ -150,8 +148,7 @@ extern int64_t cmi_resource_guard_wait(struct cmi_resource_guard *rgp,
  * demands five, and there are three more behind it that demands one each, it is
  * up to the application to dynamically change process priorities to bring the
  * correct process to the front of the queue and make it eligible to resume.
- * TODO: Ensure that process_set_priority triggers queue reshuffle
- */
+  */
 extern bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp);
 
 /*
@@ -188,12 +185,21 @@ typedef void (cmi_resource_scram_func)(struct cmi_resource_base *res,
                                        const struct cmb_process *pp,
                                        uint64_t handle);
 
+/*
+ * typedef cmi_resource_reprio_func : function prototype for reshuffling a
+ * resource holders' list if a process changes priority
+ */
+typedef void (cmi_resource_reprio_func)(struct cmi_resource_base *rbp,
+                                        uint64_t handle,
+                                        int64_t pri);
+
 /* Maximum length of a resource name, anything longer will be truncated */
 #define CMB_RESOURCE_NAMEBUF_SZ 32
 
 struct cmi_resource_base {
     char name[CMB_PROCESS_NAMEBUF_SZ];
     cmi_resource_scram_func *scram;
+    cmi_resource_reprio_func *reprio;
 };
 
 /*

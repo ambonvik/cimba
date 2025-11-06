@@ -27,15 +27,6 @@
 #include "cmi_processtag.h"
 
 /*
- * struct process_tag : A tag for the singly linked list of processes waiting
- * for some process or event.
- */
-struct cmi_processtag {
-    struct cmi_processtag *next;
-    struct cmb_process *proc;
-};
-
-/*
  * process_tag_pool : Memory pool of process tags
  */
 static CMB_THREAD_LOCAL struct cmb_mempool *process_tag_pool = NULL;

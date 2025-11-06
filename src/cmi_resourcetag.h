@@ -22,10 +22,14 @@
 #include <stdio.h>
 
 /*
- * struct cmi_resourcetag : opaque struct, see cmi_resourcetag.c for details.
+ * struct resource_tag : A tag for the singly linked list of resources held by
+ * some process.
  */
-struct cmi_resourcetag;
-struct cmi_resource_base;
+struct cmi_resourcetag {
+    struct cmi_resourcetag *next;
+    struct cmi_resource_base *res;
+    uint64_t handle;
+};
 
 /*
  * cmi_resourcetag_list_add : Add a resource to the given list location.
