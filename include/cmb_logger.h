@@ -31,16 +31,28 @@
 #include "cmi_config.h"
 
 /* Using 32-bit unsigned for the flags, top four bits reserved for Cimba use. */
-#define CMI_LOGGER_FATAL    0x80000000ul
-#define CMI_LOGGER_ERROR    0x40000000ul
-#define CMI_LOGGER_WARNING  0x20000000ul
-#define CMI_LOGGER_INFO     0x10000000ul
+#define CMB_LOGGER_FATAL    0x80000000ul
+#define CMB_LOGGER_ERROR    0x40000000ul
+#define CMB_LOGGER_WARNING  0x20000000ul
+#define CMB_LOGGER_INFO     0x10000000ul
+
+/*
+ * cmb_logger_flags_on : turn on logging flags according to the bitmask, for
+ * example cmb_logger_flags_on(CMB_LOGGER_INFO), or some user-defined mask.
+ */
+ extern void cmb_logger_flags_on(uint32_t flags);
+
+/*
+ * cmb_logger_flags_off : turn off logging flags according to the bitmask, for
+ * example cmb_logger_flags_off(CMB_LOGGER_INFO), or some user-defined mask.
+ */
+extern void cmb_logger_flags_off(uint32_t flags);
 
 /*
  * Set callback function to format simulation times to character
  * strings for output.
  */
-typedef char *(cmb_timeformatter_func)(double t, char *buf, size_t bufsz);
+typedef const char *(cmb_timeformatter_func)(double t);
 extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
 
 /*
@@ -82,7 +94,7 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
 #define cmb_logger_error(fp, fmtstr, ...) \
     cmi_logger_error(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
 #define cmb_logger_warning(fp, fmtstr, ...) \
-    cmi_logger_fatal(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+    cmi_logger_warning(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
 #define cmb_logger_info(fp, fmtstr, ...) \
     cmi_logger_info(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
 #define cmb_logger_user(flags, fp, fmtstr, ...) \

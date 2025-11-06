@@ -30,19 +30,19 @@
 /* The current logging level. Initially everything on. */
 CMB_THREAD_LOCAL uint32_t cmi_logger_mask = 0xFFFFFFFF;
 
-/* todo: add functions to set and clear mask */
+#define TSTRBUF_SZ 32
 
-#define TSTRBUF_SZ 16
-
-static char *time_to_string(const double t, char *buf, const size_t bufsz)
+static const char *time_to_string(const double t)
 {
-    (void)snprintf(buf, bufsz, "%#10.5g", t);
+    static char timestrbuf[TSTRBUF_SZ];
 
-    return buf;
+    (void)snprintf(timestrbuf, TSTRBUF_SZ, "%#10.5g", t);
+
+    return timestrbuf;
 }
 
 /* Pointer to current time formatting function */
-CMB_THREAD_LOCAL static char *(*timeformatter)(double, char*, size_t) = time_to_string;
+CMB_THREAD_LOCAL static const char *(*timeformatter)(double) = time_to_string;
 
 void cmb_set_timeformatter(cmb_timeformatter_func fp)
 {
@@ -52,8 +52,32 @@ void cmb_set_timeformatter(cmb_timeformatter_func fp)
 }
 
 /*
- * Core logger func, fprintf-style with flags for matching with the mask.
- * Overall format: <time> <process> <label> <message> \n
+ * cmb_logger_flags_on : turn on logging flags according to the bitmask, for
+ * example cmb_logger_flags_on(CMB_LOGGER_INFO), or some user-defined mask.
+ */
+void cmb_logger_flags_on(const uint32_t flags)
+{
+    cmb_assert_release(flags != 0u);
+
+    cmi_logger_mask |= flags;
+}
+
+/*
+ * cmb_logger_flags_off : turn off logging flags according to the bitmask, for
+ * example cmb_logger_flags_off(CMB_LOGGER_INFO), or some user-defined mask.
+ */
+void cmb_logger_flags_off(uint32_t flags)
+{
+    cmb_assert_release(flags != 0u);
+
+    cmi_logger_mask &= ~flags;
+}
+
+
+/*
+ * cmb_vfprintf : Core logger func, fprintf-style with flags for matching with
+ * the mask. Produces a single line of logging output. Overall output format:
+ *      time process_name function (line) : [label] formatted_message
  * Returns the number of characters written, in case anyone cares.
  */
 int cmb_vfprintf(const uint32_t flags,
@@ -65,12 +89,7 @@ int cmb_vfprintf(const uint32_t flags,
 {
     int ret = 0;
     if ((flags & cmi_logger_mask) != 0) {
-        char timestrbuf[TSTRBUF_SZ];
-        int r = fprintf(fp,
-                       "%s\t",
-                        timeformatter(cmb_time(),
-                        timestrbuf,
-                        TSTRBUF_SZ));
+       int r = fprintf(fp, "%s\t", timeformatter(cmb_time()));
         assert(r > 0);
         ret += r;
 
@@ -91,11 +110,11 @@ int cmb_vfprintf(const uint32_t flags,
         assert(r > 0);
         ret += r;
 
-        if (flags >= CMI_LOGGER_WARNING) {
+        if (flags >= CMB_LOGGER_WARNING) {
             char *label;
-            if (flags >= CMI_LOGGER_FATAL)
+            if (flags >= CMB_LOGGER_FATAL)
                 label = "Fatal";
-            else if (flags >= CMI_LOGGER_ERROR)
+            else if (flags >= CMB_LOGGER_ERROR)
                 label = "Error";
             else
                 label = "Warning";
@@ -124,7 +143,7 @@ void cmi_logger_fatal(FILE *fp, const char *func, const int line, char *fmtstr, 
     fflush(NULL);
     va_list args;
     va_start(args, fmtstr);
-    (void)cmb_vfprintf(CMI_LOGGER_FATAL, fp, func, line, fmtstr, args);
+    (void)cmb_vfprintf(CMB_LOGGER_FATAL, fp, func, line, fmtstr, args);
     va_end(args);
     abort();
 }
@@ -134,7 +153,7 @@ void cmi_logger_error(FILE *fp, const char *func, const int line, char *fmtstr, 
     fflush(NULL);
     va_list args;
     va_start(args, fmtstr);
-    (void)cmb_vfprintf(CMI_LOGGER_ERROR, fp, func, line, fmtstr, args);
+    (void)cmb_vfprintf(CMB_LOGGER_ERROR, fp, func, line, fmtstr, args);
     va_end(args);
     exit(1);
 }
@@ -144,7 +163,7 @@ void cmi_logger_warning(FILE *fp, const char *func, const int line, char *fmtstr
     fflush(NULL);
     va_list args;
     va_start(args, fmtstr);
-    (void)cmb_vfprintf(CMI_LOGGER_WARNING, fp, func, line, fmtstr, args);
+    (void)cmb_vfprintf(CMB_LOGGER_WARNING, fp, func, line, fmtstr, args);
     va_end(args);
 }
 
@@ -152,7 +171,7 @@ void cmi_logger_info(FILE *fp, const char *func, const int line, char *fmtstr, .
 {
     va_list args;
     va_start(args, fmtstr);
-    (void)cmb_vfprintf(CMI_LOGGER_INFO, fp, func, line, fmtstr, args);
+    (void)cmb_vfprintf(CMB_LOGGER_INFO, fp, func, line, fmtstr, args);
     va_end(args);
 }
 

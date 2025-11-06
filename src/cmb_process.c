@@ -78,6 +78,9 @@ extern void cmb_process_terminate(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
+    pp->waiters_listhead = NULL;
+    pp->resources_listhead = NULL;
+
     cmi_coroutine_terminate((struct cmi_coroutine *)pp);
 }
 

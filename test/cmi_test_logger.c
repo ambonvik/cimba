@@ -28,7 +28,9 @@
 /* An event, prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object)
 {
-    cmb_logger_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
+    /* Contrived cast to suppress compiler warning about pointer / function conversion */
+    void *vaction = *(void**)&test_action;
+    cmb_logger_info(stdout, "%p\t%p\t%p", vaction, subject, object);
     cmb_event_schedule(test_action, subject, object,
                        cmb_time() + cmb_random_exponential(3600),
                        (int16_t)cmb_random_dice(1, 5));
@@ -37,16 +39,18 @@ static void test_action(void *subject, void *object)
 /* Another event, closes the bar for good */
 static void end_sim(void *subject, void *object)
 {
-    cmb_logger_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);
+    /* Contrived cast to suppress compiler warning about pointer / function conversion */
+    void *vaction = *(void**)&end_sim;
+    cmb_logger_info(stdout, "%p\t%p\t%p", vaction, subject, object);
     cmb_logger_warning(stdout, "===> end_sim: game over <===");
-    cmb_event_queue_terminate();
+    cmb_event_queue_clear();
 }
 
 /* Format time values as if they are decimal minutes, print in DD HH:MM:SS.sss format */
 #define MYBUFLEN 20
 static char mybuf[MYBUFLEN];
 
-static char *myformatter(const double t)
+static const char *myformatter(const double t)
 {
     double tmp = t;
     const unsigned days = (unsigned)(tmp / (24.0 * 60.0));
@@ -57,7 +61,7 @@ static char *myformatter(const double t)
     tmp -= (double)minutes;
     const double seconds = tmp * 60.0;
 
-    const int r = snprintf(mybuf, MYBUFLEN, "%02d %02d:%02d:%06.3f", days, hours, minutes, seconds);
+    const unsigned r = snprintf(mybuf, MYBUFLEN, "%02d %02d:%02d:%06.3f", days, hours, minutes, seconds);
     assert((r > 0) && (r < MYBUFLEN));
 
     return mybuf;
