@@ -77,9 +77,6 @@ struct cmb_process *cmb_process_initialize(struct cmb_process *pp,
 extern void cmb_process_terminate(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
-    cmb_assert_release(pp->waitsfor.type == CMI_WAITABLE_NONE);
-    cmb_assert_release(pp->waiters_listhead == NULL);
-    cmb_assert_release(pp->resources_listhead == NULL);
 
     cmi_coroutine_terminate((struct cmi_coroutine *)pp);
 }

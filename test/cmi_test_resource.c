@@ -39,6 +39,9 @@ static void end_sim_evt(void *subject, void *object)
     for (unsigned ui = 0; ui < n; ui++) {
         cmb_process_stop(cpp[ui], object);
     }
+
+    /* To be sure that we got everything */
+    cmb_event_queue_clear();
 }
 
 void *procfunc1(struct cmb_process *me, void *ctx)
@@ -263,7 +266,6 @@ void *procfunc5(struct cmb_process *me, void *ctx)
         cmb_process_interrupt(tgt, CMB_PROCESS_INTERRUPTED, 0);
     }
 }
-
 
 void test_store(void)
 {

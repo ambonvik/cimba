@@ -727,6 +727,32 @@ static uint64_t store_sum_holder_items(const struct cmi_hashheap *hp,
     return sum;
 }
 
+static uint64_t store_update_record(struct cmb_store *store,
+                                    struct cmi_hashheap *store_holders,
+                                    struct cmb_process *caller,
+                                    struct cmi_resourcetag **caller_rtloc,
+                                    uint64_t caller_handle,
+                                    const uint64_t amount)
+{
+    cmb_assert_release(store != NULL);
+    cmb_assert_release(caller != NULL);
+    cmb_assert_release(amount > 0u);
+
+    struct cmi_resource_base *rbp = (struct cmi_resource_base *)store;
+
+    if (caller_handle != 0u) {
+        /* Must hold some already, add to existing entry */
+        store_add_to_holder(store_holders, caller_handle, amount);
+    }
+    else {
+        /* Not held already, create a new entry and cross-reference */
+        caller_handle = store_add_new_holder(store_holders, caller, amount);
+        cmi_resourcetag_list_add(caller_rtloc, rbp, caller_handle);
+    }
+
+    return caller_handle;
+}
+
 /*
  * cmb_store_acquire_inner : Acquire, perhaps preempt, and if necessary wait for
  * an claim_amount of the store resource. The calling process may already hold some
@@ -771,15 +797,8 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
             /* Grab what we need */
             sp->in_use += rem_claim;
             cmb_assert_debug(sp->in_use <= sp->capacity);
-            if (caller_handle != 0u) {
-                /* Must hold some already, add to existing entry */
-                store_add_to_holder(hp, caller_handle, rem_claim);
-            }
-            else {
-                /* Not held already, create a new entry and cross-reference */
-                caller_handle = store_add_new_holder(hp, caller, rem_claim);
-                cmi_resourcetag_list_add(caller_rtloc, rbp, caller_handle);
-            }
+            (void)store_update_record(sp, hp, caller, caller_rtloc,
+                                      caller_handle, rem_claim);
 
             cmb_assert_debug(sp->in_use <= sp->capacity);
             cmb_assert_debug(store_sum_holder_items(hp, 1) == sp->in_use);
@@ -795,15 +814,8 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
             sp->in_use += available;
             cmb_assert_debug(sp->in_use <= sp->capacity);
             rem_claim -= available;
-            if (caller_handle != 0u) {
-                /* Must hold some already, add to existing entry */
-                store_add_to_holder(hp, caller_handle, available);
-            }
-            else {
-                /* Not held already, create a new entry and cross-reference */
-                caller_handle = store_add_new_holder(hp, caller, available);
-                cmi_resourcetag_list_add(caller_rtloc, rbp, caller_handle);
-            }
+            caller_handle = store_update_record(sp, hp, caller, caller_rtloc,
+                                                caller_handle, available);
 
             cmb_assert_debug(sp->in_use <= sp->capacity);
             cmb_assert_debug(store_sum_holder_items(hp, 1) == sp->in_use);
@@ -834,35 +846,19 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
 
                  /* Split the loot */
                 if (loot < rem_claim) {
-                    /* Take it all */
-                    if (caller_handle != 0u) {
-                        /* Must hold some already, add to existing entry */
-                        store_add_to_holder(hp, caller_handle, loot);
-                    } else {
-                        /* Not held already, create a new entry and cross-reference */
-                        caller_handle = store_add_new_holder(hp, caller, loot);
-                        cmi_resourcetag_list_add(caller_rtloc, rbp, caller_handle);
-                    }
-
+                    /* Take it all. The quantity in use is unchanged, just changes hands. */
+                    caller_handle = store_update_record(sp, hp, caller, caller_rtloc,
+                                    caller_handle, loot);
                     rem_claim -= loot;
 
-                    /* The quantity in use is unchanged, just changes hands */
                     cmb_assert_debug(sp->in_use <= sp->capacity);
                     cmb_assert_debug(store_sum_holder_items(hp, 1) == sp->in_use);
                     cmb_logger_info(stdout, "Got %llu from %s, still needs %llu", loot, victim->name, rem_claim);
                 }
                 else {
                     /* Take what we need, put back the rest */
-                    if (caller_handle != 0u) {
-                        /* Must hold some already, add to existing entry */
-                        store_add_to_holder(hp, caller_handle, rem_claim);
-                    }
-                    else {
-                        /* Not held already, create a new entry and cross-reference */
-                        caller_handle = store_add_new_holder(hp, caller, rem_claim);
-                        cmi_resourcetag_list_add(caller_rtloc, rbp, caller_handle);
-                    }
-
+                    (void)store_update_record(sp, hp, caller, caller_rtloc,
+                                              caller_handle, rem_claim);
                     const uint64_t surplus = loot - rem_claim;
                     sp->in_use -= surplus;
 
@@ -880,15 +876,11 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
             cmb_logger_info(stdout, "No more victims, still wants %llu more", rem_claim);
         }
 
-        /*
-         * Have not returned yet, wait at the front door until some more
-         * becomes available
-         */
+        /* Wait at the front door until some more becomes available  */
         cmb_assert_debug(rem_claim > 0u);
         const int64_t sig = cmi_resource_guard_wait(&(sp->front_guard),
                                                    store_available,
                                                    NULL);
-
         if (sig == CMB_PROCESS_PREEMPTED) {
             /* Got thrown out instead, unwind. */
             cmb_logger_info(stdout, "Preempted, returning empty-handed");
