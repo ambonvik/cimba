@@ -162,6 +162,13 @@ extern bool cmi_resource_guard_signal(struct cmi_resource_guard *rgp);
 extern bool cmi_resource_guard_cancel(struct cmi_resource_guard *rgp,
                                       struct cmb_process *pp);
 
+/*
+ * cmi_resource_guard_remove : Remove this process from the priority queue
+ * without resuming it. Returns true if the found, false if not.
+ */
+extern bool cmi_resource_guard_remove(struct cmi_resource_guard *rgp,
+                                      const struct cmb_process *pp);
+
 /*******************************************************************************
  * cmi_resource_base: The virtual parent "class" of the different resource types
  ******************************************************************************/

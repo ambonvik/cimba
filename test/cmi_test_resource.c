@@ -54,10 +54,14 @@ void *procfunc1(struct cmb_process *me, void *ctx)
             if (sig == CMB_PROCESS_SUCCESS) {
                 cmb_resource_release(rp);
             }
-            else {
+            else if (sig == CMB_PROCESS_PREEMPTED){
                 cmb_logger_user(USERFLAG, stdout,
                                 "Someone stole %s from me, sig %lld!",
                                 cmb_resource_get_name(rp), sig);
+            }
+            else {
+                cmb_logger_user(USERFLAG, stdout,
+                                "Interrupted by signal %lld!", sig);
             }
         }
 
@@ -129,7 +133,6 @@ void test_resource(void)
     cmi_test_print_line("-");
 }
 
-
 void *procfunc3(struct cmb_process *me, void *ctx)
 {
     cmi_unused(me);
@@ -157,18 +160,26 @@ void *procfunc3(struct cmb_process *me, void *ctx)
                 cmb_store_release(sp, amount_rel);
                 amount_held -= amount_rel;
             }
-            else {
+            else if (sig == CMB_PROCESS_PREEMPTED) {
                 cmb_logger_user(USERFLAG, stdout,
                                 "Someone stole all my %s from me!",
                                 cmb_store_get_name(sp));
                 amount_held = 0u;
             }
+            else {
+                cmb_logger_user(USERFLAG, stdout,
+                                "Interrupted by signal %lld", sig);
+            }
+        }
+        else if (sig == CMB_PROCESS_PREEMPTED) {
+            cmb_logger_user(USERFLAG, stdout,
+                            "Preempted during acquire, all my %s is gone",
+                            cmb_store_get_name(sp));
+            amount_held = 0u;
         }
         else {
             cmb_logger_user(USERFLAG, stdout,
-                            "Acquire failed, all my %s is gone",
-                            cmb_store_get_name(sp));
-            amount_held = 0u;
+                            "Interrupted by signal %lld", sig);
         }
 
         cmb_logger_user(USERFLAG, stdout, "Amount held: %llu", amount_held);
@@ -216,19 +227,43 @@ void *procfunc4(struct cmb_process *me, void *ctx)
                 cmb_logger_user(USERFLAG, stdout,
                                 "Someone stole my %s from me, sig %lld!",
                                 cmb_store_get_name(sp), sig);
-                amount_held -= amount_req;
+                amount_held = 0u;
             }
             else {
                 cmb_logger_user(USERFLAG, stdout,
-                                "Huh? Sig %lld!", sig);
+                                "Interrupted by signal %lld", sig);
             }
         }
 
         cmb_logger_user(USERFLAG, stdout, "Amount held: %llu", amount_held);
         sig = cmb_process_hold(cmb_random_exponential(1.0));
         cmb_logger_user(USERFLAG, stdout, "Hold returned %lld", sig);
+        if (sig == CMB_PROCESS_PREEMPTED) {
+            cmb_logger_user(USERFLAG, stdout,
+                            "Someone stole the rest of my %s from me, sig %lld!",
+                            cmb_store_get_name(sp), sig);
+            amount_held = 0u;
+        }
     }
 }
+
+void *procfunc5(struct cmb_process *me, void *ctx)
+{
+    cmi_unused(me);
+    struct cmb_process **cpp = (struct cmb_process **) ctx;
+    cmb_assert_release(cpp != NULL);
+
+    // ReSharper disable once CppDFAEndlessLoop
+    for (;;) {
+        cmb_logger_user(USERFLAG, stdout, "Looking for rodents");
+        (void)cmb_process_hold(cmb_random_exponential(1.0));
+        struct cmb_process *tgt = cpp[cmb_random_dice(0, 3)];
+        cmb_assert_debug(tgt != NULL);
+        cmb_logger_user(USERFLAG, stdout, "Chasing %s", cmb_process_get_name(tgt));
+        cmb_process_interrupt(tgt, CMB_PROCESS_INTERRUPTED, 0);
+    }
+}
+
 
 void test_store(void)
 {
@@ -246,8 +281,8 @@ void test_store(void)
     struct cmb_store *sp = cmb_store_create();
     cmb_store_initialize(sp, "Cheese", 25u);
 
-    printf("Create three processes to compete for the cheese\n");
     struct cmb_process *cpp[5];
+    printf("Create three processes to compete for the cheese\n");
     for (unsigned ui = 0; ui < 3; ui++) {
         cpp[ui] = cmb_process_create();
         char buf[32];
@@ -262,8 +297,13 @@ void test_store(void)
     cmb_process_initialize(cpp[3], "Rat_4", procfunc4, sp, 0);
     cmb_process_start(cpp[3]);
 
+    printf("Create a fifth process chasing the rodents\n");
+    cpp[4] = cmb_process_create();
+    cmb_process_initialize(cpp[4], "Cat_1", procfunc5, cpp, 0);
+    cmb_process_start(cpp[4]);
+
     printf("Schedule end event\n");
-    (void)cmb_event_schedule(end_sim_evt, cpp, (void *)4u, 100.0, 0);
+    (void)cmb_event_schedule(end_sim_evt, cpp, (void *)5u, 100.0, 0);
 
     printf("Execute simulation\n");
     cmb_event_queue_execute();

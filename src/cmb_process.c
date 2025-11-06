@@ -116,7 +116,7 @@ void cmb_process_start(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    cmb_logger_info(stdout, "Start %s", pp->name);
+    cmb_logger_info(stdout, "Start %s %p", pp->name, (void *)pp);
     const double t = cmb_time();
     const int64_t pri = pp->priority;
 
@@ -389,7 +389,7 @@ static void cmi_process_cease_and_desist(struct cmb_process *tgt)
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_RESOURCE) {
         struct cmi_resource_guard *rgp = tgt->waitsfor.ptr;
-        const bool found = cmi_resource_guard_cancel(rgp, tgt);
+        const bool found = cmi_resource_guard_remove(rgp, tgt);
         cmb_assert_debug(found == true);
     }
 
@@ -481,8 +481,8 @@ void cmb_process_stop(struct cmb_process *pp, void *retval)
     cmb_assert_debug(pp != NULL);
     cmb_logger_info(stdout, "Stop %s value %p", pp->name, retval);
 
-    /* Make sure no normal events happen first and change the state */
-    const int64_t pri = INT64_MAX;
+    /* Make sure all normal events happen first to ensure consistent state */
+    const int64_t pri = INT64_MIN;
     const double t = cmb_time();
     (void)cmb_event_schedule(pstopevt, pp, retval, t, pri);
 }
