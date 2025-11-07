@@ -155,8 +155,10 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 
             cmb_assert_debug(bp->contains <= bp->capacity);
             cmi_resourceguard_signal(&(bp->rear_guard));
-            /* In case someone else can use any leftovers */
-            cmi_resourceguard_signal(&(bp->front_guard));
+            if (bp->contains > 0u) {
+                /* In case someone else can use any leftovers */
+                cmi_resourceguard_signal(&(bp->front_guard));
+            }
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -180,6 +182,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
         cmb_logger_info(stdout, "Waiting for content");
         cmb_logger_info(stdout, "%s capacity %llu contains %llu",
                        rbp->name, bp->capacity, bp->contains);
+        cmi_resourceguard_signal(&(bp->rear_guard));
         const int64_t sig = cmi_resourceguard_wait(&(bp->front_guard),
                                                    buffer_has_content,
                                                    NULL);
@@ -239,8 +242,10 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
 
             cmb_assert_debug(bp->contains <= bp->capacity);
             cmi_resourceguard_signal(&(bp->front_guard));
-            /* In case someone else can use any leftover space */
-            cmi_resourceguard_signal(&(bp->rear_guard));
+            if (bp->contains < bp->capacity) {
+                /* In case someone else can use any leftover space */
+                cmi_resourceguard_signal(&(bp->rear_guard));
+            }
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -263,6 +268,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
         cmb_logger_info(stdout, "Waiting for space");
         cmb_logger_info(stdout, "%s capacity %llu contains %llu",
                        rbp->name, bp->capacity, bp->contains);
+        cmi_resourceguard_signal(&(bp->front_guard));
         const int64_t sig = cmi_resourceguard_wait(&(bp->rear_guard),
                                                    buffer_has_space,
                                                    NULL);

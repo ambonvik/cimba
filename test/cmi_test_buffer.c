@@ -61,7 +61,7 @@ void *putterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(USERFLAG, stdout, "Hold returned signal %lld", sig);
         }
 
-        const uint64_t n = cmb_random_dice(1, 5);
+        const uint64_t n = cmb_random_dice(1, 15);
         uint64_t m = n;
         cmb_logger_user(USERFLAG,
                         stdout,
@@ -103,7 +103,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(USERFLAG, stdout, "Hold returned signal %lld", sig);
         }
 
-        const uint64_t n = cmb_random_dice(1, 5);
+        const uint64_t n = cmb_random_dice(1, 15);
         cmb_logger_user(USERFLAG,
                         stdout,
                         "Getting %llu from %s...",
