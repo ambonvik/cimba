@@ -177,7 +177,7 @@ int64_t cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
     else if (pp->waitsfor.type == CMI_WAITABLE_RESOURCE) {
         const uint64_t handle = pp->waitsfor.handle;
         cmb_assert_debug(handle != 0ull);
-        struct cmi_resource_guard *rgp = pp->waitsfor.ptr;
+        struct cmi_resourceguard *rgp = pp->waitsfor.ptr;
         const struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
         const double dkey = cmi_hashheap_get_dkey(hp, handle);
         const int64_t check = cmi_hashheap_get_ikey(hp, handle);
@@ -188,7 +188,7 @@ int64_t cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
     /* Is this process holding any resources that need to update records? */
     struct cmi_resourcetag *rtag = pp->resources_listhead;
     while (rtag != NULL) {
-        struct cmi_resource_base *rbp = rtag->res;
+        struct cmi_resourcebase *rbp = rtag->res;
         cmb_assert_debug(rbp != NULL);
         const uint64_t handle = rtag->handle;
         if (handle != 0ull) {
@@ -420,8 +420,8 @@ static void cmi_process_cease_and_desist(struct cmb_process *tgt)
         cmb_assert_debug(found == true);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_RESOURCE) {
-        struct cmi_resource_guard *rgp = tgt->waitsfor.ptr;
-        const bool found = cmi_resource_guard_remove(rgp, tgt);
+        struct cmi_resourceguard *rgp = tgt->waitsfor.ptr;
+        const bool found = cmi_resourceguard_remove(rgp, tgt);
         cmb_assert_debug(found == true);
     }
 

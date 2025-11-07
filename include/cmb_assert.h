@@ -58,4 +58,16 @@
 
 #define cmb_assert(x) cmb_assert_debug(x)
 
+/*
+ * cmb_unused : macro to suppress "unused argument" compiler warnings for cases
+ * where some generic argument is intentionally unused in that instance.
+ * __attribute__ ((unused)) could be used, but it is a GCC extension, not
+ * portable. In C23 [[maybe_unused]] will do the trick, but again, MVSC.
+ *
+ * Placed here because it typically will be used together with the precondition
+ * asserts at the start of a function and logically belongs with these.
+ */
+#define cmb_unused(x) ((void)(x))
+
+
 #endif /* CIMBA_CMB_ASSERT_H */

@@ -27,7 +27,7 @@
  */
 struct cmi_resourcetag {
     struct cmi_resourcetag *next;
-    struct cmi_resource_base *res;
+    struct cmi_resourcebase *res;
     uint64_t handle;
 };
 
@@ -37,7 +37,7 @@ struct cmi_resourcetag {
  * derived classes.
  */
 extern void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
-                                     struct cmi_resource_base *rbp,
+                                     struct cmi_resourcebase *rbp,
                                      uint64_t handle);
 
 /*
@@ -45,14 +45,14 @@ extern void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
  * location. Returns true if found, false if not.
  */
 extern bool cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
-                                        const struct cmi_resource_base *rbp);
+                                        const struct cmi_resourcebase *rbp);
 
 /*
  * cmi_resourcetag_list_find_handle : Find a resource from the given list location.
  * Returns the associated handle value if found, zero if not.
  */
 extern uint64_t cmi_resourcetag_list_find_handle(struct cmi_resourcetag **rtloc,
-                                          const struct cmi_resource_base *rbp);
+                                          const struct cmi_resourcebase *rbp);
 
 /*
  * cmi_resourcetag_list_scram_all : Calls the respective scram function for each

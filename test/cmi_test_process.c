@@ -31,16 +31,16 @@ uint64_t cuckoo_clock_handle = 0u;
 
 void cuckooevtfunc(void *sub, void *obj)
 {
-    cmi_unused(sub);
-    cmi_unused(obj);
+    cmb_unused(sub);
+    cmb_unused(obj);
 
     cmb_logger_user(USERFLAG, stdout,"Cuckoo event occurred");
 }
 
 void cnclevtfunc(void *sub, void *obj)
 {
-    cmi_unused(sub);
-    cmi_unused(obj);
+    cmb_unused(sub);
+    cmb_unused(obj);
 
     cmb_assert_release(cuckoo_clock_handle != 0u);
      if (cmb_event_is_scheduled(cuckoo_clock_handle)) {
@@ -54,8 +54,8 @@ void cnclevtfunc(void *sub, void *obj)
 
 void *procfunc1(struct cmb_process *me, void *ctx)
 {
-    cmi_unused(me);
-    cmi_unused(ctx);
+    cmb_unused(me);
+    cmb_unused(ctx);
 
     cmb_logger_user(USERFLAG, stdout, "Running");
     // ReSharper disable once CppDFAEndlessLoop
@@ -92,9 +92,9 @@ void *procfunc2(struct cmb_process *me, void *ctx)
     return NULL;
 }
 
-void *procfunc3(struct cmb_process *me, void *ctx)
+void *mousefunc(struct cmb_process *me, void *ctx)
 {
-    cmi_unused(me);
+    cmb_unused(me);
 
     struct cmb_process *tgt = (struct cmb_process *)ctx;
     cmb_logger_user(USERFLAG, stdout, "Running, tgt %s", cmb_process_get_name(tgt));
@@ -144,7 +144,7 @@ int main(void)
     for (unsigned ui = 0u; ui < 3u; ui++) {
         sprintf(buf, "Waiter_%u", ui);
         cpp3 = cmb_process_create();
-        cmb_process_initialize(cpp3, buf, procfunc3, cpp2, cmb_random_dice(-5, 5));
+        cmb_process_initialize(cpp3, buf, mousefunc, cpp2, cmb_random_dice(-5, 5));
         cmb_process_start(cpp3);
     }
 

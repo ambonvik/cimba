@@ -49,7 +49,7 @@ void cmi_resourcetag_list_scram_all(struct cmi_resourcetag **rtloc)
 
     /* Process it, calling scram() for each resource */
     while (rtag != NULL) {
-        struct cmi_resource_base *rbp = rtag->res;
+        struct cmi_resourcebase *rbp = rtag->res;
         const uint64_t handle = rtag->handle;
         (*(rbp->scram))(rbp, pp, handle);
 
@@ -65,7 +65,7 @@ void cmi_resourcetag_list_scram_all(struct cmi_resourcetag **rtloc)
  * cmi_resourcetag_list_add : Add a resource to the given list location.
  */
 void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
-                              struct cmi_resource_base *rbp,
+                              struct cmi_resourcebase *rbp,
                               const uint64_t handle)
 {
     cmb_assert_debug(rtloc != NULL);
@@ -92,7 +92,7 @@ void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
  * location.
  */
 bool cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
-                                 const struct cmi_resource_base *rbp)
+                                 const struct cmi_resourcebase *rbp)
 {
     cmb_assert_debug(rtloc != NULL);
     cmb_assert_debug(rbp != NULL);
@@ -119,7 +119,7 @@ bool cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
  * Returns the associated handle value if found, zero if not.
  */
 uint64_t cmi_resourcetag_list_find_handle(struct cmi_resourcetag **rtloc,
-                                   const struct cmi_resource_base *rbp)
+                                   const struct cmi_resourcebase *rbp)
 {
     cmb_assert_debug(rtloc != NULL);
     cmb_assert_debug(rbp != NULL);
@@ -149,7 +149,7 @@ void cmi_resourcetag_list_print(struct cmi_resourcetag **rtloc, FILE *fp)
     fprintf(fp, "\t\t\tresource list at %p\n", (void *)rtloc);
     struct cmi_resourcetag *rtag = *rtloc;
     while (rtag != NULL) {
-        const struct cmi_resource_base *rbp = rtag->res;
+        const struct cmi_resourcebase *rbp = rtag->res;
         fprintf(fp, "\t\t\t\trbp %p res %p handle %llu",
                     (void *)rtag, (void *)rbp, rtag->handle);
         cmb_assert_debug(rbp != NULL);
