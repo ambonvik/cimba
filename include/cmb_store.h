@@ -76,14 +76,15 @@ extern void cmb_store_terminate(struct cmb_store *sp);
 extern void cmb_store_destroy(struct cmb_store *sp);
 
 /*
- * cmb_store_acquire : Request and if necessary wait for an claim_amount of the
+ * cmb_store_acquire : Request and if necessary wait for an amount of the
  * store resource. The calling process may already hold some and try to
  * increase its holding with this call, or to obtain its first helping.
  *
  * Will either get the required amount and return CMB_PROCESS_SUCCESS,
- * or fail and return some other value. If failed, the calling process has the
- * same amount of the resource as before the call. There is no partial
- * fulfillment, just all or nothing.
+ * be preempted and return CMB_PROCESS_PREEMPTED, or be interrupted and return
+ * some other value. If it is preempted, the process lost everything it had and
+ * returns empty-handed. If interrupted by any other signal, it returns with the
+ * same amount as it had at the beginning of the call.
  */
 extern int64_t cmb_store_acquire(struct cmb_store *sp, uint64_t amount);
 
@@ -95,13 +96,15 @@ extern int64_t cmb_store_acquire(struct cmb_store *sp, uint64_t amount);
  * preempts processes with strictly lower priority than itself, otherwise acts
  * like cmb_store_acquire.
  *
- * As for cmb_store_acquire, it is full amount or nothing.
+ * As for cmb_store_acquire, it can either return with the requested amount,
+ * an unchanged amount (interrupted), or nothing at all (preempted).
  */
 extern int64_t cmb_store_preempt(struct cmb_store *sp, uint64_t amount);
 
 /*
- * cmb_store_release : Release an amount of the resource, not necessarily
- * everything that the calling process holds.
+ * cmb_store_release : Release an amount of the resource back to the store, not
+ * necessarily everything that the calling process holds, but not more than it
+ * is currently holding. Always returns immediately.
  */
 extern void cmb_store_release(struct cmb_store *sp, uint64_t amount);
 
@@ -116,5 +119,12 @@ static inline const char *cmb_store_get_name(struct cmb_store *sp)
 
     return rbp->name;
 }
+
+/*
+ * cmb_held_by_process : Return the amount of this store that is currently
+ * held by the given process, possibly zero.
+ */
+extern uint64_t cmb_store_held_by_process(struct cmb_store *sp,
+                                          struct cmb_process *pp);
 
 #endif // CIMBA_CMB_STORE_H

@@ -92,7 +92,7 @@ void *procfunc2(struct cmb_process *me, void *ctx)
     return NULL;
 }
 
-void *mousefunc(struct cmb_process *me, void *ctx)
+void *procfunc3(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
 
@@ -144,7 +144,7 @@ int main(void)
     for (unsigned ui = 0u; ui < 3u; ui++) {
         sprintf(buf, "Waiter_%u", ui);
         cpp3 = cmb_process_create();
-        cmb_process_initialize(cpp3, buf, mousefunc, cpp2, cmb_random_dice(-5, 5));
+        cmb_process_initialize(cpp3, buf, procfunc3, cpp2, cmb_random_dice(-5, 5));
         cmb_process_start(cpp3);
     }
 

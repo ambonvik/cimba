@@ -5,10 +5,10 @@
  * of, or release parts of its holding. Several processes can be holding parts
  * of the resource capacity at the same time, possibly also different amounts.
  *
- * the cmb_store adds numeric values for capacity and usage to the base resource.
- * These values are unsigned integers to avoid any rounding issues from
- * floating-point calculations, both faster and higher resolution (if scaled
- * properly to 64-bit range).
+ * The cmb_store adds numeric values for capacity and usage to the base
+ * resource. These values are unsigned integers to avoid any rounding issues
+ * from floating-point calculations, both faster and higher resolution (if
+ * scaled properly to 64-bit range).
  *
  * It assigns amounts to processes in a greedy fashion, where the acquiring
  * process will first grab whatever amount is available, then wait for some more
@@ -113,7 +113,9 @@ void store_scram(struct cmi_resourcebase *rbp,
 /*
  * storee_reprio : dummy reprio function. Does nothing.
  */
-void store_reprio(struct cmi_resourcebase *rbp, const uint64_t handle, const int64_t pri)
+void store_reprio(struct cmi_resourcebase *rbp,
+                  const uint64_t handle,
+                  const int64_t pri)
 {
     cmb_assert_release(rbp != NULL);
     cmb_assert_release(handle != 0u);
@@ -123,7 +125,6 @@ void store_reprio(struct cmi_resourcebase *rbp, const uint64_t handle, const int
     const double dkey = cmi_hashheap_get_dkey(hp, handle);
     cmi_hashheap_reprioritize(hp, handle, dkey, pri);
 }
-
 
 /*
  * cmb_store_initialize : Make an allocated store object ready for use.
@@ -168,6 +169,8 @@ void cmb_store_terminate(struct cmb_store *sp)
  */
 void cmb_store_destroy(struct cmb_store *sp)
 {
+    cmb_assert_release(sp != NULL);
+
     cmb_store_terminate(sp);
     cmi_free(sp);
 }
@@ -224,18 +227,18 @@ static uint64_t store_reset_holder(const struct cmi_hashheap *hp,
     return surplus;
 }
 
-static uint64_t store_held_by_process(struct cmb_store *sp,
-                                      struct cmb_process *pp)
+uint64_t cmb_store_held_by_process(struct cmb_store *sp,
+                                   struct cmb_process *pp)
 {
     cmb_assert_release(sp != NULL);
     cmb_assert_release(pp != NULL);
 
     uint64_t ret = 0u;
     struct cmi_resourcetag **rtloc = &(pp->resources_listhead);
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
     const uint64_t handle = cmi_resourcetag_list_find_handle(rtloc, rbp);
     if (handle != 0u) {
-        struct cmi_hashheap *hp = &(sp->holders);
+        const struct cmi_hashheap *hp = &(sp->holders);
         void **item = cmi_hashheap_get_item(hp, handle);
         ret = (uint64_t)item[1];
     }
@@ -305,8 +308,9 @@ static uint64_t store_update_record(struct cmb_store *store,
 
 /*
  * cmb_store_acquire_inner : Acquire, perhaps preempt, and if necessary wait for
- * an claim_amount of the store resource. The calling process may already hold some
- * and try to increase its holding with this call, or obtain its first helping.
+ * an claim_amount of the store resource. The calling process may already hold
+ * some and try to increase its holding with this call, or obtain its first
+ * helping.
  */
 int64_t cmi_store_acquire_inner(struct cmb_store *sp,
                                 const uint64_t claim_amount,
@@ -323,7 +327,8 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
     uint64_t initially_held = 0u;
     struct cmi_hashheap *hp = &(sp->holders);
     struct cmi_resourcetag **caller_rtloc = &(caller->resources_listhead);
-    uint64_t caller_handle = cmi_resourcetag_list_find_handle(caller_rtloc, rbp);
+    uint64_t caller_handle = cmi_resourcetag_list_find_handle(caller_rtloc,
+                                                              rbp);
     if (caller_handle != 0u) {
         /* It does, note the amount in case we need to roll back to here */
         void **item = cmi_hashheap_get_item(hp, caller_handle);
@@ -339,7 +344,7 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
      * amount if any.
      */
     uint64_t rem_claim = claim_amount;
-    for (;;) {
+    while (true) {
         const uint64_t available = sp->capacity - sp->in_use;
 
         /* First take anything that is available already */
@@ -347,12 +352,18 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
             /* Grab what we need */
             sp->in_use += rem_claim;
             cmb_assert_debug(sp->in_use <= sp->capacity);
-            (void)store_update_record(sp, hp, caller, caller_rtloc,
-                                      caller_handle, rem_claim);
+            (void)store_update_record(sp,
+                                      hp,
+                                      caller,
+                                      caller_rtloc,
+                                      caller_handle,
+                                      rem_claim);
 
             cmb_assert_debug(sp->in_use <= sp->capacity);
             cmb_assert_debug(store_sum_holder_items(hp, 1) == sp->in_use);
-            cmb_logger_info(stdout, "Success, %llu was already available", rem_claim);
+            cmb_logger_info(stdout,
+                            "Success, %llu was already available",
+                            rem_claim);
 
             /* In case someone else can use the leftovers */
             cmi_resourceguard_signal(&(sp->front_guard));
@@ -364,13 +375,19 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
             sp->in_use += available;
             cmb_assert_debug(sp->in_use <= sp->capacity);
             rem_claim -= available;
-            caller_handle = store_update_record(sp, hp, caller, caller_rtloc,
-                                                caller_handle, available);
+            caller_handle = store_update_record(sp,
+                                                hp,
+                                                caller,
+                                                caller_rtloc,
+                                                caller_handle,
+                                                available);
 
             cmb_assert_debug(sp->in_use <= sp->capacity);
             cmb_assert_debug(store_sum_holder_items(hp, 1) == sp->in_use);
-            cmb_logger_info(stdout, "Found %llu available, still wants %llu",
-                            available, rem_claim);
+            cmb_logger_info(stdout,
+                            "Found %llu available, still wants %llu",
+                            available,
+                            rem_claim);
         }
 
         /* We have taken what was available, and we still want more */
@@ -387,34 +404,57 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
                 cmb_assert_debug(loot <= sp->in_use);
 
                 /* Remove the resource from victim's resource list */
-                struct cmi_resourcetag **victim_rtloc = &(victim->resources_listhead);
-                const bool found = cmi_resourcetag_list_remove(victim_rtloc, rbp);
+                struct cmi_resourcetag **victim_rtloc
+                                            = &(victim->resources_listhead);
+                const bool found = cmi_resourcetag_list_remove(victim_rtloc,
+                                                               rbp);
                 cmb_assert_debug(found == true);
 
                 /* Schedule a wakeup for it, but do not switch context yet */
-                cmb_process_interrupt(victim, CMB_PROCESS_PREEMPTED, victim->priority);
+                cmb_process_interrupt(victim,
+                                      CMB_PROCESS_PREEMPTED,
+                                      victim->priority);
 
                  /* Split the loot */
                 if (loot < rem_claim) {
-                    /* Take it all. The quantity in use is unchanged, just changes hands. */
-                    caller_handle = store_update_record(sp, hp, caller, caller_rtloc,
-                                    caller_handle, loot);
+                    /* Take it all. */
+                    caller_handle = store_update_record(sp,
+                                                        hp,
+                                                        caller,
+                                                        caller_rtloc,
+                                                        caller_handle,
+                                                        loot);
                     rem_claim -= loot;
 
+                    /* The quantity in use is unchanged, just changes hands. */
                     cmb_assert_debug(sp->in_use <= sp->capacity);
-                    cmb_assert_debug(store_sum_holder_items(hp, 1) == sp->in_use);
-                    cmb_logger_info(stdout, "Got %llu from %s, still needs %llu", loot, victim->name, rem_claim);
+                    cmb_assert_debug(store_sum_holder_items(hp, 1)
+                                     == sp->in_use);
+                    cmb_logger_info(stdout,
+                                    "Got %llu from %s, still needs %llu",
+                                    loot,
+                                    victim->name,
+                                    rem_claim);
                 }
                 else {
                     /* Take what we need, put back the rest */
-                    (void)store_update_record(sp, hp, caller, caller_rtloc,
-                                              caller_handle, rem_claim);
+                    (void)store_update_record(sp,
+                                              hp,
+                                              caller,
+                                              caller_rtloc,
+                                              caller_handle,
+                                              rem_claim);
                     const uint64_t surplus = loot - rem_claim;
                     sp->in_use -= surplus;
 
                     cmb_assert_debug(sp->in_use <= sp->capacity);
-                    cmb_assert_debug(store_sum_holder_items(hp, 1) == sp->in_use);
-                    cmb_logger_info(stdout, "Success, got %llu from %s, put back %llu", loot, victim->name, surplus);
+                    cmb_assert_debug(store_sum_holder_items(hp, 1)
+                                     == sp->in_use);
+                    cmb_logger_info(stdout,
+                                    "Success, got %llu from %s, put back %llu",
+                                    loot,
+                                    victim->name,
+                                    surplus);
 
                     /* In case someone else can use the leftovers */
                     cmi_resourceguard_signal(&(sp->front_guard));
@@ -423,7 +463,9 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
                 }
             }
 
-            cmb_logger_info(stdout, "No more victims, still wants %llu more", rem_claim);
+            cmb_logger_info(stdout,
+                            "No more victims, still wants %llu more",
+                            rem_claim);
         }
 
         /* Wait at the front door until some more becomes available  */
@@ -438,20 +480,26 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
             return sig;
         }
         else if (sig != CMB_PROCESS_SUCCESS) {
-            cmb_logger_info(stdout, "Interrupted by signal %lld, returning unchanged", sig);
+            cmb_logger_info(stdout,
+                            "Interrupted by signal %lld, returning unchanged",
+                            sig);
             if (initially_held > 0u) {
                 /* Put back difference. It had some, there should be a record */
                 cmb_assert_debug(caller_handle != 0u);
-                const uint64_t surplus = store_reset_holder(hp, caller_handle, initially_held);
+                const uint64_t surplus = store_reset_holder(hp,
+                                                            caller_handle,
+                                                            initially_held);
                 sp->in_use -= surplus;
                 cmb_assert_debug(sp->in_use <= sp->capacity);
                 cmi_resourceguard_signal(&(sp->front_guard));
             }
             else {
-                /* Put back all. There may be a record created during this call, delete it */
-                const uint64_t holds_now = store_held_by_process(sp, caller);
+                /* Put back all. */
+                const uint64_t holds_now = cmb_store_held_by_process(sp, caller);
                 sp->in_use -= holds_now;
-                const bool found = cmi_resourcetag_list_remove(caller_rtloc, rbp);
+                const bool found = cmi_resourcetag_list_remove(caller_rtloc,
+                                                               rbp);
+                /* There may be a record created during this call, delete it */
                 if (found == true) {
                     cmb_assert_debug(caller_handle != 0u);
                     cmi_hashheap_cancel(hp, caller_handle);
@@ -506,7 +554,11 @@ void cmb_store_release(struct cmb_store *sp, const uint64_t amount)
     void **item = cmi_hashheap_get_item(&(sp->holders), caller_handle);
     cmb_assert_debug(item[0] == pp);
     const uint64_t held = (uint64_t)item[1];
-    cmb_logger_info(stdout, "Has %lld, releasing %lld, total in use %llu", held, amount, sp->in_use);
+    cmb_logger_info(stdout,
+                    "Has %lld, releasing %lld, total in use %llu",
+                    held,
+                    amount,
+                    sp->in_use);
     cmb_assert_debug(held >= amount);
     cmb_assert_debug(held <= sp->in_use);
 

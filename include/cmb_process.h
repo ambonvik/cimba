@@ -47,8 +47,8 @@
 
 /* Return codes from various process context switching calls */
 #define CMB_PROCESS_SUCCESS (0LL)
-#define CMB_PROCESS_INTERRUPTED (1LL)
-#define CMB_PROCESS_PREEMPTED (2LL)
+#define CMB_PROCESS_PREEMPTED (1LL)
+#define CMB_PROCESS_INTERRUPTED (2LL)
 #define CMB_PROCESS_STOPPED (3LL)
 #define CMB_PROCESS_CANCELLED (4LL)
 

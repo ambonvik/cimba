@@ -29,7 +29,9 @@ set(SOURCES  src/cmb_data.c
         src/cmi_resourceguard.h
         src/cmi_resourcebase.c
         src/cmi_resourcebase.h
-        src/cmb_store.c)
+        src/cmb_store.c
+        src/cmb_buffer.c
+        include/cmb_buffer.h)
 set(HEADERS include/cmb_data.h
         include/cmb_event.h
         include/cmb_random.h
@@ -45,7 +47,9 @@ set(HEADERS include/cmb_data.h
         src/cmi_processtag.h
         src/cmi_resourcetag.h
         src/cmi_resourceguard.h
-        src/cmi_resourcebase.h)
+        src/cmi_resourcebase.h
+        src/cmb_buffer.c
+        include/cmb_buffer.h)
 
 set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm src/arch/cmi_random_hwseed_Win64.asm)
 set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM_NASM)
@@ -83,3 +87,5 @@ target_link_libraries(cmi_test_resource PRIVATE cimba)
 add_executable(cmi_test_store test/cmi_test_store.c test/cmi_test.h)
 target_link_libraries(cmi_test_store PRIVATE cimba)
 
+add_executable(cmi_test_buffer test/cmi_test_buffer.c test/cmi_test.h)
+target_link_libraries(cmi_test_buffer PRIVATE cimba)

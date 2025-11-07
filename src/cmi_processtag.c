@@ -32,10 +32,10 @@
 static CMB_THREAD_LOCAL struct cmb_mempool *process_tag_pool = NULL;
 
 /*
- * pwwuevt : The event handler that actually resumes the process coroutine after
+ * ptwuevt : The event handler that actually resumes the process coroutine after
  * being scheduled by cmb_process_wait_*.
  */
-static void pwwuevt(void *vp, void *arg)
+static void ptwuevt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
@@ -73,7 +73,7 @@ void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc,
         cmb_assert_debug(pp != NULL);
         const double time = cmb_time();
         const int64_t priority = cmb_process_get_priority(pp);
-        (void)cmb_event_schedule(pwwuevt,
+        (void)cmb_event_schedule(ptwuevt,
                                 pp,
                                 (void *)signal,
                                  time,

@@ -31,37 +31,6 @@
 static CMB_THREAD_LOCAL struct cmb_mempool *resource_tag_pool = NULL;
 
 /*
- * cmi_resourcetag_list_scram_all : Calls the scram function for each resource
- * in the list
- */
-void cmi_resourcetag_list_scram_all(struct cmi_resourcetag **rtloc)
-{
-    cmb_assert_debug(rtloc != NULL);
-
-    /* Unlink the tag chain */
-    struct cmi_resourcetag *rtag = *rtloc;
-    *rtloc = NULL;
-
-    const struct cmb_process *pp = cmi_container_of(rtloc,
-                                              struct cmb_process,
-                                              resources_listhead);
-    cmb_assert_debug(pp != NULL);
-
-    /* Process it, calling scram() for each resource */
-    while (rtag != NULL) {
-        struct cmi_resourcebase *rbp = rtag->res;
-        const uint64_t handle = rtag->handle;
-        (*(rbp->scram))(rbp, pp, handle);
-
-        struct cmi_resourcetag *tmp = rtag->next;
-        cmb_mempool_put(resource_tag_pool, rtag);
-        rtag = tmp;
-    }
-
-    cmb_assert_debug(*rtloc == NULL);
-}
-
-/*
  * cmi_resourcetag_list_add : Add a resource to the given list location.
  */
 void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
@@ -137,9 +106,38 @@ uint64_t cmi_resourcetag_list_find_handle(struct cmi_resourcetag **rtloc,
 
     /* Not found */
     return 0ull;
-
 }
 
+/*
+ * cmi_resourcetag_list_scram_all : Calls the scram function for each resource
+ * in the list
+ */
+void cmi_resourcetag_list_scram_all(struct cmi_resourcetag **rtloc)
+{
+    cmb_assert_debug(rtloc != NULL);
+
+    /* Unlink the tag chain */
+    struct cmi_resourcetag *rtag = *rtloc;
+    *rtloc = NULL;
+
+    const struct cmb_process *pp = cmi_container_of(rtloc,
+                                              struct cmb_process,
+                                              resources_listhead);
+    cmb_assert_debug(pp != NULL);
+
+    /* Process it, calling scram() for each resource */
+    while (rtag != NULL) {
+        struct cmi_resourcebase *rbp = rtag->res;
+        const uint64_t handle = rtag->handle;
+        (*(rbp->scram))(rbp, pp, handle);
+
+        struct cmi_resourcetag *tmp = rtag->next;
+        cmb_mempool_put(resource_tag_pool, rtag);
+        rtag = tmp;
+    }
+
+    cmb_assert_debug(*rtloc == NULL);
+}
 
 /*
  * cmi_resourcetag_list_print : Print the list of resources

@@ -44,7 +44,7 @@ static void end_sim_evt(void *subject, void *object)
     cmb_event_queue_clear();
 }
 
-void *mousefunc(struct cmb_process *me, void *ctx)
+void *procfunc3(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
     struct cmb_store *sp = ctx;
@@ -54,7 +54,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
     for (;;) {
         const uint64_t amount_req = cmb_random_dice(1, 10);
         (void)cmb_process_set_priority(me, cmb_random_dice(-10, 10));
-        cmb_logger_user(USERFLAG, stdout, "Acquires %llu", amount_req);
+        cmb_logger_user(USERFLAG, stdout, "Acquiring %llu...", amount_req);
         int64_t sig = cmb_store_acquire(sp, amount_req);
         cmb_logger_user(USERFLAG, stdout, "Acquire returned signal %lld", sig);
         if (sig == CMB_PROCESS_SUCCESS) {
@@ -115,7 +115,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         const uint64_t amount_req = cmb_random_dice(1, 10);
-        cmb_logger_user(USERFLAG, stdout, "Preempts %llu", amount_req);
+        cmb_logger_user(USERFLAG, stdout, "Preempting %llu...", amount_req);
         int64_t sig = cmb_store_preempt(sp, amount_req);
         cmb_logger_user(USERFLAG, stdout, "Preempt returned signal %lld", sig);
 
@@ -197,7 +197,7 @@ void test_store(void)
         char buf[32];
         snprintf(buf, sizeof(buf), "Mouse_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(cpp[ui], buf, mousefunc, sp, pri);
+        cmb_process_initialize(cpp[ui], buf, procfunc3, sp, pri);
         cmb_process_start(cpp[ui]);
     }
 

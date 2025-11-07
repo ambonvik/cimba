@@ -19,19 +19,14 @@
  */
 
 #include "cmb_assert.h"
-
 #include "cmb_logger.h"
 #include "cmb_process.h"
 
 #include "cmi_resourcebase.h"
 
-/*******************************************************************************
- * cmi_resourcebase: The virtual parent "class" of the different resource types
- ******************************************************************************/
-
 /*
  * base_scram : dummy scram function, to be replaced by appropriate scram in
- * derived classes.
+ * derived classes. Does nothing.
  */
 void base_scram(struct cmi_resourcebase *rbp,
                 const struct cmb_process *pp,
@@ -40,15 +35,10 @@ void base_scram(struct cmi_resourcebase *rbp,
     cmb_assert_release(rbp != NULL);
     cmb_assert_release(pp != NULL);
     cmb_unused(handle);
-
-    cmb_logger_error(stderr,
-                    "Resource base scram, process %s resource %s, unknown derived class",
-                    pp->name,
-                    rbp->name);
 }
 
 /*
- * base_reprio : dummy reprio function. Does nothing.
+ * base_reprio : dummy holders reprioritization function. Does nothing.
  */
 void base_reprio(struct cmi_resourcebase *rbp, const uint64_t handle, const int64_t pri)
 {
