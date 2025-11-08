@@ -1,0 +1,169 @@
+/*
+* cmb_wtdsummary.c - - a running tally of basic statistics, not keeping the
+ * individual sample values, each sample weighted by a double in the summary.
+ *
+ * It can be used for time series  statistics where each value is held for a
+ * certain duration, such as queue lengths or the number of customers in a
+ * queueing system.
+ *
+ * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <float.h>
+#include <stdio.h>
+
+#include "cmb_logger.h"
+#include "cmb_wtdsummary.h"
+
+#include "cmi_memutils.h"
+
+struct cmb_wtdsummary *cmb_wtdsummary_create(void)
+{
+    struct cmb_wtdsummary *wsp = cmi_malloc(sizeof *wsp);
+    cmb_wtdsummary_initialize(wsp);
+
+    return wsp;
+}
+
+void cmb_wtdsummary_initialize(struct cmb_wtdsummary *wsp)
+{
+    cmb_assert_release(wsp != NULL);
+
+    cmb_datasummary_initialize((struct cmb_datasummary *)wsp);
+    wsp->wsum = 0.0;
+}
+
+void cmb_wtdsummary_reset(struct cmb_wtdsummary *wsp)
+{
+    cmb_assert_release(wsp != NULL);
+
+    cmb_wtdsummary_terminate(wsp);
+    cmb_wtdsummary_initialize(wsp);
+
+}
+
+void cmb_wtdsummary_terminate(struct cmb_wtdsummary *wsp)
+{
+    cmb_assert_release(wsp != NULL);
+
+    cmb_datasummary_terminate((struct cmb_datasummary *)wsp);
+}
+
+void cmb_wtdsummary_destroy(struct cmb_wtdsummary *wsp)
+{
+    cmb_assert_release(wsp != NULL);
+
+    cmb_wtdsummary_terminate(wsp);
+    cmi_free(wsp);
+}
+
+/*
+ * Add a weighted sample value to the data summary, updating the statistics.
+ * See: Pébay & al, "Numerically stable, scalable formulas for parallel and
+ *      online computation of higher-order multivariate central moments with
+ *      arbitrary weights", Computational Statistics (2016) 31:1305–1325
+ * Adding a single sample is a special case with n2 = 1.
+ *
+ * Returns the updated sample count.
+ */
+uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
+                          const double x,
+                          const double w)
+{
+    cmb_assert_release(wsp != NULL);
+
+    struct cmb_datasummary *dsp = (struct cmb_datasummary *)wsp;
+    dsp->max = (x > dsp->max) ? x : dsp->max;
+    dsp->min = (x < dsp->min) ? x : dsp->min;
+
+    const double d = x - dsp->m1;
+    const double d_2 = d * d;
+    const double d_3 = d * d_2;
+    const double ws = wsp->wsum + w;
+    const double d_w = d / ws;
+    const double d_w_2 = d_w * d_w;
+    const double d_w_3 = d_w_2 * d_w;
+
+    dsp->cnt++;
+    wsp->wsum = ws;
+    dsp->m1 += w * d_w;
+    dsp->m2 += d * (d - d_w);
+    dsp->m3 += d * (d_2 - d_w_2) - 3.0 * d_w * dsp->m2;
+    dsp->m4 += d * (d_3 - d_w_3) - 6.0 * d_w_2 * dsp->m2 - 4.0 * d_w * dsp->m3;
+
+    return dsp->cnt;
+}
+
+/*
+ * Merge two weighted data summaries, updating the statistics.
+ * Used e.g. for merging across pthreads.
+ * See: Pébay & al, "Numerically stable, scalable formulas for parallel and
+ *      online computation of higher-order multivariate central moments with
+ *      arbitrary weights", Computational Statistics (2016) 31:1305–1325
+ *
+ * Note that the target address may point to one of the sources, hence all
+ * calculations are done in a temporary variable and the target overwritten
+ * only at the end.
+ *
+ * Returns tgt->cnt, the number of data points in the combined summary.
+ */
+uint64_t cmb_wtdsummary_merge(struct cmb_wtdsummary *tgt,
+                            const struct cmb_wtdsummary *ws1,
+                            const struct cmb_wtdsummary *ws2)
+{
+    cmb_assert_release(tgt != NULL);
+    cmb_assert_release(ws1 != NULL);
+    cmb_assert_release(ws2 != NULL);
+
+    struct cmb_wtdsummary tws = { 0 };
+    struct cmb_datasummary *ts = (struct cmb_datasummary *)(&tws);
+    const struct cmb_datasummary *dsp1 = (struct cmb_datasummary *)ws1;
+    const struct cmb_datasummary *dsp2 = (struct cmb_datasummary *)ws2;
+
+    ts->cnt = dsp1->cnt + dsp2->cnt;
+    ts->min = (dsp1->min < dsp2->min) ? dsp1->min : dsp2->min;
+    ts->max = (dsp1->max > dsp2->max) ? dsp1->max : dsp2->max;
+
+    const double w1 = ws1->wsum;
+    const double w2 = ws2->wsum;
+    const double ws = tws.wsum = w1 + w2;
+    const double d21 = dsp2->m1 - dsp1->m1;
+    const double d21_w = d21 / ws;
+    const double d21_w_2 = d21_w * d21_w;
+    const double d21_w_3 = d21_w * d21_w_2;
+
+    ts->m1 = dsp1->m1 + w2 * d21_w;
+    ts->m2 = dsp1->m2 + dsp2->m2
+                      + w1 * w2 * d21 * d21_w;
+    ts->m3 = dsp1->m3 + dsp2->m3
+                      + w1 * w2 * (w1 - w2) * d21 * d21_w_2
+                      + 3.0 * (w1 * dsp2->m2 - w2 * dsp1->m2) * d21_w;
+    ts->m4 = dsp1->m4 + dsp2->m4
+                      + w1 * w2 * (w1 * w1 - w1 * w2 + w2 * w2) * d21 * d21_w_3
+                      + 6.0 * (w1 * w1 * dsp2->m2 + w2 * w2 * dsp1->m2) * d21_w_2
+                      + 4.0 * (w1 * dsp2->m3 - w2 * dsp1->m3) * d21_w;
+
+    *tgt = tws;
+    return ts->cnt;
+}
+
+void cmb_wtdsummary_print(const struct cmb_wtdsummary *wsp,
+                        FILE *fp,
+                        const bool lead_ins)
+{
+    cmb_datasummary_print((struct cmb_datasummary *)wsp, fp, lead_ins);
+}
+
+

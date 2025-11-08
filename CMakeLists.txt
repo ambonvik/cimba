@@ -5,7 +5,7 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Wall -Wextra")
 enable_language(ASM_NASM)
 
 include_directories(include src)
-set(SOURCES  src/cmb_data.c
+set(SOURCES src/cmb_dataset.c
         src/cmb_event.c
         src/cmb_resource.c
         src/cmb_store.c
@@ -31,8 +31,11 @@ set(SOURCES  src/cmb_data.c
         src/cmi_resourcebase.h
         src/cmb_store.c
         src/cmb_buffer.c
-        include/cmb_buffer.h)
-set(HEADERS include/cmb_data.h
+        include/cmb_buffer.h
+        src/cmb_datasummary.c
+        src/cmb_wtdsummary.c
+        src/cmb_timeseries.c)
+set(HEADERS include/cmb_dataset.h
         include/cmb_event.h
         include/cmb_random.h
         include/cmb_assert.h
@@ -49,7 +52,11 @@ set(HEADERS include/cmb_data.h
         src/cmi_resourceguard.h
         src/cmi_resourcebase.h
         src/cmb_buffer.c
-        include/cmb_buffer.h)
+        include/cmb_buffer.h
+        include/cmb_datasummary.h
+        include/cmb_wtdsummary.h
+        include/cmb_timeseries.h
+        src/cmi_dataset.h)
 
 set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm src/arch/cmi_random_hwseed_Win64.asm)
 set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM_NASM)

@@ -20,7 +20,10 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "cmb_data.h"
+#include "cmb_datasummary.h"
+#include "cmb_dataset.h"
+#include "cmb_wtdsummary.h"
+#include "cmb_timeseries.h"
 #include "cmb_random.h"
 #include "cmi_test.h"
 
@@ -33,53 +36,53 @@
 static void test_summary(void)
 {
     printf("\nTesting data summaries\n");
-    printf("Declaring local variable data summary on stack and initializing it: cmb_summary_initialize\n");
-    struct cmb_summary ds;
-    cmb_summary_initialize(&ds);
+    printf("Declaring local variable data summary on stack and initializing it: cmb_datasummary_initialize\n");
+    struct cmb_datasummary ds;
+    cmb_datasummary_initialize(&ds);
 
-    printf("Drawing %u U(0,1) samples and adding to data summary: cmb_summary_add\n", MAX_ITER);
+    printf("Drawing %u U(0,1) samples and adding to data summary: cmb_datasummary_add\n", MAX_ITER);
         for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
-            cmb_summary_add(&ds, cmb_random());
+            cmb_datasummary_add(&ds, cmb_random());
         }
 
     printf("\nBasic summary reporting functions:\n");
     cmi_test_print_line("-");
-    printf("cmb_summary_count:\t%llu\n", cmb_summary_count(&ds));
-    printf("cmb_summary_min:\t%#8.4g\n", cmb_summary_min(&ds));
-    printf("cmb_summary_max:\t%#8.4g\n", cmb_summary_max(&ds));
-    printf("cmb_summary_mean:\t%#8.4g\t(expected %#8.4g)\n", cmb_summary_mean(&ds), 0.5);
-    printf("cmb_summary_variance:\t%#8.4g\t(expected %#8.4g)\n", cmb_summary_variance(&ds), 1.0/12.0);
-    printf("cmb_summary_stddev:\t%#8.4g\t(expected %#8.4g)\n", cmb_summary_stddev(&ds), sqrt(1.0/12.0));
-    printf("cmb_summary_skewness:\t%#8.4g\t(expected %#8.4g)\n", cmb_summary_skewness(&ds), 0.0);
-    printf("cmb_summary_kurtosis:\t%#8.4g\t(expected %#8.4g)\n", cmb_summary_kurtosis(&ds), - 6.0 / 5.0);
+    printf("cmb_datasummary_count:\t%llu\n", cmb_datasummary_count(&ds));
+    printf("cmb_datasummary_min:\t%#8.4g\n", cmb_datasummary_min(&ds));
+    printf("cmb_datasummary_max:\t%#8.4g\n", cmb_datasummary_max(&ds));
+    printf("cmb_datasummary_mean:\t%#8.4g\t(expected %#8.4g)\n", cmb_datasummary_mean(&ds), 0.5);
+    printf("cmb_datasummary_variance:\t%#8.4g\t(expected %#8.4g)\n", cmb_datasummary_variance(&ds), 1.0/12.0);
+    printf("cmb_datasummary_stddev:\t%#8.4g\t(expected %#8.4g)\n", cmb_datasummary_stddev(&ds), sqrt(1.0/12.0));
+    printf("cmb_datasummary_skewness:\t%#8.4g\t(expected %#8.4g)\n", cmb_datasummary_skewness(&ds), 0.0);
+    printf("cmb_datasummary_kurtosis:\t%#8.4g\t(expected %#8.4g)\n", cmb_datasummary_kurtosis(&ds), - 6.0 / 5.0);
     cmi_test_print_line("-");
 
-    printf("\nSummary: cmb_summary_print\n");
-    cmb_summary_print(&ds, stdout, true);
+    printf("\nSummary: cmb_datasummary_print\n");
+    cmb_datasummary_print(&ds, stdout, true);
     printf("Summary without lead-ins:\n");
-    cmb_summary_print(&ds, stdout, false);
+    cmb_datasummary_print(&ds, stdout, false);
 
     cmi_test_print_line("-");
-    printf("\nOnce more, now on the heap: cmb_summary_create()\n");
-    struct cmb_summary *dsp = cmb_summary_create();
+    printf("\nOnce more, now on the heap: cmb_datasummary_create()\n");
+    struct cmb_datasummary *dsp = cmb_datasummary_create();
 
-    printf("Drawing %u U(0,1) samples and adding to data summary: cmb_summary_add\n", MAX_ITER);
+    printf("Drawing %u U(0,1) samples and adding to data summary: cmb_datasummary_add\n", MAX_ITER);
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
-        cmb_summary_add(dsp, cmb_random_uniform(1.0, 2.0));
+        cmb_datasummary_add(dsp, cmb_random_uniform(1.0, 2.0));
     }
 
-    printf("\nSummary: cmb_summary_print\n");
-    cmb_summary_print(dsp, stdout, true);
-    printf("\nMerging the two data summaries: cmb_summary_merge ... ");
-    const uint64_t nn = cmb_summary_merge(dsp, dsp, &ds);
+    printf("\nSummary: cmb_datasummary_print\n");
+    cmb_datasummary_print(dsp, stdout, true);
+    printf("\nMerging the two data summaries: cmb_datasummary_merge ... ");
+    const uint64_t nn = cmb_datasummary_merge(dsp, dsp, &ds);
     printf("Returned %llu samples\n", nn);
-    printf("Merged summary: cmb_summary_print\n");
-    cmb_summary_print(dsp, stdout, true);
+    printf("Merged summary: cmb_datasummary_print\n");
+    cmb_datasummary_print(dsp, stdout, true);
 
-    printf("\nCleaning up: cmb_summary_terminate, cmb_summary_destroy\n");
-    cmb_summary_terminate(&ds);
-    cmb_summary_terminate(dsp);
-    cmb_summary_destroy(dsp);
+    printf("\nCleaning up: cmb_datasummary_terminate, cmb_datasummary_destroy\n");
+    cmb_datasummary_terminate(&ds);
+    cmb_datasummary_terminate(dsp);
+    cmb_datasummary_destroy(dsp);
 
     cmi_test_print_line("=");
 }
@@ -88,80 +91,80 @@ static void test_wsummary(void)
 {
     printf("\nTesting weighted data summaries\n");
     printf("Weighted and unweighted in parallel, all weights set to 1.0\n");
-    struct cmb_summary ds;
-    cmb_summary_initialize(&ds);
-    struct cmb_wsummary dws;
-    cmb_wsummary_initialize(&dws);
+    struct cmb_datasummary ds;
+    cmb_datasummary_initialize(&ds);
+    struct cmb_wtdsummary dws;
+    cmb_wtdsummary_initialize(&dws);
 
     printf("Drawing %u U(0,1) samples...\n", MAX_ITER);
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
         const double x = cmb_random();
-        cmb_summary_add(&ds, x);
-        cmb_wsummary_add(&dws, x, 1.0);
+        cmb_datasummary_add(&ds, x);
+        cmb_wtdsummary_add(&dws, x, 1.0);
     }
 
     printf("\n\t\tUnweighted\tWeighted\tExpected:\n");
     cmi_test_print_line("-");
-    printf("Count:   \t%llu \t%llu \t%u\n", cmb_summary_count(&ds), cmb_wsummary_count(&dws), MAX_ITER);
-    printf("Minimum: \t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_summary_min(&ds), cmb_wsummary_min(&dws), 0.0);
-    printf("Maximum: \t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_summary_max(&ds), cmb_wsummary_max(&dws), 1.0);
-    printf("Mean:    \t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_summary_mean(&ds), cmb_wsummary_mean(&dws), 0.5);
-    printf("Variance:\t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_summary_variance(&ds), cmb_wsummary_variance(&dws), 1.0/12.0);
-    printf("StdDev:  \t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_summary_stddev(&ds), cmb_wsummary_stddev(&dws), sqrt(1.0/12.0));
-    printf("Skewness:\t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_summary_skewness(&ds), cmb_wsummary_skewness(&dws), 0.0);
-    printf("Kurtosis:\t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_summary_kurtosis(&ds), cmb_wsummary_kurtosis(&dws), - 6.0 / 5.0);
+    printf("Count:   \t%llu \t%llu \t%u\n", cmb_datasummary_count(&ds), cmb_wtdsummary_count(&dws), MAX_ITER);
+    printf("Minimum: \t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_datasummary_min(&ds), cmb_wtdsummary_min(&dws), 0.0);
+    printf("Maximum: \t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_datasummary_max(&ds), cmb_wtdsummary_max(&dws), 1.0);
+    printf("Mean:    \t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_datasummary_mean(&ds), cmb_wtdsummary_mean(&dws), 0.5);
+    printf("Variance:\t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_datasummary_variance(&ds), cmb_wtdsummary_variance(&dws), 1.0/12.0);
+    printf("StdDev:  \t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_datasummary_stddev(&ds), cmb_wtdsummary_stddev(&dws), sqrt(1.0/12.0));
+    printf("Skewness:\t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_datasummary_skewness(&ds), cmb_wtdsummary_skewness(&dws), 0.0);
+    printf("Kurtosis:\t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_datasummary_kurtosis(&ds), cmb_wtdsummary_kurtosis(&dws), - 6.0 / 5.0);
     cmi_test_print_line("-");
 
-    printf("\nSummary: cmb_wsummary_print\n");
-    cmb_wsummary_print(&dws, stdout, true);
+    printf("\nSummary: cmb_wtdsummary_print\n");
+    cmb_wtdsummary_print(&dws, stdout, true);
     printf("Summary without lead-ins, tab separated:\n");
-    cmb_wsummary_print(&dws, stdout, false);
+    cmb_wtdsummary_print(&dws, stdout, false);
 
-    printf("\nCleaning up: cmb_summary_reset, cmb_wsummary_reset\n");
-    cmb_summary_reset(&ds);
-    cmb_wsummary_reset(&dws);
+    printf("\nCleaning up: cmb_datasummary_reset, cmb_wtdsummary_reset\n");
+    cmb_datasummary_reset(&ds);
+    cmb_wtdsummary_reset(&dws);
     cmi_test_print_line("-");
 
     printf("\nDrawing %u new x ~ U(0,1) samples weighted by 1.5 - x\n", MAX_ITER);
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
         const double x = cmb_random();
         const double w = 1.5 - x;
-        cmb_wsummary_add(&dws, x, w);
-        cmb_summary_add(&ds, x);
+        cmb_wtdsummary_add(&dws, x, w);
+        cmb_datasummary_add(&ds, x);
     }
 
     printf("Sum of weights: %#8.4g\n", dws.wsum);
     printf("Weighted:   ");;
-    cmb_wsummary_print(&dws, stdout, true);
+    cmb_wtdsummary_print(&dws, stdout, true);
     printf("Unweighted: ");;
-    cmb_summary_print(&ds, stdout, true);
-    cmb_summary_reset(&ds);
+    cmb_datasummary_print(&ds, stdout, true);
+    cmb_datasummary_reset(&ds);
     cmi_test_print_line("-");
 
 
-    printf("\nCreating another weighted data summary on the heap: cmb_wsummary_create\n");
-    struct cmb_wsummary *dwp = cmb_wsummary_create();
+    printf("\nCreating another weighted data summary on the heap: cmb_wtdsummary_create\n");
+    struct cmb_wtdsummary *dwp = cmb_wtdsummary_create();
     printf("Drawing %u new x ~ U(0,1) samples randomly weighted on U(1,5)\n", MAX_ITER);
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
         const double x = cmb_random();
         const double w = cmb_random_uniform(1.0, 5.0);
-        cmb_wsummary_add(dwp, x, w);
+        cmb_wtdsummary_add(dwp, x, w);
     }
 
-    printf("Summary: cmb_wsummary_print\n");
+    printf("Summary: cmb_wtdsummary_print\n");
     printf("Old: ");
-    cmb_wsummary_print(&dws, stdout, true);
+    cmb_wtdsummary_print(&dws, stdout, true);
     printf("New: ");
-    cmb_wsummary_print(dwp, stdout, true);
+    cmb_wtdsummary_print(dwp, stdout, true);
 
-    printf("\nMerging the two: cmb_wsummary_merge ... ");
-    const uint64_t nm = cmb_wsummary_merge(dwp, dwp, &dws);
+    printf("\nMerging the two: cmb_wtdsummary_merge ... ");
+    const uint64_t nm = cmb_wtdsummary_merge(dwp, dwp, &dws);
     printf("Returned %llu\n", nm);
-    printf("Merged summary: cmb_wsummary_print\n");
-    cmb_wsummary_print(dwp, stdout, true);
-    printf("Cleaning up: cmb_wsummary_terminate, cmb_wsummary_destroy\n");
-    cmb_wsummary_terminate(&dws);
-    cmb_wsummary_destroy(dwp);
+    printf("Merged summary: cmb_wtdsummary_print\n");
+    cmb_wtdsummary_print(dwp, stdout, true);
+    printf("Cleaning up: cmb_wtdsummary_terminate, cmb_wtdsummary_destroy\n");
+    cmb_wtdsummary_terminate(&dws);
+    cmb_wtdsummary_destroy(dwp);
 
     cmi_test_print_line("=");
 }
@@ -213,13 +216,13 @@ void test_dataset(void)
         cmb_dataset_add(&ds, cmb_random());
     }
 
-    struct cmb_summary dsum = { 0 };
+    struct cmb_datasummary dsum = { 0 };
     printf("\nSummarizing the dataset: cmb_dataset_summarize ...");
     const uint64_t um = cmb_dataset_summarize(&ds, &dsum);
     printf("returned %llu\n", um);
 
     printf("Summary generated from the dataset:\n");
-    cmb_summary_print(&dsum, stdout, true);
+    cmb_datasummary_print(&dsum, stdout, true);
     printf("\nUnweighted histogram: cmb_dataset_print_histogram\n");
     cmb_dataset_print_histogram(&ds, stdout, 20u, 0.0, 0.0);
 
@@ -249,9 +252,9 @@ void test_dataset(void)
         cmb_dataset_add(dsp, x);
     }
 
-    cmb_summary_reset(&dsum);
+    cmb_datasummary_reset(&dsum);
     (void)cmb_dataset_summarize(dsp, &dsum);
-    cmb_summary_print(&dsum, stdout, true);
+    cmb_datasummary_print(&dsum, stdout, true);
     cmb_dataset_print_histogram(dsp, stdout, 20u, 0, 0);
 
     printf("\nAutocorrelation coefficients:\n");
@@ -262,8 +265,8 @@ void test_dataset(void)
     cmb_dataset_PACF(dsp, MAX_LAG, pacf, acf);
     cmb_dataset_print_correlogram(dsp, stdout, MAX_LAG, pacf);
 
-    printf("\nCleaning up: cmb_summary_terminate, cmb_dataset_destroy\n");
-    cmb_summary_terminate(&dsum);
+    printf("\nCleaning up: cmb_datasummary_terminate, cmb_dataset_destroy\n");
+    cmb_datasummary_terminate(&dsum);
     cmb_dataset_destroy(dsp);
 
     cmi_test_print_line("=");
@@ -297,10 +300,10 @@ void test_timeseries(void)
     printf("cmb_timeseries_max:\t%#8.4g\n", cmb_timeseries_max(tsp));
     cmi_test_print_line("-");
 
-    printf("\nSummarizing: cmb_timeseries_summarize, cmb_wsummary_print, cmb_timeseries_print_fivenum ...\n");
-    struct cmb_wsummary ws = { 0 };
+    printf("\nSummarizing: cmb_timeseries_summarize, cmb_wtdsummary_print, cmb_timeseries_print_fivenum ...\n");
+    struct cmb_wtdsummary ws = { 0 };
     cmb_timeseries_summarize(tsp, &ws);
-    cmb_wsummary_print(&ws, stdout, true);
+    cmb_wtdsummary_print(&ws, stdout, true);
     cmb_timeseries_print_fivenum(tsp, stdout, true);
 
     printf("\nWeighted histogram:\n");
@@ -326,20 +329,20 @@ void test_timeseries(void)
 
     printf("Src: ");
     cmb_timeseries_summarize(&ts, &ws);
-    cmb_wsummary_print(&ws, stdout, true);
+    cmb_wtdsummary_print(&ws, stdout, true);
     printf("Tgt: ");
     cmb_timeseries_summarize(tsp, &ws);
-    cmb_wsummary_print(&ws, stdout, true);
+    cmb_wtdsummary_print(&ws, stdout, true);
 
     printf("Copying src into tgt: cmb_timeseries_copy ... ");
     uint64_t r = cmb_timeseries_copy(tsp, &ts);
     printf("returned %llu\n", r);
     printf("Tgt: ");
     cmb_timeseries_summarize(tsp, &ws);
-    cmb_wsummary_print(&ws, stdout, true);
+    cmb_wtdsummary_print(&ws, stdout, true);
     printf("Src: ");
     cmb_timeseries_summarize(&ts, &ws);
-    cmb_wsummary_print(&ws, stdout, true);
+    cmb_wtdsummary_print(&ws, stdout, true);
 
     printf("\nCleaning up: cmb_timeseries_reset, cmb_timeseries_destroy\n");
     cmb_timeseries_reset(&ts);

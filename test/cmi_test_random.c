@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "cmb_data.h"
+#include "cmb_dataset.h"
 #include "cmb_random.h"
 
 /* Utilities for the testing */
@@ -50,10 +50,10 @@
     }
 
 #define QTEST_REPORT() \
-    struct cmb_summary dsu = { 0 }; \
+    struct cmb_datasummary dsu = { 0 }; \
     cmb_dataset_summarize(&ds, &dsu); \
     printf("Actual:   "); \
-    cmb_summary_print(&dsu, stdout, LEADINS); \
+    cmb_datasummary_print(&dsu, stdout, LEADINS); \
     cmb_dataset_print_histogram(&ds, stdout, 20, 0.0, 0.0)
 
 #define QTEST_REPORT_ACFS() \
