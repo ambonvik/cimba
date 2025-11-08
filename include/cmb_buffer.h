@@ -103,4 +103,9 @@ static inline const char *cmb_buffer_get_name(struct cmb_buffer *sp)
     return rbp->name;
 }
 
+extern void cmb_buffer_start_recording(struct cmb_buffer *bp);
+extern void cmb_buffer_stop_recording(struct cmb_buffer *bp);
+extern struct cmb_timeseries *cmb_buffer_get_history(struct cmb_buffer *bp);
+extern void cmb_buffer_print_report(struct cmb_buffer *bp, FILE *fp);
+
 #endif // CIMBA_CMB_BUFFER_H

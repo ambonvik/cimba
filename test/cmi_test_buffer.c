@@ -30,17 +30,33 @@
 #include "cmi_memutils.h"
 
 #define USERFLAG 0x00000001
+#define NUM_PUTTERS 3u
+#define NUM_GETTERS 3u
+
+struct experiment {
+    struct cmb_process *putters[NUM_PUTTERS];
+    struct cmb_process *getters[NUM_PUTTERS];
+    struct cmb_process *nuisance;
+    struct cmb_buffer *buf;
+};
 
 static void end_sim_evt(void *subject, void *object)
 {
-    struct cmb_process **cpp = subject;
-    const uint64_t n = (uint64_t)object;
+    cmb_unused(object);
+
+    struct experiment *texp = subject;
     cmb_logger_info(stdout, "===> end_sim: game over <===");
-    for (unsigned ui = 0; ui < n; ui++) {
-        cmb_process_stop(cpp[ui], NULL);
+    for (unsigned ui = 0; ui < NUM_PUTTERS; ui++) {
+        cmb_process_stop(texp->putters[ui], NULL);
     }
 
-    /* To be sure that we got everything */
+    for (unsigned ui = 0; ui < NUM_GETTERS; ui++) {
+        cmb_process_stop(texp->getters[ui], NULL);
+    }
+
+    cmb_process_stop(texp->nuisance, NULL);
+
+    /* Make sure that we got everything */
     cmb_event_queue_clear();
 }
 
@@ -132,13 +148,15 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
 
+    /* Abuse internal knowledge of the content of the experiment struct */
     struct cmb_process **tgt = (struct cmb_process **)ctx;
+    unsigned nproc = NUM_PUTTERS + NUM_GETTERS;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         cmb_logger_user(USERFLAG, stdout, "Holding ...");
         (void)cmb_process_hold(cmb_random_exponential(1.0));
-        const uint16_t vic = cmb_random_dice(0, 5);
+        const uint16_t vic = cmb_random_dice(0, nproc - 1u);
         const int64_t sig = cmb_random_dice(1, 10);
         const int64_t pri = cmb_random_dice(-5, 5);
         cmb_logger_user(USERFLAG, stdout, "Interrupting %s with %lld", tgt[vic]->name, sig);
@@ -148,56 +166,67 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
 
 void test_buffer(void)
 {
+    struct experiment *buftst = cmi_malloc(sizeof(*buftst));
+    cmi_memset(buftst, 0, sizeof(*buftst));
+
     const uint64_t seed = cmb_random_get_hwseed();
     cmb_random_initialize(seed);
-    printf("seed: %llu\n", seed);
+    printf("seed: %llx\n", seed);
 
     cmb_logger_flags_off(CMB_LOGGER_INFO);
+    cmb_logger_flags_off(USERFLAG);
     cmb_event_queue_initialize(0.0);
 
     printf("Create a buffer\n");
-    struct cmb_buffer *bp = cmb_buffer_create();
-    cmb_buffer_initialize(bp, "Buf", 10u);
+    buftst->buf = cmb_buffer_create();
+    cmb_buffer_initialize(buftst->buf, "Buf", 10u);
+    cmb_buffer_start_recording(buftst->buf);
 
     char buf[32];
-    struct cmb_process *cpp[7];
-    printf("Create three processes feeding the buffer\n");
+    printf("Create three processes feeding into the buffer\n");
     for (unsigned ui = 0; ui < 3; ui++) {
-        cpp[ui] = cmb_process_create();
+        buftst->putters[ui] = cmb_process_create();
         snprintf(buf, sizeof(buf), "Putter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(cpp[ui], buf, putterfunc, bp, pri);
-        cmb_process_start(cpp[ui]);
+        cmb_process_initialize(buftst->putters[ui], buf, putterfunc, buftst->buf, pri);
+        cmb_process_start(buftst->putters[ui]);
     }
 
     printf("Create three processes consuming from the buffer\n");
-    for (unsigned ui = 3; ui < 6; ui++) {
-        cpp[ui] = cmb_process_create();
+    for (unsigned ui = 0; ui < 3; ui++) {
+        buftst->getters[ui] = cmb_process_create();
         snprintf(buf, sizeof(buf), "Getter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(cpp[ui], buf, getterfunc, bp, pri);
-        cmb_process_start(cpp[ui]);
+        cmb_process_initialize(buftst->getters[ui], buf, getterfunc, buftst->buf, pri);
+        cmb_process_start(buftst->getters[ui]);
     }
 
     printf("Create a bloody nuisance\n");
-    cpp[6] = cmb_process_create();
-    cmb_process_initialize(cpp[6], "Nuisance", nuisancefunc, cpp, 0);
-    cmb_process_start(cpp[6]);
+    buftst->nuisance = cmb_process_create();
+    cmb_process_initialize(buftst->nuisance, "Nuisance", nuisancefunc, buftst, 0);
+    cmb_process_start(buftst->nuisance);
 
     printf("Schedule end event\n");
-    (void)cmb_event_schedule(end_sim_evt, cpp, (void *)7u, 100.0, 0);
+    (void)cmb_event_schedule(end_sim_evt, buftst, NULL, 10000.0, 0);
 
-    printf("Execute simulation\n");
+    printf("Execute simulation...\n");
     cmb_event_queue_execute();
 
+    printf("Report statistics...\n");
+    cmb_buffer_stop_recording(buftst->buf);
+    cmb_buffer_print_report(buftst->buf, stdout);
+
     printf("Clean up\n");
-    for (unsigned ui = 0; ui < 6; ui++) {
-        cmb_process_terminate(cpp[ui]);
-        cmb_process_destroy(cpp[ui]);
+    for (unsigned ui = 0; ui < 3; ui++) {
+        cmb_process_terminate(buftst->getters[ui]);
+        cmb_process_destroy(buftst->putters[ui]);
     }
 
-    cmb_buffer_destroy(bp);
+    cmb_process_terminate(buftst->nuisance);
+    cmb_process_destroy(buftst->nuisance);
+    cmb_buffer_destroy(buftst->buf);
     cmb_event_queue_terminate();
+    cmi_free(buftst);
 }
 
 int main(void)

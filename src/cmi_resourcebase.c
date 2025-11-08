@@ -56,8 +56,12 @@ void cmi_resourcebase_initialize(struct cmi_resourcebase *rbp,
 {
     cmb_assert_release(rbp != NULL);
 
-    cmb_resourcebase_set_name(rbp, name);
+    cmi_resourcebase_set_name(rbp, name);
     rbp->scram = base_scram;
+    rbp->reprio = base_reprio;
+    rbp->is_recording = false;
+
+    cmb_timeseries_initialize(&(rbp->history));
 }
 
 /*
@@ -65,7 +69,9 @@ void cmi_resourcebase_initialize(struct cmi_resourcebase *rbp,
  */
 void cmi_resourcebase_terminate(struct cmi_resourcebase *rbp)
 {
-    cmb_unused(rbp);
+    cmb_assert_release(rbp != NULL);
+
+    cmb_timeseries_terminate(&(rbp->history));
 }
 
 /*
@@ -74,7 +80,7 @@ void cmi_resourcebase_terminate(struct cmi_resourcebase *rbp)
  * The name is contained in a fixed size buffer and will be truncated if it is
  * too long to fit into the buffer, leaving one char for the \0 at the end.
  */
-void cmb_resourcebase_set_name(struct cmi_resourcebase *rbp, const char *name)
+void cmi_resourcebase_set_name(struct cmi_resourcebase *rbp, const char *name)
 {
     cmb_assert_release(rbp != NULL);
     cmb_assert_release(name != NULL);

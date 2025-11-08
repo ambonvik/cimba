@@ -115,6 +115,56 @@ static bool buffer_has_space(const struct cmi_resourcebase *rbp,
     return (bp->contains < bp->capacity);
 }
 
+static void record_sample(struct cmb_buffer *bp) {
+    cmb_assert_release(bp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
+    if (rbp->is_recording) {
+        struct cmb_timeseries *ts = &(rbp->history);
+        cmb_timeseries_add(ts, (double)(bp->contains), cmb_time());
+    }
+}
+
+void cmb_buffer_start_recording(struct cmb_buffer *bp)
+{
+    cmb_assert_release(bp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
+    rbp->is_recording = true;
+    record_sample(bp);
+}
+
+void cmb_buffer_stop_recording(struct cmb_buffer *bp)
+{
+    cmb_assert_release(bp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
+    record_sample(bp);
+    rbp->is_recording = false;
+}
+
+struct cmb_timeseries *cmb_buffer_get_history(struct cmb_buffer *bp)
+{
+    cmb_assert_release(bp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
+
+    return &(rbp->history);
+}
+
+void cmb_buffer_print_report(struct cmb_buffer *bp, FILE *fp) {
+    cmb_assert_release(bp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
+    const struct cmb_timeseries *ts = &(rbp->history);
+    struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
+    (void)cmb_timeseries_summarize(ts, ws);
+    cmb_wtdsummary_print(ws, stdout, true);
+    cmb_wtdsummary_destroy(ws);
+    const unsigned nbin = (bp->capacity > 20) ? 20 : bp->capacity + 1;
+    cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(bp->capacity + 1u));
+}
+
 /*
  * cmb_buffer_get : Request and if necessary wait for an amount of the
  * buffer resource.
@@ -146,6 +196,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
         if (bp->contains >= rem_claim) {
             /* Grab what we need */
             bp->contains -= rem_claim;
+            record_sample(bp);
             *amntp += rem_claim;
             cmb_logger_info(stdout,
                             "Success, %llu was available, got %llu",
@@ -166,6 +217,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
             /* Grab what is there */
             const uint64_t grab = bp->contains;
             bp->contains = 0u;
+            record_sample(bp);
             *amntp += grab;
             rem_claim -= grab;
             cmb_logger_info(stdout,
@@ -233,6 +285,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
         if ((bp->capacity - bp->contains) >= rem_claim) {
             /* Push the remainder into the buffer */
             bp->contains += rem_claim;
+            record_sample(bp);
             *amntp -= rem_claim;
             cmb_logger_info(stdout,
                             "Success, found room for %llu, has %llu remaining",
@@ -253,6 +306,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
             /* Fill 'er up */
             const uint64_t grab = bp->capacity - bp->contains;
             bp->contains = bp->capacity;
+            record_sample(bp);
             *amntp -= grab;
             rem_claim -= grab;
             cmb_logger_info(stdout,
