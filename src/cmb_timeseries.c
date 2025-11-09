@@ -114,7 +114,9 @@ uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp,
     }
 
     const uint64_t ui_new = dsp->cnt;
-    (void)cmb_dataset_add(dsp, x);
+    const uint64_t n = cmb_dataset_add(dsp, x);
+    cmb_assert_debug(n == ui_new + 1u);
+
     cmb_assert_debug(tsp->ta != NULL);
     tsp->ta[ui_new] = t;
     /* Duration still unknown, weight at zero for now */
@@ -150,10 +152,11 @@ uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, const double t)
 
 /*
  * Summarize the timeseries into a weighted data set, using the time intervals
- * between x-values as the weighing.  * The last x-value in the timeseries has
- * no duration and is not included in the summary.
+ * between x-values as the weighing. The last x-value in the timeseries has no
+ * duration and is not included in the summary.
+ *
  * Call cmb_timeseries_finalize(cmb_time()) first to include the last x-value
- * witt a non-zero duration.
+ * with a non-zero duration.
  */
 uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp,
                                   struct cmb_wtdsummary *wsp)
@@ -162,11 +165,10 @@ uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp,
     cmb_assert_release(tsp->ta != NULL);
     cmb_assert_release(wsp != NULL);
 
-    cmb_wtdsummary_reset(wsp);
-
     const struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     cmb_assert_debug(dsp->xa != NULL);
 
+    const uint64_t old_n = cmb_wtdsummary_count(wsp);
     const uint64_t un = cmb_timeseries_count(tsp);
     cmb_assert_debug(un > 0u);
     for (uint64_t ui = 0u; ui < un - 1u; ui++) {
@@ -175,7 +177,7 @@ uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp,
         cmb_wtdsummary_add(wsp, x, w);
     }
 
-    cmb_assert_debug(cmb_wtdsummary_count(wsp) == un - 1u);
+    cmb_assert_debug(cmb_wtdsummary_count(wsp) == old_n + un - 1u);
     return un - 1u;
 }
 

@@ -51,7 +51,6 @@ void cmb_wtdsummary_reset(struct cmb_wtdsummary *wsp)
 
     cmb_wtdsummary_terminate(wsp);
     cmb_wtdsummary_initialize(wsp);
-
 }
 
 void cmb_wtdsummary_terminate(struct cmb_wtdsummary *wsp)
@@ -74,34 +73,66 @@ void cmb_wtdsummary_destroy(struct cmb_wtdsummary *wsp)
  * See: Pébay & al, "Numerically stable, scalable formulas for parallel and
  *      online computation of higher-order multivariate central moments with
  *      arbitrary weights", Computational Statistics (2016) 31:1305–1325
+ *
  * Adding a single sample is a special case with n2 = 1.
  *
  * Returns the updated sample count.
  */
 uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
-                          const double x,
-                          const double w)
+                            const double x,
+                            const double w)
 {
     cmb_assert_release(wsp != NULL);
+    cmb_assert_release(w >= 0.0);
 
     struct cmb_datasummary *dsp = (struct cmb_datasummary *)wsp;
+
+    if (dsp->cnt == 0u) {
+        dsp->cnt = 1u;
+        dsp->max = x;
+        dsp->min = x;
+        dsp->m1 = x;
+        dsp->m2 = 0.0;
+        dsp->m3 = 0.0;
+        dsp->m4 = 0.0;
+        wsp->wsum = w;
+
+        return dsp->cnt;
+    }
+
     dsp->max = (x > dsp->max) ? x : dsp->max;
     dsp->min = (x < dsp->min) ? x : dsp->min;
-
-    const double d = x - dsp->m1;
-    const double d_2 = d * d;
-    const double d_3 = d * d_2;
-    const double ws = wsp->wsum + w;
-    const double d_w = d / ws;
-    const double d_w_2 = d_w * d_w;
-    const double d_w_3 = d_w_2 * d_w;
-
     dsp->cnt++;
-    wsp->wsum = ws;
-    dsp->m1 += w * d_w;
-    dsp->m2 += d * (d - d_w);
-    dsp->m3 += d * (d_2 - d_w_2) - 3.0 * d_w * dsp->m2;
-    dsp->m4 += d * (d_3 - d_w_3) - 6.0 * d_w_2 * dsp->m2 - 4.0 * d_w * dsp->m3;
+
+    if (w != 0.0) {
+        struct cmb_wtdsummary tws = { 0 };
+        struct cmb_datasummary *ts = (struct cmb_datasummary *)(&tws);
+
+        const double w1 = wsp->wsum;
+        const double w2 = w;
+        const double ws = w1 + w2;
+        const double d21 = x - dsp->m1;
+        const double d21_w = d21 / ws;
+        const double d21_w_2 = d21_w * d21_w;
+        const double d21_w_3 = d21_w * d21_w_2;
+
+        tws.wsum = ws;
+        ts->m1 = dsp->m1 + w2 * d21_w;
+        ts->m2 = dsp->m2 + w1 * w2 * d21 * d21_w;
+        ts->m3 = dsp->m3
+                + w1 * w2 * (w1 - w2) * d21 * d21_w_2
+                - 3.0 * w2 * dsp->m2 * d21_w;
+        ts->m4 = dsp->m4
+                + w1 * w2 * (w1 * w1 - w1 * w2 + w2 * w2) * d21 * d21_w_3
+                + 6.0 * w2 * w2 * dsp->m2 * d21_w_2
+                - 4.0 * w2 * dsp->m3 * d21_w;
+
+        dsp->m1 = ts->m1;
+        dsp->m2 = ts->m2;
+        dsp->m3 = ts->m3;
+        dsp->m4 = ts->m4;
+        wsp->wsum = ws;
+    }
 
     return dsp->cnt;
 }
@@ -138,12 +169,13 @@ uint64_t cmb_wtdsummary_merge(struct cmb_wtdsummary *tgt,
 
     const double w1 = ws1->wsum;
     const double w2 = ws2->wsum;
-    const double ws = tws.wsum = w1 + w2;
+    const double ws = w1 + w2;
     const double d21 = dsp2->m1 - dsp1->m1;
     const double d21_w = d21 / ws;
     const double d21_w_2 = d21_w * d21_w;
     const double d21_w_3 = d21_w * d21_w_2;
 
+    tws.wsum = ws;
     ts->m1 = dsp1->m1 + w2 * d21_w;
     ts->m2 = dsp1->m2 + dsp2->m2
                       + w1 * w2 * d21 * d21_w;
