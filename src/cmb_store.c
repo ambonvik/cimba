@@ -227,6 +227,58 @@ static uint64_t store_reset_holder(const struct cmi_hashheap *hp,
     return surplus;
 }
 
+static void record_sample(struct cmb_store *sp) {
+    cmb_assert_release(sp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    if (rbp->is_recording) {
+        struct cmb_timeseries *ts = &(rbp->history);
+        const double x = (double)(sp->in_use);
+        const double t = cmb_time();
+        cmb_timeseries_add(ts, x, t);
+    }
+}
+
+void cmb_store_start_recording(struct cmb_store *sp)
+{
+    cmb_assert_release(sp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    rbp->is_recording = true;
+    record_sample(sp);
+}
+
+void cmb_store_stop_recording(struct cmb_store *sp)
+{
+    cmb_assert_release(sp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    record_sample(sp);
+    rbp->is_recording = false;
+}
+
+struct cmb_timeseries *cmb_store_get_history(struct cmb_store *sp)
+{
+    cmb_assert_release(sp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+
+    return &(rbp->history);
+}
+
+void cmb_store_print_report(struct cmb_store *sp, FILE *fp) {
+    cmb_assert_release(sp != NULL);
+
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    const struct cmb_timeseries *ts = &(rbp->history);
+    struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
+    (void)cmb_timeseries_summarize(ts, ws);
+    cmb_wtdsummary_print(ws, stdout, true);
+    cmb_wtdsummary_destroy(ws);
+    const unsigned nbin = (sp->capacity > 20) ? 20 : sp->capacity + 1;
+    cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(sp->capacity + 1u));
+}
+
 uint64_t cmb_store_held_by_process(struct cmb_store *sp,
                                    struct cmb_process *pp)
 {
@@ -352,6 +404,7 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
             /* Grab what we need */
             sp->in_use += rem_claim;
             cmb_assert_debug(sp->in_use <= sp->capacity);
+            record_sample(sp);
             (void)store_update_record(sp,
                                       hp,
                                       caller,
@@ -374,6 +427,7 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
             /* Grab what is there */
             sp->in_use += available;
             cmb_assert_debug(sp->in_use <= sp->capacity);
+            record_sample(sp);
             rem_claim -= available;
             caller_handle = store_update_record(sp,
                                                 hp,
@@ -446,8 +500,9 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
                                               rem_claim);
                     const uint64_t surplus = loot - rem_claim;
                     sp->in_use -= surplus;
-
                     cmb_assert_debug(sp->in_use <= sp->capacity);
+                    record_sample(sp);
+
                     cmb_assert_debug(store_sum_holder_items(hp, 1)
                                      == sp->in_use);
                     cmb_logger_info(stdout,
@@ -491,12 +546,17 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
                                                             initially_held);
                 sp->in_use -= surplus;
                 cmb_assert_debug(sp->in_use <= sp->capacity);
+                record_sample(sp);
+
                 cmi_resourceguard_signal(&(sp->front_guard));
             }
             else {
                 /* Put back all. */
                 const uint64_t holds_now = cmb_store_held_by_process(sp, caller);
                 sp->in_use -= holds_now;
+                cmb_assert_debug(sp->in_use <= sp->capacity);
+                record_sample(sp);
+
                 const bool found = cmi_resourcetag_list_remove(caller_rtloc,
                                                                rbp);
                 /* There may be a record created during this call, delete it */
@@ -578,7 +638,10 @@ void cmb_store_release(struct cmb_store *sp, const uint64_t amount)
 
     /* Put it back and pling the front desk bell */
     sp->in_use -= amount;
+    cmb_assert_debug(sp->in_use <= sp->capacity);
+    record_sample(sp);
     cmb_logger_info(stdout, "Released %lld of %s", amount, rbp->name);
+
     struct cmi_resourceguard *rgp = &(sp->front_guard);
     cmi_resourceguard_signal(rgp);
 }

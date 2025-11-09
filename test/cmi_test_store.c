@@ -31,23 +31,46 @@
 
 #define USERFLAG 0x00000001
 
+#define NUM_MICE 3u
+#define NUM_RATS 2u
+#define NUM_CATS 1u
+
+struct experiment {
+    struct cmb_process *mice[NUM_MICE];
+    struct cmb_process *rats[NUM_RATS];
+    struct cmb_process *cats[NUM_CATS];
+    struct cmb_store *cheese;
+};
+
+
 static void end_sim_evt(void *subject, void *object)
 {
-    struct cmb_process **cpp = subject;
-    const uint64_t n = (uint64_t)object;
+    cmb_unused(subject);
+    cmb_assert_release(object != NULL);
+
+    struct experiment *tstexp = object;
     cmb_logger_info(stdout, "===> end_sim: game over <===");
-    for (unsigned ui = 0; ui < n; ui++) {
-        cmb_process_stop(cpp[ui], NULL);
+    for (unsigned ui = 0; ui < NUM_MICE; ui++) {
+        cmb_process_stop(tstexp->mice[ui], NULL);
+    }
+    for (unsigned ui = 0; ui < NUM_RATS; ui++) {
+        cmb_process_stop(tstexp->rats[ui], NULL);
+    }
+    for (unsigned ui = 0; ui < NUM_CATS; ui++) {
+        cmb_process_stop(tstexp->cats[ui], NULL);
     }
 
     /* To be sure that we got everything */
     cmb_event_queue_clear();
 }
 
-void *procfunc3(struct cmb_process *me, void *ctx)
+void *mousefunc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
-    struct cmb_store *sp = ctx;
+    cmb_assert_release(ctx != NULL);
+
+    struct experiment *tstexp = ctx;
+    struct cmb_store *sp = tstexp->cheese;
     uint64_t amount_held = 0u;
 
     // ReSharper disable once CppDFAEndlessLoop
@@ -109,7 +132,10 @@ void *procfunc3(struct cmb_process *me, void *ctx)
 void *ratfunc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
-    struct cmb_store *sp = ctx;
+    cmb_assert_release(ctx != NULL);
+
+    struct experiment *tstexp = ctx;
+    struct cmb_store *sp = tstexp->cheese;
     uint64_t amount_held = 0u;
 
     // ReSharper disable once CppDFAEndlessLoop
@@ -146,6 +172,16 @@ void *ratfunc(struct cmb_process *me, void *ctx)
                                 "Interrupted by signal %lld", sig);
             }
         }
+        else if (sig == CMB_PROCESS_PREEMPTED) {
+            cmb_logger_user(USERFLAG, stdout,
+                            "Preempted during preempt attempt, all my %s is gone",
+                            cmb_store_get_name(sp));
+            amount_held = 0u;
+        }
+        else {
+            cmb_logger_user(USERFLAG, stdout,
+                            "Interrupted by signal %lld", sig);
+        }
 
         cmb_logger_user(USERFLAG, stdout, "Holding, amount held: %llu", amount_held);
         sig = cmb_process_hold(cmb_random_exponential(1.0));
@@ -162,14 +198,17 @@ void *ratfunc(struct cmb_process *me, void *ctx)
 void *catfunc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
-    struct cmb_process **cpp = (struct cmb_process **) ctx;
-    cmb_assert_release(cpp != NULL);
+    cmb_assert_release(ctx != NULL);
+
+    struct experiment *tstexp = ctx;
+    struct cmb_process **cpp = (struct cmb_process **) tstexp;
+    const long num = NUM_MICE + NUM_RATS;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         cmb_logger_user(USERFLAG, stdout, "Looking for rodents");
         (void)cmb_process_hold(cmb_random_exponential(1.0));
-        struct cmb_process *tgt = cpp[cmb_random_dice(0, 3)];
+        struct cmb_process *tgt = cpp[cmb_random_dice(0, num - 1)];
         cmb_assert_debug(tgt != NULL);
         cmb_logger_user(USERFLAG, stdout, "Chasing %s", cmb_process_get_name(tgt));
         const int64_t sig = (cmb_random_flip()) ? CMB_PROCESS_INTERRUPTED : cmb_random_dice(10,100);
@@ -179,6 +218,9 @@ void *catfunc(struct cmb_process *me, void *ctx)
 
 void test_store(void)
 {
+    struct experiment *storetest = cmi_malloc(sizeof(*storetest));
+    cmi_memset(storetest, 0, sizeof(*storetest));
+
     const uint64_t seed = cmb_random_get_hwseed();
     cmb_random_initialize(seed);
     printf("seed: %llu\n", seed);
@@ -187,44 +229,58 @@ void test_store(void)
     cmb_event_queue_initialize(0.0);
 
     printf("Create a store\n");
-    struct cmb_store *sp = cmb_store_create();
-    cmb_store_initialize(sp, "Cheese", 25u);
+    storetest->cheese = cmb_store_create();
+    cmb_store_initialize(storetest->cheese, "Cheese", 20u);
+    cmb_store_start_recording(storetest->cheese);
 
-    struct cmb_process *cpp[5];
+    char scratchpad[32];
     printf("Create three small mice to compete for the cheese\n");
-    for (unsigned ui = 0; ui < 3; ui++) {
-        cpp[ui] = cmb_process_create();
-        char buf[32];
-        snprintf(buf, sizeof(buf), "Mouse_%u", ui + 1u);
+    for (unsigned ui = 0; ui < NUM_MICE; ui++) {
+        storetest->mice[ui] = cmb_process_create();
+        snprintf(scratchpad, sizeof(scratchpad), "Mouse_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(cpp[ui], buf, procfunc3, sp, pri);
-        cmb_process_start(cpp[ui]);
+        cmb_process_initialize(storetest->mice[ui], scratchpad, mousefunc, storetest, pri);
+        cmb_process_start(storetest->mice[ui]);
     }
 
-    printf("Create a rat trying to preempt the cheese from the mice\n");
-    cpp[3] = cmb_process_create();
-    cmb_process_initialize(cpp[3], "Rat_1", ratfunc, sp, 0);
-    cmb_process_start(cpp[3]);
+    printf("Create a pair of rats trying to preempt the cheese from the mice\n");
+    for (unsigned ui = 0; ui < NUM_RATS; ui++) {
+        storetest->rats[ui] = cmb_process_create();
+        snprintf(scratchpad, sizeof(scratchpad), "Rat_%u", ui + 1u);
+        const int64_t pri = cmb_random_dice(-5, 5);
+        cmb_process_initialize(storetest->rats[ui], scratchpad, ratfunc, storetest, pri);
+        cmb_process_start(storetest->rats[ui]);
+    }
 
     printf("Create a cat chasing all the rodents\n");
-    cpp[4] = cmb_process_create();
-    cmb_process_initialize(cpp[4], "Cat_1", catfunc, cpp, 0);
-    cmb_process_start(cpp[4]);
+    for (unsigned ui = 0; ui < NUM_CATS; ui++) {
+        storetest->cats[ui] = cmb_process_create();
+        snprintf(scratchpad, sizeof(scratchpad), "Cat_%u", ui + 1u);
+        const int64_t pri = cmb_random_dice(-5, 5);
+        cmb_process_initialize(storetest->cats[ui], scratchpad, catfunc, storetest, pri);
+        cmb_process_start(storetest->cats[ui]);
+    }
 
     printf("Schedule end event\n");
-    (void)cmb_event_schedule(end_sim_evt, cpp, (void *)5u, 100.0, 0);
+    (void)cmb_event_schedule(end_sim_evt, NULL, storetest, 100.0, 0);
 
-    printf("Execute simulation\n");
+    printf("Execute simulation...\n");
     cmb_event_queue_execute();
 
+    printf("Report statistics...\n");
+    cmb_store_stop_recording(storetest->cheese);
+    cmb_store_print_report(storetest->cheese, stdout);
+
     printf("Clean up\n");
-    for (unsigned ui = 0; ui < 4; ui++) {
+    struct cmb_process **cpp = (struct cmb_process **) storetest;
+    for (unsigned ui = 0; ui < NUM_MICE + NUM_RATS + NUM_CATS; ui++) {
         cmb_process_terminate(cpp[ui]);
         cmb_process_destroy(cpp[ui]);
     }
 
-    cmb_store_destroy(sp);
+    cmb_store_destroy(storetest->cheese);
     cmb_event_queue_terminate();
+    free(storetest);
 }
 
 

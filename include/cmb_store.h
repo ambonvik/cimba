@@ -120,6 +120,11 @@ static inline const char *cmb_store_get_name(struct cmb_store *sp)
     return rbp->name;
 }
 
+extern void cmb_store_start_recording(struct cmb_store *sp);
+extern void cmb_store_stop_recording(struct cmb_store *sp);
+extern struct cmb_timeseries *cmb_store_get_history(struct cmb_store *sp);
+extern void cmb_store_print_report(struct cmb_store *sp, FILE *fp);
+
 /*
  * cmb_held_by_process : Return the amount of this store that is currently
  * held by the given process, possibly zero.

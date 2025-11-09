@@ -182,22 +182,22 @@ void test_buffer(void)
     cmb_buffer_initialize(buftst->buf, "Buf", 10u);
     cmb_buffer_start_recording(buftst->buf);
 
-    char buf[32];
+    char scratchpad[32];
     printf("Create three processes feeding into the buffer\n");
     for (unsigned ui = 0; ui < 3; ui++) {
         buftst->putters[ui] = cmb_process_create();
-        snprintf(buf, sizeof(buf), "Putter_%u", ui + 1u);
+        snprintf(scratchpad, sizeof(scratchpad), "Putter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(buftst->putters[ui], buf, putterfunc, buftst->buf, pri);
+        cmb_process_initialize(buftst->putters[ui], scratchpad, putterfunc, buftst->buf, pri);
         cmb_process_start(buftst->putters[ui]);
     }
 
     printf("Create three processes consuming from the buffer\n");
     for (unsigned ui = 0; ui < 3; ui++) {
         buftst->getters[ui] = cmb_process_create();
-        snprintf(buf, sizeof(buf), "Getter_%u", ui + 1u);
+        snprintf(scratchpad, sizeof(scratchpad), "Getter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(buftst->getters[ui], buf, getterfunc, buftst->buf, pri);
+        cmb_process_initialize(buftst->getters[ui], scratchpad, getterfunc, buftst->buf, pri);
         cmb_process_start(buftst->getters[ui]);
     }
 
