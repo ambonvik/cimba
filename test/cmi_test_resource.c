@@ -99,6 +99,7 @@ void test_resource(void)
     printf("Create a resource\n");
     struct cmb_resource *rp = cmb_resource_create();
     cmb_resource_initialize(rp, "Resource_1");
+    cmb_resource_start_recording(rp);
 
     printf("Create three processes to compete for the resource\n");
     struct cmb_process *cpp[4];
@@ -121,6 +122,10 @@ void test_resource(void)
 
     printf("Execute simulation\n");
     cmb_event_queue_execute();
+
+    printf("Report statistics...\n");
+    cmb_resource_stop_recording(rp);
+    cmb_resource_print_report(rp, stdout);
 
     printf("Clean up\n");
     for (unsigned ui = 0; ui < 4; ui++) {

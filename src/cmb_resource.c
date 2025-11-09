@@ -90,6 +90,56 @@ void cmb_resource_destroy(struct cmb_resource *rp)
     cmi_free(rp);
 }
 
+static void record_sample(struct cmb_resource *rp) {
+    cmb_assert_release(rp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    if (rbp->is_recording) {
+        struct cmb_timeseries *ts = &(rbp->history);
+        const double x = (rp->holder != NULL) ? 1.0 : 0.0;
+        const double t = cmb_time();
+        cmb_timeseries_add(ts, x, t);
+    }
+}
+
+void cmb_resource_start_recording(struct cmb_resource *rp)
+{
+    cmb_assert_release(rp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    rbp->is_recording = true;
+    record_sample(rp);
+}
+
+void cmb_resource_stop_recording(struct cmb_resource *rp)
+{
+    cmb_assert_release(rp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    record_sample(rp);
+    rbp->is_recording = false;
+}
+
+struct cmb_timeseries *cmb_resource_get_history(struct cmb_resource *rp)
+{
+    cmb_assert_release(rp != NULL);
+
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+
+    return &(rbp->history);
+}
+
+void cmb_resource_print_report(struct cmb_resource *rp, FILE *fp) {
+    cmb_assert_release(rp != NULL);
+
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    const struct cmb_timeseries *ts = &(rbp->history);
+    struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
+    (void)cmb_timeseries_summarize(ts, ws);
+    cmb_wtdsummary_print(ws, fp, true);
+    cmb_wtdsummary_destroy(ws);
+}
+
 /*
  * resource_available : pre-packaged demand function for a cmb_resource
  */
@@ -124,6 +174,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     if (rp->holder == NULL) {
         /* Easy, grab it */
         resource_grab(rp, pp);
+        record_sample(rp);
         cmb_logger_info(stdout, "Acquired %s", rbp->name);
         return CMB_PROCESS_SUCCESS;
     }
@@ -137,6 +188,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     if (ret == CMB_PROCESS_SUCCESS) {
         /* All good, grab the resource */
         resource_grab(rp, pp);
+        record_sample(rp);
         cmb_logger_info(stdout, "Acquired %s", rbp->name);
     }
     else {
@@ -162,6 +214,7 @@ void cmb_resource_release(struct cmb_resource *rp) {
 
     cmb_assert_debug(rp->holder == pp);
     rp->holder = NULL;
+    record_sample(rp);
 
     cmb_logger_info(stdout, "Released %s", rbp->name);
     struct cmi_resourceguard *rgp = &(rp->front_guard);
@@ -198,10 +251,11 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
         /* Easy, grab it */
         cmb_logger_info(stdout, "Preempt found %s free", rbp->name);
         resource_grab(rp, pp);
+        record_sample(rp);
         ret = CMB_PROCESS_SUCCESS;
     }
     else if (myprio >= victim->priority) {
-        /* Kick it out */
+        /* Kick it out. No record_sample needed, remains occupied. */
         cmi_resourcetag_list_remove(&(victim->resources_listhead), rbp);
         rp->holder = NULL;
         (void)cmb_event_schedule(prpwuevt,

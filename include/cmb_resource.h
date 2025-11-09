@@ -102,4 +102,9 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
     return rbp->name;
 }
 
-#endif // CIMBA_CMB_RESOURCE_H
+extern void cmb_resource_start_recording(struct cmb_resource *rp);
+extern void cmb_resource_stop_recording(struct cmb_resource *rp);
+extern struct cmb_timeseries *cmb_resource_get_history(struct cmb_resource *rp);
+extern void cmb_resource_print_report(struct cmb_resource *rp, FILE *fp);
+
+#endif /* CIMBA_CMB_RESOURCE_H */

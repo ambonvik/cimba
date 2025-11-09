@@ -273,7 +273,7 @@ void cmb_store_print_report(struct cmb_store *sp, FILE *fp) {
     const struct cmb_timeseries *ts = &(rbp->history);
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
     (void)cmb_timeseries_summarize(ts, ws);
-    cmb_wtdsummary_print(ws, stdout, true);
+    cmb_wtdsummary_print(ws, fp, true);
     cmb_wtdsummary_destroy(ws);
     const unsigned nbin = (sp->capacity > 20) ? 20 : sp->capacity + 1;
     cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(sp->capacity + 1u));
