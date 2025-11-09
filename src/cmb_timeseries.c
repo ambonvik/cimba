@@ -174,11 +174,10 @@ uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp,
     for (uint64_t ui = 0u; ui < un - 1u; ui++) {
         const double x = dsp->xa[ui];
         const double w = tsp->wa[ui];
-        cmb_wtdsummary_add(wsp, x, w);
+        (void)cmb_wtdsummary_add(wsp, x, w);
     }
 
-    cmb_assert_debug(cmb_wtdsummary_count(wsp) == old_n + un - 1u);
-    return un - 1u;
+    return old_n + un - 1u;
 }
 
 void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp)

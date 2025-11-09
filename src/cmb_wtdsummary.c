@@ -86,6 +86,9 @@ uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
     cmb_assert_release(w >= 0.0);
 
     struct cmb_datasummary *dsp = (struct cmb_datasummary *)wsp;
+    if (w == 0.0) {
+        return dsp->cnt;
+    }
 
     if (dsp->cnt == 0u) {
         dsp->cnt = 1u;
@@ -104,35 +107,29 @@ uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
     dsp->min = (x < dsp->min) ? x : dsp->min;
     dsp->cnt++;
 
-    if (w != 0.0) {
-        struct cmb_wtdsummary tws = { 0 };
-        struct cmb_datasummary *ts = (struct cmb_datasummary *)(&tws);
+    const double w1 = wsp->wsum;
+    const double w2 = w;
+    const double ws = w1 + w2;
+    const double d21 = x - dsp->m1;
+    const double d21_w = d21 / ws;
+    const double d21_w_2 = d21_w * d21_w;
+    const double d21_w_3 = d21_w * d21_w_2;
 
-        const double w1 = wsp->wsum;
-        const double w2 = w;
-        const double ws = w1 + w2;
-        const double d21 = x - dsp->m1;
-        const double d21_w = d21 / ws;
-        const double d21_w_2 = d21_w * d21_w;
-        const double d21_w_3 = d21_w * d21_w_2;
+    const double tmp_m1 = dsp->m1 + w2 * d21_w;
+    const double tmp_m2 = dsp->m2 + w1 * w2 * d21 * d21_w;
+    const double tmp_m3 = dsp->m3
+                         + w1 * w2 * (w1 - w2) * d21 * d21_w_2
+                         - 3.0 * w2 * dsp->m2 * d21_w;
+    const double tmp_m4 = dsp->m4
+                         + w1 * w2 * (w1 * w1 - w1 * w2 + w2 * w2) * d21 * d21_w_3
+                         + 6.0 * w2 * w2 * dsp->m2 * d21_w_2
+                         - 4.0 * w2 * dsp->m3 * d21_w;
 
-        tws.wsum = ws;
-        ts->m1 = dsp->m1 + w2 * d21_w;
-        ts->m2 = dsp->m2 + w1 * w2 * d21 * d21_w;
-        ts->m3 = dsp->m3
-                + w1 * w2 * (w1 - w2) * d21 * d21_w_2
-                - 3.0 * w2 * dsp->m2 * d21_w;
-        ts->m4 = dsp->m4
-                + w1 * w2 * (w1 * w1 - w1 * w2 + w2 * w2) * d21 * d21_w_3
-                + 6.0 * w2 * w2 * dsp->m2 * d21_w_2
-                - 4.0 * w2 * dsp->m3 * d21_w;
-
-        dsp->m1 = ts->m1;
-        dsp->m2 = ts->m2;
-        dsp->m3 = ts->m3;
-        dsp->m4 = ts->m4;
-        wsp->wsum = ws;
-    }
+    dsp->m1 = tmp_m1;
+    dsp->m2 = tmp_m2;
+    dsp->m3 = tmp_m3;
+    dsp->m4 = tmp_m4;
+    wsp->wsum = ws;
 
     return dsp->cnt;
 }

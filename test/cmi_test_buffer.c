@@ -164,7 +164,7 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
     }
 }
 
-void test_buffer(void)
+void test_buffer(double duration)
 {
     struct experiment *buftst = cmi_malloc(sizeof(*buftst));
     cmi_memset(buftst, 0, sizeof(*buftst));
@@ -207,7 +207,7 @@ void test_buffer(void)
     cmb_process_start(buftst->nuisance);
 
     printf("Schedule end event\n");
-    (void)cmb_event_schedule(end_sim_evt, buftst, NULL, 10000.0, 0);
+    (void)cmb_event_schedule(end_sim_evt, buftst, NULL, duration, 0);
 
     printf("Execute simulation...\n");
     cmb_event_queue_execute();
@@ -235,7 +235,7 @@ int main(void)
     printf("****************************   Testing buffers   *****************************\n");
     cmi_test_print_line("*");
 
-    test_buffer();
+    test_buffer(100000);
 
     cmi_test_print_line("*");
     return 0;
