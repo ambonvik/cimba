@@ -42,13 +42,26 @@ extern void cmb_wtdsummary_reset(struct cmb_wtdsummary *wsp);
 extern void cmb_wtdsummary_terminate(struct cmb_wtdsummary *wsp);
 extern void cmb_wtdsummary_destroy(struct cmb_wtdsummary *wsp);
 
+/*
+ * cmb_wtd_summary_add : add a sample (x, w) to the weighted summary.
+ * Zero weight samples are ignored, not even counted.
+ */
 extern uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
                                    double x,
                                    double w);
 
+/*
+ * cmb_wtd_summary_merge : Merge two weighted datasets. Tha target may be one
+ * of the merged sets.
+ *
+ * See: Pébay & al, "Numerically stable, scalable formulas for parallel and
+ *      online computation of higher-order multivariate central moments with
+ *      arbitrary weights", Computational Statistics (2016) 31:1305–1325
+ *
+ */
 extern uint64_t cmb_wtdsummary_merge(struct cmb_wtdsummary *tgt,
-                                   const struct cmb_wtdsummary *ws1,
-                                   const struct cmb_wtdsummary *ws2);
+                                     const struct cmb_wtdsummary *ws1,
+                                     const struct cmb_wtdsummary *ws2);
 
 /*
  * Member functions "inherited" from the base data summary class,

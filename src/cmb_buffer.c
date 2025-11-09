@@ -155,12 +155,15 @@ struct cmb_timeseries *cmb_buffer_get_history(struct cmb_buffer *bp)
 void cmb_buffer_print_report(struct cmb_buffer *bp, FILE *fp) {
     cmb_assert_release(bp != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
     const struct cmb_timeseries *ts = &(rbp->history);
+
+    fprintf(fp, "Buffer levels for %s\n", bp->core.name);
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
     (void)cmb_timeseries_summarize(ts, ws);
-    cmb_wtdsummary_print(ws, stdout, true);
+    cmb_wtdsummary_print(ws, fp, true);
     cmb_wtdsummary_destroy(ws);
+
     const unsigned nbin = (bp->capacity > 20) ? 20 : bp->capacity + 1;
     cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(bp->capacity + 1u));
 }

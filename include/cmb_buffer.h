@@ -89,16 +89,16 @@ extern int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp);
  * value is the interrupt signal received, some value other than
  * CMB_PROCESS_SUCCESS.
  */
-extern int64_t cmb_buffer_put(struct cmb_buffer *sp, uint64_t *amntp);
+extern int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp);
 
 /*
  * cmb_buffer_get_name : Returns name of buffer as const char *.
  */
-static inline const char *cmb_buffer_get_name(struct cmb_buffer *sp)
+static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
 {
-    cmb_assert_debug(sp != NULL);
+    cmb_assert_debug(bp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
 
     return rbp->name;
 }

@@ -54,4 +54,4 @@ extern void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc,
  */
 extern void cmi_processtag_list_print(struct cmi_processtag **ptloc, FILE *fp);
 
-#endif // CIMBA_CMI_PROCESSTAG_H
+#endif /* CIMBA_CMI_PROCESSTAG_H */

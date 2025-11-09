@@ -1,5 +1,5 @@
 /*
-* Test script for buffers
+* Test script for queues
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -20,14 +20,14 @@
 #include <stdint.h>
 #include <time.h>
 
+#include "../include/cmb_queue.h"
 #include "cmb_event.h"
-#include "cmb_random.h"
 #include "cmb_logger.h"
 #include "cmb_process.h"
-#include "cmb_buffer.h"
+#include "cmb_random.h"
 
-#include "cmi_test.h"
 #include "cmi_memutils.h"
+#include "cmi_test.h"
 
 #define USERFLAG 0x00000001
 #define NUM_PUTTERS 3u
@@ -37,7 +37,7 @@ struct experiment {
     struct cmb_process *putters[NUM_PUTTERS];
     struct cmb_process *getters[NUM_PUTTERS];
     struct cmb_process *nuisance;
-    struct cmb_buffer *buf;
+    struct cmb_queue *queue;
 };
 
 static void end_sim_evt(void *subject, void *object)
@@ -64,7 +64,9 @@ void *putterfunc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
-    struct cmb_buffer *bp = (struct cmb_buffer *) ctx;
+    struct cmb_queue *qp = (struct cmb_queue *)ctx;
+
+    void *object = NULL;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
@@ -77,26 +79,18 @@ void *putterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(USERFLAG, stdout, "Hold returned signal %lld", sig);
         }
 
-        const uint64_t n = cmb_random_dice(1, 15);
-        uint64_t m = n;
         cmb_logger_user(USERFLAG,
                         stdout,
-                        "Putting %llu into %s...",
-                        n,
-                        cmb_buffer_get_name(bp));
+                        "Putting object %p into %s...",
+                        object,
+                        cmb_queue_get_name(qp));
 
-        sig = cmb_buffer_put(bp, &m);
+        sig = cmb_queue_put(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_assert_debug(m == 0u);
-            cmb_logger_user(USERFLAG, stdout, "Put %llu succeeded", n);
+            cmb_logger_user(USERFLAG, stdout, "Put succeeded");
         }
         else {
-            cmb_logger_user(USERFLAG,
-                            stdout,
-                            "Put returned signal %lld, got %llu instead of %llu",
-                            sig,
-                            m,
-                            n);
+            cmb_logger_user(USERFLAG, stdout, "Put returned signal %lld", sig);
         }
     }
 }
@@ -106,7 +100,9 @@ void *getterfunc(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
 
-    struct cmb_buffer *bp = (struct cmb_buffer *) ctx;
+    struct cmb_queue *qp = (struct cmb_queue *) ctx;
+
+    void *object = NULL;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
@@ -119,26 +115,17 @@ void *getterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(USERFLAG, stdout, "Hold returned signal %lld", sig);
         }
 
-        const uint64_t n = cmb_random_dice(1, 15);
         cmb_logger_user(USERFLAG,
                         stdout,
-                        "Getting %llu from %s...",
-                        n,
-                        cmb_buffer_get_name(bp));
+                        "Getting object from %s...",
+                        cmb_queue_get_name(qp));
 
-        uint64_t m = n;
-        sig = cmb_buffer_get(bp, &m);
+        sig = cmb_queue_get(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_assert_debug(m == n);
-            cmb_logger_user(USERFLAG, stdout, "Get %llu succeeded", n);
+            cmb_logger_user(USERFLAG, stdout, "Get succeeded");
         }
         else {
-            cmb_logger_user(USERFLAG,
-                            stdout,
-                            "Get returned signal %lld, got %llu instead of %llu",
-                            sig,
-                            m,
-                            n);
+            cmb_logger_user(USERFLAG, stdout, "Get returned signal %lld", sig);
         }
     }
 }
@@ -166,8 +153,8 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
 
 void test_queue(double duration)
 {
-    struct experiment *buftst = cmi_malloc(sizeof(*buftst));
-    cmi_memset(buftst, 0, sizeof(*buftst));
+    struct experiment *quetst = cmi_malloc(sizeof(*quetst));
+    cmi_memset(quetst, 0, sizeof(*quetst));
 
     const uint64_t seed = cmb_random_get_hwseed();
     cmb_random_initialize(seed);
@@ -177,56 +164,56 @@ void test_queue(double duration)
     cmb_logger_flags_off(USERFLAG);
     cmb_event_queue_initialize(0.0);
 
-    printf("Create a buffer\n");
-    buftst->buf = cmb_buffer_create();
-    cmb_buffer_initialize(buftst->buf, "Buf", 10u);
-    cmb_buffer_start_recording(buftst->buf);
+    printf("Create a queue\n");
+    quetst->queue = cmb_queue_create();
+    cmb_queue_initialize(quetst->queue, "Queue", 10u);
+    cmb_queue_start_recording(quetst->queue);
 
     char scratchpad[32];
-    printf("Create three processes feeding into the buffer\n");
+    printf("Create three processes feeding into the queue\n");
     for (unsigned ui = 0; ui < 3; ui++) {
-        buftst->putters[ui] = cmb_process_create();
+        quetst->putters[ui] = cmb_process_create();
         snprintf(scratchpad, sizeof(scratchpad), "Putter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(buftst->putters[ui], scratchpad, putterfunc, buftst->buf, pri);
-        cmb_process_start(buftst->putters[ui]);
+        cmb_process_initialize(quetst->putters[ui], scratchpad, putterfunc, quetst->queue, pri);
+        cmb_process_start(quetst->putters[ui]);
     }
 
-    printf("Create three processes consuming from the buffer\n");
+    printf("Create three processes consuming from the queue\n");
     for (unsigned ui = 0; ui < 3; ui++) {
-        buftst->getters[ui] = cmb_process_create();
+        quetst->getters[ui] = cmb_process_create();
         snprintf(scratchpad, sizeof(scratchpad), "Getter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(buftst->getters[ui], scratchpad, getterfunc, buftst->buf, pri);
-        cmb_process_start(buftst->getters[ui]);
+        cmb_process_initialize(quetst->getters[ui], scratchpad, getterfunc, quetst->queue, pri);
+        cmb_process_start(quetst->getters[ui]);
     }
 
     printf("Create a bloody nuisance\n");
-    buftst->nuisance = cmb_process_create();
-    cmb_process_initialize(buftst->nuisance, "Nuisance", nuisancefunc, buftst, 0);
-    cmb_process_start(buftst->nuisance);
+    quetst->nuisance = cmb_process_create();
+    cmb_process_initialize(quetst->nuisance, "Nuisance", nuisancefunc, quetst, 0);
+    cmb_process_start(quetst->nuisance);
 
     printf("Schedule end event\n");
-    (void)cmb_event_schedule(end_sim_evt, buftst, NULL, duration, 0);
+    (void)cmb_event_schedule(end_sim_evt, quetst, NULL, duration, 0);
 
     printf("Execute simulation...\n");
     cmb_event_queue_execute();
 
     printf("Report statistics...\n");
-    cmb_buffer_stop_recording(buftst->buf);
-    cmb_buffer_print_report(buftst->buf, stdout);
+    cmb_queue_stop_recording(quetst->queue);
+    cmb_queue_print_report(quetst->queue, stdout);
 
     printf("Clean up\n");
     for (unsigned ui = 0; ui < 3; ui++) {
-        cmb_process_terminate(buftst->getters[ui]);
-        cmb_process_destroy(buftst->putters[ui]);
+        cmb_process_terminate(quetst->getters[ui]);
+        cmb_process_destroy(quetst->putters[ui]);
     }
 
-    cmb_process_terminate(buftst->nuisance);
-    cmb_process_destroy(buftst->nuisance);
-    cmb_buffer_destroy(buftst->buf);
+    cmb_process_terminate(quetst->nuisance);
+    cmb_process_destroy(quetst->nuisance);
+    cmb_queue_destroy(quetst->queue);
     cmb_event_queue_terminate();
-    cmi_free(buftst);
+    cmi_free(quetst);
 }
 
 int main(void)
@@ -235,7 +222,7 @@ int main(void)
     printf("****************************   Testing buffers   *****************************\n");
     cmi_test_print_line("*");
 
-    test_queue(100000);
+    test_queue(1000000);
 
     cmi_test_print_line("*");
     return 0;

@@ -110,4 +110,4 @@ static inline void cmb_mempool_put(struct cmb_mempool *mp, void *op)
     mp->next_obj = op;
 }
 
-#endif //CIMBA_CMB_MEMPOOL_H
+#endif /* CIMBA_CMB_MEMPOOL_H */

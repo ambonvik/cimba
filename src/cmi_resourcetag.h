@@ -66,4 +66,4 @@ extern void cmi_resourcetag_list_scram_all(struct cmi_resourcetag **rtloc);
 extern void cmi_resourcetag_list_print(struct cmi_resourcetag **rtloc,
                                        FILE *fp);
 
-#endif // CIMBA_CMI_RESOURCETAG_H
+#endif /* CIMBA_CMI_RESOURCETAG_H */

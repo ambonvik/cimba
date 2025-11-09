@@ -1,5 +1,5 @@
 /*
-* cmb_wtdsummary.c - - a running tally of basic statistics, not keeping the
+* cmb_wtdsummary.c - a running tally of basic statistics, not keeping the
  * individual sample values, each sample weighted by a double in the summary.
  *
  * It can be used for time series  statistics where each value is held for a

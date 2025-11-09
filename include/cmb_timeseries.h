@@ -196,4 +196,4 @@ static inline void cmb_timeseries_print_correlogram(const struct cmb_timeseries 
 }
 
 
-#endif // CIMBA_CMB_TIMESERIES_H
+#endif /* CIMBA_CMB_TIMESERIES_H */

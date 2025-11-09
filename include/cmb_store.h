@@ -132,4 +132,4 @@ extern void cmb_store_print_report(struct cmb_store *sp, FILE *fp);
 extern uint64_t cmb_store_held_by_process(struct cmb_store *sp,
                                           struct cmb_process *pp);
 
-#endif // CIMBA_CMB_STORE_H
+#endif /* CIMBA_CMB_STORE_H */

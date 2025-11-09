@@ -1,23 +1,13 @@
 /*
  * cmi_resource.h - a simple binary semaphore supporting acquire, release, and
- *   preempt methods. Can only be held by one process at a time. Assigned to
- *   waiting processes in priority order, then FIFO tie-breaker order.
+ * preempt methods. Can only be held by one process at a time. Assigned to
+ * waiting processes in priority order, then FIFO tie-breaker order.
  *
- * - cmb_buffer - a two-headed fixed-capacity resource where one or more
- *   producer processes can put an amount into the one end, and one or more
- *   consumer processes can get amounts out of the other end. If enough space is
- *   not available, the producers wait, and if there is not enough content, the
- *   consumers wait. Twice the complexity of cmb_store.
- *
- * - cmb_queue - as the cmb_buffer, but the content is represented by a linked
- *   list of pointers to void, allowing arbitrary objects to be passed between
- *   the producer and consumer.
- *
- * A process holding a resource may in some cases be preempted by a higher
- * priority process. For this purpose, the resources maintain a list of
- * processes currently holding (parts of) the resource, to enable use cases like
- * machine breakdowns, priority interrupts, or holding processes getting killed
- * in more violent use cases.
+ * A process holding a resource may be preempted by a higher priority process.
+ * For this purpose, the resources maintain a list of processes currently
+ * holding (parts of) the resource, to enable use cases like machine breakdowns,
+ * priority interrupts, or holding processes getting killed in more violent use
+ * cases.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *

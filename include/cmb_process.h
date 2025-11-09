@@ -267,4 +267,4 @@ extern void *cmb_process_get_exit_value(const struct cmb_process *pp);
 extern struct cmb_process *cmb_process_get_current(void);
 
 
-#endif // CIMBA_CMB_PROCESS_H
+#endif /* CIMBA_CMB_PROCESS_H */

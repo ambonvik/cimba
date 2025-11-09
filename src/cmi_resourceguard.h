@@ -103,4 +103,4 @@ extern bool cmi_resourceguard_remove(struct cmi_resourceguard *rgp,
                                       const struct cmb_process *pp);
 
 
-#endif // CIMBA_CMI_RESOURCEGUARD_H
+#endif /* CIMBA_CMI_RESOURCEGUARD_H */

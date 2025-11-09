@@ -112,4 +112,4 @@ static inline void cmi_resourcebase_stop_recording(struct cmi_resourcebase *rbp)
 }
 
 
-#endif // CIMBA_CMI_RESOURCEBASE_H
+#endif /* CIMBA_CMI_RESOURCEBASE_H */

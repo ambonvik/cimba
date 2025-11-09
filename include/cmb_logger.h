@@ -125,4 +125,6 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
     extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...);
     extern void cmi_logger_user(uint32_t flags, FILE *fp, const char *func, int line, char *fmtstr, ...);
 #endif
+
+
 #endif /* CIMBA_CMB_LOGGER_H */

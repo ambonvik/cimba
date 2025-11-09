@@ -269,6 +269,7 @@ struct cmb_timeseries *cmb_store_get_history(struct cmb_store *sp)
 void cmb_store_print_report(struct cmb_store *sp, FILE *fp) {
     cmb_assert_release(sp != NULL);
 
+    fprintf(fp, "Store resource utilization for %s:\n", sp->core.name);
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
     const struct cmb_timeseries *ts = &(rbp->history);
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();

@@ -12,8 +12,13 @@ set(SOURCES src/cmb_dataset.c
         src/cmb_process.c
         src/cmb_random.c
         src/cmb_assert.c
+        src/cmb_buffer.c
         src/cmb_mempool.c
         src/cmb_logger.c
+        src/cmb_datasummary.c
+        src/cmb_wtdsummary.c
+        src/cmb_timeseries.c
+        src/cmb_queue.c
         src/cmi_coroutine.c
         src/cmi_hashheap.c
         src/cmi_processtag.c
@@ -28,21 +33,21 @@ set(SOURCES src/cmb_dataset.c
         src/cmi_resourceguard.c
         src/cmi_resourceguard.h
         src/cmi_resourcebase.c
-        src/cmi_resourcebase.h
-        src/cmb_store.c
-        src/cmb_buffer.c
-        include/cmb_buffer.h
-        src/cmb_datasummary.c
-        src/cmb_wtdsummary.c
-        src/cmb_timeseries.c)
+        src/cmi_resourcebase.h)
 set(HEADERS include/cmb_dataset.h
         include/cmb_event.h
         include/cmb_random.h
         include/cmb_assert.h
         include/cmb_logger.h
+        include/cmb_buffer.h
         include/cmb_mempool.h
         include/cmb_resource.h
         include/cmb_store.h
+        include/cmb_queue.h
+        include/cmb_buffer.h
+        include/cmb_datasummary.h
+        include/cmb_wtdsummary.h
+        include/cmb_timeseries.h
         src/cmi_coroutine.h
         src/cmi_config.h
         src/cmi_hashheap.h
@@ -51,11 +56,6 @@ set(HEADERS include/cmb_dataset.h
         src/cmi_resourcetag.h
         src/cmi_resourceguard.h
         src/cmi_resourcebase.h
-        src/cmb_buffer.c
-        include/cmb_buffer.h
-        include/cmb_datasummary.h
-        include/cmb_wtdsummary.h
-        include/cmb_timeseries.h
         src/cmi_dataset.h)
 
 set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm src/arch/cmi_random_hwseed_Win64.asm)
@@ -75,8 +75,7 @@ target_link_libraries(cmi_test_event PRIVATE cimba)
 add_executable(cmi_test_logger test/cmi_test_logger.c test/cmi_test.h)
 target_link_libraries(cmi_test_logger PRIVATE cimba)
 
-add_executable(cmi_test_coroutine test/cmi_test_coroutine.c test/cmi_test.h
-        test/cmi_test_store.c)
+add_executable(cmi_test_coroutine test/cmi_test_coroutine.c test/cmi_test.h )
 target_link_libraries(cmi_test_coroutine PRIVATE cimba)
 
 add_executable(cmi_test_mempool test/cmi_test_mempool.c test/cmi_test.h)
@@ -96,3 +95,6 @@ target_link_libraries(cmi_test_store PRIVATE cimba)
 
 add_executable(cmi_test_buffer test/cmi_test_buffer.c test/cmi_test.h)
 target_link_libraries(cmi_test_buffer PRIVATE cimba)
+
+add_executable(cmi_test_queue test/cmi_test_queue.c test/cmi_test.h)
+target_link_libraries(cmi_test_queue PRIVATE cimba)
