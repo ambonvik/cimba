@@ -1,5 +1,5 @@
 /*
- * cmi_calc_normal.c - program to calculate the ziggurat lookup tables for
+ * calc_normal.c - program to calculate the ziggurat lookup tables for
  * standard normal distribution, see
  *   https://en.wikipedia.org/wiki/Ziggurat_algorithm#McFarland's_variation
  * Sets up Vose alias sampling tables, see

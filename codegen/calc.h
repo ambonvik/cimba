@@ -1,5 +1,5 @@
 /*
- * cmi_calc.h - utility functions for calculating ziggurat lookup tables.
+ * calc.h - utility functions for calculating ziggurat lookup tables.
  *
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
  *

@@ -26,8 +26,8 @@
 #include "cmb_process.h"
 #include "cmb_buffer.h"
 
-#include "cmi_test.h"
 #include "cmi_memutils.h"
+#include "test.h"
 
 #define USERFLAG 0x00000001
 #define NUM_PUTTERS 3u

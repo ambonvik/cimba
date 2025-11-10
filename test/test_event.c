@@ -25,7 +25,7 @@
 #include "cmb_random.h"
 #include "cmb_logger.h"
 
-#include "cmi_test.h"
+#include "test.h"
 
 /* An event, prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object)

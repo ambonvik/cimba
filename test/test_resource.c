@@ -26,8 +26,8 @@
 #include "cmb_process.h"
 #include "cmb_resource.h"
 
-#include "cmi_test.h"
 #include "cmi_memutils.h"
+#include "test.h"
 
 #define USERFLAG 0x00000001
 

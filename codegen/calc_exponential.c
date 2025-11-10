@@ -1,5 +1,5 @@
 /*
- * cmi_calc_exponential.c - program to calculate the ziggurat lookup tables for
+ * calc_exponential.c - program to calculate the ziggurat lookup tables for
  * unit exponential distribution, see
  *   https://en.wikipedia.org/wiki/Ziggurat_algorithm#McFarland's_variation
  *

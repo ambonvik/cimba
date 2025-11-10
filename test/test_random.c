@@ -31,7 +31,7 @@
 #include "cmb_random.h"
 
 /* Utilities for the testing */
-#include "cmi_test.h"
+#include "test.h"
 
 /* Test macros */
 #define MOMENTS 15

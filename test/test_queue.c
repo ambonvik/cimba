@@ -27,7 +27,7 @@
 #include "cmb_random.h"
 
 #include "cmi_memutils.h"
-#include "cmi_test.h"
+#include "test.h"
 
 #define USERFLAG 0x00000001
 #define NUM_PUTTERS 3u

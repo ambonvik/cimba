@@ -20,7 +20,7 @@
 #include "cmb_random.h"
 
 #include "cmi_hashheap.h"
-#include "cmi_test.h"
+#include "test.h"
 
 /*
  * Test if heap_tag *a should go before *b. If so, return true.

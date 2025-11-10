@@ -20,12 +20,12 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "cmb_datasummary.h"
 #include "cmb_dataset.h"
-#include "cmb_wtdsummary.h"
-#include "cmb_timeseries.h"
+#include "cmb_datasummary.h"
 #include "cmb_random.h"
-#include "cmi_test.h"
+#include "cmb_timeseries.h"
+#include "cmb_wtdsummary.h"
+#include "test.h"
 
 /* Test macros */
 #define MAX_ITER 1000000u

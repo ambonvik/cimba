@@ -19,7 +19,7 @@
 
 #include "cmb_mempool.h"
 
-#include "cmi_test.h"
+#include "test.h"
 
 int main(void)
 {

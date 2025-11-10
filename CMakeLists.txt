@@ -63,38 +63,38 @@ set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM_NASM)
 
 add_library(cimba STATIC ${SOURCES} ${ASM_SOURCES} ${HEADERS})
 
-add_executable(cmi_test_data test/cmi_test_data.c test/cmi_test.h)
-target_link_libraries(cmi_test_data PRIVATE cimba)
+add_executable(test_data test/test_data.c test/test.h)
+target_link_libraries(test_data PRIVATE cimba)
 
-add_executable(cmi_test_random test/cmi_test_random.c test/cmi_test.h)
-target_link_libraries(cmi_test_random PRIVATE cimba)
+add_executable(test_random test/test_random.c test/test.h)
+target_link_libraries(test_random PRIVATE cimba)
 
-add_executable(cmi_test_event test/cmi_test_event.c test/cmi_test.h)
-target_link_libraries(cmi_test_event PRIVATE cimba)
+add_executable(test_event test/test_event.c test/test.h)
+target_link_libraries(test_event PRIVATE cimba)
 
-add_executable(cmi_test_logger test/cmi_test_logger.c test/cmi_test.h)
-target_link_libraries(cmi_test_logger PRIVATE cimba)
+add_executable(test_logger test/test_logger.c test/test.h)
+target_link_libraries(test_logger PRIVATE cimba)
 
-add_executable(cmi_test_coroutine test/cmi_test_coroutine.c test/cmi_test.h )
-target_link_libraries(cmi_test_coroutine PRIVATE cimba)
+add_executable(test_coroutine test/test_coroutine.c test/test.h)
+target_link_libraries(test_coroutine PRIVATE cimba)
 
-add_executable(cmi_test_mempool test/cmi_test_mempool.c test/cmi_test.h)
-target_link_libraries(cmi_test_mempool PRIVATE cimba)
+add_executable(test_mempool test/test_mempool.c test/test.h)
+target_link_libraries(test_mempool PRIVATE cimba)
 
-add_executable(cmi_test_process test/cmi_test_process.c test/cmi_test.h)
-target_link_libraries(cmi_test_process PRIVATE cimba)
+add_executable(test_process test/test_process.c test/test.h)
+target_link_libraries(test_process PRIVATE cimba)
 
-add_executable(cmi_test_hashheap test/cmi_test_hashheap.c test/cmi_test.h)
-target_link_libraries(cmi_test_hashheap PRIVATE cimba)
+add_executable(test_hashheap test/test_hashheap.c test/test.h)
+target_link_libraries(test_hashheap PRIVATE cimba)
 
-add_executable(cmi_test_resource test/cmi_test_resource.c test/cmi_test.h)
-target_link_libraries(cmi_test_resource PRIVATE cimba)
+add_executable(test_resource test/test_resource.c test/test.h)
+target_link_libraries(test_resource PRIVATE cimba)
 
-add_executable(cmi_test_store test/cmi_test_store.c test/cmi_test.h)
-target_link_libraries(cmi_test_store PRIVATE cimba)
+add_executable(test_store test/test_store.c test/test.h)
+target_link_libraries(test_store PRIVATE cimba)
 
-add_executable(cmi_test_buffer test/cmi_test_buffer.c test/cmi_test.h)
-target_link_libraries(cmi_test_buffer PRIVATE cimba)
+add_executable(test_buffer test/test_buffer.c test/test.h)
+target_link_libraries(test_buffer PRIVATE cimba)
 
-add_executable(cmi_test_queue test/cmi_test_queue.c test/cmi_test.h)
-target_link_libraries(cmi_test_queue PRIVATE cimba)
+add_executable(test_queue test/test_queue.c test/test.h)
+target_link_libraries(test_queue PRIVATE cimba)
