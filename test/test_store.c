@@ -35,7 +35,7 @@
 #define NUM_RATS 2u
 #define NUM_CATS 1u
 
-struct experiment {
+struct simulation {
     struct cmb_process *mice[NUM_MICE];
     struct cmb_process *rats[NUM_RATS];
     struct cmb_process *cats[NUM_CATS];
@@ -48,7 +48,7 @@ static void end_sim_evt(void *subject, void *object)
     cmb_unused(subject);
     cmb_assert_release(object != NULL);
 
-    struct experiment *tstexp = object;
+    struct simulation *tstexp = object;
     cmb_logger_info(stdout, "===> end_sim: game over <===");
     for (unsigned ui = 0; ui < NUM_MICE; ui++) {
         cmb_process_stop(tstexp->mice[ui], NULL);
@@ -69,7 +69,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
 
-    struct experiment *tstexp = ctx;
+    struct simulation *tstexp = ctx;
     struct cmb_store *sp = tstexp->cheese;
     uint64_t amount_held = 0u;
 
@@ -134,7 +134,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
 
-    struct experiment *tstexp = ctx;
+    struct simulation *tstexp = ctx;
     struct cmb_store *sp = tstexp->cheese;
     uint64_t amount_held = 0u;
 
@@ -200,7 +200,7 @@ void *catfunc(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
 
-    struct experiment *tstexp = ctx;
+    struct simulation *tstexp = ctx;
     struct cmb_process **cpp = (struct cmb_process **) tstexp;
     const long num = NUM_MICE + NUM_RATS;
 
@@ -218,7 +218,7 @@ void *catfunc(struct cmb_process *me, void *ctx)
 
 void test_store(void)
 {
-    struct experiment *storetest = cmi_malloc(sizeof(*storetest));
+    struct simulation *storetest = cmi_malloc(sizeof(*storetest));
     cmi_memset(storetest, 0, sizeof(*storetest));
 
     const uint64_t seed = cmb_random_get_hwseed();

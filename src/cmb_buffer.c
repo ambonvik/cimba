@@ -261,7 +261,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 
 /*
  * cmb_buffer_put : Put an amount of the resource into the buffer, if necessary
- * waiting for free space.
+ * waiting for free space. Putting zero amount cannot be right.
  *
  * Note that the amount argument is a pointer to where the amount is stored.
  * The return value CMB_PROCESS_NORMAL (0) indicates that all went well and
@@ -276,6 +276,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
 {
     cmb_assert_release(bp != NULL);
     cmb_assert_release(amntp != NULL);
+    cmb_assert_release(*amntp > 0u);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
     const uint64_t init_claim = *amntp;

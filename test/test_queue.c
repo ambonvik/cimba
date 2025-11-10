@@ -33,7 +33,7 @@
 #define NUM_PUTTERS 3u
 #define NUM_GETTERS 3u
 
-struct experiment {
+struct simulation {
     struct cmb_process *putters[NUM_PUTTERS];
     struct cmb_process *getters[NUM_PUTTERS];
     struct cmb_process *nuisance;
@@ -44,7 +44,7 @@ static void end_sim_evt(void *subject, void *object)
 {
     cmb_unused(object);
 
-    struct experiment *texp = subject;
+    struct simulation *texp = subject;
     cmb_logger_info(stdout, "===> end_sim: game over <===");
     for (unsigned ui = 0; ui < NUM_PUTTERS; ui++) {
         cmb_process_stop(texp->putters[ui], NULL);
@@ -135,7 +135,7 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
 
-    /* Abuse internal knowledge of the content of the experiment struct */
+    /* Abuse internal knowledge of the content of the simulation struct */
     struct cmb_process **tgt = (struct cmb_process **)ctx;
     unsigned nproc = NUM_PUTTERS + NUM_GETTERS;
 
@@ -153,7 +153,7 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
 
 void test_queue(double duration)
 {
-    struct experiment *quetst = cmi_malloc(sizeof(*quetst));
+    struct simulation *quetst = cmi_malloc(sizeof(*quetst));
     cmi_memset(quetst, 0, sizeof(*quetst));
 
     const uint64_t seed = cmb_random_get_hwseed();
