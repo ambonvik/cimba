@@ -30,7 +30,6 @@
 #include "cmb_buffer.h"
 
 #include "cmi_memutils.h"
-#include "test.h"
 
 #define USERFLAG 0x00000001
 
@@ -125,16 +124,23 @@ void *servicefunc(struct cmb_process *me, void *vctx)
     }
 }
 
-void run_mg1(struct context *ctx)
+void run_mg1(struct trial *trl)
 {
-    const uint64_t seed = cmb_random_get_hwseed();
-    cmb_random_initialize(seed);
-    ctx->trial->seed = seed;
-    printf("seed: %llx\n", seed);
+    if (trl->seed == 0u) {
+        const uint64_t seed = cmb_random_get_hwseed();
+        cmb_random_initialize(seed);
+        trl->seed = seed;
+    }
 
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG);
     cmb_event_queue_initialize(0.0);
+
+    struct context *ctx = cmi_malloc(sizeof(*ctx));
+    ctx->trial = trl;
+
+    struct simulation *sim = cmi_malloc(sizeof(*sim));
+    ctx->sim = sim;
 
     ctx->sim->queue = cmb_buffer_create();
     cmb_buffer_initialize(ctx->sim->queue, "Queue", UINT64_MAX);
@@ -147,50 +153,49 @@ void run_mg1(struct context *ctx)
     cmb_process_initialize(ctx->sim->service, "Service", servicefunc, ctx, 0);
     cmb_process_start(ctx->sim->service);
 
-    double t = ctx->trial->warmup;
+    double t = trl->warmup;
     (void)cmb_event_schedule(start_rec_evt, ctx, NULL, t, 0);
-    t += ctx->trial->duration;
+    t += trl->duration;
     (void)cmb_event_schedule(stop_rec_evt, ctx, NULL, t, 0);
-    t += ctx->trial->cooldown;
+    t += trl->cooldown;
     (void)cmb_event_schedule(end_sim_evt, ctx, NULL, t, 0);
 
-    printf("Execute simulation...\n");
     cmb_event_queue_execute();
-
-    printf("Report statistics...\n");
     cmb_buffer_print_report(ctx->sim->queue, stdout);
 
     const struct cmb_timeseries *tsp = cmb_buffer_get_history(ctx->sim->queue);
     struct cmb_wtdsummary ws;
     cmb_timeseries_summarize(tsp, &ws);
-    ctx->trial->avg_queuelength = cmb_wtdsummary_mean(&ws);
+    trl->avg_queuelength = cmb_wtdsummary_mean(&ws);
 
-    printf("Clean up\n");
     cmb_process_destroy(ctx->sim->arrival);
     cmb_process_destroy(ctx->sim->service);
     cmb_buffer_destroy(ctx->sim->queue);
+
+    cmi_free(ctx->sim);
+    cmi_free(ctx);
 }
 
 int main(void)
 {
-    struct context *ctx = cmi_malloc(sizeof(*ctx));
-    cmi_memset(ctx, 0, sizeof(*ctx));
+    const clock_t start_time = clock();
 
-    ctx->trial = cmi_malloc(sizeof(*ctx->trial));
-    cmi_memset(ctx->trial, 0, sizeof(*ctx->trial));
-    ctx->trial->rho = 0.9;
-    ctx->trial->service_cv = 0.5;
-    ctx->trial->warmup = 10.0;
-    ctx->trial->duration = 1e6;
-    ctx->trial->cooldown = 1.0;
+    struct trial *trl = cmi_malloc(sizeof(*trl));
+    cmi_memset(trl, 0, sizeof(*trl));
 
-    ctx->sim = cmi_malloc(sizeof(*ctx->sim));
-    cmi_memset(ctx->sim, 0, sizeof(*ctx->sim));
+    trl->rho = 0.9;
+    trl->service_cv = 0.5;
+    trl->warmup = 10.0;
+    trl->duration = 1e6;
+    trl->cooldown = 1.0;
 
-    run_mg1(ctx);
+    run_mg1(trl);
 
-    cmi_free(ctx);
+    cmi_free(trl);
 
+    const clock_t end_time = clock();
+    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    printf("It took: %f sec\n", elapsed_time);
     return 0;
 }
 
