@@ -17,13 +17,13 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
+#include <stdint.h>
 #include <windows.h>
 
-long cmi_cpu_cores(void)
+uint32_t cmi_cpu_cores(void)
 {
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
 
-    return (long)sysinfo.dwNumberOfProcessors;
+    return sysinfo.dwNumberOfProcessors;
 }
