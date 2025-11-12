@@ -1,16 +1,16 @@
 /*
- * cmb_queue.c - a two-headed fixed-capacity resource where one or more
+ * cmb_objectqueue.c - a two-headed fixed-capacity resource where one or more
  * producer processes can put objects into the one end, and one or more
  * consumer processes can get objects out of the other end. If enough space is
  * not available, the producers wait, and if there is not enough content, the
  * consumers wait.
  *
- * The difference from cmb_queue is that cmb_queue only represents amounts,
- * while qmb_queue tracks the individual objects passing throug the queue. An
+ * The difference from cmb_buffer is that it only represents amounts, while
+ * qmb_objectqueue tracks the individual objects passing throug the queue. An
  * object can be anything, represented by void* here.
  *
- * The queue_tags and their memory pool is defined here, since they are used
- * internally by the cmb_queue class.
+ * The queue_tags and their memory pool is defined here, since they are only
+ * used internally by the cmb_objectqueue class.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -28,7 +28,7 @@
  */
 
 
-#include "../include/cmb_queue.h"
+#include "../include/cmb_objectqueue.h"
 #include "cmb_assert.h"
 #include "cmb_logger.h"
 #include "cmb_process.h"
@@ -51,80 +51,80 @@ struct queue_tag {
 static CMB_THREAD_LOCAL struct cmb_mempool *queue_tag_pool = NULL;
 
 /*
- * cmb_queue_create : Allocate memory for a queue object.
+ * cmb_objectqueue_create : Allocate memory for a queue object.
  */
-struct cmb_queue *cmb_queue_create(void)
+struct cmb_objectqueue *cmb_objectqueue_create(void)
 {
-    struct cmb_queue *qp = cmi_malloc(sizeof *qp);
-    cmi_memset(qp, 0, sizeof *qp);
+    struct cmb_objectqueue *oqp = cmi_malloc(sizeof *oqp);
+    cmi_memset(oqp, 0, sizeof *oqp);
 
-    return qp;
+    return oqp;
 }
 
 /*
- * cmb_queue_initialize : Make an allocated queue object ready for use.
+ * cmb_objectqueue_initialize : Make an allocated queue object ready for use.
  */
-void cmb_queue_initialize(struct cmb_queue *qp,
-                           const char *name,
-                           uint64_t capacity)
+void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
+                                const char *name,
+                                const uint64_t capacity)
 {
-    cmb_assert_release(qp != NULL);
+    cmb_assert_release(oqp != NULL);
     cmb_assert_release(name != NULL);
     cmb_assert_release(capacity > 0u);
 
-    cmi_resourcebase_initialize(&(qp->core), name);
+    cmi_resourcebase_initialize(&(oqp->core), name);
 
-    cmi_resourceguard_initialize(&(qp->front_guard), &(qp->core));
-    cmi_resourceguard_initialize(&(qp->rear_guard), &(qp->core));
+    cmi_resourceguard_initialize(&(oqp->front_guard), &(oqp->core));
+    cmi_resourceguard_initialize(&(oqp->rear_guard), &(oqp->core));
 
-    qp->capacity = capacity;
-    qp->length_now = 0u;
+    oqp->capacity = capacity;
+    oqp->length_now = 0u;
 
-    qp->queue_head = NULL;
-    qp->queue_end = NULL;
+    oqp->queue_head = NULL;
+    oqp->queue_end = NULL;
 
-    cmb_dataset_initialize(&(qp->wait_times));
+    cmb_dataset_initialize(&(oqp->wait_times));
 
-    qp->is_recording = false;
+    oqp->is_recording = false;
 }
 
 /*
- * cmb_queue_terminate : Un-initializes a queue object.
+ * cmb_objectqueue_terminate : Un-initializes a queue object.
  */
-void cmb_queue_terminate(struct cmb_queue *qp)
+void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
 {
-    cmb_assert_release(qp != NULL);
+    cmb_assert_release(oqp != NULL);
 
-    while (qp->queue_head != NULL) {
-        struct queue_tag *tag = qp->queue_head;
-        qp->queue_head = tag->next;
+    while (oqp->queue_head != NULL) {
+        struct queue_tag *tag = oqp->queue_head;
+        oqp->queue_head = tag->next;
         cmb_mempool_put(queue_tag_pool, tag);
     }
 
-    qp->length_now = 0u;
-    qp->queue_head = NULL;
-    qp->queue_end = NULL;
-    qp->is_recording = false;
+    oqp->length_now = 0u;
+    oqp->queue_head = NULL;
+    oqp->queue_end = NULL;
+    oqp->is_recording = false;
 
-    cmb_dataset_terminate(&(qp->wait_times));
-    cmi_resourceguard_terminate(&(qp->rear_guard));
-    cmi_resourceguard_terminate(&(qp->front_guard));
-    cmi_resourcebase_terminate(&(qp->core));
+    cmb_dataset_terminate(&(oqp->wait_times));
+    cmi_resourceguard_terminate(&(oqp->rear_guard));
+    cmi_resourceguard_terminate(&(oqp->front_guard));
+    cmi_resourcebase_terminate(&(oqp->core));
 }
 
 /*
- * cmb_queue_destroy : Deallocates memory for a queue object.
+ * cmb_objectqueue_destroy : Deallocates memory for a queue object.
  */
-void cmb_queue_destroy(struct cmb_queue *qp)
+void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp)
 {
-    cmb_assert_release(qp != NULL);
+    cmb_assert_release(oqp != NULL);
 
-    cmb_queue_terminate(qp);
-    cmi_free(qp);
+    cmb_objectqueue_terminate(oqp);
+    cmi_free(oqp);
 }
 
 /*
- * queue_has_content : pre-packaged demand function for a cmb_queue, allowing
+ * queue_has_content : pre-packaged demand function for a cmb_objectqueue, allowing
  * the getting process to grab some whenever there is something to grab.
  */
 static bool queue_has_content(const struct cmi_resourcebase *rbp,
@@ -135,13 +135,13 @@ static bool queue_has_content(const struct cmi_resourcebase *rbp,
     cmb_unused(pp);
     cmb_unused(ctx);
 
-    const struct cmb_queue *qp = (struct cmb_queue *)rbp;
+    const struct cmb_objectqueue *oqp = (struct cmb_objectqueue *)rbp;
 
-    return (qp->queue_head != NULL);
+    return (oqp->queue_head != NULL);
 }
 
 /*
- * queue_has_space : pre-packaged demand function for a cmb_queue, allowing
+ * queue_has_space : pre-packaged demand function for a cmb_objectqueue, allowing
  * the putting process to stuff in some whenever there is space.
  */
 static bool queue_has_space(const struct cmi_resourcebase *rbp,
@@ -152,60 +152,60 @@ static bool queue_has_space(const struct cmi_resourcebase *rbp,
     cmb_unused(pp);
     cmb_unused(ctx);
 
-    const struct cmb_queue *qp = (struct cmb_queue *)rbp;
+    const struct cmb_objectqueue *oqp = (struct cmb_objectqueue *)rbp;
 
-    return (qp->length_now < qp->capacity);
+    return (oqp->length_now < oqp->capacity);
 }
 
-static void record_sample(struct cmb_queue *qp) {
-    cmb_assert_release(qp != NULL);
+static void record_sample(struct cmb_objectqueue *oqp) {
+    cmb_assert_release(oqp != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)qp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     if (rbp->is_recording) {
         struct cmb_timeseries *ts = &(rbp->history);
-        cmb_timeseries_add(ts, (double)(qp->length_now), cmb_time());
+        cmb_timeseries_add(ts, (double)(oqp->length_now), cmb_time());
     }
 }
 
-void cmb_queue_start_recording(struct cmb_queue *qp)
+void cmb_objectqueue_start_recording(struct cmb_objectqueue *oqp)
 {
-    cmb_assert_release(qp != NULL);
+    cmb_assert_release(oqp != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)qp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     rbp->is_recording = true;
-    record_sample(qp);
+    record_sample(oqp);
 }
 
-void cmb_queue_stop_recording(struct cmb_queue *qp)
+void cmb_objectqueue_stop_recording(struct cmb_objectqueue *oqp)
 {
-    cmb_assert_release(qp != NULL);
+    cmb_assert_release(oqp != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)qp;
-    record_sample(qp);
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    record_sample(oqp);
     rbp->is_recording = false;
 }
 
-struct cmb_timeseries *cmb_queue_get_length_history(struct cmb_queue *qp)
+struct cmb_timeseries *cmb_objectqueue_get_history(struct cmb_objectqueue *oqp)
 {
-    cmb_assert_release(qp != NULL);
+    cmb_assert_release(oqp != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)qp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
 
     return &(rbp->history);
 }
 
-struct cmb_dataset *cmb_queue_get_wait_times(struct cmb_queue *qp)
+struct cmb_dataset *cmb_queue_get_wait_times(struct cmb_objectqueue *oqp)
 {
-    cmb_assert_release(qp != NULL);
+    cmb_assert_release(oqp != NULL);
 
-    return &(qp->wait_times);
+    return &(oqp->wait_times);
 }
 
-void cmb_queue_print_report(struct cmb_queue *qp, FILE *fp) {
-    cmb_assert_release(qp != NULL);
+void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp) {
+    cmb_assert_release(oqp != NULL);
 
-    fprintf(fp, "Queue lengths for %s:\n", qp->core.name);
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)qp;
+    fprintf(fp, "Queue lengths for %s:\n", oqp->core.name);
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     const struct cmb_timeseries *ts = &(rbp->history);
 
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
@@ -213,20 +213,20 @@ void cmb_queue_print_report(struct cmb_queue *qp, FILE *fp) {
     cmb_wtdsummary_print(ws, fp, true);
     cmb_wtdsummary_destroy(ws);
 
-    const unsigned nbin = (qp->capacity > 20) ? 20 : qp->capacity + 1;
-    cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(qp->capacity + 1u));
+    const unsigned nbin = (oqp->capacity > 20) ? 20 : oqp->capacity + 1;
+    cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(oqp->capacity + 1u));
 
-    fprintf(fp, "Waiting times for %s:\n", qp->core.name);
+    fprintf(fp, "Waiting times for %s:\n", oqp->core.name);
     struct cmb_datasummary *ds = cmb_datasummary_create();
-    (void)cmb_dataset_summarize(&(qp->wait_times), ds);
+    (void)cmb_dataset_summarize(&(oqp->wait_times), ds);
     cmb_datasummary_print(ds, fp, true);
     cmb_wtdsummary_destroy(ws);
 
-    cmb_dataset_print_histogram(&(qp->wait_times), fp, nbin, 0.0, (double)(qp->capacity + 1u));
+    cmb_dataset_print_histogram(&(oqp->wait_times), fp, nbin, 0.0, (double)(oqp->capacity + 1u));
 }
 
 /*
- * cmb_queue_get : Request and if necessary wait for an amount of the
+ * cmb_objectqueue_get : Request and if necessary wait for an amount of the
  * queue resource.
  *
  * Note that the amount argument is a pointer to where the amount is stored.
@@ -238,46 +238,46 @@ void cmb_queue_print_report(struct cmb_queue *qp, FILE *fp) {
  * value is the interrupt signal received, some value other than
  * CMB_PROCESS_SUCCESS.
  */
-int64_t cmb_queue_get(struct cmb_queue *qp, void **objectloc)
+int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
 {
-    cmb_assert_release(qp != NULL);
+    cmb_assert_release(oqp != NULL);
     cmb_assert_release(objectloc != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)qp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
 
     while (true) {
-        cmb_assert_debug(qp->length_now <= qp->capacity);
+        cmb_assert_debug(oqp->length_now <= oqp->capacity);
         cmb_logger_info(stdout, "%s capacity %llu length now %llu",
-                       rbp->name, qp->capacity, qp->length_now);
+                       rbp->name, oqp->capacity, oqp->length_now);
         cmb_logger_info(stdout, "Gets an object from %s", rbp->name);
 
-        if (qp->queue_head != NULL) {
+        if (oqp->queue_head != NULL) {
             /* There is one ready */
-            struct queue_tag *tag = qp->queue_head;
-            qp->queue_head = tag->next;
-            qp->length_now--;
-            if (qp->queue_head == NULL) {
-                qp->queue_end = NULL;
+            struct queue_tag *tag = oqp->queue_head;
+            oqp->queue_head = tag->next;
+            oqp->length_now--;
+            if (oqp->queue_head == NULL) {
+                oqp->queue_end = NULL;
             }
 
             *objectloc = tag->object;
-            record_sample(qp);
-            cmb_dataset_add(&(qp->wait_times), cmb_time() - tag->timestamp);
+            record_sample(oqp);
+            cmb_dataset_add(&(oqp->wait_times), cmb_time() - tag->timestamp);
 
             cmb_logger_info(stdout, "Success, got %p", *objectloc);
             tag->next = NULL;
             tag->object = NULL;
             cmb_mempool_put(queue_tag_pool, tag);
 
-            cmi_resourceguard_signal(&(qp->rear_guard));
+            cmi_resourceguard_signal(&(oqp->rear_guard));
 
             return CMB_PROCESS_SUCCESS;
         }
 
         /* Wait at the front door until some more becomes available  */
-        cmb_assert_debug(qp->length_now == 0u);
+        cmb_assert_debug(oqp->length_now == 0u);
         cmb_logger_info(stdout, "Waiting for an object");
-        const int64_t sig = cmi_resourceguard_wait(&(qp->front_guard),
+        const int64_t sig = cmi_resourceguard_wait(&(oqp->front_guard),
                                                    queue_has_content,
                                                    NULL);
         if (sig == CMB_PROCESS_SUCCESS) {
@@ -288,7 +288,7 @@ int64_t cmb_queue_get(struct cmb_queue *qp, void **objectloc)
                             "Interrupted by signal %lld, returns without object",
                             sig);
             *objectloc = NULL;
-            cmb_assert_debug(qp->length_now <= qp->capacity);
+            cmb_assert_debug(oqp->length_now <= oqp->capacity);
 
             return sig;
         }
@@ -296,7 +296,7 @@ int64_t cmb_queue_get(struct cmb_queue *qp, void **objectloc)
 }
 
 /*
- * cmb_queue_put : Put an object into the queue, if necessary waiting for free
+ * cmb_objectqueue_put : Put an object into the queue, if necessary waiting for free
  * space.
  *
  * Note that the object argument is a pointer to where the object is stored.
@@ -307,9 +307,9 @@ int64_t cmb_queue_get(struct cmb_queue *qp, void **objectloc)
  * interrupt signal received, some value other than CMB_PROCESS_SUCCESS. The
  * object pointer will still be unchanged.
  */
-int64_t cmb_queue_put(struct cmb_queue *qp, void **objectloc)
+int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
 {
-    cmb_assert_release(qp != NULL);
+    cmb_assert_release(oqp != NULL);
     cmb_assert_release(objectloc != NULL);
 
     /* Lazy initalization of the memory pool for process tags */
@@ -320,41 +320,41 @@ int64_t cmb_queue_put(struct cmb_queue *qp, void **objectloc)
                               sizeof(struct queue_tag));
     }
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)qp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     while (true) {
-        cmb_assert_debug(qp->length_now <= qp->capacity);
+        cmb_assert_debug(oqp->length_now <= oqp->capacity);
         cmb_logger_info(stdout, "%s capacity %llu length now %llu",
-                        rbp->name, qp->capacity, qp->length_now);
+                        rbp->name, oqp->capacity, oqp->length_now);
         cmb_logger_info(stdout, "Puts object %p into %s", *objectloc, rbp->name);
-        if (qp->length_now < qp->capacity) {
+        if (oqp->length_now < oqp->capacity) {
             /* There is space */
             struct queue_tag *tag = cmb_mempool_get(queue_tag_pool);
             tag->object = *objectloc;
             tag->timestamp = cmb_time();
             tag->next = NULL;
 
-            if (qp->queue_head == NULL) {
-                qp->queue_head = tag;
+            if (oqp->queue_head == NULL) {
+                oqp->queue_head = tag;
             }
             else {
-                qp->queue_end->next = tag;
+                oqp->queue_end->next = tag;
             }
 
-            qp->queue_end = tag;
-            qp->length_now++;
-            cmb_assert_debug(qp->length_now <= qp->capacity);
+            oqp->queue_end = tag;
+            oqp->length_now++;
+            cmb_assert_debug(oqp->length_now <= oqp->capacity);
 
-            record_sample(qp);
+            record_sample(oqp);
             cmb_logger_info(stdout, "Success, put %p", *objectloc);
-            cmi_resourceguard_signal(&(qp->front_guard));
+            cmi_resourceguard_signal(&(oqp->front_guard));
 
             return CMB_PROCESS_SUCCESS;
         }
 
         /* Wait at the back door until some more becomes available  */
-        cmb_assert_debug(qp->length_now == qp->capacity);
+        cmb_assert_debug(oqp->length_now == oqp->capacity);
         cmb_logger_info(stdout, "Waiting for space");
-        const int64_t sig = cmi_resourceguard_wait(&(qp->rear_guard),
+        const int64_t sig = cmi_resourceguard_wait(&(oqp->rear_guard),
                                                    queue_has_space,
                                                    NULL);
         if (sig == CMB_PROCESS_SUCCESS) {
@@ -366,7 +366,7 @@ int64_t cmb_queue_put(struct cmb_queue *qp, void **objectloc)
                             sig,
                             *objectloc,
                             rbp->name);
-            cmb_assert_debug(qp->length_now <= qp->capacity);
+            cmb_assert_debug(oqp->length_now <= oqp->capacity);
 
             return sig;
         }

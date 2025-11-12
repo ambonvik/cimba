@@ -18,10 +18,12 @@ set(SOURCES src/cmb_dataset.c
         src/cmb_datasummary.c
         src/cmb_wtdsummary.c
         src/cmb_timeseries.c
-        src/cmb_queue.c
+        src/cmb_objectqueue.c
         src/cmi_coroutine.c
         src/cmi_hashheap.c
         src/cmi_processtag.c
+        src/cmi_resourceguard.c
+        src/cmi_resourcebase.c
         src/cmi_resourcetag.c
         src/cmi_resourcebase.c
         src/cmi_resourceguard.c
@@ -30,10 +32,7 @@ set(SOURCES src/cmb_dataset.c
         src/arch/cmi_memutils_Win64.c
         src/arch/cmb_random_hwseed_Win64.c
         src/arch/cmi_coroutine_context_Win64.c
-        src/cmi_resourceguard.c
-        src/cmi_resourceguard.h
-        src/cmi_resourcebase.c
-        src/cmi_resourcebase.h)
+        src/arch/cmi_cpu_cores_Win64.c)
 set(HEADERS include/cmb_dataset.h
         include/cmb_event.h
         include/cmb_random.h
@@ -43,7 +42,7 @@ set(HEADERS include/cmb_dataset.h
         include/cmb_mempool.h
         include/cmb_resource.h
         include/cmb_store.h
-        include/cmb_queue.h
+        include/cmb_objectqueue.h
         include/cmb_buffer.h
         include/cmb_datasummary.h
         include/cmb_wtdsummary.h
@@ -96,8 +95,8 @@ target_link_libraries(test_store PRIVATE cimba)
 add_executable(test_buffer test/test_buffer.c test/test.h)
 target_link_libraries(test_buffer PRIVATE cimba)
 
-add_executable(test_queue test/test_queue.c test/test.h)
+add_executable(test_queue test/test_objectqueue.c test/test.h)
 target_link_libraries(test_queue PRIVATE cimba)
 
 add_executable(test_pthreads test/test_pthreads.c test/test.h)
-target_link_libraries(test_pthreads PRIVATE cimba)
+target_link_libraries(test_pthreads PRIVATE cimba pthread)

@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "../include/cmb_queue.h"
+#include "../include/cmb_objectqueue.h"
 #include "cmb_event.h"
 #include "cmb_logger.h"
 #include "cmb_process.h"
@@ -37,7 +37,7 @@ struct simulation {
     struct cmb_process *putters[NUM_PUTTERS];
     struct cmb_process *getters[NUM_PUTTERS];
     struct cmb_process *nuisance;
-    struct cmb_queue *queue;
+    struct cmb_objectqueue *queue;
 };
 
 static void end_sim_evt(void *subject, void *object)
@@ -64,7 +64,7 @@ void *putterfunc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
-    struct cmb_queue *qp = (struct cmb_queue *)ctx;
+    struct cmb_objectqueue *qp = (struct cmb_objectqueue *)ctx;
 
     void *object = NULL;
 
@@ -83,9 +83,9 @@ void *putterfunc(struct cmb_process *me, void *ctx)
                         stdout,
                         "Putting object %p into %s...",
                         object,
-                        cmb_queue_get_name(qp));
+                        cmb_objectqueue_get_name(qp));
 
-        sig = cmb_queue_put(qp, &object);
+        sig = cmb_objectqueue_put(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(USERFLAG, stdout, "Put succeeded");
         }
@@ -100,7 +100,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
 
-    struct cmb_queue *qp = (struct cmb_queue *) ctx;
+    struct cmb_objectqueue *qp = (struct cmb_objectqueue *) ctx;
 
     void *object = NULL;
 
@@ -118,9 +118,9 @@ void *getterfunc(struct cmb_process *me, void *ctx)
         cmb_logger_user(USERFLAG,
                         stdout,
                         "Getting object from %s...",
-                        cmb_queue_get_name(qp));
+                        cmb_objectqueue_get_name(qp));
 
-        sig = cmb_queue_get(qp, &object);
+        sig = cmb_objectqueue_get(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(USERFLAG, stdout, "Get succeeded");
         }
@@ -165,9 +165,9 @@ void test_queue(double duration)
     cmb_event_queue_initialize(0.0);
 
     printf("Create a queue\n");
-    quetst->queue = cmb_queue_create();
-    cmb_queue_initialize(quetst->queue, "Queue", 10u);
-    cmb_queue_start_recording(quetst->queue);
+    quetst->queue = cmb_objectqueue_create();
+    cmb_objectqueue_initialize(quetst->queue, "Queue", 10u);
+    cmb_objectqueue_start_recording(quetst->queue);
 
     char scratchpad[32];
     printf("Create three processes feeding into the queue\n");
@@ -200,8 +200,8 @@ void test_queue(double duration)
     cmb_event_queue_execute();
 
     printf("Report statistics...\n");
-    cmb_queue_stop_recording(quetst->queue);
-    cmb_queue_print_report(quetst->queue, stdout);
+    cmb_objectqueue_stop_recording(quetst->queue);
+    cmb_objectqueue_print_report(quetst->queue, stdout);
 
     printf("Clean up\n");
     for (unsigned ui = 0; ui < 3; ui++) {
@@ -211,7 +211,7 @@ void test_queue(double duration)
 
     cmb_process_terminate(quetst->nuisance);
     cmb_process_destroy(quetst->nuisance);
-    cmb_queue_destroy(quetst->queue);
+    cmb_objectqueue_destroy(quetst->queue);
     cmb_event_queue_terminate();
     cmi_free(quetst);
 }
