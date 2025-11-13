@@ -1,5 +1,6 @@
 /*
- * Test script for pthreads, a simple M/G/1 queuing system for parameterization
+ * Test/demo program for parallel execution in Cimba.
+ * The simulation is a simple M/G/1 queuing system for parameterization
  * of utilization (interarrival mean time) and variability (service time
  * standard deviation). Holding mean service time constant at 1.0, inter-
  * arrival times exponentially distributed (c.v. = 1.0)
@@ -26,11 +27,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "cmb_event.h"
-#include "cmb_random.h"
-#include "cmb_logger.h"
-#include "cmb_process.h"
-#include "cmb_buffer.h"
+#include "cimba.h"
 
 extern uint32_t cmi_cpu_cores(void);
 
@@ -43,18 +40,18 @@ struct simulation {
 };
 
 struct trial {
-    double rho;
     double service_cv;
+    double utilization;
     double warmup;
     double duration;
     double cooldown;
     uint64_t seed;
-    double avg_queuelength;
+    double avg_queue_length;
 };
 
 struct context {
     struct simulation *sim;
-    struct trial *trial;
+    struct trial *trl;
 };
 
 static void end_sim_evt(void *subject, void *object)
@@ -85,14 +82,14 @@ static void stop_rec_evt(void *subject, void *object)
 }
 
 
-void *arrivalfunc(struct cmb_process *me, void *vctx)
+void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
 
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
     cmb_logger_user(USERFLAG, stdout, "Started arrival, queue %s", cmb_buffer_get_name(bp));
-    const double mean_interarr = 1.0 / ctx->trial->rho;
+    const double mean_interarr = 1.0 / ctx->trl->utilization;
 
     while (true) {
         cmb_logger_user(USERFLAG, stdout, "Holding");
@@ -103,14 +100,14 @@ void *arrivalfunc(struct cmb_process *me, void *vctx)
     }
 }
 
-void *servicefunc(struct cmb_process *me, void *vctx)
+void *service_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
 
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
     cmb_logger_user(USERFLAG, stdout, "Started service, queue %s", cmb_buffer_get_name(bp));
-    const double cv = ctx->trial->service_cv;
+    const double cv = ctx->trl->service_cv;
     const double shape = 1.0 / (cv * cv);
     const double scale = cv * cv;
 
@@ -123,7 +120,7 @@ void *servicefunc(struct cmb_process *me, void *vctx)
     }
 }
 
-void run_mg1(void *vtrl)
+void run_mg1_trial(void *vtrl)
 {
     struct trial *trl = vtrl;
     if (trl->seed == 0u) {
@@ -132,13 +129,12 @@ void run_mg1(void *vtrl)
         trl->seed = seed;
     }
 
-    printf("pthread %llu is running, seed 0x%llx\n", (uintptr_t)pthread_self(), trl->seed);
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG);
     cmb_event_queue_initialize(0.0);
 
     struct context *ctx = malloc(sizeof(*ctx));
-    ctx->trial = trl;
+    ctx->trl = trl;
 
     struct simulation *sim = malloc(sizeof(*sim));
     ctx->sim = sim;
@@ -147,11 +143,11 @@ void run_mg1(void *vtrl)
     cmb_buffer_initialize(sim->queue, "Queue", UINT64_MAX);
 
     sim->arrival = cmb_process_create();
-    cmb_process_initialize(sim->arrival, "Arrivals", arrivalfunc, ctx, 0);
+    cmb_process_initialize(sim->arrival, "Arrivals", arrival_proc, ctx, 0);
     cmb_process_start(sim->arrival);
 
     sim->service = cmb_process_create();
-    cmb_process_initialize(sim->service, "Service", servicefunc, ctx, 0);
+    cmb_process_initialize(sim->service, "Service", service_proc, ctx, 0);
     cmb_process_start(sim->service);
 
     double t = trl->warmup;
@@ -162,13 +158,14 @@ void run_mg1(void *vtrl)
     (void)cmb_event_schedule(end_sim_evt, sim, NULL, t, 0);
 
     cmb_event_queue_execute();
-    cmb_buffer_print_report(sim->queue, stdout);
+//    cmb_buffer_print_report(sim->queue, stdout);
 
     const struct cmb_timeseries *tsp = cmb_buffer_get_history(sim->queue);
     struct cmb_wtdsummary ws;
     cmb_timeseries_summarize(tsp, &ws);
-    trl->avg_queuelength = cmb_wtdsummary_mean(&ws);
+    trl->avg_queue_length = cmb_wtdsummary_mean(&ws);
 
+    cmb_event_queue_terminate();
     cmb_process_destroy(sim->arrival);
     cmb_process_destroy(sim->service);
     cmb_buffer_destroy(sim->queue);
@@ -182,10 +179,10 @@ int main(void)
     const clock_t start_time = clock();
 
     const unsigned nreps = 10;
-    const unsigned nrhos = 5;
-    const double rhos[] = { 0.4, 0.6, 0.8, 0.9, 0.95 };
     const unsigned ncvs = 4;
     const double cvs[] = { 0.125, 0.25, 0.5, 1.0 };
+    const unsigned nrhos = 5;
+    const double rhos[] = { 0.4, 0.6, 0.8, 0.9, 0.95 };
     const double warmup = 10.0;
     const double duration = 1e6;
     const double cooldown = 1.0;
@@ -194,23 +191,47 @@ int main(void)
     printf("We have %u trials\n", ntrials);
 
     const uint32_t ncores = cmi_cpu_cores();
-    printf("We have %lu cores to play with\n", ncores);
+    printf("We have %u cores to play with\n", ncores);
 
-    struct trial *trl = malloc(sizeof(*trl));
-    trl->rho = 0.9;
-    trl->service_cv = 0.5;
-    trl->warmup = warmup;
-    trl->duration = duration;
-    trl->cooldown = cooldown;
-
-    pthread_t thread;
-    const int status = pthread_create(&thread, NULL, run_mg1, trl);
-    if (status != 0) {
-        cmb_logger_error(stderr, "Could not create thread: %s", strerror(status));
+    printf("Setting up experiment\n");
+    struct trial *experiment = calloc(ntrials, sizeof(*experiment));
+    uint64_t ui_exp = 0u;
+    for (unsigned ui_cv = 0u; ui_cv < ncvs; ui_cv++) {
+        for (unsigned ui_rho = 0u; ui_rho < nrhos; ui_rho++) {
+            for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
+                experiment[ui_exp].service_cv = cvs[ui_cv];
+                experiment[ui_exp].utilization = rhos[ui_rho];
+                experiment[ui_exp].warmup = warmup;
+                experiment[ui_exp].duration = duration;
+                experiment[ui_exp].cooldown = cooldown;
+                experiment[ui_exp].seed = 0u;
+                experiment[ui_exp].avg_queue_length = 0.0;
+                ui_exp++;
+            }
+        }
     }
 
-    pthread_join(thread, NULL);
-    free(trl);
+    printf("Executing experiment\n");
+    cimba_run_experiment(experiment, ntrials, sizeof(*experiment), run_mg1_trial);
+
+    printf("Done with experiment\n");
+    ui_exp = 0u;
+    for (unsigned ui_cv = 0u; ui_cv < ncvs; ui_cv++) {
+         for (unsigned ui_rho = 0u; ui_rho < nrhos; ui_rho++) {
+            for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
+                printf("Trial %llu: seed 0x%llx CV %f rho %f L %f\n",
+                    ui_exp,
+                    experiment[ui_exp].seed,
+                    experiment[ui_exp].service_cv,
+                    experiment[ui_exp].utilization,
+                    experiment[ui_exp].avg_queue_length);
+                ui_exp++;
+            }
+        }
+    }
+
+
+    free(experiment);
 
     const clock_t end_time = clock();
     const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;

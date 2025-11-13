@@ -5,57 +5,57 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Wall -Wextra")
 enable_language(ASM_NASM)
 
 include_directories(include src)
-set(SOURCES src/cmb_dataset.c
-        src/cmb_event.c
-        src/cmb_resource.c
-        src/cmb_store.c
-        src/cmb_process.c
-        src/cmb_random.c
+set(SOURCES src/cimba.c
         src/cmb_assert.c
         src/cmb_buffer.c
-        src/cmb_mempool.c
-        src/cmb_logger.c
+        src/cmb_dataset.c
         src/cmb_datasummary.c
-        src/cmb_wtdsummary.c
-        src/cmb_timeseries.c
+        src/cmb_event.c
+        src/cmb_logger.c
+        src/cmb_mempool.c
         src/cmb_objectqueue.c
+        src/cmb_process.c
+        src/cmb_random.c
+        src/cmb_resource.c
+        src/cmb_store.c
+        src/cmb_timeseries.c
+        src/cmb_wtdsummary.c
         src/cmi_coroutine.c
         src/cmi_hashheap.c
         src/cmi_processtag.c
-        src/cmi_resourceguard.c
         src/cmi_resourcebase.c
+        src/cmi_resourceguard.c
         src/cmi_resourcetag.c
-        src/cmi_resourcebase.c
-        src/cmi_resourceguard.c
         src/cmi_random_exp_zig.inc
         src/cmi_random_nor_zig.inc
         src/arch/cmi_memutils_Win64.c
         src/arch/cmb_random_hwseed_Win64.c
         src/arch/cmi_coroutine_context_Win64.c
         src/arch/cmi_cpu_cores_Win64.c)
-set(HEADERS include/cmb_dataset.h
-        include/cmb_event.h
-        include/cmb_random.h
+set(HEADERS include/cimba.h
         include/cmb_assert.h
-        include/cmb_logger.h
         include/cmb_buffer.h
+        include/cmb_dataset.h
+        include/cmb_datasummary.h
+        include/cmb_event.h
+        include/cmb_logger.h
         include/cmb_mempool.h
+        include/cmb_objectqueue.h
+        include/cmb_process.h
+        include/cmb_random.h
         include/cmb_resource.h
         include/cmb_store.h
-        include/cmb_objectqueue.h
-        include/cmb_buffer.h
-        include/cmb_datasummary.h
         include/cmb_wtdsummary.h
         include/cmb_timeseries.h
         src/cmi_coroutine.h
         src/cmi_config.h
+        src/cmi_dataset.h
         src/cmi_hashheap.h
         src/cmi_memutils.h
         src/cmi_processtag.h
-        src/cmi_resourcetag.h
-        src/cmi_resourceguard.h
         src/cmi_resourcebase.h
-        src/cmi_dataset.h)
+        src/cmi_resourceguard.h
+        src/cmi_resourcetag.h)
 
 set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm src/arch/cmi_random_hwseed_Win64.asm)
 set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM_NASM)
@@ -98,5 +98,5 @@ target_link_libraries(test_buffer PRIVATE cimba)
 add_executable(test_queue test/test_objectqueue.c test/test.h)
 target_link_libraries(test_queue PRIVATE cimba)
 
-add_executable(test_pthreads test/test_pthreads.c test/test.h)
-target_link_libraries(test_pthreads PRIVATE cimba pthread)
+add_executable(test_cimba test/test_cimba.c test/test.h)
+target_link_libraries(test_cimba PRIVATE cimba pthread)
