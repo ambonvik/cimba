@@ -19,8 +19,11 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
+#include <pthread.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "cmb_event.h"
@@ -29,7 +32,7 @@
 #include "cmb_process.h"
 #include "cmb_buffer.h"
 
-#include "cmi_memutils.h"
+extern uint32_t cmi_cpu_cores(void);
 
 #define USERFLAG 0x00000001
 
@@ -58,10 +61,10 @@ static void end_sim_evt(void *subject, void *object)
 {
     cmb_unused(object);
 
-    const struct context *ctx = subject;
+    const struct simulation *sim = subject;
     cmb_logger_info(stdout, "===> end_sim_evt <===");
-    cmb_process_stop(ctx->sim->arrival, NULL);
-    cmb_process_stop(ctx->sim->service, NULL);
+    cmb_process_stop(sim->arrival, NULL);
+    cmb_process_stop(sim->service, NULL);
     cmb_event_queue_clear();
 }
 
@@ -69,16 +72,16 @@ static void start_rec_evt(void *subject, void *object)
 {
     cmb_unused(object);
 
-    const struct context *ctx = subject;
-    cmb_buffer_start_recording(ctx->sim->queue);
+    const struct simulation *sim = subject;
+    cmb_buffer_start_recording(sim->queue);
 }
 
 static void stop_rec_evt(void *subject, void *object)
 {
     cmb_unused(object);
 
-    const struct context *ctx = subject;
-    cmb_buffer_stop_recording(ctx->sim->queue);
+    const struct simulation *sim = subject;
+    cmb_buffer_stop_recording(sim->queue);
 }
 
 
@@ -89,11 +92,9 @@ void *arrivalfunc(struct cmb_process *me, void *vctx)
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
     cmb_logger_user(USERFLAG, stdout, "Started arrival, queue %s", cmb_buffer_get_name(bp));
-    cmb_assert_debug(ctx->trial->rho > 0.0);
     const double mean_interarr = 1.0 / ctx->trial->rho;
 
-    // ReSharper disable once CppDFAEndlessLoop
-    for (;;) {
+    while (true) {
         cmb_logger_user(USERFLAG, stdout, "Holding");
         (void)cmb_process_hold(cmb_random_exponential(mean_interarr));
         cmb_logger_user(USERFLAG, stdout, "Arrival");
@@ -109,13 +110,11 @@ void *servicefunc(struct cmb_process *me, void *vctx)
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
     cmb_logger_user(USERFLAG, stdout, "Started service, queue %s", cmb_buffer_get_name(bp));
-    cmb_assert_debug(ctx->trial->service_cv > 0.0);
     const double cv = ctx->trial->service_cv;
     const double shape = 1.0 / (cv * cv);
     const double scale = cv * cv;
 
-    // ReSharper disable once CppDFAEndlessLoop
-    for (;;) {
+    while (true) {
         cmb_logger_user(USERFLAG, stdout, "Holding shape %f scale %f", shape, scale);
         (void)cmb_process_hold(cmb_random_gamma(shape, scale));
         cmb_logger_user(USERFLAG, stdout, "Getting");
@@ -124,78 +123,99 @@ void *servicefunc(struct cmb_process *me, void *vctx)
     }
 }
 
-void run_mg1(struct trial *trl)
+void run_mg1(void *vtrl)
 {
+    struct trial *trl = vtrl;
     if (trl->seed == 0u) {
         const uint64_t seed = cmb_random_get_hwseed();
         cmb_random_initialize(seed);
         trl->seed = seed;
     }
 
+    printf("pthread %llu is running, seed 0x%llx\n", (uintptr_t)pthread_self(), trl->seed);
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG);
     cmb_event_queue_initialize(0.0);
 
-    struct context *ctx = cmi_malloc(sizeof(*ctx));
+    struct context *ctx = malloc(sizeof(*ctx));
     ctx->trial = trl;
 
-    struct simulation *sim = cmi_malloc(sizeof(*sim));
+    struct simulation *sim = malloc(sizeof(*sim));
     ctx->sim = sim;
 
-    ctx->sim->queue = cmb_buffer_create();
-    cmb_buffer_initialize(ctx->sim->queue, "Queue", UINT64_MAX);
+    sim->queue = cmb_buffer_create();
+    cmb_buffer_initialize(sim->queue, "Queue", UINT64_MAX);
 
-    ctx->sim->arrival = cmb_process_create();
-    cmb_process_initialize(ctx->sim->arrival, "Arrivals", arrivalfunc, ctx, 0);
-    cmb_process_start(ctx->sim->arrival);
+    sim->arrival = cmb_process_create();
+    cmb_process_initialize(sim->arrival, "Arrivals", arrivalfunc, ctx, 0);
+    cmb_process_start(sim->arrival);
 
-    ctx->sim->service = cmb_process_create();
-    cmb_process_initialize(ctx->sim->service, "Service", servicefunc, ctx, 0);
-    cmb_process_start(ctx->sim->service);
+    sim->service = cmb_process_create();
+    cmb_process_initialize(sim->service, "Service", servicefunc, ctx, 0);
+    cmb_process_start(sim->service);
 
     double t = trl->warmup;
-    (void)cmb_event_schedule(start_rec_evt, ctx, NULL, t, 0);
+    (void)cmb_event_schedule(start_rec_evt, sim, NULL, t, 0);
     t += trl->duration;
-    (void)cmb_event_schedule(stop_rec_evt, ctx, NULL, t, 0);
+    (void)cmb_event_schedule(stop_rec_evt, sim, NULL, t, 0);
     t += trl->cooldown;
-    (void)cmb_event_schedule(end_sim_evt, ctx, NULL, t, 0);
+    (void)cmb_event_schedule(end_sim_evt, sim, NULL, t, 0);
 
     cmb_event_queue_execute();
-    cmb_buffer_print_report(ctx->sim->queue, stdout);
+    cmb_buffer_print_report(sim->queue, stdout);
 
-    const struct cmb_timeseries *tsp = cmb_buffer_get_history(ctx->sim->queue);
+    const struct cmb_timeseries *tsp = cmb_buffer_get_history(sim->queue);
     struct cmb_wtdsummary ws;
     cmb_timeseries_summarize(tsp, &ws);
     trl->avg_queuelength = cmb_wtdsummary_mean(&ws);
 
-    cmb_process_destroy(ctx->sim->arrival);
-    cmb_process_destroy(ctx->sim->service);
-    cmb_buffer_destroy(ctx->sim->queue);
+    cmb_process_destroy(sim->arrival);
+    cmb_process_destroy(sim->service);
+    cmb_buffer_destroy(sim->queue);
 
-    cmi_free(ctx->sim);
-    cmi_free(ctx);
+    free(sim);
+    free(ctx);
 }
 
 int main(void)
 {
     const clock_t start_time = clock();
 
-    struct trial *trl = cmi_malloc(sizeof(*trl));
-    cmi_memset(trl, 0, sizeof(*trl));
+    const unsigned nreps = 10;
+    const unsigned nrhos = 5;
+    const double rhos[] = { 0.4, 0.6, 0.8, 0.9, 0.95 };
+    const unsigned ncvs = 4;
+    const double cvs[] = { 0.125, 0.25, 0.5, 1.0 };
+    const double warmup = 10.0;
+    const double duration = 1e6;
+    const double cooldown = 1.0;
 
+    const unsigned ntrials = nrhos * ncvs * nreps;
+    printf("We have %u trials\n", ntrials);
+
+    const uint32_t ncores = cmi_cpu_cores();
+    printf("We have %lu cores to play with\n", ncores);
+
+    struct trial *trl = malloc(sizeof(*trl));
     trl->rho = 0.9;
     trl->service_cv = 0.5;
-    trl->warmup = 10.0;
-    trl->duration = 1e6;
-    trl->cooldown = 1.0;
+    trl->warmup = warmup;
+    trl->duration = duration;
+    trl->cooldown = cooldown;
 
-    run_mg1(trl);
+    pthread_t thread;
+    const int status = pthread_create(&thread, NULL, run_mg1, trl);
+    if (status != 0) {
+        cmb_logger_error(stderr, "Could not create thread: %s", strerror(status));
+    }
 
-    cmi_free(trl);
+    pthread_join(thread, NULL);
+    free(trl);
 
     const clock_t end_time = clock();
     const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     printf("It took: %f sec\n", elapsed_time);
+
     return 0;
 }
 

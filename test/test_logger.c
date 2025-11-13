@@ -28,9 +28,7 @@
 /* An event, prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object)
 {
-    /* Contrived cast to suppress compiler warning about pointer / function conversion */
-    void *vaction = *(void**)&test_action;
-    cmb_logger_info(stdout, "%p\t%p\t%p", vaction, subject, object);
+    cmb_logger_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
     cmb_event_schedule(test_action, subject, object,
                        cmb_time() + cmb_random_exponential(3600),
                        (int16_t)cmb_random_dice(1, 5));
@@ -39,9 +37,7 @@ static void test_action(void *subject, void *object)
 /* Another event, closes the bar for good */
 static void end_sim(void *subject, void *object)
 {
-    /* Contrived cast to suppress compiler warning about pointer / function conversion */
-    void *vaction = *(void**)&end_sim;
-    cmb_logger_info(stdout, "%p\t%p\t%p", vaction, subject, object);
+    cmb_logger_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);
     cmb_logger_warning(stdout, "===> end_sim: game over <===");
     cmb_event_queue_clear();
 }

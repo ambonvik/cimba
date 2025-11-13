@@ -103,15 +103,12 @@ int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
     cmb_assert_debug(pp->waitsfor.ptr == NULL);
     cmb_assert_debug(pp->waitsfor.handle == 0ull);
 
-    /* Contrived cast to suppress compiler warning about pointer conversion */
-    void *vdemand = *(void **)&demand;
-
     const double entry_time = cmb_time();
     const int64_t priority = cmb_process_get_priority(pp);
 
     uint64_t handle = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
                          (void *)pp,
-                         vdemand,
+                         (void *)demand,
                          ctx,
                          NULL,
                          entry_time,

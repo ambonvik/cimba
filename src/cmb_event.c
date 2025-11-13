@@ -151,10 +151,8 @@ uint64_t cmb_event_schedule(cmb_event_func *action,
     cmb_assert_release(time >= sim_time);
     cmb_assert_release(event_queue != NULL);
 
-    /* Use contrived cast to suppress warning about converting function ptr. */
-    void *vaction = *(void **)&action;
     return  cmi_hashheap_enqueue(event_queue,
-                                 vaction,
+                                 (void *)action,
                                  subject,
                                  object,
                                  NULL,
