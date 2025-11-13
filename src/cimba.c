@@ -44,7 +44,7 @@ static void *worker_thread_func(void *arg)
 
     while (true) {
         /* stdatomic.h broken on Windows, using gcc/clang intrinsic instead for now */
-        uint64_t idx = __atomic_fetch_add(&cmg_next_trial_idx, 1, __ATOMIC_SEQ_CST);
+        const uint64_t idx = __atomic_fetch_add(&cmg_next_trial_idx, 1, __ATOMIC_SEQ_CST);
         if (idx >= cmg_total_trials) {
             break;
         }
@@ -62,9 +62,10 @@ static void *worker_thread_func(void *arg)
         }
 
         pthread_mutex_lock(&cmg_terminal);
-        printf("\rCompleted %llu/%llu", idx, cmg_total_trials);
-        sem_post(&cmg_completed_sem);
+        printf("Completed %llu/%llu\n", idx, cmg_total_trials);
         pthread_mutex_unlock(&cmg_terminal);
+
+        sem_post(&cmg_completed_sem);
     }
 
     return NULL;

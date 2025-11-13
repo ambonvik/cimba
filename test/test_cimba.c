@@ -174,25 +174,21 @@ void run_mg1_trial(void *vtrl)
     free(ctx);
 }
 
+void write_gnuplot_commands(void);
+
 int main(void)
 {
     const clock_t start_time = clock();
 
     const unsigned nreps = 10;
     const unsigned ncvs = 4;
-    const double cvs[] = { 0.125, 0.25, 0.5, 1.0 };
+    const double cvs[] = { 0.1, 0.5, 2.0, 4.0 };
     const unsigned nrhos = 5;
     const double rhos[] = { 0.4, 0.6, 0.8, 0.9, 0.95 };
-    const double warmup = 10.0;
-    const double duration = 1e6;
-    const double cooldown = 1.0;
 
     const unsigned ntrials = nrhos * ncvs * nreps;
-    printf("We have %u trials\n", ntrials);
-
     const uint32_t ncores = cmi_cpu_cores();
-    printf("We have %u cores to play with\n", ncores);
-
+    printf("We have %u trials and %u cores\n", ntrials, ncores);
     printf("Setting up experiment\n");
     struct trial *experiment = calloc(ntrials, sizeof(*experiment));
     uint64_t ui_exp = 0u;
@@ -201,9 +197,9 @@ int main(void)
             for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
                 experiment[ui_exp].service_cv = cvs[ui_cv];
                 experiment[ui_exp].utilization = rhos[ui_rho];
-                experiment[ui_exp].warmup = warmup;
-                experiment[ui_exp].duration = duration;
-                experiment[ui_exp].cooldown = cooldown;
+                experiment[ui_exp].warmup = 10.0;
+                experiment[ui_exp].duration = 1.0e5;
+                experiment[ui_exp].cooldown = 1.0;
                 experiment[ui_exp].seed = 0u;
                 experiment[ui_exp].avg_queue_length = 0.0;
                 ui_exp++;
@@ -216,27 +212,57 @@ int main(void)
 
     printf("Done with experiment\n");
     ui_exp = 0u;
+    FILE *datafp = fopen("test_cimba.dat", "w");
+    fprintf(datafp, "# CV utilization avg_queue_length\n");
     for (unsigned ui_cv = 0u; ui_cv < ncvs; ui_cv++) {
-         for (unsigned ui_rho = 0u; ui_rho < nrhos; ui_rho++) {
-            for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
-                printf("Trial %llu: seed 0x%llx CV %f rho %f L %f\n",
-                    ui_exp,
-                    experiment[ui_exp].seed,
+        for (unsigned ui_rho = 0u; ui_rho < nrhos; ui_rho++) {
+             for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
+                 fprintf(datafp, "%f %f %f\n",
                     experiment[ui_exp].service_cv,
                     experiment[ui_exp].utilization,
                     experiment[ui_exp].avg_queue_length);
-                ui_exp++;
-            }
+                 ui_exp++;
+             }
+             fprintf(datafp, "\n");
         }
+        fprintf(datafp, "\n");
     }
 
-
+    fclose(datafp);
     free(experiment);
 
     const clock_t end_time = clock();
     const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     printf("It took: %f sec\n", elapsed_time);
 
+    write_gnuplot_commands();
+    system("gnuplot -persistent test_cimba.gp");
+
     return 0;
 }
 
+void write_gnuplot_commands(void)
+{
+    FILE *cmdfp = fopen("test_cimba.gp", "w");
+    fprintf(cmdfp, "set terminal qt size 1200,1000 enhanced font 'Arial,12'\n");
+    fprintf(cmdfp, "set multiplot layout 2,2 rowsfirst \\\n");
+    fprintf(cmdfp, "title \"Impact of service time variability in M/G/1 queue\" \\\n");
+    fprintf(cmdfp, "margins 0.1, 0.95, 0.1, 0.9 spacing 0.1, 0.15\n");
+    fprintf(cmdfp, "set grid\n");
+    fprintf(cmdfp, "set xlabel \"System utilization (rho)\"\n");
+    fprintf(cmdfp, "set ylabel \"Avg queue length\"\n");
+    fprintf(cmdfp, "set xrange [0.0:1.0]\n");
+    fprintf(cmdfp, "set yrange [0:100]\n");
+    fprintf(cmdfp, "f(x) = x / (1.0 - x)\n");
+    fprintf(cmdfp, "datafile = 'test_cimba.dat'\n");
+    fprintf(cmdfp, "plot datafile using 2:3 index 0 with points title \"cv = 0.1\" lc rgb \"black\", \\\n");
+    fprintf(cmdfp, "        f(x) title \"M/M/1\" with lines lw 2 lc rgb \"gray\"\n");
+    fprintf(cmdfp, "plot datafile using 2:3 index 1 with points title \"cv = 0.5\" lc rgb \"black\", \\\n");
+    fprintf(cmdfp, "        f(x) title \"M/M/1\" with lines lw 2 lc rgb \"gray\"\n");
+    fprintf(cmdfp, "plot datafile using 2:3 index 2 with points title \"cv = 2.0\" lc rgb \"black\", \\\n");
+    fprintf(cmdfp, "        f(x) title \"M/M/1\" with lines lw 2 lc rgb \"gray\"\n");
+    fprintf(cmdfp, "plot datafile using 2:3 index 3 with points title \"cv = 4.0\" lc rgb \"black\", \\\n");
+    fprintf(cmdfp, "        f(x) title \"M/M/1\" with lines lw 2 lc rgb \"gray\"\n");
+    fprintf(cmdfp, "unset multiplot\n");
+    fclose(cmdfp);
+}
