@@ -10,7 +10,7 @@ queues.
 
 See test/test_cimba.c for an integrated example simulating 
 a M/G/1 queue. On an old Xeon E5 2640, this simulation 
-(200 runs, each 1e6 time units) runs in about 25 seconds.
+(200 trials, each 1e6 time units) runs in about 25 seconds.
 
 Current status: Code complete for gcc build chain on
 Windows. Next step to add Linux support (expected to
