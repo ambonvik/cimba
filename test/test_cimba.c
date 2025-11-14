@@ -1,5 +1,6 @@
 /*
  * Test/demo program for parallel execution in Cimba.
+ *
  * The simulation is a simple M/G/1 queuing system for parameterization
  * of utilization (interarrival mean time) and variability (service time
  * standard deviation). Holding mean service time constant at 1.0, inter-
@@ -28,8 +29,6 @@
 #include <time.h>
 
 #include "cimba.h"
-
-extern uint32_t cmi_cpu_cores(void);
 
 #define USERFLAG 0x00000001
 
@@ -129,15 +128,22 @@ void run_mg1_trial(void *vtrl)
         trl->seed = seed;
     }
 
-    cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG);
-    cmb_event_queue_initialize(0.0);
-
     struct context *ctx = malloc(sizeof(*ctx));
     ctx->trl = trl;
 
     struct simulation *sim = malloc(sizeof(*sim));
     ctx->sim = sim;
+
+    cmb_logger_flags_off(CMB_LOGGER_INFO);
+    cmb_logger_flags_off(USERFLAG);
+    cmb_event_queue_initialize(0.0);
+
+    double t = trl->warmup;
+    (void)cmb_event_schedule(start_rec_evt, sim, NULL, t, 0);
+    t += trl->duration;
+    (void)cmb_event_schedule(stop_rec_evt, sim, NULL, t, 0);
+    t += trl->cooldown;
+    (void)cmb_event_schedule(end_sim_evt, sim, NULL, t, 0);
 
     sim->queue = cmb_buffer_create();
     cmb_buffer_initialize(sim->queue, "Queue", UINT64_MAX);
@@ -149,13 +155,6 @@ void run_mg1_trial(void *vtrl)
     sim->service = cmb_process_create();
     cmb_process_initialize(sim->service, "Service", service_proc, ctx, 0);
     cmb_process_start(sim->service);
-
-    double t = trl->warmup;
-    (void)cmb_event_schedule(start_rec_evt, sim, NULL, t, 0);
-    t += trl->duration;
-    (void)cmb_event_schedule(stop_rec_evt, sim, NULL, t, 0);
-    t += trl->cooldown;
-    (void)cmb_event_schedule(end_sim_evt, sim, NULL, t, 0);
 
     cmb_event_queue_execute();
 //    cmb_buffer_print_report(sim->queue, stdout);
@@ -187,8 +186,6 @@ int main(void)
     const double rhos[] = { 0.4, 0.6, 0.8, 0.9, 0.95 };
 
     const unsigned ntrials = nrhos * ncvs * nreps;
-    const uint32_t ncores = cmi_cpu_cores();
-    printf("We have %u trials and %u cores\n", ntrials, ncores);
     printf("Setting up experiment\n");
     struct trial *experiment = calloc(ntrials, sizeof(*experiment));
     uint64_t ui_exp = 0u;
@@ -197,8 +194,8 @@ int main(void)
             for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
                 experiment[ui_exp].service_cv = cvs[ui_cv];
                 experiment[ui_exp].utilization = rhos[ui_rho];
-                experiment[ui_exp].warmup = 10.0;
-                experiment[ui_exp].duration = 1.0e5;
+                experiment[ui_exp].warmup = 1000.0;
+                experiment[ui_exp].duration = 1.0e6;
                 experiment[ui_exp].cooldown = 1.0;
                 experiment[ui_exp].seed = 0u;
                 experiment[ui_exp].avg_queue_length = 0.0;
@@ -210,7 +207,7 @@ int main(void)
     printf("Executing experiment\n");
     cimba_run_experiment(experiment, ntrials, sizeof(*experiment), run_mg1_trial);
 
-    printf("Done with experiment\n");
+    printf("Finished experiment\n");
     ui_exp = 0u;
     FILE *datafp = fopen("test_cimba.dat", "w");
     fprintf(datafp, "# CV utilization avg_queue_length\n");

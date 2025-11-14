@@ -951,6 +951,7 @@ int main(void)
     test_quality_weibull(2.0, 3.0);
 
     test_quality_gamma(3.0, 0.5);
+    test_quality_gamma(1.0, 1.0);
     test_quality_gamma(0.5, 2.0);
 
     test_quality_lognormal(1.0, 0.5);
