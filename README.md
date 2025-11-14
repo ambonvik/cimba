@@ -9,7 +9,7 @@ collectors, and common resource types such as buffers and
 queues. 
 
 See test/test_cimba.c for an integrated example simulating 
-a M/G/1 queue. On an old Xeon E52640, this simulation 
+a M/G/1 queue. On an old Xeon E5 2640, this simulation 
 (200 runs, each 1e6 time units) runs in about 25 seconds.
 
 Current status: Code complete for gcc build chain on
