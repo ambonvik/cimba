@@ -70,8 +70,8 @@ struct cmi_process_waitable {
 /*
  * struct cmb_process : Inherits all properties from struct cmi_coroutine by
  * composition and adds the name, priority, and whatever it may be waiting for.
- * The waiters_listhead contains any processes that are waiting for this process
- * to finish. The resources_listhead contains any resources held by this process,
+ * The waiters_listhead level any processes that are waiting for this process
+ * to finish. The resources_listhead level any resources held by this process,
  * to be released if the process is stopped by someone else.
  */
 struct cmb_process {

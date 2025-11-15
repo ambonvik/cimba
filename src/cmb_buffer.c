@@ -55,7 +55,7 @@ void cmb_buffer_initialize(struct cmb_buffer *bp,
     cmi_resourceguard_initialize(&(bp->rear_guard), &(bp->core));
 
     bp->capacity = capacity;
-    bp->contains = 0u;
+    bp->level = 0u;
 }
 
 /*
@@ -95,7 +95,7 @@ static bool buffer_has_content(const struct cmi_resourcebase *rbp,
 
     const struct cmb_buffer *bp = (struct cmb_buffer *)rbp;
 
-    return (bp->contains > 0u);
+    return (bp->level > 0u);
 }
 
 /*
@@ -112,7 +112,7 @@ static bool buffer_has_space(const struct cmi_resourcebase *rbp,
 
     const struct cmb_buffer *bp = (struct cmb_buffer *)rbp;
 
-    return (bp->contains < bp->capacity);
+    return (bp->level < bp->capacity);
 }
 
 static void record_sample(struct cmb_buffer *bp) {
@@ -121,7 +121,7 @@ static void record_sample(struct cmb_buffer *bp) {
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
     if (rbp->is_recording) {
         struct cmb_timeseries *ts = &(rbp->history);
-        cmb_timeseries_add(ts, (double)(bp->contains), cmb_time());
+        cmb_timeseries_add(ts, (double)(bp->level), cmb_time());
     }
 }
 
@@ -193,12 +193,12 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
     *amntp = 0u;
     while (true) {
         cmb_assert_debug(bp->contains <= bp->capacity);
-        cmb_logger_info(stdout, "%s capacity %llu contains %llu",
-                       rbp->name, bp->capacity, bp->contains);
+        cmb_logger_info(stdout, "%s capacity %llu level %llu",
+                       rbp->name, bp->capacity, bp->level);
         cmb_logger_info(stdout, "Gets %llu from %s", rem_claim, rbp->name);
-        if (bp->contains >= rem_claim) {
+        if (bp->level >= rem_claim) {
             /* Grab what we need */
-            bp->contains -= rem_claim;
+            bp->level -= rem_claim;
             record_sample(bp);
             *amntp += rem_claim;
             cmb_logger_info(stdout,
@@ -209,17 +209,17 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 
             cmb_assert_debug(bp->contains <= bp->capacity);
             cmi_resourceguard_signal(&(bp->rear_guard));
-            if (bp->contains > 0u) {
+            if (bp->level > 0u) {
                 /* In case someone else can use any leftovers */
                 cmi_resourceguard_signal(&(bp->front_guard));
             }
 
             return CMB_PROCESS_SUCCESS;
         }
-        else if (bp->contains > 0u) {
+        else if (bp->level > 0u) {
             /* Grab what is there */
-            const uint64_t grab = bp->contains;
-            bp->contains = 0u;
+            const uint64_t grab = bp->level;
+            bp->level = 0u;
             record_sample(bp);
             *amntp += grab;
             rem_claim -= grab;
@@ -235,8 +235,8 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
         /* Wait at the front door until some more becomes available  */
         cmb_assert_debug(rem_claim > 0u);
         cmb_logger_info(stdout, "Waiting for content");
-        cmb_logger_info(stdout, "%s capacity %llu contains %llu",
-                       rbp->name, bp->capacity, bp->contains);
+        cmb_logger_info(stdout, "%s capacity %llu level %llu",
+                       rbp->name, bp->capacity, bp->level);
         cmi_resourceguard_signal(&(bp->rear_guard));
         const int64_t sig = cmi_resourceguard_wait(&(bp->front_guard),
                                                    buffer_has_content,
@@ -283,12 +283,12 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
     uint64_t rem_claim = *amntp;
     while (true) {
         cmb_assert_debug(bp->contains <= bp->capacity);
-        cmb_logger_info(stdout, "%s capacity %llu contains %llu",
-                        rbp->name, bp->capacity, bp->contains);
+        cmb_logger_info(stdout, "%s capacity %llu level %llu",
+                        rbp->name, bp->capacity, bp->level);
         cmb_logger_info(stdout, "Puts %lld into %s", rem_claim, rbp->name);
-        if ((bp->capacity - bp->contains) >= rem_claim) {
+        if ((bp->capacity - bp->level) >= rem_claim) {
             /* Push the remainder into the buffer */
-            bp->contains += rem_claim;
+            bp->level += rem_claim;
             record_sample(bp);
             *amntp -= rem_claim;
             cmb_logger_info(stdout,
@@ -299,17 +299,17 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
 
             cmb_assert_debug(bp->contains <= bp->capacity);
             cmi_resourceguard_signal(&(bp->front_guard));
-            if (bp->contains < bp->capacity) {
+            if (bp->level < bp->capacity) {
                 /* In case someone else can use any leftover space */
                 cmi_resourceguard_signal(&(bp->rear_guard));
             }
 
             return CMB_PROCESS_SUCCESS;
         }
-        else if (bp->contains < bp->capacity) {
+        else if (bp->level < bp->capacity) {
             /* Fill 'er up */
-            const uint64_t grab = bp->capacity - bp->contains;
-            bp->contains = bp->capacity;
+            const uint64_t grab = bp->capacity - bp->level;
+            bp->level = bp->capacity;
             record_sample(bp);
             *amntp -= grab;
             rem_claim -= grab;
@@ -324,8 +324,8 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
         /* Wait at the back door until some more becomes available  */
         cmb_assert_debug(rem_claim > 0u);
         cmb_logger_info(stdout, "Waiting for space");
-        cmb_logger_info(stdout, "%s capacity %llu contains %llu",
-                       rbp->name, bp->capacity, bp->contains);
+        cmb_logger_info(stdout, "%s capacity %llu level %llu",
+                       rbp->name, bp->capacity, bp->level);
         cmi_resourceguard_signal(&(bp->front_guard));
         const int64_t sig = cmi_resourceguard_wait(&(bp->rear_guard),
                                                    buffer_has_space,

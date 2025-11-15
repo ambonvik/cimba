@@ -76,11 +76,17 @@ extern const char *cimba_version(void);
  * not return a value, but stores the results in the same struct as the
  * parameters.
  *
- * The function will be executed in parallel with other instances of itself.
- * Whatever you do in writing the simulation, do not use writeable global
- * variables to share data between functions inside the simulated world. It will
- * lead to undefined behavior when different threads execute in parallel in the
- * same memory space.
+ * This function will be executed in parallel with other instances of itself in
+ * a shared memory space. Do not use writeable global variables to share data
+ * between functions inside the simulated world, or static local variables to
+ * remember values between calls to some function without being very careful in
+ * handling concurrency. It will easily lead to undefined behavior when
+ * different threads execute in parallel in the same memory space. Using normal
+ * local variables and function arguments is safe. If you absolutely must have a
+ * global or static variable to be shared between function calls, consider
+ * declaring it `CMB_THREAD_LOCAL` to keep it local to that simulation thread
+ * (but it may still be shared across successive trials that happen to share the
+ * same worker thread, with possibly unexpected results).
  */
 typedef void (cimba_trial_func)(void *trial_struct);
 

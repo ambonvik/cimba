@@ -152,6 +152,10 @@ http-client.private.env.json
 .idea/.cache/.Apifox_Helper
 .idea/ApifoxUploaderProjectSetting.xml
 
+# Doxygen generated output
+docs/latex/
+docs/html/
+
 # Nuclear option
 .idea
 .vscode

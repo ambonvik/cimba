@@ -81,7 +81,7 @@ extern void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp);
  *
  * Note that the object argument is a pointer to where the object is to be
  * stored. The return value CMB_PROCESS_SUCCESS (0) indicates that all went well
- * and the object pointer location now contains a valid pointer to an object.
+ * and the object pointer location now level a valid pointer to an object.
  *
  * If the call was interrupted for some reason, the return value is the
  * interrupt signal received, some value other than CMB_PROCESS_SUCCESS. The

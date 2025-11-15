@@ -1,6 +1,6 @@
 /**
  * @file  cmb_assert.h
- *  @brief Custom replacement for assert.h
+ * @brief Custom replacement for assert.h
  *
  * Provides more detailed error messages then the standard `assert`, and
  * distinguishes between debug asserts (like `assert.h`) and release asserts
@@ -43,8 +43,12 @@
          * function, and you will be able to see the call stack and variable
          * values at that point.
          */
-        extern void cmi_assert_failed(const char *sourcefile, const char *func, int line,
-                                      const char *condition) __attribute__((noreturn));
+        extern void cmi_assert_failed(const char *sourcefile,
+                                      const char *func,
+                                      int line,
+                                      const char *condition)
+                                              __attribute__((noreturn));
+
     #elif CMB_COMPILER == MSVC
         extern __declspec(noreturn) void cmi_assert_failed(const char *sourcefile,
                                       const char *func, int line,
@@ -72,9 +76,9 @@
      * defined. Typically used for verifying parameter values as valid
      * preconditions to function calls.
      *
-     * Disappears if `NASSERT` is defined, e.g., for
-     * production use of a throughly debugged model where all parameters are
-     * known to be valid and the last ounce of speed is wanted.
+     * Disappears if `NASSERT` is defined, e.g., for  production use of a
+     * thoroughly debugged model where all parameters are known to be valid and
+     * the last ounce of speed is wanted.
      */
     #define cmb_assert_release(x) ((x) ? (void)(0) : (cmi_assert_failed(__FILE_NAME__, __func__, __LINE__, #x)))
 #else

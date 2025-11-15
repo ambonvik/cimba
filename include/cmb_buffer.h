@@ -1,5 +1,6 @@
-/*
- * cmb_buffer.h - a two-headed fixed-capacity resource where one or more
+/**
+ * @file cmb_buffer.h
+ * @brief A two-headed fixed-capacity resource where one or more
  * producer processes can put an amount into the one end, and one or more
  * consumer processes can get amounts out of the other end. If enough space is
  * not available, the producers wait, and if there is not enough content, the
@@ -30,69 +31,107 @@
 #include "cmi_resourcebase.h"
 #include "cmi_resourceguard.h"
 
+/**
+ * A `cmb_buffer` has two resource guards, one for get (front) and one for put
+ * (rear) operations. It has a fixed capacity, of which some amount may be in
+ * use, leaving some free space (the difference between `capacity` and `level`).
+ *
+ * Note the object oriented structure here: The `cmb_buffer` class inherits the
+ * methods and properties from its (virtual) base class `cmb_resourcebase`.
+ * In incorporates (by composition) its two `cmb_resourceguard` members. These
+ * are full members of the buffer object, not pointers to some other objects.
+ * Allocating memory for a `cmb_buffer` object simultaneously allocates memory
+ * for the `cmb_resourcebase` and the two `cmb_resourceguard`s. The details of
+ * these are encapsulated in the respective classes.
+ *
+ * If you need a derived class from the `cmb_buffer`, you can declare a struct,
+ * say `my_special_buffer`, with a `cmb_buffer` as its first member followed by
+ * whatever additions you need. You can then freely cast pointers between
+ * `struct my_special_buffer` and `struct cmb_buffer` to refer to the same
+ * object as needed, as we do here.
+ */
 struct cmb_buffer {
     struct cmi_resourcebase core;
     struct cmi_resourceguard front_guard;
     struct cmi_resourceguard rear_guard;
     uint64_t capacity;
-    uint64_t contains;
+    uint64_t level;
 };
 
-/*
- * cmb_buffer_create : Allocate memory for a buffer object.
+/**
+ * @brief Allocate memory for a buffer object.
  */
 extern struct cmb_buffer *cmb_buffer_create(void);
 
-/*
- * cmb_buffer_initialize : Make an allocated buffer object ready for use.
+/**
+ * @brief Make an allocated buffer object ready for use.
+ * @param bp Pointer to the already allocated buffer object.
+ * @param name A null-terminated string naming the buffer resource.
+ * @param capacity The capacity of the buffer. Use `UINT64_MAX`
+ *                 for buffers of unlimited capacity.
  */
 extern void cmb_buffer_initialize(struct cmb_buffer *bp,
                                     const char *name,
                                     uint64_t capacity);
 
-/*
- * cmb_buffer_terminate : Un-initializes a buffer object.
+/**
+ * @brief Un-initializes a buffer object.
+ * @param bp Pointer to the buffer object.
  */
 extern void cmb_buffer_terminate(struct cmb_buffer *bp);
 
-/*
- * cmb_buffer_destroy : Deallocates memory for a buffer object.
+/**
+ * @brief Deallocates memory for a buffer object.
+ * @param bp Pointer to the buffer object.
  */
 extern void cmb_buffer_destroy(struct cmb_buffer *bp);
 
-/*
- * cmb_buffer_get : Request and if necessary wait for an amount of the
+/**
+ * @brief Request and if necessary wait for an amount of the
  * buffer resource. The requested amount can be larger than the buffer space.
- * If so, the calling process will just accumulate until satisfied.
+ * If so, the calling process will accumulate until satisfied.
  *
- * Note that the amount argument is a pointer to where the amount is stored.
- * The return value CMB_PROCESS_SUCCESS (0) indicates that all went well and
- * the value *amount equals the requested amount.
+ * Note that the argument is a pointer to where the amount is stored.
+ * The return value `CMB_PROCESS_SUCCESS` (0) indicates that all went well and
+ * the value `*amount` equals the requested amount.
  *
  * If the call was interrupted for some reason, it will be partially fulfilled,
- * and *amount will be the quantity obtained before interrupted. The return
- * value is the interrupt signal received, some value other than
- * CMB_PROCESS_SUCCESS.
+ * and `*amntp` will be the quantity remaining when interrupted. The return
+ * value is then the interrupt signal received, some other value than
+ * `CMB_PROCESS_SUCCESS`, possibly an application-defined reason code.
+ *
+ * @param bp Pointer to the buffer object.
+ * @param amntp Pointer to a variable containing the amount to be obtained. Will
+ *              contain the amount actually obtained after the call.
+ * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
  */
 extern int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp);
 
-/*
- * cmb_buffer_put : Put an amount of the resource into the buffer, if necessary
+/**
+ * @brief Put an amount of the resource into the buffer, if necessary
  * waiting for free space. The amount can be larger than the buffer space.
  *
- * Note that the amount argument is a pointer to where the amount is stored.
- * The return value CMB_PROCESS_SUCCESS (0) indicates that all went well and
- * the value *amount now equals zero.
+ * Note that the argument is a pointer to where the amount is stored.
+ * The return value `CMB_PROCESS_SUCCESS` (0) indicates that all went well and
+ * the value `*amntp` now equals zero.
  *
  * If the call was interrupted for some reason, it will be partially fulfilled,
- * and *amount will be the quantity remaining when interrupted. The return
- * value is the interrupt signal received, some value other than
- * CMB_PROCESS_SUCCESS.
+* and `*amntp` will be the quantity obtained before it was interrupted. The return
+ * value is then the interrupt signal received, some other value than
+ * `CMB_PROCESS_SUCCESS`, possibly an application-defined reason code.
+ *
+ * @param bp Pointer to the buffer object.
+ * @param amntp Pointer to a variable containing the amount to be obtained. Will
+ *              contain the amount actually obtained after the call.
+ * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
  */
 extern int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp);
 
-/*
- * cmb_buffer_get_name : Returns name of buffer as const char *.
+/**
+ * @brief Returns name of buffer as `const char *`.
+ *
+ * @param bp Pointer to the buffer object.
+ * @return A null-terminated string containing the name of the buffer resource.
  */
 static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
 {
@@ -103,9 +142,53 @@ static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
     return rbp->name;
 }
 
+/**
+ * @brief Turns on data recording.
+ *
+ * The buffer will go through level changes that may not be visible outside
+ * its own code, e.g., when some process is trying to put or get more amount
+ * than currently possible. The buffer level will then hit full or empty before
+ * the get or put call returns. Trying to track the level from user code will
+ * be inaccurate. Use this built-in history recording instead.
+ *
+ * @param bp Pointer to the buffer object.
+ */
 extern void cmb_buffer_start_recording(struct cmb_buffer *bp);
+
+/**
+ * @brief Turns off data recording
+ *
+ * The buffer will go through level changes that may not be visible outside
+ * its own code, e.g., when some process is trying to put or get more amount
+ * than currently possible. The buffer level will then hit full or empty before
+ * the get or put call returns. Trying to track the level from user code will
+ * be inaccurate. Use this built-in history recording instead.
+ *
+ * @param bp Pointer to the buffer object.
+ */
 extern void cmb_buffer_stop_recording(struct cmb_buffer *bp);
+
+/**
+ * @brief Get the recorded timeseries of buffer levels.
+*
+ * The buffer will go through level changes that may not be visible outside
+ * its own code, e.g., when some process is trying to put or get more amount
+ * than currently possible. The buffer level will then hit full or empty before
+ * the get or put call returns. Trying to track the level from user code will
+ * be inaccurate. Use this built-in history recording instead.
+ *
+ * @param bp Pointer to the buffer object.
+ */
 extern struct cmb_timeseries *cmb_buffer_get_history(struct cmb_buffer *bp);
+
+/**
+ * @brief Print a simple text mode report of the buffer levels, including key
+ * statical metrics and a histogram. Mostly intended for debugging purposes,
+ * not presentation graphics.
+ *
+ * @param bp Pointer to the buffer object.
+ * @param fp File pointer, possibly `stdout`.
+ */
 extern void cmb_buffer_print_report(struct cmb_buffer *bp, FILE *fp);
 
 #endif /* CIMBA_CMB_BUFFER_H */
