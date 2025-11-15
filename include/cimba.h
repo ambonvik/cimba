@@ -43,7 +43,7 @@
 /** \endcond */
 
 /**
- * @brief Return version string in printable format.
+ * @brief Returns a version string in printable format.
  */
 extern const char *cimba_version(void);
 

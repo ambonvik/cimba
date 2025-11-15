@@ -22,6 +22,11 @@
 #include "cmb_logger.h"
 
 #ifndef NASSERT
+/*
+ * cmi_assert_failed : Report and abort in case of assert triggered.
+ *
+ * Key advice: Place a debugger breakpoint right here. You will thank me later.
+ */
 void cmi_assert_failed(const char *sourcefile,
                        const char *func,
                        const int line,

@@ -20,7 +20,8 @@ old Xeon E5 2640 v4 running Windows 10, producing the data in the chart below.
 Current status: Code complete for gcc build chain on
 Windows using CMake. Next step to add Linux support (expected to
 give significantly faster execution due to simpler
-context switching between coroutines), then documentation, before returning
+context switching between coroutines), then improved documentation, before returning
 to Windows to add a MVSC build chain. 64-bit AMD64/x86-64 
 architecture only, no plans to add support for 32-bit CPU's. Other 64-bit 
-architectures may happen later.
+architectures may happen later. Planned to go public once Linux version and 
+half-decent documentation is done.

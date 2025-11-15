@@ -38,12 +38,20 @@
 
 #define USERFLAG 0x00000001
 
+/*
+ * Define the entities that make up our simulated world.
+ */
 struct simulation {
     struct cmb_process *arrival;
     struct cmb_process *service;
     struct cmb_buffer *queue;
 };
 
+/*
+ * Define the parameters that we would like to vary and the results that
+ * interest us as an outcome of a single trial. Use several trials with
+ * identical parameters (but different seeds) to perform replications.
+ */
 struct trial {
     double service_cv;
     double utilization;
@@ -54,11 +62,17 @@ struct trial {
     double avg_queue_length;
 };
 
+/*
+ * The complete context for running a trial in this simulation.
+ */
 struct context {
     struct simulation *sim;
     struct trial *trl;
 };
 
+/*
+ * Define the event to stop the simulation at the end of a trial.
+ */
 static void end_sim_evt(void *subject, void *object)
 {
     cmb_unused(object);
@@ -70,6 +84,9 @@ static void end_sim_evt(void *subject, void *object)
     cmb_event_queue_clear();
 }
 
+/*
+ * Define the event to start recording statistics after warm-up period (if any).
+ */
 static void start_rec_evt(void *subject, void *object)
 {
     cmb_unused(object);
@@ -78,6 +95,9 @@ static void start_rec_evt(void *subject, void *object)
     cmb_buffer_start_recording(sim->queue);
 }
 
+/*
+ * Define the event to stop recording statistics after the trial is complete.
+ */
 static void stop_rec_evt(void *subject, void *object)
 {
     cmb_unused(object);
@@ -86,14 +106,18 @@ static void stop_rec_evt(void *subject, void *object)
     cmb_buffer_stop_recording(sim->queue);
 }
 
-
+/*
+ * Define the simulated arrival process putting new items into the queue at
+ * random intervals.
+ */
 void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
 
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
-    cmb_logger_user(USERFLAG, stdout, "Started arrival, queue %s", cmb_buffer_get_name(bp));
+    cmb_logger_user(USERFLAG, stdout, "Started arrival, queue %s",
+                    cmb_buffer_get_name(bp));
     const double mean_interarr = 1.0 / ctx->trl->utilization;
 
     while (true) {
@@ -105,19 +129,26 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
     }
 }
 
+/*
+ * Define the simulated service process getting items from the queue and
+ * servicing them for a random duration.
+ */
 void *service_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
 
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
-    cmb_logger_user(USERFLAG, stdout, "Started service, queue %s", cmb_buffer_get_name(bp));
+    cmb_logger_user(USERFLAG, stdout, "Started service, queue %s",
+                    cmb_buffer_get_name(bp));
+
     const double cv = ctx->trl->service_cv;
     const double shape = 1.0 / (cv * cv);
     const double scale = cv * cv;
 
     while (true) {
-        cmb_logger_user(USERFLAG, stdout, "Holding shape %f scale %f", shape, scale);
+        cmb_logger_user(USERFLAG, stdout, "Holding shape %f scale %f",
+                        shape, scale);
         (void)cmb_process_hold(cmb_random_gamma(shape, scale));
         cmb_logger_user(USERFLAG, stdout, "Getting");
         uint64_t n = 1u;
@@ -125,6 +156,9 @@ void *service_proc(struct cmb_process *me, void *vctx)
     }
 }
 
+/*
+ * Our trial function, setting up the simulation, obtaining trial parameters,
+ */
 void run_mg1_trial(void *vtrl)
 {
     struct trial *trl = vtrl;
@@ -140,10 +174,14 @@ void run_mg1_trial(void *vtrl)
     struct simulation *sim = malloc(sizeof(*sim));
     ctx->sim = sim;
 
+    /* Do not disturb, except for significant warnings and errors */
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG);
+
+    /* Start from an empty event queue */
     cmb_event_queue_initialize(0.0);
 
+    /* Set the data collection period */
     double t = trl->warmup;
     (void)cmb_event_schedule(start_rec_evt, sim, NULL, t, 0);
     t += trl->duration;
@@ -151,6 +189,7 @@ void run_mg1_trial(void *vtrl)
     t += trl->cooldown;
     (void)cmb_event_schedule(end_sim_evt, sim, NULL, t, 0);
 
+    /* Create the simulation entities */
     sim->queue = cmb_buffer_create();
     cmb_buffer_initialize(sim->queue, "Queue", UINT64_MAX);
 
@@ -162,15 +201,18 @@ void run_mg1_trial(void *vtrl)
     cmb_process_initialize(sim->service, "Service", service_proc, ctx, 0);
     cmb_process_start(sim->service);
 
+    /* Execute the trial */
     cmb_event_queue_execute();
-//    cmb_buffer_print_report(sim->queue, stdout);
 
+    /* Collect and save statistics into the trial struct */
     const struct cmb_timeseries *tsp = cmb_buffer_get_history(sim->queue);
     struct cmb_wtdsummary ws;
     cmb_timeseries_summarize(tsp, &ws);
     trl->avg_queue_length = cmb_wtdsummary_mean(&ws);
 
+    /* Clean up */
     cmb_event_queue_terminate();
+
     cmb_process_destroy(sim->arrival);
     cmb_process_destroy(sim->service);
     cmb_buffer_destroy(sim->queue);
@@ -179,22 +221,26 @@ void run_mg1_trial(void *vtrl)
     free(ctx);
 }
 
+/* Declare for later use, do not want to digress with that here */
 void write_gnuplot_commands(unsigned ncvs, const double *cvs);
 
+/*
+ * Our main() function, loading the experiment and reporting the outcome.
+ */
 int main(void)
 {
+    printf("Cimba version %s\n", cimba_version());
     const clock_t start_time = clock();
 
+    /* Experiment design parameters */
     const unsigned nreps = 10;
     const unsigned ncvs = 4;
     const double cvs[] = { 0.01, 0.5, 2.0, 4.0 };
     const unsigned nrhos = 5;
     const double rhos[] = { 0.4, 0.6, 0.8, 0.9, 0.95 };
 
-    printf("Cimba version %s\n", cimba_version());
-
-    const unsigned ntrials = nrhos * ncvs * nreps;
     printf("Setting up experiment\n");
+    const unsigned ntrials = nrhos * ncvs * nreps;
     struct trial *experiment = calloc(ntrials, sizeof(*experiment));
     uint64_t ui_exp = 0u;
     for (unsigned ui_cv = 0u; ui_cv < ncvs; ui_cv++) {
@@ -215,7 +261,7 @@ int main(void)
     printf("Executing experiment\n");
     cimba_run_experiment(experiment, ntrials, sizeof(*experiment), run_mg1_trial);
 
-    printf("Finished experiment\n");
+    printf("Finished experiment, writing results to file\n");
     ui_exp = 0u;
     FILE *datafp = fopen("test_cimba.dat", "w");
     fprintf(datafp, "# CV utilization avg_queue_length\n");
@@ -238,8 +284,9 @@ int main(void)
 
     const clock_t end_time = clock();
     const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-    printf("It took: %f sec\n", elapsed_time);
+    printf("It took %g sec\n", elapsed_time);
 
+    /* ...and pop up the graphics window before exiting */
     write_gnuplot_commands(ncvs, cvs);
     system("gnuplot -persistent test_cimba.gp");
 

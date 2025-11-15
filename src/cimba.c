@@ -22,7 +22,6 @@
  */
 
 #include <pthread.h>
-#include <semaphore.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,7 +39,6 @@ static void *cmg_experiment_arr;
 static size_t cmg_trial_struct_sz;
 static cimba_trial_func *cmg_trial_func;
 static uint64_t cmg_total_trials;
-static pthread_mutex_t cmg_terminal;
 
 /*
  * cimba_version : Return the version string as const char *
@@ -79,10 +77,6 @@ static void *worker_thread_func(void *arg)
                                                          + cmg_trial_struct_sz);
             (*trial_func)(trial);
         }
-
-        pthread_mutex_lock(&cmg_terminal);
-        printf("Completed %llu/%llu\n", idx, cmg_total_trials);
-        pthread_mutex_unlock(&cmg_terminal);
     }
 
     return NULL;
@@ -108,7 +102,6 @@ void cimba_run_experiment(void *your_experiment_array,
     cmg_trial_struct_sz = trial_struct_size;
     cmg_trial_func = your_trial_func;
     cmg_total_trials = num_trials;
-    pthread_mutex_init(&cmg_terminal, NULL);
 
     /* Start the worker threads and let them help themselves to the trials */
     const uint32_t ncores = cmi_cpu_cores();
@@ -117,7 +110,7 @@ void cimba_run_experiment(void *your_experiment_array,
         pthread_create(&threads[ui], NULL, worker_thread_func, (void *)ui);
     }
 
-    /* A lot of stuff happens in parallel here */
+    /* ...worker threads are executing your trials in the background ... */
 
     /* Wait for all worker threads to finish */
     for (uint64_t ui = 0u; ui < ncores; ui++) {
