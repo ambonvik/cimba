@@ -6,6 +6,12 @@
  * standard deviation). Holding mean service time constant at 1.0, inter-
  * arrival times exponentially distributed (c.v. = 1.0)
  *
+ * Terminology:
+ *  - Simulation   The simulated universe with the processes and objects in it.
+ *  - Trial        A set of parameters and results for a simulation.
+ *  - Replication  A trial with the same parameters as another.
+ *  - Experiment   A set of trials according to some experimental design.
+ *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -184,6 +190,8 @@ int main(void)
     const double cvs[] = { 0.01, 0.5, 2.0, 4.0 };
     const unsigned nrhos = 5;
     const double rhos[] = { 0.4, 0.6, 0.8, 0.9, 0.95 };
+
+    printf("Cimba version %s\n", cimba_version());
 
     const unsigned ntrials = nrhos * ncvs * nreps;
     printf("Setting up experiment\n");

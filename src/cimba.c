@@ -1,6 +1,11 @@
 /*
  * cimba.c - the top level simulation execution.
  *
+ * Encapsulates the details of setting up and executing pthreads worker threads
+ * to execute the experiments specified by the user. We first create a number of
+ * worker threads equal to the number of logical cores on the machine, then let
+ * these pull and execute trials from the experiment array.
+ *
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,10 +39,23 @@ static uint64_t cmg_next_trial_idx;
 static void *cmg_experiment_arr;
 static size_t cmg_trial_struct_sz;
 static cimba_trial_func *cmg_trial_func;
-static sem_t cmg_completed_sem;
 static uint64_t cmg_total_trials;
 static pthread_mutex_t cmg_terminal;
 
+/*
+ * cimba_version : Return the version string as const char *
+ */
+const char *cimba_version(void)
+{
+    return CIMBA_VERSION_STRING;
+}
+
+/*
+ * worker_thread_func : The function passed to pthread_create. It finds the next
+ * available trial from the experiment array, executes it, and repeats. If no
+ * more trials are waiting, it exits. An atomic uint64_t is used to track the
+ * number of remaining trials.
+ */
 static void *worker_thread_func(void *arg)
 {
     cmb_unused(arg);
@@ -56,24 +74,27 @@ static void *worker_thread_func(void *arg)
             (*cmg_trial_func)(trial);
         }
         else {
-            /* No common function, extracting the function to use for this trial */
-            cimba_trial_func *trial_func = (cimba_trial_func *)(((char *)trial) + cmg_trial_struct_sz);
+            /* No common function, extracting function to use for this trial */
+            cimba_trial_func *trial_func = (cimba_trial_func *)(((char *)trial)
+                                                         + cmg_trial_struct_sz);
             (*trial_func)(trial);
         }
 
         pthread_mutex_lock(&cmg_terminal);
         printf("Completed %llu/%llu\n", idx, cmg_total_trials);
         pthread_mutex_unlock(&cmg_terminal);
-
-        sem_post(&cmg_completed_sem);
     }
 
     return NULL;
 }
 
+/*
+ * cimba_run_experiment : The main simulation executive function. Initiates the
+ * worker threads and waits for them to finish. That's all.
+ */
 void cimba_run_experiment(void *your_experiment_array,
-                          uint64_t num_trials,
-                          size_t trial_struct_size,
+                          const uint64_t num_trials,
+                          const size_t trial_struct_size,
                           cimba_trial_func *your_trial_func)
 {
     cmb_assert_release(your_experiment_array != NULL);
@@ -87,7 +108,6 @@ void cimba_run_experiment(void *your_experiment_array,
     cmg_trial_struct_sz = trial_struct_size;
     cmg_trial_func = your_trial_func;
     cmg_total_trials = num_trials;
-    sem_init(&cmg_completed_sem, 0, 0);
     pthread_mutex_init(&cmg_terminal, NULL);
 
     /* Start the worker threads and let them help themselves to the trials */
@@ -97,7 +117,9 @@ void cimba_run_experiment(void *your_experiment_array,
         pthread_create(&threads[ui], NULL, worker_thread_func, (void *)ui);
     }
 
-    /* A lot of stuff happens in parallel here, wait for it all to finish */
+    /* A lot of stuff happens in parallel here */
+
+    /* Wait for all worker threads to finish */
     for (uint64_t ui = 0u; ui < ncores; ui++) {
         pthread_join(threads[ui], NULL);
     }
