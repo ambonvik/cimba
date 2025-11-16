@@ -1,11 +1,20 @@
 /**
- * @file cmb_buffer.h
+ * @file
  * @brief A two-headed fixed-capacity resource where one or more
  * producer processes can put an amount into the one end, and one or more
  * consumer processes can get amounts out of the other end. If enough space is
  * not available, the producers wait, and if there is not enough content, the
  * consumers wait.
  *
+ * The buffer will go through level changes that may not be visible outside
+ * its own code, e.g., when some process is trying to put or get more amount
+ * than currently possible. The buffer level will then hit full or empty before
+ * the get or put call returns. Trying to track the level from user code will
+ * be inaccurate. Use the built-in history recording instead, and retrieve the
+ * buffer level history as a timeseries once the trial is complete.
+ */
+
+/*
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -145,12 +154,6 @@ static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
 /**
  * @brief Turns on data recording.
  *
- * The buffer will go through level changes that may not be visible outside
- * its own code, e.g., when some process is trying to put or get more amount
- * than currently possible. The buffer level will then hit full or empty before
- * the get or put call returns. Trying to track the level from user code will
- * be inaccurate. Use this built-in history recording instead.
- *
  * @param bp Pointer to the buffer object.
  */
 extern void cmb_buffer_start_recording(struct cmb_buffer *bp);
@@ -158,24 +161,12 @@ extern void cmb_buffer_start_recording(struct cmb_buffer *bp);
 /**
  * @brief Turns off data recording
  *
- * The buffer will go through level changes that may not be visible outside
- * its own code, e.g., when some process is trying to put or get more amount
- * than currently possible. The buffer level will then hit full or empty before
- * the get or put call returns. Trying to track the level from user code will
- * be inaccurate. Use this built-in history recording instead.
- *
  * @param bp Pointer to the buffer object.
  */
 extern void cmb_buffer_stop_recording(struct cmb_buffer *bp);
 
 /**
  * @brief Get the recorded timeseries of buffer levels.
-*
- * The buffer will go through level changes that may not be visible outside
- * its own code, e.g., when some process is trying to put or get more amount
- * than currently possible. The buffer level will then hit full or empty before
- * the get or put call returns. Trying to track the level from user code will
- * be inaccurate. Use this built-in history recording instead.
  *
  * @param bp Pointer to the buffer object.
  */

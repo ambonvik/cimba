@@ -45,7 +45,7 @@ static uint64_t cmg_total_trials;
  */
 const char *cimba_version(void)
 {
-    return CIMBA_VERSION_STRING;
+    return CIMBA_VERSION;
 }
 
 /*

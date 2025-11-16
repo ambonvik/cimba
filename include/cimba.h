@@ -36,10 +36,10 @@
 #define CMI_TOSTRING(A, B, C, D) CMI_STRINGIFY(A) "." CMI_STRINGIFY(B) "." \
                                  CMI_STRINGIFY(C) "-" CMI_STRINGIFY(D)
 
-#define CIMBA_VERSION_STRING CMI_TOSTRING(CIMBA_VERSION_MAJOR, \
-                                          CIMBA_VERSION_MINOR, \
-                                          CIMBA_VERSION_PATCH, \
-                                          CIMBA_VERSION_PRE_RELEASE)
+#define CIMBA_VERSION CMI_TOSTRING(CIMBA_VERSION_MAJOR, \
+                                   CIMBA_VERSION_MINOR, \
+                                   CIMBA_VERSION_PATCH, \
+                                   CIMBA_VERSION_PRE_RELEASE)
 /** \endcond */
 
 /**
@@ -108,7 +108,7 @@ typedef void (cimba_trial_func)(void *trial_struct);
  * `cmb_event_queue_execute()`, collecting the results, and storing them back to
  * the trial struct. Note that no end time is given as an argument here. You
  * need to determine the appropriate closing time and schedule an event for that
- * inside your simulation, see the examples.
+ * inside your simulation. See `test/test_cimba.c` for an example.
  *
  * When cimba_run_experiment returns, the results fields of the trial structs
  * that constitute your experiment array will be filled in.

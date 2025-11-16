@@ -1,11 +1,13 @@
 /**
- * @file  cmb_assert.h
+ * @file
  * @brief Custom replacement for assert.h
  *
  * Provides more detailed error messages then the standard `assert`, and
  * distinguishes between debug asserts (like `assert.h`) and release asserts
  * that remain if `NDEBUG` is defined but go away if `NASSERT` is defined.
- *
+ */
+
+/*
  * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
