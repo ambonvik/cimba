@@ -192,7 +192,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
     uint64_t rem_claim = *amntp;
     *amntp = 0u;
     while (true) {
-        cmb_assert_debug(bp->contains <= bp->capacity);
+        cmb_assert_debug(bp->level <= bp->capacity);
         cmb_logger_info(stdout, "%s capacity %llu level %llu",
                        rbp->name, bp->capacity, bp->level);
         cmb_logger_info(stdout, "Gets %llu from %s", rem_claim, rbp->name);
@@ -207,7 +207,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
                             *amntp);
             rem_claim = 0u;
 
-            cmb_assert_debug(bp->contains <= bp->capacity);
+            cmb_assert_debug(bp->level <= bp->capacity);
             cmi_resourceguard_signal(&(bp->rear_guard));
             if (bp->level > 0u) {
                 /* In case someone else can use any leftovers */
@@ -228,7 +228,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
                             grab,
                             *amntp);
 
-            cmb_assert_debug(bp->contains <= bp->capacity);
+            cmb_assert_debug(bp->level <= bp->capacity);
             cmi_resourceguard_signal(&(bp->rear_guard));
         }
 
@@ -251,7 +251,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
                             init_claim,
                             *amntp);
 
-            cmb_assert_debug(bp->contains <= bp->capacity);
+            cmb_assert_debug(bp->level <= bp->capacity);
             cmb_assert_debug(*amntp <= init_claim);
 
             return sig;
@@ -282,7 +282,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
     const uint64_t init_claim = *amntp;
     uint64_t rem_claim = *amntp;
     while (true) {
-        cmb_assert_debug(bp->contains <= bp->capacity);
+        cmb_assert_debug(bp->level <= bp->capacity);
         cmb_logger_info(stdout, "%s capacity %llu level %llu",
                         rbp->name, bp->capacity, bp->level);
         cmb_logger_info(stdout, "Puts %lld into %s", rem_claim, rbp->name);
@@ -297,7 +297,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
                             *amntp);
             rem_claim = 0u;
 
-            cmb_assert_debug(bp->contains <= bp->capacity);
+            cmb_assert_debug(bp->level <= bp->capacity);
             cmi_resourceguard_signal(&(bp->front_guard));
             if (bp->level < bp->capacity) {
                 /* In case someone else can use any leftover space */
@@ -340,7 +340,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
                             init_claim,
                             *amntp);
 
-            cmb_assert_debug(bp->contains <= bp->capacity);
+            cmb_assert_debug(bp->level <= bp->capacity);
             cmb_assert_debug(*amntp <= init_claim);
 
             return sig;

@@ -60,11 +60,11 @@
  * object as needed, as we do here.
  */
 struct cmb_buffer {
-    struct cmi_resourcebase core;
-    struct cmi_resourceguard front_guard;
-    struct cmi_resourceguard rear_guard;
-    uint64_t capacity;
-    uint64_t level;
+    struct cmi_resourcebase core;           /**< The virtual base class */
+    struct cmi_resourceguard front_guard;   /**< Front waiting room for getters */
+    struct cmi_resourceguard rear_guard;    /**< Rear waiting room for putters */
+    uint64_t capacity;                      /**< The buffer size */
+    uint64_t level;                         /**< The current level in the buffer */
 };
 
 /**

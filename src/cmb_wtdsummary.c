@@ -87,11 +87,11 @@ uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
 
     struct cmb_datasummary *dsp = (struct cmb_datasummary *)wsp;
     if (w == 0.0) {
-        return dsp->cnt;
+        return dsp->count;
     }
 
-    if (dsp->cnt == 0u) {
-        dsp->cnt = 1u;
+    if (dsp->count == 0u) {
+        dsp->count = 1u;
         dsp->max = x;
         dsp->min = x;
         dsp->m1 = x;
@@ -100,12 +100,12 @@ uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
         dsp->m4 = 0.0;
         wsp->wsum = w;
 
-        return dsp->cnt;
+        return dsp->count;
     }
 
     dsp->max = (x > dsp->max) ? x : dsp->max;
     dsp->min = (x < dsp->min) ? x : dsp->min;
-    dsp->cnt++;
+    dsp->count++;
 
     const double w1 = wsp->wsum;
     const double w2 = w;
@@ -131,7 +131,7 @@ uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
     dsp->m4 = tmp_m4;
     wsp->wsum = ws;
 
-    return dsp->cnt;
+    return dsp->count;
 }
 
 /*
@@ -145,7 +145,7 @@ uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
  * calculations are done in a temporary variable and the target overwritten
  * only at the end.
  *
- * Returns tgt->cnt, the number of data points in the combined summary.
+ * Returns tgt->count, the number of data points in the combined summary.
  */
 uint64_t cmb_wtdsummary_merge(struct cmb_wtdsummary *tgt,
                             const struct cmb_wtdsummary *ws1,
@@ -160,7 +160,7 @@ uint64_t cmb_wtdsummary_merge(struct cmb_wtdsummary *tgt,
     const struct cmb_datasummary *dsp1 = (struct cmb_datasummary *)ws1;
     const struct cmb_datasummary *dsp2 = (struct cmb_datasummary *)ws2;
 
-    ts->cnt = dsp1->cnt + dsp2->cnt;
+    ts->count = dsp1->count + dsp2->count;
     ts->min = (dsp1->min < dsp2->min) ? dsp1->min : dsp2->min;
     ts->max = (dsp1->max > dsp2->max) ? dsp1->max : dsp2->max;
 
@@ -185,7 +185,7 @@ uint64_t cmb_wtdsummary_merge(struct cmb_wtdsummary *tgt,
                       + 4.0 * (w1 * dsp2->m3 - w2 * dsp1->m3) * d21_w;
 
     *tgt = tws;
-    return ts->cnt;
+    return ts->count;
 }
 
 void cmb_wtdsummary_print(const struct cmb_wtdsummary *wsp,

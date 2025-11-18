@@ -37,7 +37,7 @@ void cmb_datasummary_initialize(struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
 
-    dsp->cnt = 0u;
+    dsp->count = 0u;
     dsp->max = -DBL_MAX;
     dsp->min = DBL_MAX;
     dsp->m1 = 0.0;
@@ -81,7 +81,7 @@ void cmb_datasummary_destroy(struct cmb_datasummary *dsp)
  * calculations are done  * in a temporary variable and the target overwritten
  * only at the end.
  *
- * Returns tgt->cnt, the number of data points in the combined summary.
+ * Returns tgt->count, the number of data points in the combined summary.
  */
 uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
                            const struct cmb_datasummary *dsp1,
@@ -92,13 +92,13 @@ uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
     cmb_assert_release(dsp2 != NULL);
 
     struct cmb_datasummary cs = { 0 };
-    cs.cnt = dsp1->cnt + dsp2->cnt;
+    cs.count = dsp1->count + dsp2->count;
     cs.min = (dsp1->min < dsp2->min) ? dsp1->min : dsp2->min;
     cs.max = (dsp1->max > dsp2->max) ? dsp1->max : dsp2->max;
 
-    const double n1 = (double)dsp1->cnt;
-    const double n2 = (double)dsp2->cnt;
-    const double n = (double)cs.cnt;
+    const double n1 = (double)dsp1->count;
+    const double n2 = (double)dsp2->count;
+    const double n = (double)cs.count;
     const double d21 = dsp2->m1 - dsp1->m1;
     const double d21_n = d21 / n;
     const double d21_n_2 = d21_n * d21_n;
@@ -117,7 +117,7 @@ uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
 
     *tgt = cs;
     
-    return tgt->cnt;
+    return tgt->count;
 }
 
 /*
@@ -141,7 +141,7 @@ uint64_t cmb_datasummary_add(struct cmb_datasummary *dsp, const double y)
     const double d = y - dsp->m1;
     const double d_2 = d * d;
     const double d_3 = d * d_2;
-    const double n = (double)(++dsp->cnt);
+    const double n = (double)(++dsp->count);
     const double d_n = d / n;
     const double d_n_2 = d_n * d_n;
     const double d_n_3 = d_n_2 * d_n;
@@ -151,7 +151,7 @@ uint64_t cmb_datasummary_add(struct cmb_datasummary *dsp, const double y)
     dsp->m3 += d * (d_2 - d_n_2) - 3.0 * d_n * dsp->m2;
     dsp->m4 += d * (d_3 - d_n_3) - 6.0 * d_n_2 * dsp->m2 - 4.0 * d_n * dsp->m3;
 
-    return dsp->cnt;
+    return dsp->count;
 }
 
 void cmb_datasummary_print(const struct cmb_datasummary *dsp,
@@ -161,16 +161,16 @@ void cmb_datasummary_print(const struct cmb_datasummary *dsp,
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(fp != NULL);
 
-    int r = fprintf(fp, "%s%8llu", ((lead_ins)? "N ": ""), dsp->cnt);
+    int r = fprintf(fp, "%s%8llu", ((lead_ins)? "N ": ""), dsp->count);
     cmb_assert_release(r > 0);
-    if (dsp->cnt > 0u) {
+    if (dsp->count > 0u) {
         const double mean = cmb_datasummary_mean(dsp);
         r = fprintf(fp, "%s%#8.4g",
                 ((lead_ins) ? "  Mean " : "\t"), mean);
         cmb_assert_release(r > 0);
     }
 
-    if (dsp->cnt > 1u) {
+    if (dsp->count > 1u) {
         const double var = cmb_datasummary_variance(dsp);
         const double std = sqrt(var);
         r = fprintf(fp, "%s%#8.4g",
@@ -181,14 +181,14 @@ void cmb_datasummary_print(const struct cmb_datasummary *dsp,
         cmb_assert_release(r > 0);
     }
 
-    if (dsp->cnt > 2u) {
+    if (dsp->count > 2u) {
         const double skew = cmb_datasummary_skewness(dsp);
         r = fprintf(fp, "%s%#8.4g",
             ((lead_ins) ? "  Skewness " : "\t"), skew);
         cmb_assert_release(r > 0);
     }
 
-    if (dsp->cnt > 3u) {
+    if (dsp->count > 3u) {
         const double kurt = cmb_datasummary_kurtosis(dsp);
         r = fprintf(fp, "%s%#8.4g",
             ((lead_ins) ? "  Kurtosis " : "\t"), kurt);
@@ -204,9 +204,9 @@ double cmb_datasummary_skewness(const struct cmb_datasummary *dsp)
     cmb_assert_release(dsp != NULL);
 
     double r = 0.0;
-    if (dsp->cnt > 2u) {
+    if (dsp->count > 2u) {
         /* Estimate population skewness */
-        const double dn = (double)dsp->cnt;
+        const double dn = (double)dsp->count;
         const double g = sqrt(dn) * dsp->m3 / pow(dsp->m2, 1.5);
 
         /* Correction for finite sample */
@@ -222,9 +222,9 @@ double cmb_datasummary_kurtosis(const struct cmb_datasummary *dsp)
     cmb_assert_release(dsp != NULL);
 
     double r = 0.0;
-    if (dsp->cnt > 3u) {
+    if (dsp->count > 3u) {
         /* Estimate population excess kurtosis */
-        const double dn = (double)dsp->cnt;
+        const double dn = (double)dsp->count;
         const double g = dn * dsp->m4 / (dsp->m2 * dsp->m2) - 3.0;
 
         /* Correction for finite sample */

@@ -1,7 +1,8 @@
 /**
  * @file cimba.h
  * @brief The top level header file for the Cimba discrete event simulation
- * library.
+ * library, declaring the version, the prototype for a trial function, and the
+ * function to execute an experiment in parallel on multiple CPU cores.
  *
  * Defines the data types and functions for executing a simulation in
  * parallel on the available CPU cores. Includes all other Cimba header files,
@@ -25,12 +26,12 @@
 #ifndef CIMBA_CIMBA_H
 #define CIMBA_CIMBA_H
 
+/** \cond */
 #define CIMBA_VERSION_MAJOR 3
 #define CIMBA_VERSION_MINOR 0
 #define CIMBA_VERSION_PATCH 0
 #define CIMBA_VERSION_PRE_RELEASE alpha
 
-/** \cond */
 #define CMI_STRINGIFY(x) #x
 
 #define CMI_TOSTRING(A, B, C, D) CMI_STRINGIFY(A) "." CMI_STRINGIFY(B) "." \

@@ -32,15 +32,14 @@
 #include "cmb_datasummary.h"
 
 /**
- * @brief A dataset object, keeping track of the currently allocated and
- *        used array size. The data array itself is `xa`, initially `NULL`.
+ * @brief A dataset object with its conveniently resizing sample array.
  */
 struct cmb_dataset {
-    uint64_t cursize;
-    uint64_t cnt;
-    double min;
-    double max;
-    double *xa;
+    uint64_t cursize;   /**< The currently allocated space as number of samples */
+    uint64_t count;     /**< The current number of samples in array, `<= cursize`                 */
+    double min;         /**< Smallest sample, initially `DBL_MAX` **/
+    double max;         /**< Largest sample, initially `-DBL_MAX` **/
+    double *xa;         /**< Pointer to the actual data array, initially 'NULL' */
 };
 
 /**
@@ -136,7 +135,7 @@ static inline uint64_t cmb_dataset_count(const struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
 
-    return dsp->cnt;
+    return dsp->count;
 }
 
 /**
