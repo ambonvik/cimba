@@ -1,4 +1,4 @@
-# Cimba
+![logo](images/IMG_3493.JPG)
 ## A parallelized discrete event simulation library in C
 
 Work in progress. Using pthreads to execute a threadsafe mixed model 
