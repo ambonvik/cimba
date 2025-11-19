@@ -1,5 +1,5 @@
 /**
- * @file
+ * @file cmb_assert.h
  * @brief Custom replacement for assert.h
  *
  * Provides more detailed error messages then the standard `assert`, and
@@ -26,15 +26,6 @@
 #ifndef CIMBA_CMB_ASSERT_H
 #define CIMBA_CMB_ASSERT_H
 
-/*
- * Custom assert() with some more info when failing.
- * Failed asserts call cmb_logger_fatal().
- * cmb_assert_release() remains if NDEBUG is defined, but goes away if NASSERT
- *    is defined.
- * cmb_assert_debug() goes away if NDEBUG is defined (like standard assert())
- *    or if NASSERT is defined.
- * cmb_assert() is shorthand for cmb_assert_debug()
- */
 #ifndef NASSERT
     #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
         /**

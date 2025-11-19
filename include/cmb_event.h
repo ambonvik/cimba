@@ -1,21 +1,22 @@
-/*
- * cmb_event.h - simulation manager for discrete event simulation.
+/**
+ * @file cmb_event.h
+ * @brief Simulation event queue manager for discrete event simulation.
  * Provides routines to handle clock sequencing and event scheduling.
  *
  * An event is defined as a function taking two pointers to void as
  * arguments and returning void. The arguments are application defined,
  * but the intention is to provide tuples of (action, subject, object)
  * consisting of pointers to the event function and its two arguments.
- * It will be called as *action(subject, object) when it is its turn.
+ * It will be called as `*action(subject, object)` when it is its turn.
  *
  * Afterwards, control will return to the event dispatcher, which does not know
  * much about the event specifics. Hence, no need to return indications of
  * success or failure (or anything else) from the event function.
  *
- * The first argument void *subject can be understood as the implicit
+ * The first argument `void *subject` can be understood as the implicit
  * self or this pointer in an object-oriented language. It can be used as
  * an identificator, e.g. what object or process the event belongs to.
- * Understood that way, the meaning becomes subject.action(object), i.e.,
+ * Understood that way, the meaning becomes `subject.action(object)`, i.e.,
  * a method of the subject class, acting on some other object.
  *
  * The event has an associated activation time and a priority. Just before
@@ -35,12 +36,15 @@
  * in the hash map and the event's current location in the heap is the hash map
  * value. This gives O(1) cancellations and reschedules with no need to search
  * the entire heap to find a future event. The details of the data structure
- * are not exposed in this header file, see cmb_event.c for the implementation.
+ * are not exposed in this header file, see `cmb_event.c` for implementation.
  *
  * As always, the error handling is draconian. Functions for e.g. rescheduling
  * an event will trip an assertion if the given event is not currently in the
- * event queue. This is a deliberate design choice, see the documentation.
- *
+ * event queue. This is a deliberate design choice to ensure that bugs get fixed
+ * rather than "handled".
+ */
+
+/*
  * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,56 +67,90 @@
 #include <stdio.h>
 #include <stdint.h>
 
-/*
- * cmb_time : Get the current simulation time, read-only for user application.
+/**
+ * @brief Get the current simulation time, read-only for user application.
+ * @return Current simulation time.
  */
 extern double cmb_time(void);
 
-/*
- * typedef cmb_event_func : The generic event function type
+/**
+ * @brief Defines a prototype for the generic event function type
+ *        `void action(void *subject, void *object)`
  */
 typedef void (cmb_event_func)(void *subject, void *object);
 
-/*
- * cmb_event_queue_initialize : Initialize the event queue itself.
- * Must be called before any events can be scheduled or executed.
+/**
+ * @brief Initialize the event queue itself. Must be called before any events
+ * can be scheduled or executed. Expects to find an empty event queue.
  *
- * Note that there is no cmb_event_queue_create, _reset, or _destroy. There
- * should only be one (thread local) event queue per thread. It is created and
- * destroyed automatically, no need to create another one. Each thread should be
- * one simulation run, where the event queue lasts for the same period as the
- * thread itself. Hence no need to reset and restart either.
+ * Note that there is no `cmb_event_queue_create`, `_reset`, or `_destroy`. There
+ * ìs only one (thread local) event queue per thread, no need to create another.
+ * Hence, no need for the usual self pointer as first argument to this function
+ * either, it acts on the one and only event queue in this thread.
+ *
+ * Call at the beginning of your simulation trial to start from a fresh state.
+ * Also make sure to call `cmb_event_queue_terminate` at the end of your trial
+ * to free up space. Calling `cmb_event_queue_initialize` again on the next
+ * trial in the same worker thread without calling `cmb_event_queue_terminate`
+ * at the end of the previous trial will fire an assert about the event queue
+ * not being `NULL` in `cmb_event_queue_initialize`.
+ *
+ * @param start_time The starting value for the simulation clock, usually 0.
  */
 extern void cmb_event_queue_initialize(double start_time);
 
-/*
- * cmb_event_queue_terminate : Free memory allocated for internal workings of
- * the event queue, but not the event queue object itself.
+/**
+ * @brief Reset event queue to fresh state. Free's memory allocated for internal
+ *        workings of the event queue.
+ *
+ * No argument needed, acts on the current thread's event queue. Call at the end
+ * of your simulation trials to clean up allocated space for the event queue. A
+ * necessary step before starting the next trial in the same worker thread.
  */
 extern void cmb_event_queue_terminate(void);
 
-/*
- * cmb_event_queue_clear : Clears out all scheduled events from the queue. Does
- * not deallocate any memory or reset any counters, just cancels all events in
- * the queue. Call this function from an event to stop a simulation running as
- * cmb_event_queue_execute().
+/**
+ * @brief Clears out all scheduled events from the queue.
+ *
+ * Does not deallocate any memory or reset any counters, just cancels all events
+ * in the queue. Calling this function from an event will stop the simulation
+ * running as `cmb_event_queue_execute()`- no more events to execute after that.
  */
 extern void cmb_event_queue_clear(void);
 
-/*
- * cmb_event_queue_is_empty : Is the event queue empty?
+/**
+ * @brief Is the event queue empty?'
+ * @returns `true` if empty, `false` if not.
  */
 extern bool cmb_event_queue_is_empty(void);
 
-/*
- * cmb_event_queue_count : Returns current number of events in the queue.
+/**
+ * @brief Returns current number of events in the queue.
+ * @return The number of events in the event queue.
  */
 extern uint64_t cmb_event_queue_count(void);
 
-/*
- * cmb_event_schedule: Insert event in event queue as indicated by reactivation
- * time and priority. An event cannot be scheduled at a time before current.
- * Returns the unique handle of the scheduled event.
+/**
+ * @brief Insert an event in event queue as indicated by the activation
+ * time and priority. An event cannot be scheduled at a time before the current
+ * simulation time.
+ *
+ * @param action  Pointer to the event function to execute.
+ * @param subject Pointer to something user-defined, intended as a self
+ *                pointer for whatever entity (e.g., a `cmb_process`) that is
+ *                acting here.
+ * @param object  Pointer to something user-defined, intended as a pointer to
+ *                whatever object the `subject` is acting on.
+ * @param time    The simulation time when this event will occur. The `time`
+ *                argument must be greater than or equal to the current
+ *                simulation time when making this call.
+ * @param priority The priority of this event at the scheduled time, an integer
+ *                between `INT64_MIN`and `INT64_MAX`. Events with numerically
+ *                higher priority will happen before events with lower if
+ *                scheduled at the same time. If both are equal, they will occur
+ *                in FIFO sequence.
+ * @return        The unique handle of the scheduled event, to be used as
+ *                reference for any rescheduling or cancellation of this event.
  */
 extern uint64_t cmb_event_schedule(cmb_event_func *action,
                                    void *subject,
@@ -120,100 +158,151 @@ extern uint64_t cmb_event_schedule(cmb_event_func *action,
                                    double time,
                                    int64_t priority);
 
-/*
- *  cmb_event_next : Removes and executes the first event in the event queue.
- *  If both reactivation time and priority equal, first in first out order.
+/**
+ * @brief Removes and executes the first event in the event queue.
  *
- *  Returns true for success, false for failure (e.g., empty event list), for
- *  use in loops like while(cmb_event_execute_next()) { ... }
+ * @return `true` for success, `false` for failure (e.g., empty event list),
+ *         for use in loops like `while(cmb_event_execute_next()) { ... }`.
  */
 extern bool cmb_event_execute_next(void);
 
-/*
- * cmb_event_queue_execute : Executes events from the event queue until empty.
+/**
+ * @brief Executes events from the event queue until empty.
  *
- * Schedule an event calling cmb_event_queue_clear() to zero out the event queue
- * and stop the simulation. This can either be pre-scheduled for some particular
- * time or triggered by some other condition such as reaching a certain number
- * of samples in some data collector, a confidence interval being sufficiently
- * narrow, or anything else.
+ * Schedule an event calling `cmb_event_queue_clear()` to zero out the event
+ * queue and stop the simulation. This can either be pre-scheduled for some
+ * particular time or triggered by some other condition such as reaching a
+ * certain number of samples in some data collector, a confidence interval being
+ * sufficiently narrow, or anything else.
  */
 extern void cmb_event_queue_execute(void);
 
-/*
- * cmb_event_is_scheduled : Is the given event currently in the event queue?
+/**
+ * @brief Is the given event currently in the event queue?
+ * @param handle The handle of some event.
+ * @return `true` if the event is scheduled in the event queue, `false` if not.
  */
 extern bool cmb_event_is_scheduled(uint64_t handle);
 
-/*
- * cmb_event_time : Get the currently scheduled time for an event
- * Precondition: The event is in the event queue.
+/**
+ * @brief Get the currently scheduled time for an event. The event is assumed
+ *        to be in the event queue, error if not. Call `cmb_event_is_scheduled`
+ *        first if not sure.
+ * @param handle The `handle` of some event in the event queue.
+ * @return The scheduled activation time for the event.
  */
 extern double cmb_event_time(uint64_t handle);
 
-/*
- * cmb_event_priority : Get the current priority for an event
- * Precondition: The event is in the event queue.
+/**
+ * @brief Get the current priority for an event. The event is assumed
+*         to be in the event queue, error if not. Call `cmb_event_is_scheduled`
+ *        first if not sure.
+ * @param handle The `handle` of some event in the event queue.
+ * @return The priority for the event.
  */
 extern int64_t cmb_event_priority(uint64_t handle);
 
-/*
- * cmb_event_cancel: Remove event from event queue.
- * Precondition: The event is in the event queue.
+/**
+ * @brief  Remove event from event queue. The event is assumed
+*         to be in the event queue, error if not. Call `cmb_event_is_scheduled`
+ *        first if not sure.
+ * @param handle The `handle` of some event in the event queue.
  */
 extern void cmb_event_cancel(uint64_t handle);
 
-/*
- * cmb_event_reschedule: Reschedules event at index to another (absolute) time.
- * Precondition: The event is in the event queue.
+/**
+ * @brief  Reschedules event at index to another (absolute) time. The event is
+*          assumed to be in the event queue, error if not. Call
+*         `cmb_event_is_scheduled` first if not sure.
+ * @param handle The `handle` of some event in the event queue.
+ * @param time The new scheduled time of the event.
  */
 extern void cmb_event_reschedule(uint64_t handle, double time);
 
-/*
- * cmb_event_reprioritize: Reprioritizes event to another priority level
- * Precondition: The event is in the event queue.
+/**
+* @brief  Reprioritizes event to another priority level. The event is
+*         assumed to be in the event queue, error if not. Call
+*         `cmb_event_is_scheduled` first if not sure.
+ * @param handle The `handle` of some event in the event queue.
+ * @param priority The new priority of the event.
  */
 extern void cmb_event_reprioritize(uint64_t handle, int64_t priority);
 
-/*
- * cmb_event_find: Search in event list for an event matching the given pattern
- * and return its handle if one exists in the queue. Return zero if no match.
- * CMB_ANY_* are wildcarda, matching any value in its position.
+/**
+ * @brief Wildcard pattern, matches any `cmb_event_func` (action) when searching
+ *        event list.
+ */
+#define CMB_ANY_ACTION ((cmb_event_func *)0xFFFFFFFFFFFFFFFFull)
+
+/**
+ * @brief Wildcard pattern, matches any subject when searching event list.
+ */
+#define CMB_ANY_SUBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
+
+/**
+ * @brief Wildcard pattern, matches any object when searching event list.
+ */
+#define CMB_ANY_OBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
+
+/**
+ * @brief Search in event list for an event matching the given pattern
+ *        and return its handle if one exists in the queue. Return zero if no
+ *        match. `CMB_ANY_*` are wildcarda, matching any value in its position.
  *
  * Will start the search from the beginning of the event queue each time,
  * since the queue may have changed in the meantime. There is no guarantee
  * for it returning the event that will execute first, only that it will find
  * some event that matches the search pattern if one exists in the queue. The
  * sequence in which events are found is unspecified.
+ *
+ * @param action  Pointer to the event function to find, or `CMB_ANY_ACTION`
+ * @param subject Pointer to the subject to find, or `CMB_ANY_SUBJECT`
+ * @param object  Pointer to the object to find, or `CMB_ANY_OBJECT`
+ *
+ * @return The handle of an event matching the search pattern, zero if none.
  */
-
-#define CMB_ANY_ACTION ((cmb_event_func *)0xFFFFFFFFFFFFFFFFull)
-#define CMB_ANY_SUBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
-#define CMB_ANY_OBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
-
 extern uint64_t cmb_event_pattern_find(cmb_event_func *action,
                                const void *subject,
                                const void *object);
 
-/* cmb_event_count : Similarly, count the number of matching events. */
+/**
+ * @brief Count the number of scheduled events matching the search pattern.
+ *
+ * @param action  Pointer to the event function to find, or `CMB_ANY_ACTION`
+ * @param subject Pointer to the subject to find, or `CMB_ANY_SUBJECT`
+ * @param object  Pointer to the object to find, or `CMB_ANY_OBJECT`
+ *
+ * @return The number of events matching the search pattern, possibly zero.
+*/
 extern uint64_t cmb_event_pattern_count(cmb_event_func *action,
                                         const void *subject,
                                         const void *object);
 
-/*
- * cmb_event_cancel_all : Cancel all matching events, returns the number
- * of events that were cancelled, possibly zero. Use e.g. for cancelling all
- * events related to some subject or object if that thing no longer is alive in
- * the simulation.
+/**
+ * @brief Cancel all matching events, returns the number
+ * of events that were cancelled, possibly zero.
+ *
+ * Use e.g. for cancelling all events related to some subject or object if that
+ * thing no longer is alive in the simulation.
+ *
+ * @param action  Pointer to the event function to find, or `CMB_ANY_ACTION`
+ * @param subject Pointer to the subject to find, or `CMB_ANY_SUBJECT`
+ * @param object  Pointer to the object to find, or `CMB_ANY_OBJECT`
+ *
+ * @return The number of events that matched and were cancelled, possibly zero.
+
  */
 extern uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
                                          const void *subject,
                                          const void *object);
 
-/*
- * cmb_event_queue_print : Print the current content of the event queue.
- * Intended for debugging use, will print hexadecimal pointer values and
+/**
+ * @brief Print the current content of the event queue.
+ *
+ * Intended for debugging use only, will print hexadecimal pointer values and
  * similar raw data values from the event tag structs.
+ *
+ * @param fp A file pointer to print to, perhaps `stdout`.
  */
 extern void cmb_event_queue_print(FILE *fp);
 

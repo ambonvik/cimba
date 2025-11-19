@@ -6,7 +6,27 @@ set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNASSERT")
 enable_language(ASM_NASM)
 
 include_directories(include src)
-set(SOURCES src/cimba.c
+
+set(API_HEADERS
+        include/cimba.h
+        include/cmb_assert.h
+        include/cmb_buffer.h
+        include/cmb_dataset.h
+        include/cmb_datasummary.h
+        include/cmb_event.h
+        include/cmb_logger.h
+        include/cmb_mempool.h
+        include/cmb_objectqueue.h
+        include/cmb_process.h
+        include/cmb_random.h
+        include/cmb_resource.h
+        include/cmb_store.h
+        include/cmb_wtdsummary.h
+        include/cmb_timeseries.h
+)
+
+set(SOURCES
+        src/cimba.c
         src/cmb_assert.c
         src/cmb_buffer.c
         src/cmb_dataset.c
@@ -32,22 +52,10 @@ set(SOURCES src/cimba.c
         src/arch/cmi_memutils_Win64.c
         src/arch/cmb_random_hwseed_Win64.c
         src/arch/cmi_coroutine_context_Win64.c
-        src/arch/cmi_cpu_cores_Win64.c)
-set(HEADERS include/cimba.h
-        include/cmb_assert.h
-        include/cmb_buffer.h
-        include/cmb_dataset.h
-        include/cmb_datasummary.h
-        include/cmb_event.h
-        include/cmb_logger.h
-        include/cmb_mempool.h
-        include/cmb_objectqueue.h
-        include/cmb_process.h
-        include/cmb_random.h
-        include/cmb_resource.h
-        include/cmb_store.h
-        include/cmb_wtdsummary.h
-        include/cmb_timeseries.h
+        src/arch/cmi_cpu_cores_Win64.c
+)
+
+set(HEADERS
         src/cmi_coroutine.h
         src/cmi_config.h
         src/cmi_dataset.h
@@ -56,12 +64,13 @@ set(HEADERS include/cimba.h
         src/cmi_processtag.h
         src/cmi_resourcebase.h
         src/cmi_resourceguard.h
-        src/cmi_resourcetag.h)
+        src/cmi_resourcetag.h
+)
 
 set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm src/arch/cmi_random_hwseed_Win64.asm)
 set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM_NASM)
 
-add_library(cimba STATIC ${SOURCES} ${ASM_SOURCES} ${HEADERS})
+add_library(cimba STATIC ${API_HEADERS} ${HEADERS} ${SOURCES} ${ASM_SOURCES})
 
 add_executable(test_data test/test_data.c test/test.h)
 target_link_libraries(test_data PRIVATE cimba)
@@ -101,3 +110,8 @@ target_link_libraries(test_queue PRIVATE cimba)
 
 add_executable(test_cimba test/test_cimba.c test/test.h)
 target_link_libraries(test_cimba PRIVATE cimba pthread)
+
+option(BUILD_WITH_DOCS "Generate Docs" ON)
+if(TASKSCH_BUILD_WITH_DOCS)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/docs)
+endif()

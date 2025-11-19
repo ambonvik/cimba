@@ -1,5 +1,5 @@
 /**
- * @file
+ * @file cmb_datasummary.h
  * @brief  A running tally of basic statistics. The `cmb_datasummary` does not
  * keep individual data values, just the summary statistics. Use `cmb_dataset`
  * instead if youneed individual values, and use `cmb_dataset_summarize` to

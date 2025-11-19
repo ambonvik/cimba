@@ -1,5 +1,5 @@
 /**
- * @file
+ * @file cmb_buffer.h
  * @brief A two-headed fixed-capacity resource where one or more
  * producer processes can put an amount into the one end, and one or more
  * consumer processes can get amounts out of the other end. If enough space is

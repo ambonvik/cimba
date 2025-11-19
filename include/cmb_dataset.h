@@ -1,10 +1,10 @@
 /**
- * @file
+ * @file cmb_dataset.h
  * @brief An automatically resizing array of (possibly unordered) sample values,
- *        each sample a double. Use cmb_dataset_summarize()` to compute the
- *        sample statistics when needed. The internal data array will be created
- *        on the heap even if the data series is declared as a local variable on
- *        the stack.
+ *        each sample a double.
+ *
+ * The internal data array will be created on the heap even if the data series
+ * is declared as a local variable on the stack.
  */
 
 /*
