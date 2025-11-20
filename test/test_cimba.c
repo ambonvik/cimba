@@ -141,7 +141,9 @@ void *service_proc(struct cmb_process *me, void *vctx)
 
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
-    cmb_logger_user(stdout, USERFLAG, "Started service, queue %s",
+    cmb_logger_user(stdout,
+                    USERFLAG,
+                    "Started service, queue %s",
                     cmb_buffer_get_name(bp));
 
     const double cv = ctx->trl->service_cv;
@@ -149,8 +151,11 @@ void *service_proc(struct cmb_process *me, void *vctx)
     const double scale = cv * cv;
 
     while (true) {
-        cmb_logger_user(stdout, USERFLAG, "Holding shape %f scale %f",
-                        shape, scale);
+        cmb_logger_user(stdout,
+                        USERFLAG,
+                        "Holding shape %f scale %f",
+                        shape,
+                        scale);
         (void)cmb_process_hold(cmb_random_gamma(shape, scale));
         cmb_logger_user(stdout, USERFLAG, "Getting");
         uint64_t n = 1u;
@@ -261,7 +266,10 @@ int main(void)
     }
 
     printf("Executing experiment\n");
-    cimba_run_experiment(experiment, ntrials, sizeof(*experiment), run_mg1_trial);
+    cimba_run_experiment(experiment,
+                         ntrials,
+                         sizeof(*experiment),
+                         run_mg1_trial);
 
     printf("Finished experiment, writing results to file\n");
     ui_exp = 0u;

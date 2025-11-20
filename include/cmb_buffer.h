@@ -80,8 +80,8 @@ extern struct cmb_buffer *cmb_buffer_create(void);
  *                 for buffers of unlimited capacity.
  */
 extern void cmb_buffer_initialize(struct cmb_buffer *bp,
-                                    const char *name,
-                                    uint64_t capacity);
+                                  const char *name,
+                                  uint64_t capacity);
 
 /**
  * @brief Un-initializes a buffer object.
