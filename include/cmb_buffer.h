@@ -59,6 +59,11 @@
  * `struct my_special_buffer` and `struct cmb_buffer` to refer to the same
  * object as needed, as we do here.
  */
+
+/**
+ * @brief A two-sided fixed capacity buffer between a producer (putter) and a
+ *        consumer (getter) process.
+ */
 struct cmb_buffer {
     struct cmi_resourcebase core;           /**< The virtual base class */
     struct cmi_resourceguard front_guard;   /**< Front waiting room for getters */

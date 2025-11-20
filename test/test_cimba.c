@@ -169,11 +169,11 @@ void *service_proc(struct cmb_process *me, void *vctx)
 void run_mg1_trial(void *vtrl)
 {
     struct trial *trl = vtrl;
-    if (trl->seed == 0u) {
+    // if (trl->seed == 0u) {
         const uint64_t seed = cmb_random_get_hwseed();
         cmb_random_initialize(seed);
         trl->seed = seed;
-    }
+    // }
 
     struct context *ctx = malloc(sizeof(*ctx));
     ctx->trl = trl;
@@ -214,6 +214,7 @@ void run_mg1_trial(void *vtrl)
     /* Collect and save statistics into the trial struct */
     const struct cmb_timeseries *tsp = cmb_buffer_get_history(sim->queue);
     struct cmb_wtdsummary ws;
+    cmb_wtdsummary_initialize(&ws);
     cmb_timeseries_summarize(tsp, &ws);
     trl->avg_queue_length = cmb_wtdsummary_mean(&ws);
 

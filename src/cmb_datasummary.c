@@ -84,8 +84,8 @@ void cmb_datasummary_destroy(struct cmb_datasummary *dsp)
  * Returns tgt->count, the number of data points in the combined summary.
  */
 uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
-                           const struct cmb_datasummary *dsp1,
-                           const struct cmb_datasummary *dsp2)
+                               const struct cmb_datasummary *dsp1,
+                               const struct cmb_datasummary *dsp2)
 {
     cmb_assert_release(tgt != NULL);
     cmb_assert_release(dsp1 != NULL);

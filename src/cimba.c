@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <xmmintrin.h>
 
 #include "cimba.h"
 
@@ -39,7 +40,6 @@ static void *cmg_experiment_arr;
 static size_t cmg_trial_struct_sz;
 static cimba_trial_func *cmg_trial_func;
 static uint64_t cmg_total_trials;
-static pthread_mutex_t cmg_terminal = PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * cimba_version : Return the version string as const char *
@@ -78,10 +78,6 @@ static void *worker_thread_func(void *arg)
                                                          + cmg_trial_struct_sz);
             (*trial_func)(trial);
         }
-
-        pthread_mutex_lock(&cmg_terminal);
-        printf("Completed %llu/%llu\n", idx, cmg_total_trials);
-        pthread_mutex_unlock(&cmg_terminal);
     }
 
     return NULL;
@@ -100,6 +96,10 @@ void cimba_run_experiment(void *your_experiment_array,
     cmb_assert_release(num_trials > 0u);
     cmb_assert_release(trial_struct_size > 0u);
     cmb_assert_release(your_trial_func != NULL);
+
+    /* Set exception flags to trip on any floating point error */
+    _mm_setcsr(0x1d00);
+    cmb_assert_debug((_mm_getcsr() & 0x1d00) == 0x1d00);
 
     /* Initialize globals for the threads */
     cmg_next_trial_idx = 0u;
