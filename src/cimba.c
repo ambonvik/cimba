@@ -39,6 +39,7 @@ static void *cmg_experiment_arr;
 static size_t cmg_trial_struct_sz;
 static cimba_trial_func *cmg_trial_func;
 static uint64_t cmg_total_trials;
+static pthread_mutex_t cmg_terminal = PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * cimba_version : Return the version string as const char *
@@ -77,6 +78,10 @@ static void *worker_thread_func(void *arg)
                                                          + cmg_trial_struct_sz);
             (*trial_func)(trial);
         }
+
+        pthread_mutex_lock(&cmg_terminal);
+        printf("Completed %llu/%llu\n", idx, cmg_total_trials);
+        pthread_mutex_unlock(&cmg_terminal);
     }
 
     return NULL;
