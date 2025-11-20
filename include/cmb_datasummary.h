@@ -31,10 +31,13 @@
 
 #include "cmb_assert.h"
 
+#include "cmi_memutils.h"
+
 /**
  * @brief A datasummary object with its tallies.
  */
 struct cmb_datasummary {
+    uint64_t cookie;    /**< A "magic cookie" to catch uninitialized objects */
     uint64_t count;     /**< The number of samples seen */
     double min;         /**< The smallest sample seen, initially `DBL_MAX` */
     double max;         /**< The largest sample seen, initially `-DBL_MAX` */
@@ -110,6 +113,7 @@ extern uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
 static inline uint64_t cmb_datasummary_count(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     return dsp->count;
 }
@@ -122,6 +126,7 @@ static inline uint64_t cmb_datasummary_count(const struct cmb_datasummary *dsp)
 static inline double cmb_datasummary_max(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     return dsp->max;
 }
@@ -134,6 +139,7 @@ static inline double cmb_datasummary_max(const struct cmb_datasummary *dsp)
 static inline double cmb_datasummary_min(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     return dsp->min;
 }
@@ -146,6 +152,7 @@ static inline double cmb_datasummary_min(const struct cmb_datasummary *dsp)
 static inline double cmb_datasummary_mean(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     return dsp->m1;
 }
@@ -158,6 +165,7 @@ static inline double cmb_datasummary_mean(const struct cmb_datasummary *dsp)
 static inline double cmb_datasummary_variance(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     double r = 0.0;
     if (dsp->count > 1) {
@@ -177,6 +185,7 @@ static inline double cmb_datasummary_variance(const struct cmb_datasummary *dsp)
 static inline double cmb_datasummary_stddev(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     return sqrt(cmb_datasummary_variance(dsp));
 }

@@ -20,8 +20,6 @@
 #ifndef CIMBA_CMB_CONFIG_H
 #define CIMBA_CMB_CONFIG_H
 
-#include <assert.h>
-
 /*
  * Identify the processor architecture. So far, only AMD64/x86-64 supported.
  */
@@ -60,6 +58,5 @@
 #else
   #error "Compiler not yet supported."
 #endif
-
 
 #endif /* CIMBA_CMB_CONFIG_H */

@@ -35,6 +35,7 @@
  * @brief A dataset object with its conveniently resizing sample array.
  */
 struct cmb_dataset {
+    uint64_t cookie;    /**< A "magic cookie" to catch uninitialized objects */
     uint64_t cursize;   /**< The currently allocated space as number of samples */
     uint64_t count;     /**< The current number of samples in array, `<= cursize`                 */
     double min;         /**< Smallest sample, initially `DBL_MAX` **/

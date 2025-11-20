@@ -23,11 +23,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../include/cmb_assert.h"
+#include "cmb_assert.h"
+
+#define CMI_UNINITIALIZED 0xDEADBEEF
+#define CMI_INITIALIZED 0xCAFEBABE
 
 /*
-  * Convenience functions to encapsulate repetitive error handling
-  */
+ * Convenience functions to encapsulate repetitive error handling
+ */
 static inline void *cmi_malloc(const size_t sz)
 {
     cmb_assert_debug(sz > 0);

@@ -38,6 +38,7 @@ void cmb_dataset_initialize(struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
 
+    dsp->cookie = CMI_INITIALIZED;
     dsp->cursize = 0u;
     dsp->count = 0u;
     dsp->min = DBL_MAX;
@@ -56,6 +57,8 @@ void cmb_dataset_reset(struct cmb_dataset *dsp)
 void cmb_dataset_terminate(struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
+
+    dsp->cookie = CMI_UNINITIALIZED;
     if (dsp->cursize > 0u) {
         cmb_assert_debug(dsp->xa != NULL);
         cmi_free(dsp->xa);
@@ -74,6 +77,7 @@ void cmb_dataset_destroy(struct cmb_dataset *dsp)
 void cmi_dataset_expand(struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(dsp->cursize < UINT64_MAX / 2u);
 
     if (dsp->cursize == 0) {
@@ -92,6 +96,7 @@ void cmi_dataset_expand(struct cmb_dataset *dsp)
 uint64_t cmb_dataset_add(struct cmb_dataset *dsp, const double x)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     dsp->max = (x > dsp->max) ? x : dsp->max;
     dsp->min = (x < dsp->min) ? x : dsp->min;
@@ -227,6 +232,7 @@ static void dataset_heapify(const uint64_t un,
 void cmb_dataset_sort(const struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     if (dsp->xa != NULL) {
         const uint64_t un = dsp->count;
@@ -250,7 +256,9 @@ uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
                           const struct cmb_dataset *src)
 {
     cmb_assert_release(src != NULL);
+    cmb_assert_release(src->cookie == CMI_INITIALIZED);
     cmb_assert_release(tgt != NULL);
+    cmb_assert_release(tgt->cookie == CMI_INITIALIZED);
 
     tgt->count = src->count;
     tgt->cursize = src->cursize;
@@ -275,6 +283,7 @@ uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
                                struct cmb_datasummary *dsump)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(dsump != NULL);
 
     cmb_datasummary_initialize(dsump);
@@ -305,6 +314,7 @@ static double data_array_median(const unsigned n, const double v[n])
 double cmb_dataset_median(const struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     double r = 0.0;
     if (dsp->xa != NULL) {
@@ -329,6 +339,7 @@ void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
                                const bool lead_ins)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(fp != NULL);
 
     if (dsp->xa != NULL) {
@@ -369,6 +380,7 @@ void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
 void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(fp != NULL);
 
     if (dsp->xa != NULL) {
@@ -462,8 +474,8 @@ struct cmi_dataset_histogram *cmi_dataset_create_histogram(const unsigned num_bi
  * weighting each x-value equally with 1.0.
  */
 void cmi_dataset_fill_histogram(struct cmi_dataset_histogram *hp,
-                                   const uint64_t n,
-                                   const double xa[n])
+                                const uint64_t n,
+                                const double xa[n])
 {
     cmb_assert_debug(hp != NULL);
     cmb_assert_debug(n > 0u);
@@ -537,11 +549,13 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
                                  double low_lim,
                                  double high_lim)
 {
-     cmb_assert_release(dsp != NULL);
-     cmb_assert_release(num_bins > 0u);
-     cmb_assert_release(high_lim >= low_lim);
+    cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
-     if (dsp->xa == NULL) {
+    cmb_assert_release(num_bins > 0u);
+    cmb_assert_release(high_lim >= low_lim);
+
+    if (dsp->xa == NULL) {
          cmb_assert_debug(dsp->count == 0u);
          cmb_logger_warning(fp, "No data to display in histogram");
          return;
@@ -569,6 +583,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
                      double acf[max_lag + 1u])
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->count > 1);
     cmb_assert_release((max_lag > 0u) && (max_lag < dsp->count));
@@ -622,6 +637,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
                       double acf[max_lag + 1u])
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->count > 1u);
     cmb_assert_release((max_lag > 0u) && (max_lag < dsp->count - 1u));
@@ -741,6 +757,7 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
                                    double acf[max_lag + 1u])
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->count > 1u);
     cmb_assert_release((max_lag > 0u) && (max_lag <= dsp->count));

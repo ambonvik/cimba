@@ -32,6 +32,8 @@
 struct cmb_wtdsummary *cmb_wtdsummary_create(void)
 {
     struct cmb_wtdsummary *wsp = cmi_malloc(sizeof *wsp);
+    ((struct cmb_datasummary *)wsp)->cookie = CMI_UNINITIALIZED;
+
     cmb_wtdsummary_initialize(wsp);
 
     return wsp;
@@ -83,6 +85,7 @@ uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
                             const double w)
 {
     cmb_assert_release(wsp != NULL);
+    cmb_assert_release(((struct cmb_datasummary *)wsp)->cookie == CMI_INITIALIZED);
     cmb_assert_release(w >= 0.0);
 
     struct cmb_datasummary *dsp = (struct cmb_datasummary *)wsp;
@@ -153,7 +156,9 @@ uint64_t cmb_wtdsummary_merge(struct cmb_wtdsummary *tgt,
 {
     cmb_assert_release(tgt != NULL);
     cmb_assert_release(ws1 != NULL);
+    cmb_assert_release(((struct cmb_datasummary *)ws1)->cookie == CMI_INITIALIZED);
     cmb_assert_release(ws2 != NULL);
+    cmb_assert_release(((struct cmb_datasummary *)ws2)->cookie == CMI_INITIALIZED);
 
     struct cmb_wtdsummary tws = { 0 };
     struct cmb_datasummary *ts = (struct cmb_datasummary *)(&tws);
@@ -192,7 +197,9 @@ void cmb_wtdsummary_print(const struct cmb_wtdsummary *wsp,
                         FILE *fp,
                         const bool lead_ins)
 {
+    cmb_assert_release(wsp != NULL);
+    cmb_assert_release(((struct cmb_datasummary *)wsp)->cookie == CMI_INITIALIZED);
+
     cmb_datasummary_print((struct cmb_datasummary *)wsp, fp, lead_ins);
 }
-
 

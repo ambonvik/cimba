@@ -28,6 +28,8 @@
 struct cmb_datasummary *cmb_datasummary_create(void)
 {
     struct cmb_datasummary *dsp = cmi_malloc(sizeof *dsp);
+    dsp->cookie = CMI_UNINITIALIZED;
+
     cmb_datasummary_initialize(dsp);
 
     return dsp;
@@ -37,6 +39,7 @@ void cmb_datasummary_initialize(struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
 
+    dsp->cookie = CMI_INITIALIZED;
     dsp->count = 0u;
     dsp->max = -DBL_MAX;
     dsp->min = DBL_MAX;
@@ -57,6 +60,8 @@ void cmb_datasummary_reset(struct cmb_datasummary *dsp)
 void cmb_datasummary_terminate(struct cmb_datasummary *dsp)
 {
     cmb_unused(dsp);
+
+    dsp->cookie = CMI_UNINITIALIZED;
 }
 
 void cmb_datasummary_destroy(struct cmb_datasummary *dsp)
@@ -89,7 +94,9 @@ uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
 {
     cmb_assert_release(tgt != NULL);
     cmb_assert_release(dsp1 != NULL);
+    cmb_assert_release(dsp1->cookie == CMI_INITIALIZED);
     cmb_assert_release(dsp2 != NULL);
+    cmb_assert_release(dsp2->cookie == CMI_INITIALIZED);
 
     struct cmb_datasummary cs = { 0 };
     cs.count = dsp1->count + dsp2->count;
@@ -134,6 +141,7 @@ uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
 uint64_t cmb_datasummary_add(struct cmb_datasummary *dsp, const double y)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     dsp->max = (y > dsp->max) ? y : dsp->max;
     dsp->min = (y < dsp->min) ? y : dsp->min;
@@ -159,6 +167,7 @@ void cmb_datasummary_print(const struct cmb_datasummary *dsp,
                        const bool lead_ins)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(fp != NULL);
 
     int r = fprintf(fp, "%s%8llu", ((lead_ins)? "N ": ""), dsp->count);
@@ -202,6 +211,7 @@ void cmb_datasummary_print(const struct cmb_datasummary *dsp,
 double cmb_datasummary_skewness(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     double r = 0.0;
     if (dsp->count > 2u) {
@@ -220,6 +230,7 @@ double cmb_datasummary_skewness(const struct cmb_datasummary *dsp)
 double cmb_datasummary_kurtosis(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     double r = 0.0;
     if (dsp->count > 3u) {
