@@ -80,8 +80,8 @@ void cmb_logger_flags_off(uint32_t flags)
  *      time process_name function (line) : [label] formatted_message
  * Returns the number of characters written, in case anyone cares.
  */
-int cmb_vfprintf(const uint32_t flags,
-                 FILE *fp,
+int cmb_vfprintf(FILE *fp,
+                 const uint32_t flags,
                  const char *func,
                  const int line,
                  const char *fmtstr,
@@ -138,47 +138,68 @@ int cmb_vfprintf(const uint32_t flags,
     return ret;
 }
 
-void cmi_logger_fatal(FILE *fp, const char *func, const int line, char *fmtstr, ...)
+void cmi_logger_fatal(FILE *fp,
+                      const char *func,
+                      const int line,
+                      char *fmtstr,
+                      ...)
 {
     fflush(NULL);
     va_list args;
     va_start(args, fmtstr);
-    (void)cmb_vfprintf(CMB_LOGGER_FATAL, fp, func, line, fmtstr, args);
+    (void)cmb_vfprintf(fp, CMB_LOGGER_FATAL, func, line, fmtstr, args);
     va_end(args);
     abort();
 }
 
-void cmi_logger_error(FILE *fp, const char *func, const int line, char *fmtstr, ...)
+void cmi_logger_error(FILE *fp,
+                      const char *func,
+                      const int line,
+                      char *fmtstr,
+                      ...)
 {
     fflush(NULL);
     va_list args;
     va_start(args, fmtstr);
-    (void)cmb_vfprintf(CMB_LOGGER_ERROR, fp, func, line, fmtstr, args);
+    (void)cmb_vfprintf(fp, CMB_LOGGER_ERROR, func, line, fmtstr, args);
     va_end(args);
     exit(1);
 }
 
-void cmi_logger_warning(FILE *fp, const char *func, const int line, char *fmtstr, ...)
+void cmi_logger_warning(FILE *fp,
+                        const char *func,
+                        const int line,
+                        char *fmtstr,
+                        ...)
 {
     fflush(NULL);
     va_list args;
     va_start(args, fmtstr);
-    (void)cmb_vfprintf(CMB_LOGGER_WARNING, fp, func, line, fmtstr, args);
+    (void)cmb_vfprintf(fp, CMB_LOGGER_WARNING, func, line, fmtstr, args);
     va_end(args);
 }
 
-void cmi_logger_info(FILE *fp, const char *func, const int line, char *fmtstr, ...)
+void cmi_logger_info(FILE *fp,
+                     const char *func,
+                     const int line,
+                     char *fmtstr,
+                     ...)
 {
     va_list args;
     va_start(args, fmtstr);
-    (void)cmb_vfprintf(CMB_LOGGER_INFO, fp, func, line, fmtstr, args);
+    (void)cmb_vfprintf(fp, CMB_LOGGER_INFO, func, line, fmtstr, args);
     va_end(args);
 }
 
-void cmi_logger_user(const uint32_t flags, FILE *fp,  const char *func, const int line, char *fmtstr, ...)
+void cmi_logger_user(FILE *fp,
+                     const uint32_t flags,
+                     const char *func,
+                     const int line,
+                     char *fmtstr,
+                     ...)
 {
     va_list args;
     va_start(args, fmtstr);
-    (void)cmb_vfprintf(flags, fp, func, line, fmtstr, args);
+    (void)cmb_vfprintf(fp, flags, func, line, fmtstr, args);
     va_end(args);
 }

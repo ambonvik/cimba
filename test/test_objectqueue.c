@@ -70,27 +70,27 @@ void *putterfunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(USERFLAG, stdout, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG, "Holding ...");
         int64_t sig = cmb_process_hold(cmb_random_exponential(1.0));
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(USERFLAG, stdout, "Hold returned normally");
+            cmb_logger_user(stdout, USERFLAG, "Hold returned normally");
         }
         else {
-            cmb_logger_user(USERFLAG, stdout, "Hold returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %lld", sig);
         }
 
-        cmb_logger_user(USERFLAG,
-                        stdout,
+        cmb_logger_user(stdout,
+                        USERFLAG,
                         "Putting object %p into %s...",
                         object,
                         cmb_objectqueue_get_name(qp));
 
         sig = cmb_objectqueue_put(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(USERFLAG, stdout, "Put succeeded");
+            cmb_logger_user(stdout, USERFLAG, "Put succeeded");
         }
         else {
-            cmb_logger_user(USERFLAG, stdout, "Put returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG, "Put returned signal %lld", sig);
         }
     }
 }
@@ -106,26 +106,26 @@ void *getterfunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(USERFLAG, stdout, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG, "Holding ...");
         int64_t sig = cmb_process_hold(cmb_random_exponential(1.0));
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(USERFLAG, stdout, "Hold returned normally");
+            cmb_logger_user(stdout, USERFLAG, "Hold returned normally");
         }
         else {
-            cmb_logger_user(USERFLAG, stdout, "Hold returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %lld", sig);
         }
 
-        cmb_logger_user(USERFLAG,
-                        stdout,
+        cmb_logger_user(stdout,
+                        USERFLAG,
                         "Getting object from %s...",
                         cmb_objectqueue_get_name(qp));
 
         sig = cmb_objectqueue_get(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(USERFLAG, stdout, "Get succeeded");
+            cmb_logger_user(stdout, USERFLAG, "Get succeeded");
         }
         else {
-            cmb_logger_user(USERFLAG, stdout, "Get returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG, "Get returned signal %lld", sig);
         }
     }
 }
@@ -141,12 +141,16 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(USERFLAG, stdout, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG, "Holding ...");
         (void)cmb_process_hold(cmb_random_exponential(1.0));
-        const uint16_t vic = cmb_random_dice(0, nproc - 1u);
+        const uint16_t vic = cmb_random_dice(0, (long)(nproc - 1u));
         const int64_t sig = cmb_random_dice(1, 10);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_logger_user(USERFLAG, stdout, "Interrupting %s with %lld", tgt[vic]->name, sig);
+        cmb_logger_user(stdout,
+                        USERFLAG,
+                        "Interrupting %s with %lld",
+                        tgt[vic]->name,
+                        sig);
         cmb_process_interrupt(tgt[vic], sig, pri);
     }
 }
@@ -175,7 +179,11 @@ void test_queue(double duration)
         quetst->putters[ui] = cmb_process_create();
         snprintf(scratchpad, sizeof(scratchpad), "Putter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(quetst->putters[ui], scratchpad, putterfunc, quetst->queue, pri);
+        cmb_process_initialize(quetst->putters[ui],
+                               scratchpad,
+                               putterfunc,
+                               quetst->queue,
+                               pri);
         cmb_process_start(quetst->putters[ui]);
     }
 
@@ -184,7 +192,11 @@ void test_queue(double duration)
         quetst->getters[ui] = cmb_process_create();
         snprintf(scratchpad, sizeof(scratchpad), "Getter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(quetst->getters[ui], scratchpad, getterfunc, quetst->queue, pri);
+        cmb_process_initialize(quetst->getters[ui],
+                               scratchpad,
+                               getterfunc,
+                               quetst->queue,
+                               pri);
         cmb_process_start(quetst->getters[ui]);
     }
 

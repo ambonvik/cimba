@@ -58,13 +58,17 @@ void *procfunc1(struct cmb_process *me, void *ctx)
                 cmb_resource_release(rp);
             }
             else if (sig == CMB_PROCESS_PREEMPTED){
-                cmb_logger_user(USERFLAG, stdout,
+                cmb_logger_user(stdout,
+                                USERFLAG,
                                 "Someone stole %s from me, sig %lld!",
-                                cmb_resource_get_name(rp), sig);
+                                cmb_resource_get_name(rp),
+                                sig);
             }
             else {
-                cmb_logger_user(USERFLAG, stdout,
-                                "Interrupted by signal %lld!", sig);
+                cmb_logger_user(stdout,
+                                USERFLAG,
+                                "Interrupted by signal %lld!",
+                                sig);
             }
         }
 
@@ -80,7 +84,9 @@ void *procfunc2(struct cmb_process *me, void *ctx)
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         const int64_t sig = cmb_resource_preempt(rp);
-        cmb_logger_user(USERFLAG, stdout, "Preempt %s returned signal %lld",
+        cmb_logger_user(stdout,
+                        USERFLAG,
+                        "Preempt %s returned signal %lld",
                         cmb_resource_get_name(rp), sig);
         cmb_process_hold(cmb_random_exponential(1.0));
         cmb_resource_release(rp);

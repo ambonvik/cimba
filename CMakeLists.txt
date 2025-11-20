@@ -1,11 +1,12 @@
-cmake_minimum_required(VERSION 3.31.6)
+cmake_minimum_required(VERSION 3.12)
 project(cimba LANGUAGES C ASM)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Wall -Wextra")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNASSERT")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3)
 enable_language(ASM_NASM)
 
 include_directories(include src)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/docs)
 
 set(API_HEADERS
         include/cimba.h
@@ -23,6 +24,18 @@ set(API_HEADERS
         include/cmb_store.h
         include/cmb_wtdsummary.h
         include/cmb_timeseries.h
+)
+
+set(HEADERS
+        src/cmi_coroutine.h
+        src/cmi_config.h
+        src/cmi_dataset.h
+        src/cmi_hashheap.h
+        src/cmi_memutils.h
+        src/cmi_processtag.h
+        src/cmi_resourcebase.h
+        src/cmi_resourceguard.h
+        src/cmi_resourcetag.h
 )
 
 set(SOURCES
@@ -53,18 +66,6 @@ set(SOURCES
         src/arch/cmb_random_hwseed_Win64.c
         src/arch/cmi_coroutine_context_Win64.c
         src/arch/cmi_cpu_cores_Win64.c
-)
-
-set(HEADERS
-        src/cmi_coroutine.h
-        src/cmi_config.h
-        src/cmi_dataset.h
-        src/cmi_hashheap.h
-        src/cmi_memutils.h
-        src/cmi_processtag.h
-        src/cmi_resourcebase.h
-        src/cmi_resourceguard.h
-        src/cmi_resourcetag.h
 )
 
 set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm src/arch/cmi_random_hwseed_Win64.asm)
@@ -111,7 +112,3 @@ target_link_libraries(test_queue PRIVATE cimba)
 add_executable(test_cimba test/test_cimba.c test/test.h)
 target_link_libraries(test_cimba PRIVATE cimba pthread)
 
-option(BUILD_WITH_DOCS "Generate Docs" ON)
-if(TASKSCH_BUILD_WITH_DOCS)
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/docs)
-endif()

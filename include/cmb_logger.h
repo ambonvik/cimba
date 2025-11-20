@@ -64,16 +64,16 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
      * Enlist the compiler's help in typechecking the arguments vs the
      * format string.
      */
-    extern int cmb_vfprintf(uint32_t flags,
-                            FILE *fp,
+    extern int cmb_vfprintf(FILE *fp,
+                            uint32_t flags,
                             const char *func,
                             int line,
                             const char *fmtstr,
                             va_list args)
                             __attribute__((format(printf, 3, 0)));
 #else
-    extern int cmb_vfprintf(uint32_t flags,
-                            FILE *fp,
+    extern int cmb_vfprintf(FILE *fp,
+                            uint32_t flags,
                             const char *func,
                             int line,
                             const char *fmtstr,
@@ -97,8 +97,8 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
     cmi_logger_warning(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
 #define cmb_logger_info(fp, fmtstr, ...) \
     cmi_logger_info(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
-#define cmb_logger_user(flags, fp, fmtstr, ...) \
-    cmi_logger_user(flags, fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+#define cmb_logger_user(fp, flags, fmtstr, ...) \
+    cmi_logger_user(fp, flags, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
 
 
 #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
@@ -110,20 +110,20 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
                           __attribute__((format(printf,4,5)));
     extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...)
                           __attribute__((format(printf,4,5)));
-    extern void cmi_logger_user(uint32_t flags, FILE *fp, const char *func, int line, char *fmtstr, ...)
+    extern void cmi_logger_user(FILE *fp, uint32_t flags, const char *func, int line, char *fmtstr, ...)
                           __attribute__((format(printf,5,6)));
 #elif CMB_COMPILER == MSVC
     extern __declspec(noreturn) void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...);
     extern __declspec(noreturn) void cmi_logger_error(FILE *fp, const char *func, int line, char *fmtstr, ...);
     extern void cmi_logger_warning(FILE *fp, const char *func, int line, char *fmtstr, ...);
     extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...);
-    extern void cmi_logger_user(uint32_t flags, FILE *fp, const char *func, int line, char *fmtstr, ...)
+    extern void cmi_logger_user(FILE *fp, uint32_t flags, const char *func, int line, char *fmtstr, ...)
 #else
     #warning "CMB_COMPILER does not match any predefined values"
     extern void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...);
     extern void cmi_logger_warning(FILE *fp, const char *func, int line, char *fmtstr, ...);
     extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...);
-    extern void cmi_logger_user(uint32_t flags, FILE *fp, const char *func, int line, char *fmtstr, ...);
+    extern void cmi_logger_user(FILE *fp, uint32_t flags, const char *func, int line, char *fmtstr, ...);
 #endif
 
 

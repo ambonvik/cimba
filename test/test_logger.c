@@ -42,7 +42,10 @@ static void end_sim(void *subject, void *object)
     cmb_event_queue_clear();
 }
 
-/* Format time values as if they are decimal minutes, print in DD HH:MM:SS.sss format */
+/*
+ * Format time values as if they are decimal minutes,
+ * print in DD HH:MM:SS.sss format
+ */
 #define MYBUFLEN 20
 static char mybuf[MYBUFLEN];
 
@@ -57,7 +60,10 @@ static const char *myformatter(const double t)
     tmp -= (double)minutes;
     const double seconds = tmp * 60.0;
 
-    const unsigned r = snprintf(mybuf, MYBUFLEN, "%02d %02d:%02d:%06.3f", days, hours, minutes, seconds);
+    const unsigned r = snprintf(mybuf,
+                               MYBUFLEN,
+                               "%02d %02d:%02d:%06.3f",
+                               days, hours, minutes, seconds);
     assert((r > 0) && (r < MYBUFLEN));
 
     return mybuf;
@@ -71,9 +77,11 @@ int main(void)
 
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            const char *objects[] = {"that thing", "some thing", "the other thing"};
+            const char *objects[] = {"that thing", "some thing", "other thing"};
             const char *subjects[] = {"this", "self", "me"};
-            cmb_event_schedule(test_action, (void *)subjects[i], (void *)objects[j],
+            cmb_event_schedule(test_action,
+                               (void *)subjects[i],
+                               (void *)objects[j],
                                cmb_random_exponential(60.0),
                                (int16_t)cmb_random_dice(1, 5));
         }
@@ -82,7 +90,7 @@ int main(void)
     const double two_days = 2.0 * 24.0 * 60.0;
     cmb_event_schedule(end_sim, NULL, NULL, two_days, 0);
     while (cmb_event_execute_next()) { }
-    cmb_logger_error(stdout, "We seemed to run out of time here. (This was a test.)");
+    cmb_logger_error(stdout, "We ran out of time here. (This was a test.)");
     /* Not reached */
     cmb_logger_fatal(stdout, "How did this happen?");
     cmb_assert_release(false);

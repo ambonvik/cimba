@@ -34,7 +34,7 @@ void cuckooevtfunc(void *sub, void *obj)
     cmb_unused(sub);
     cmb_unused(obj);
 
-    cmb_logger_user(USERFLAG, stdout,"Cuckoo event occurred");
+    cmb_logger_user(stdout,USERFLAG, "Cuckoo event occurred");
 }
 
 void cnclevtfunc(void *sub, void *obj)
@@ -44,11 +44,11 @@ void cnclevtfunc(void *sub, void *obj)
 
     cmb_assert_release(cuckoo_clock_handle != 0u);
      if (cmb_event_is_scheduled(cuckoo_clock_handle)) {
-        cmb_logger_user(USERFLAG, stdout,"Cancelling cuckoo event");
+        cmb_logger_user(stdout, USERFLAG, "Cancelling cuckoo event");
         cmb_event_cancel(cuckoo_clock_handle);
      }
      else {
-        cmb_logger_user(USERFLAG, stdout,"Cuckoo event already cancelled");
+        cmb_logger_user(stdout, USERFLAG, "Cuckoo event already cancelled");
      }
 }
 
@@ -57,16 +57,22 @@ void *procfunc1(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_unused(ctx);
 
-    cmb_logger_user(USERFLAG, stdout, "Running");
+    cmb_logger_user(stdout, USERFLAG, "Running");
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         const double dur = cmb_random_exponential(5.0);
         const int64_t sig = cmb_process_hold(dur);
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(USERFLAG, stdout, "Hold returned normal signal %lld", sig);
+            cmb_logger_user(stdout,
+                            USERFLAG,
+                            "Hold returned normal signal %lld",
+                            sig);
         }
         else {
-            cmb_logger_user(USERFLAG, stdout, "Hold was interrupted signal %lld", sig);
+            cmb_logger_user(stdout,
+                            USERFLAG,
+                            "Hold was interrupted signal %lld",
+                            sig);
         }
     }
 }
@@ -74,7 +80,10 @@ void *procfunc1(struct cmb_process *me, void *ctx)
 void *procfunc2(struct cmb_process *me, void *ctx)
 {
     struct cmb_process *tgt = (struct cmb_process *)ctx;
-    cmb_logger_user(USERFLAG, stdout, "Running, tgt %s", cmb_process_get_name(tgt));
+    cmb_logger_user(stdout,
+                    USERFLAG,
+                    "Running, tgt %s",
+                    cmb_process_get_name(tgt));
     const int64_t pri = cmb_process_get_priority(me);
     for (unsigned ui = 0u; ui < 5u; ui++) {
         const double dur = cmb_random_exponential(10.0);
@@ -97,14 +106,23 @@ void *procfunc3(struct cmb_process *me, void *ctx)
     cmb_unused(me);
 
     struct cmb_process *tgt = (struct cmb_process *)ctx;
-    cmb_logger_user(USERFLAG, stdout, "Running, tgt %s", cmb_process_get_name(tgt));
+    cmb_logger_user(stdout,
+                    USERFLAG,
+                    "Running, tgt %s",
+                    cmb_process_get_name(tgt));
     int64_t r = cmb_process_wait_event(cuckoo_clock_handle);
-    cmb_logger_user(USERFLAG, stdout, "Got cuckoo, received %llu", r);
+    cmb_logger_user(stdout, USERFLAG, "Got cuckoo, received %llu", r);
 
     cmb_process_hold(cmb_random());
-    cmb_logger_user(USERFLAG, stdout, "Waiting for process %s", cmb_process_get_name(tgt));
+    cmb_logger_user(stdout,
+                    USERFLAG,
+                    "Waiting for process %s",
+                    cmb_process_get_name(tgt));
     r = cmb_process_wait_process(tgt);
-    cmb_logger_user(USERFLAG, stdout, "Tgt %s ended, we received signal %llu", cmb_process_get_name(tgt), r);
+    cmb_logger_user(stdout,
+                    USERFLAG,
+                    "Tgt %s ended, we received signal %llu",
+                    cmb_process_get_name(tgt), r);
 
     cmb_process_exit(NULL);
 
@@ -134,9 +152,17 @@ int main(void)
     cmb_process_start(cpp1);
     cmb_process_start(cpp2);
 
-    printf("Creating an event about midway and a race condition to cancel it...\n");
-    cuckoo_clock_handle = cmb_event_schedule(cuckooevtfunc, NULL, NULL, cmb_random_exponential(25.0), 0);
-    cmb_event_schedule(cnclevtfunc, NULL, NULL, cmb_random_exponential(25.0), 0);
+    printf("Creating an event and a race condition to cancel it...\n");
+    cuckoo_clock_handle = cmb_event_schedule(cuckooevtfunc,
+                                             NULL,
+                                             NULL,
+                                              cmb_random_exponential(25.0),
+                                              0);
+    cmb_event_schedule(cnclevtfunc,
+                      NULL,
+                      NULL,
+                      cmb_random_exponential(25.0),
+                      0);
 
     printf("Creating waiting processes ...\n");
     char buf[32];
@@ -144,15 +170,23 @@ int main(void)
     for (unsigned ui = 0u; ui < 3u; ui++) {
         sprintf(buf, "Waiter_%u", ui);
         cpp3 = cmb_process_create();
-        cmb_process_initialize(cpp3, buf, procfunc3, cpp2, cmb_random_dice(-5, 5));
+        cmb_process_initialize(cpp3,
+                               buf,
+                               procfunc3,
+                               cpp2,
+                               cmb_random_dice(-5, 5));
         cmb_process_start(cpp3);
     }
 
     printf("cmb_event_queue_execute ...\n");
     cmb_event_queue_execute();
 
-    printf("%s returned %p\n", cmb_process_get_name(cpp1), cmb_process_get_exit_value(cpp1));
-    printf("%s returned %p\n", cmb_process_get_name(cpp2), cmb_process_get_exit_value(cpp2));
+    printf("%s returned %p\n",
+           cmb_process_get_name(cpp1),
+           cmb_process_get_exit_value(cpp1));
+    printf("%s returned %p\n",
+           cmb_process_get_name(cpp2),
+           cmb_process_get_exit_value(cpp2));
 
     printf("cmb_process_destroy ...\n");
     cmb_process_destroy(cpp1);

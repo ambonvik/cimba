@@ -15,8 +15,8 @@ if (DOXYGEN_FOUND)
 
     add_custom_command(OUTPUT ${DOXYGEN_INDEX_FILE}
             COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
-            MAIN_DEPENDENCY ${DOXYGEN_IN}
-            DEPENDS ${HEADERS}
+            MAIN_DEPENDENCY ${DOXYFILE_IN}
+            DEPENDS ${API_HEADERS}
             COMMENT "Generating API documentation"
             VERBATIM )
 

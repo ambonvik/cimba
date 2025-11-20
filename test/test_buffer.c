@@ -68,19 +68,19 @@ void *putterfunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(USERFLAG, stdout, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG, "Holding ...");
         int64_t sig = cmb_process_hold(cmb_random_exponential(1.0));
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(USERFLAG, stdout, "Hold returned normally");
+            cmb_logger_user(stdout, USERFLAG, "Hold returned normally");
         }
         else {
-            cmb_logger_user(USERFLAG, stdout, "Hold returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %lld", sig);
         }
 
         const uint64_t n = cmb_random_dice(1, 15);
         uint64_t m = n;
-        cmb_logger_user(USERFLAG,
-                        stdout,
+        cmb_logger_user(stdout,
+                        USERFLAG,
                         "Putting %llu into %s...",
                         n,
                         cmb_buffer_get_name(bp));
@@ -88,11 +88,11 @@ void *putterfunc(struct cmb_process *me, void *ctx)
         sig = cmb_buffer_put(bp, &m);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_assert_debug(m == 0u);
-            cmb_logger_user(USERFLAG, stdout, "Put %llu succeeded", n);
+            cmb_logger_user(stdout, USERFLAG, "Put %llu succeeded", n);
         }
         else {
-            cmb_logger_user(USERFLAG,
-                            stdout,
+            cmb_logger_user(stdout,
+                            USERFLAG,
                             "Put returned signal %lld, got %llu instead of %llu",
                             sig,
                             m,
@@ -110,18 +110,18 @@ void *getterfunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(USERFLAG, stdout, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG, "Holding ...");
         int64_t sig = cmb_process_hold(cmb_random_exponential(1.0));
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(USERFLAG, stdout, "Hold returned normally");
+            cmb_logger_user(stdout, USERFLAG, "Hold returned normally");
         }
         else {
-            cmb_logger_user(USERFLAG, stdout, "Hold returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %lld", sig);
         }
 
         const uint64_t n = cmb_random_dice(1, 15);
-        cmb_logger_user(USERFLAG,
-                        stdout,
+        cmb_logger_user(stdout,
+                        USERFLAG,
                         "Getting %llu from %s...",
                         n,
                         cmb_buffer_get_name(bp));
@@ -130,11 +130,11 @@ void *getterfunc(struct cmb_process *me, void *ctx)
         sig = cmb_buffer_get(bp, &m);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_assert_debug(m == n);
-            cmb_logger_user(USERFLAG, stdout, "Get %llu succeeded", n);
+            cmb_logger_user(stdout, USERFLAG, "Get %llu succeeded", n);
         }
         else {
-            cmb_logger_user(USERFLAG,
-                            stdout,
+            cmb_logger_user(stdout,
+                            USERFLAG,
                             "Get returned signal %lld, got %llu instead of %llu",
                             sig,
                             m,
@@ -154,12 +154,12 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(USERFLAG, stdout, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG, "Holding ...");
         (void)cmb_process_hold(cmb_random_exponential(1.0));
         const uint16_t vic = cmb_random_dice(0, nproc - 1);
         const int64_t sig = cmb_random_dice(1, 10);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_logger_user(USERFLAG, stdout, "Interrupting %s with %lld", tgt[vic]->name, sig);
+        cmb_logger_user(stdout, USERFLAG, "Interrupting %s with %lld", tgt[vic]->name, sig);
         cmb_process_interrupt(tgt[vic], sig, pri);
     }
 }

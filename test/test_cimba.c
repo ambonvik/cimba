@@ -116,14 +116,16 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
 
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
-    cmb_logger_user(USERFLAG, stdout, "Started arrival, queue %s",
+    cmb_logger_user(stdout,
+                    USERFLAG,
+                    "Started arrival, queue %s",
                     cmb_buffer_get_name(bp));
     const double mean_interarr = 1.0 / ctx->trl->utilization;
 
     while (true) {
-        cmb_logger_user(USERFLAG, stdout, "Holding");
+        cmb_logger_user(stdout, USERFLAG, "Holding");
         (void)cmb_process_hold(cmb_random_exponential(mean_interarr));
-        cmb_logger_user(USERFLAG, stdout, "Arrival");
+        cmb_logger_user(stdout, USERFLAG, "Arrival");
         uint64_t n = 1u;
         (void)cmb_buffer_put(bp, &n);
     }
@@ -139,7 +141,7 @@ void *service_proc(struct cmb_process *me, void *vctx)
 
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
-    cmb_logger_user(USERFLAG, stdout, "Started service, queue %s",
+    cmb_logger_user(stdout, USERFLAG, "Started service, queue %s",
                     cmb_buffer_get_name(bp));
 
     const double cv = ctx->trl->service_cv;
@@ -147,10 +149,10 @@ void *service_proc(struct cmb_process *me, void *vctx)
     const double scale = cv * cv;
 
     while (true) {
-        cmb_logger_user(USERFLAG, stdout, "Holding shape %f scale %f",
+        cmb_logger_user(stdout, USERFLAG, "Holding shape %f scale %f",
                         shape, scale);
         (void)cmb_process_hold(cmb_random_gamma(shape, scale));
-        cmb_logger_user(USERFLAG, stdout, "Getting");
+        cmb_logger_user(stdout, USERFLAG, "Getting");
         uint64_t n = 1u;
         (void)cmb_buffer_get(bp, &n);
     }
