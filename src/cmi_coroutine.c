@@ -73,14 +73,11 @@ void *cmi_coroutine_get_context(const struct cmi_coroutine *cp)
 }
 
 
-void *cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context)
+void cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context)
 {
     cmb_assert_release(cp != NULL);
 
-    void *old_context = cp->context;
     cp->context = context;
-
-    return old_context;
 }
 
 void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp)

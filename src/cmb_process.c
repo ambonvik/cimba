@@ -41,7 +41,7 @@ struct cmb_process *cmb_process_create(void)
  * cmb_process_initialize : Set up process object and allocate coroutine stack.
  * Does not start the process yet.
  */
-struct cmb_process *cmb_process_initialize(struct cmb_process *pp,
+void cmb_process_initialize(struct cmb_process *pp,
                                        const char *name,
                                        cmb_process_func foo,
                                        void *context,
@@ -62,8 +62,6 @@ struct cmb_process *cmb_process_initialize(struct cmb_process *pp,
     pp->waitsfor.handle = 0ull;
     pp->waiters_listhead = NULL;
     pp->resources_listhead = NULL;
-
-    return pp;
 }
 
 /*
@@ -146,11 +144,11 @@ void *cmb_process_get_context(const struct cmb_process *pp)
     return cmi_coroutine_get_context((struct cmi_coroutine *)pp);
 }
 
-void *cmb_process_set_context(struct cmb_process *pp, void *context)
+void cmb_process_set_context(struct cmb_process *pp, void *context)
 {
     cmb_assert_release(pp != NULL);
 
-    return cmi_coroutine_set_context((struct cmi_coroutine *)pp, context);
+    cmi_coroutine_set_context((struct cmi_coroutine *)pp, context);
 }
 
 int64_t cmb_process_get_priority(const struct cmb_process *pp)
@@ -160,7 +158,7 @@ int64_t cmb_process_get_priority(const struct cmb_process *pp)
     return pp->priority;
 }
 
-int64_t cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
+void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
 {
     cmb_assert_release(pp != NULL);
 
@@ -197,8 +195,6 @@ int64_t cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
 
         rtag = rtag->next;
     }
-
-    return oldpri;
 }
 
 /*

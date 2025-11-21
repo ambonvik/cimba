@@ -36,6 +36,7 @@ set(HEADERS
         src/cmi_resourcebase.h
         src/cmi_resourceguard.h
         src/cmi_resourcetag.h
+        src/cmi_waitable.h
 )
 
 set(SOURCES

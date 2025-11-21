@@ -235,9 +235,9 @@ extern void *cmi_coroutine_get_context(const struct cmi_coroutine *cp);
 /*
  * cmi_coroutine_set_context : Overwrite the current context pointer of the
  * given coroutine, e.g. for retrofitting context that was not available when
- * the coroutine was first created. Returns the old context pointer.
+ * the coroutine was first created.
  */
-extern void *cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context);
+extern void cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context);
 
 /*
  * cmi_coroutine_get_exit_value : Return the exit value of the given coroutine,
