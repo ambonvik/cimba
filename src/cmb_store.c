@@ -53,6 +53,7 @@ struct cmb_store *cmb_store_create(void)
 {
     struct cmb_store *sp = cmi_malloc(sizeof(*sp));
     cmi_memset(sp, 0, sizeof(*sp));
+    ((struct cmi_resourcebase *)sp)->cookie = CMI_UNINITIALIZED;
 
     return sp;
 }
@@ -244,6 +245,7 @@ void cmb_store_start_recording(struct cmb_store *sp)
     cmb_assert_release(sp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     rbp->is_recording = true;
     record_sample(sp);
 }
@@ -253,6 +255,7 @@ void cmb_store_stop_recording(struct cmb_store *sp)
     cmb_assert_release(sp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     record_sample(sp);
     rbp->is_recording = false;
 }
@@ -262,6 +265,7 @@ struct cmb_timeseries *cmb_store_get_history(struct cmb_store *sp)
     cmb_assert_release(sp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return &(rbp->history);
 }
@@ -271,6 +275,7 @@ void cmb_store_print_report(struct cmb_store *sp, FILE *fp) {
 
     fprintf(fp, "Store resource utilization for %s:\n", sp->core.name);
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     const struct cmb_timeseries *ts = &(rbp->history);
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
     (void)cmb_timeseries_summarize(ts, ws);
@@ -289,6 +294,7 @@ uint64_t cmb_store_held_by_process(struct cmb_store *sp,
     uint64_t ret = 0u;
     struct cmi_resourcetag **rtloc = &(pp->resources_listhead);
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     const uint64_t handle = cmi_resourcetag_list_find_handle(rtloc, rbp);
     if (handle != 0u) {
         const struct cmi_hashheap *hp = &(sp->holders);
@@ -374,6 +380,7 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
     cmb_assert_debug(sp->in_use <= sp->capacity);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     struct cmb_process *caller = cmb_process_get_current();
 
     /* Does the caller already hold some? */
@@ -605,6 +612,7 @@ void cmb_store_release(struct cmb_store *sp, const uint64_t amount)
     cmb_assert_release(amount < sp->capacity);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_debug(pp != NULL);
 

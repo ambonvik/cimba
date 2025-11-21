@@ -31,6 +31,7 @@ struct cmb_resource *cmb_resource_create(void)
 {
     struct cmb_resource *rp = cmi_malloc(sizeof(*rp));
     cmi_memset(rp, 0, sizeof(*rp));
+    ((struct cmi_resourcebase *)rp)->cookie = CMI_UNINITIALIZED;
 
     return rp;
 }
@@ -94,6 +95,7 @@ static void record_sample(struct cmb_resource *rp) {
     cmb_assert_release(rp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     if (rbp->is_recording) {
         struct cmb_timeseries *ts = &(rbp->history);
         const double x = (rp->holder != NULL) ? 1.0 : 0.0;
@@ -107,6 +109,7 @@ void cmb_resource_start_recording(struct cmb_resource *rp)
     cmb_assert_release(rp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     rbp->is_recording = true;
     record_sample(rp);
 }
@@ -116,6 +119,7 @@ void cmb_resource_stop_recording(struct cmb_resource *rp)
     cmb_assert_release(rp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     record_sample(rp);
     rbp->is_recording = false;
 }
@@ -125,6 +129,7 @@ struct cmb_timeseries *cmb_resource_get_history(struct cmb_resource *rp)
     cmb_assert_release(rp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return &(rbp->history);
 }
@@ -134,6 +139,7 @@ void cmb_resource_print_report(struct cmb_resource *rp, FILE *fp) {
 
     fprintf(fp, "Resource utilization for %s:\n", rp->core.name);
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     const struct cmb_timeseries *ts = &(rbp->history);
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
     (void)cmb_timeseries_summarize(ts, ws);
@@ -209,6 +215,7 @@ void cmb_resource_release(struct cmb_resource *rp) {
     cmb_assert_release(rp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_debug(pp != NULL);
     cmi_resourcetag_list_remove(&(pp->resources_listhead), rbp);
@@ -245,6 +252,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     struct cmb_process *pp = cmb_process_get_current();
     const int64_t myprio = pp->priority;
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_logger_info(stdout, "Preempting resource %s", rbp->name);
 
     struct cmb_process *victim = rp->holder;

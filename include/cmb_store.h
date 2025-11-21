@@ -116,6 +116,7 @@ static inline const char *cmb_store_get_name(struct cmb_store *sp)
     cmb_assert_debug(sp != NULL);
 
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return rbp->name;
 }

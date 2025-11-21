@@ -28,9 +28,9 @@
  */
 
 
-#include "../include/cmb_objectqueue.h"
 #include "cmb_assert.h"
 #include "cmb_logger.h"
+#include "cmb_objectqueue.h"
 #include "cmb_process.h"
 
 #include "cmb_mempool.h"
@@ -57,6 +57,7 @@ struct cmb_objectqueue *cmb_objectqueue_create(void)
 {
     struct cmb_objectqueue *oqp = cmi_malloc(sizeof *oqp);
     cmi_memset(oqp, 0, sizeof *oqp);
+    ((struct cmi_resourcebase *)oqp)->cookie = CMI_UNINITIALIZED;
 
     return oqp;
 }
@@ -172,6 +173,7 @@ void cmb_objectqueue_start_recording(struct cmb_objectqueue *oqp)
     cmb_assert_release(oqp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     rbp->is_recording = true;
     record_sample(oqp);
 }
@@ -181,6 +183,7 @@ void cmb_objectqueue_stop_recording(struct cmb_objectqueue *oqp)
     cmb_assert_release(oqp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     record_sample(oqp);
     rbp->is_recording = false;
 }
@@ -190,6 +193,7 @@ struct cmb_timeseries *cmb_objectqueue_get_history(struct cmb_objectqueue *oqp)
     cmb_assert_release(oqp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return &(rbp->history);
 }
@@ -197,6 +201,8 @@ struct cmb_timeseries *cmb_objectqueue_get_history(struct cmb_objectqueue *oqp)
 struct cmb_dataset *cmb_queue_get_wait_times(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return &(oqp->wait_times);
 }
@@ -206,6 +212,7 @@ void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp) {
 
     fprintf(fp, "Queue lengths for %s:\n", oqp->core.name);
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     const struct cmb_timeseries *ts = &(rbp->history);
 
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
@@ -244,6 +251,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
     cmb_assert_release(objectloc != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     while (true) {
         cmb_assert_debug(oqp->length_now <= oqp->capacity);
@@ -321,6 +329,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
     }
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     while (true) {
         cmb_assert_debug(oqp->length_now <= oqp->capacity);
         cmb_logger_info(stdout, "%s capacity %llu length now %llu",

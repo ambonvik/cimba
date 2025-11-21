@@ -56,6 +56,7 @@ void cmi_resourcebase_initialize(struct cmi_resourcebase *rbp,
 {
     cmb_assert_release(rbp != NULL);
 
+    rbp->cookie = CMI_INITIALIZED;
     cmi_resourcebase_set_name(rbp, name);
     rbp->scram = base_scram;
     rbp->reprio = base_reprio;
@@ -71,6 +72,7 @@ void cmi_resourcebase_terminate(struct cmi_resourcebase *rbp)
 {
     cmb_assert_release(rbp != NULL);
 
+    rbp->cookie = CMI_UNINITIALIZED;
     cmb_timeseries_terminate(&(rbp->history));
 }
 
@@ -83,6 +85,7 @@ void cmi_resourcebase_terminate(struct cmi_resourcebase *rbp)
 void cmi_resourcebase_set_name(struct cmi_resourcebase *rbp, const char *name)
 {
     cmb_assert_release(rbp != NULL);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_assert_release(name != NULL);
 
     const int r = snprintf(rbp->name, CMB_RESOURCEBASE_NAMEBUF_SZ, "%s", name);

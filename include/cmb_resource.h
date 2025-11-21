@@ -88,6 +88,7 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
     cmb_assert_debug(rp != NULL);
 
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return rbp->name;
 }

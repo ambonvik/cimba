@@ -26,6 +26,8 @@
 #include "cmb_process.h"
 #include "cmb_timeseries.h"
 
+#include "cmi_memutils.h"
+
 /*
  * typedef cmi_resourcebase_scram_func : function prototype for a resource scram,
  * to be used when a process is killed and needs to release all held resources
@@ -68,6 +70,7 @@ typedef void (cmi_resourcebase_reprio_func)(struct cmi_resourcebase *rbp,
  * its data array will only be allocated as needed.
  */
 struct cmi_resourcebase {
+    uint64_t cookie;
     char name[CMB_RESOURCEBASE_NAMEBUF_SZ];
     cmi_resourcebase_scram_func *scram;
     cmi_resourcebase_reprio_func *reprio;
@@ -100,6 +103,7 @@ extern void cmi_resourcebase_set_name(struct cmi_resourcebase *rbp,
 static inline void cmi_resourcebase_start_recording(struct cmi_resourcebase *rbp)
 {
     cmb_assert_release(rbp != NULL);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     rbp->is_recording = true;
 }
@@ -107,6 +111,7 @@ static inline void cmi_resourcebase_start_recording(struct cmi_resourcebase *rbp
 static inline void cmi_resourcebase_stop_recording(struct cmi_resourcebase *rbp)
 {
     cmb_assert_release(rbp != NULL);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     rbp->is_recording = false;
 }
