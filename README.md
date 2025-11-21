@@ -1,6 +1,6 @@
 # Cimba
 
-## A parallelized discrete event simulation library in C
+## A multithreaded discrete event simulation library in C
 
 Work in progress. Using pthreads to execute a threadsafe mixed model 
 event- and process-based discrete event simulation in parallel on all

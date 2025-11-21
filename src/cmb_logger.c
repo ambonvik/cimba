@@ -18,6 +18,7 @@
 
 /* Using standard asserts here to avoid recursive calls */
 #include <assert.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -44,7 +45,7 @@ static const char *time_to_string(const double t)
 /* Pointer to current time formatting function */
 CMB_THREAD_LOCAL static const char *(*timeformatter)(double) = time_to_string;
 
-void cmb_set_timeformatter(cmb_timeformatter_func fp)
+void cmb_set_timeformatter(cmb_timeformatter_func *fp)
 {
     assert(fp != NULL);
 
@@ -149,6 +150,7 @@ void cmi_logger_fatal(FILE *fp,
     va_start(args, fmtstr);
     (void)cmb_vfprintf(fp, CMB_LOGGER_FATAL, func, line, fmtstr, args);
     va_end(args);
+
     abort();
 }
 
@@ -163,7 +165,10 @@ void cmi_logger_error(FILE *fp,
     va_start(args, fmtstr);
     (void)cmb_vfprintf(fp, CMB_LOGGER_ERROR, func, line, fmtstr, args);
     va_end(args);
-    exit(1);
+
+    pthread_exit(NULL);
+    /* Not reached */
+    abort();
 }
 
 void cmi_logger_warning(FILE *fp,

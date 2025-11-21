@@ -34,7 +34,7 @@
 #include "cmi_memutils.h"
 
 /**
- * @brief A datasummary object with its tallies.
+ * @brief A data summary maintaining running tally statistics.
  */
 struct cmb_datasummary {
     uint64_t cookie;    /**< A "magic cookie" to catch uninitialized objects */

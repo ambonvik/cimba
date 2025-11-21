@@ -1,11 +1,17 @@
-/*
- * cmb_logger.h - centralized logging functions with simulation timestamps
+/**
+ * @file cmb_logger.h
+ * @brief Centralized logging functions with simulation timestamps.
+ *
  * Each call to the logger tags the message with a logging flag value.
  * The flag value  is matched against the simulation logging mask. If a
  * bitwise or of the current mask and the provided flags is non-zero, the
  * message gets printed. This allows more combinations of system and user
  * logging levels than a simple linear logging verbosity level.
  *
+ * Using 32-bit unsigned for the flags, top four bits reserved for Cimba use.
+ */
+
+/*
  * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,40 +36,77 @@
 
 #include "cmi_config.h"
 
-/* Using 32-bit unsigned for the flags, top four bits reserved for Cimba use. */
+/**
+ * @brief Flag value for fatal error, terminates program.
+ */
 #define CMB_LOGGER_FATAL    0x80000000ul
+/**
+ * @brief Flag value for error, terminates thread.
+ */
 #define CMB_LOGGER_ERROR    0x40000000ul
+/**
+ * @brief Flag value for a warning message.
+ */
 #define CMB_LOGGER_WARNING  0x20000000ul
+/**
+ * @brief Flag value for an information message.
+ */
 #define CMB_LOGGER_INFO     0x10000000ul
 
-/*
- * cmb_logger_flags_on : turn on logging flags according to the bitmask, for
- * example cmb_logger_flags_on(CMB_LOGGER_INFO), or some user-defined mask.
+/**
+ * @brief Turn on logging flags according to the bitmask, for example
+ * `cmb_logger_flags_on(CMB_LOGGER_INFO)`, or some user-defined mask.
+ * The user application can freely define up to 28 different flag values for
+ * fine-grained logging control.
+ *
+ * The initial value is `0xFFFFFFFF', printing everything.
+ *
+ * @param flags A 32-bit bitmask, top 4 bits reserved for Cimba use, the rest
+ *              user defined.
  */
  extern void cmb_logger_flags_on(uint32_t flags);
 
-/*
- * cmb_logger_flags_off : turn off logging flags according to the bitmask, for
- * example cmb_logger_flags_off(CMB_LOGGER_INFO), or some user-defined mask.
+/**
+ * @brief Turn off logging flags according to the bitmask, for example
+ * `cmb_logger_flags_off(CMB_LOGGER_INFO)`, or some user-defined mask.
+ *
+ * The initial value is `0xFFFFFFFF', printing everything. Use this function to
+ * selectively turn off unwanted verbosity.
+ *
+ * @param flags A 32-bit bitmask, top 4 bits reserved for Cimba use, the rest
+ *              user defined.
  */
 extern void cmb_logger_flags_off(uint32_t flags);
 
-/*
- * Set callback function to format simulation times to character
- * strings for output.
+/**
+ * @brief Prototype function to format simulation times into strings for output,
+ * taking a `double`as argument and returning a `const char *`.
  */
 typedef const char *(cmb_timeformatter_func)(double t);
-extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
 
-/*
- * The core logging function, like vfprintf but with logging flags in front
- * of argument list.
+/**
+ * @brief Set function to format simulation times into strings for output.
+ *
+ * @param tf A formatting function taking a `double`as argument and returning a
+ * `const char *`.
  */
+extern void cmb_set_timeformatter(cmb_timeformatter_func *tf);
+
 #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
-    /*
-     * Enlist the compiler's help in typechecking the arguments vs the
-     * format string.
-     */
+    /**
+    * @brief The core logging function, like vfprintf but with logging flags in
+    *        front of argument list. Will usually be called from one of the
+    *        wrapper functions, e.g., `cmb_logger_info`, not directly.
+    *
+    * @param fp File pointer, possibly `stdout` or `stderr`
+    * @param flags Bitmask for this logging call, to be matched against the
+    *              current logging bitmask. If bitwise `and` is non-zero, this
+    *              logging message will be printed.
+    * @param func  The function name where it is called from.
+    * @param line  The line number it is called from.
+    * @param fmtstr A printf-like format string.
+    * @param args  The arguments to the format string.
+    */
     extern int cmb_vfprintf(FILE *fp,
                             uint32_t flags,
                             const char *func,
@@ -72,6 +115,20 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
                             va_list args)
                             __attribute__((format(printf, 3, 0)));
 #else
+    /**
+    * @brief The core logging function, like vfprintf but with logging flags in
+    *        front of argument list. Will usually be called from one of the
+    *        wrapper functions, e.g., `cmb_logger_info`, not directly.
+    *
+    * @param fp File pointer, possibly `stdout` or `stderr`
+    * @param flags Bitmask for this logging call, to be matched against the
+    *              current logging bitmask. If bitwise and is non-zero, this
+    *              will be printed.
+    * @param func  The function name where it is called from.
+    * @param line  The line number it is called from.
+    * @param fmtstr A printf-like format string.
+    * @param args  The arguments to the format string.
+    */
     extern int cmb_vfprintf(FILE *fp,
                             uint32_t flags,
                             const char *func,
@@ -89,18 +146,64 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
  * unreachable code. No portable way to do this more elegantly, unfortunately.
  */
 
+/**
+ * @brief Wrapper for a fatal error message. Terminates the program when called.
+ *        Written as a macro to provide the calling function name and line
+ *        number automatically.
+ * @param fp File pointer, possibly `stderr`
+ * @param fmtstr printf-like format string
+ * @param ... Arguments to the format string.
+ */
 #define cmb_logger_fatal(fp, fmtstr, ...) \
     cmi_logger_fatal(fp, __func__, __LINE__, fmtstr,##__VA_ARGS__)
+
+/**
+ * @brief Wrapper for an error message. Terminates the thread when called.
+ *        Written as a macro to provide the calling function name and line
+ *        number automatically.
+ * @param fp File pointer, possibly `stderr`
+ * @param fmtstr printf-like format string
+ * @param ... Arguments to the format string.
+ */
 #define cmb_logger_error(fp, fmtstr, ...) \
     cmi_logger_error(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+
+/**
+ * @brief Wrapper for a warning message. Written as a macro to provide the
+ *        calling function name and line number automatically.
+ * @param fp File pointer, possibly `stdout` or `stderr`
+ * @param fmtstr printf-like format string
+ * @param ... Arguments to the format string.
+ */
 #define cmb_logger_warning(fp, fmtstr, ...) \
     cmi_logger_warning(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+
+/**
+ * @brief Wrapper for an information message. Written as a macro to provide the
+ *        calling function name and line number automatically.
+ * @param fp File pointer, possibly `stdout`
+ * @param fmtstr printf-like format string
+ * @param ... Arguments to the format string.
+ */
+
 #define cmb_logger_info(fp, fmtstr, ...) \
     cmi_logger_info(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+
+/**
+ * @brief Wrapper for an application-defined message. Written as a macro to
+ *        provide the calling function name and line number automatically.
+ * @param fp File pointer, possibly `stdout`
+ * @param flags The user-defined logging bitmask for this logging call, to be
+ *              matched against the current logging bitmask. If bitwise `and` is
+ *              non-zero, this will be printed.
+ * @param fmtstr printf-like format string
+ * @param ... Arguments to the format string.
+ */
+
 #define cmb_logger_user(fp, flags, fmtstr, ...) \
     cmi_logger_user(fp, flags, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
 
-
+/** @cond */
 #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
     extern void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...)
                           __attribute__((noreturn, format(printf,4,5)));
@@ -125,6 +228,6 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func tf);
     extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...);
     extern void cmi_logger_user(FILE *fp, uint32_t flags, const char *func, int line, char *fmtstr, ...);
 #endif
-
+/** @endcond */
 
 #endif /* CIMBA_CMB_LOGGER_H */
