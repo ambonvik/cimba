@@ -85,8 +85,6 @@ void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
     oqp->queue_end = NULL;
 
     cmb_dataset_initialize(&(oqp->wait_times));
-
-    oqp->is_recording = false;
 }
 
 /*
@@ -105,7 +103,6 @@ void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
     oqp->length_now = 0u;
     oqp->queue_head = NULL;
     oqp->queue_end = NULL;
-    oqp->is_recording = false;
 
     cmb_dataset_terminate(&(oqp->wait_times));
     cmi_resourceguard_terminate(&(oqp->rear_guard));

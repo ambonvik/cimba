@@ -232,7 +232,7 @@ void test_queue(const double duration)
 int main(void)
 {
     cmi_test_print_line("*");
-    printf("****************************   Testing buffers   *****************************\n");
+    printf("*****************************   Testing buffers   ******************************\n");
     cmi_test_print_line("*");
 
     test_queue(100000);

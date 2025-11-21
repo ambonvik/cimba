@@ -41,7 +41,7 @@
 #include "cmi_memutils.h"
 
 /**
- * @brief The memory pool for a particular size object.
+ * @brief A memory pool for reuseable objects of a particular size.
  */
 struct cmb_mempool {
     uint64_t cookie;        /**< Initialization trap */
@@ -55,12 +55,13 @@ struct cmb_mempool {
 };
 
 /**
- * brief Allocate a (zero-initialzied) cmb_mempool object.
+ * brief Allocate memory for a `cmb_mempool` struct, not yet for the objects to
+ *       be contained in the pool.
  */
 extern struct cmb_mempool *cmb_mempool_create(void);
 
 /**
- * brief Set up memory pool for reuseable objects of size `obj_sz` bytes.
+ * brief Initialize a memory pool for reuseable objects of size `obj_sz` bytes.
  *
  * The initial memory allocation is `obj_sz * obj_num` bytes, later incrementing
  * by the same amount whenever needed. `obj_sz must be a multiple of 8 bytes.

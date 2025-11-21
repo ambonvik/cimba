@@ -61,14 +61,14 @@
  */
 
 /**
- * @brief A two-sided fixed capacity buffer between a producer (putter) and a
- *        consumer (getter) process.
+ * @brief A two-sided fixed capacity buffer between one or more producer
+ *        (putter) and one or more consumer (getter) processes.
  */
 struct cmb_buffer {
     struct cmi_resourcebase core;           /**< The virtual base class */
     struct cmi_resourceguard front_guard;   /**< Front waiting room for getters */
     struct cmi_resourceguard rear_guard;    /**< Rear waiting room for putters */
-    uint64_t capacity;                      /**< The buffer size */
+    uint64_t capacity;                      /**< The buffer size, possibly UINT64_MAX for unlimited */
     uint64_t level;                         /**< The current level in the buffer */
 };
 
@@ -145,7 +145,7 @@ extern int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp);
  * @brief Returns name of buffer as `const char *`.
  *
  * @param bp Pointer to the buffer object.
- * @return A null-terminated string containing the name of the buffer resource.
+ * @return A null-terminated string containing the name of the buffer.
  */
 static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
 {
@@ -157,14 +157,14 @@ static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
 }
 
 /**
- * @brief Turns on data recording.
+ * @brief Turn on data recording.
  *
  * @param bp Pointer to the buffer object.
  */
 extern void cmb_buffer_start_recording(struct cmb_buffer *bp);
 
 /**
- * @brief Turns off data recording
+ * @brief Turn off data recording
  *
  * @param bp Pointer to the buffer object.
  */
@@ -174,6 +174,7 @@ extern void cmb_buffer_stop_recording(struct cmb_buffer *bp);
  * @brief Get the recorded timeseries of buffer levels.
  *
  * @param bp Pointer to the buffer object.
+ * @return Pointer to a `cmb_timeseries`containing the buffer level history.
  */
 extern struct cmb_timeseries *cmb_buffer_get_history(struct cmb_buffer *bp);
 

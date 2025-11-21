@@ -1,21 +1,25 @@
-/*
- * cmi_objectqueue.h - a two-headed fixed-capacity queue where one or more
- * producer processes can put objects into the one end, and one or more
- * consumer processes can get objects out of the other end. If enough space is
- * not available, the producers wait, and if there is not enough content, the
+/**
+ * @file cmb_objectqueue.h
+ * @brief A two-headed fixed-capacity queue where one or more producer processes
+ * can put arbitrary objects into the one end, and one or more consumer
+ * processes can get objects out of the other end. If enough space is not
+ * available, the producers wait, and if there is not enough content, the
  * consumers wait.
  *
- * The difference from cmb_buffer is that it only represents amounts, while
- * qmb_queue tracks the individual objects passing throug the queue. An object
- * can be anything, represented by void* here.
+ * The difference from `cmb_buffer` is that it only represents amounts, while
+ * `cmb_objectqueue` tracks the individual objects passing throug the queue.
+ * An object can be anything, represented by `void*` here.
  *
  * First in first out queue order only. No method implemented to cancel random
  * objects from the queue. No record kept of object holders, since the
- * cmb_buffer and cmb_objectqueue essentially deal with assigning the available
- * space in the resource to processes, not lending pieces of a resource to
- * processes. The objects holding a part of a cmb_objectqueue are already in the
- * queue. Hence, no need for forced removal (scram) of holder processes either.
- *
+ * `cmb_buffer` and `cmb_objectqueue` essentially deal with assigning the
+ * available space in the resource to processes, not lending pieces of a
+ * resource to processes. The objects holding a part of a `cmb_objectqueue` are
+ * already in the queue. Hence, no need for forced removal (scram) of holder
+ * processes either.
+ */
+
+/*
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,72 +45,97 @@
 #include "cmi_resourcebase.h"
 #include "cmi_resourceguard.h"
 
+/**
+ * @brief A fixed capacity queue for passing arbitrary objects from one or more
+ *        producer (putter) processes to one or more consumer (getter) processes.
+ */
 struct cmb_objectqueue {
-    struct cmi_resourcebase core;
-    struct cmi_resourceguard front_guard;
-    struct cmi_resourceguard rear_guard;
-    uint64_t capacity;
-    uint64_t length_now;
-    struct queue_tag *queue_head;
-    struct queue_tag *queue_end;
-    struct cmb_dataset wait_times;
-    bool is_recording;
+    struct cmi_resourcebase core;           /**< The virtual base class */
+    struct cmi_resourceguard front_guard;   /**< Front waiting room for getters */
+    struct cmi_resourceguard rear_guard;    /**< Rear waiting room for putters */
+    uint64_t capacity;                      /**< The maximum size, possibly `UINT64_MAX` for unlimited */
+    uint64_t length_now;                    /**< The current queue length */
+    struct queue_tag *queue_head;           /**< The head of the queue, `NULL` if empty */
+    struct queue_tag *queue_end;            /**< The tail of the queue, `NULL` if empty */
+    struct cmb_dataset wait_times;          /**< Additional data set for tracking the waiting times */
 };
 
-/*
- * cmb_objectqueue_create : Allocate memory for a queue object.
+/**
+ * @brief Allocate memory for a `cmb_objectqueue` object.
  */
 extern struct cmb_objectqueue *cmb_objectqueue_create(void);
 
-/*
- * cmb_objectqueue_initialize : Make an allocated queue object ready for use.
+/**
+ * @brief Make an allocated `cmb_objectqueue` ready for use.
+ *
+ * @param oqp Pointer to a `cmb_objectqueue`
+ * @param name Its identifying name string
+ * @param capacity Its maximum size, possibly `UINT64_MAX` for unlimited.
  */
 extern void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
                                        const char *name,
                                        uint64_t capacity);
 
-/*
- * cmb_objectqueue_terminate : Un-initializes an object queue.
+/**
+ * @brief  Un-initializes an object queue.
+ *
+ * @param oqp Pointer to a `cmb_objectqueue`
  */
 extern void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp);
 
-/*
- * cmb_objectqueue_destroy : Deallocates memory for an object queue.
+/**
+ * @brief  Deallocate memory for an object queue.
+ *
+ * @param oqp Pointer to a `cmb_objectqueue`
  */
 extern void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp);
 
-/*
- * cmb_objectqueue_get : Request and if necessary wait for an object from the
- * queue. Only one object can be requested at a time.
+/**
+ * @brief   Request and if necessary wait for an object from the queue.
+ *          Only one object can be requested at a time.
  *
  * Note that the object argument is a pointer to where the object is to be
- * stored. The return value CMB_PROCESS_SUCCESS (0) indicates that all went well
- * and the object pointer location now level a valid pointer to an object.
+ * stored. The return value `CMB_PROCESS_SUCCESS` (0) indicates that all went
+ * well and the object pointer location now level a valid pointer to an object.
  *
  * If the call was interrupted for some reason, the return value is the
- * interrupt signal received, some value other than CMB_PROCESS_SUCCESS. The
- * object pointer will be NULL.
+ * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
+ * object pointer will be `NULL`.
+ *
+ * @param oqp Pointer to a `cmb_objectqueue`
+ * @param objectloc Pointer to the location for storing the obtained object.
+ *
+ * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
  */
 extern int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp,
                                    void **objectloc);
 
-/*
- * cmb_objectqueue_put : Put an object into the queue, if necessary waiting for free
+/**
+ * @brief Put an object into the queue, if necessary waiting for free
  * space.
  *
  * Note that the object argument is a pointer to where the object is stored.
- * The return value CMB_PROCESS_SUCCESS (0) indicates that all went well. The
- * _put() call doe snot change the value at this location.
+ * The return value `CMB_PROCESS_SUCCESS` (0) indicates that all went well. The
+ * `_put()` call does not change the value at this location. (It is passed as a
+ * `void**` for symmetry with `cmb_objectqueue_get`)
  *
  * If the call was interrupted for some reason, the return value is the
- * interrupt signal received, some value other than CMB_PROCESS_SUCCESS. The
+ * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
  * object pointer will still be unchanged.
+ *
+ * @param oqp Pointer to a `cmb_objectqueue`
+ * @param objectloc Pointer to the location where the object is stored.
+ *
+ * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
  */
 extern int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp,
                                    void **objectloc);
 
-/*
- * cmb_objectqueue_get_name : Returns name of queue as const char *.
+/**
+ * @brief Returns name of queue as `const char *`.
+ *
+ * @param oqp Pointer to a `cmb_objectqueue`
+ * @return A null-terminated string containing the name of the object queue.
  */
 static inline const char *cmb_objectqueue_get_name(struct cmb_objectqueue *oqp)
 {
@@ -118,10 +147,46 @@ static inline const char *cmb_objectqueue_get_name(struct cmb_objectqueue *oqp)
     return rbp->name;
 }
 
+/**
+ * @brief Turn on data recording.
+ *
+ * @param oqp Pointer to a `cmb_objectqueue`
+ */
 extern void cmb_objectqueue_start_recording(struct cmb_objectqueue *oqp);
+
+/**
+ * @brief Turn off data recording.
+ *
+ * @param oqp Pointer to a `cmb_objectqueue`
+ */
 extern void cmb_objectqueue_stop_recording(struct cmb_objectqueue *oqp);
+
+/**
+ * @brief Get the recorded timeseries of queue lengths.
+ *
+ * @param oqp Pointer to a `cmb_objectqueue`
+ * @return Pointer to a `cmb_timeseries` containing the queue length history.
+ */
 extern struct cmb_timeseries *cmb_objectqueue_get_history(struct cmb_objectqueue *oqp);
+
+/**
+ * @brief Get the recorded data set of waiting times. A dataset, not a time
+ * series, since each sample value is associated with an object, not a point in
+ * time.
+ *
+ * @param oqp Pointer to a `cmb_objectqueue`
+ * @return Pointer to a `cmb_dataset` containing the waiting times.
+ */
 extern struct cmb_dataset *cmb_objectqueue_get_waiting_times(struct cmb_objectqueue *oqp);
+
+/**
+ * @brief Print a simple text mode report of the queue lengths and waiting times,
+ * including key statical metrics and histograms. Mostly intended for debugging
+ * purposes, not presentation graphics.
+ *
+ * @param oqp Pointer to a `cmb_objectqueue`
+ * @param fp File pointer, possibly `stdout`.
+ */
 extern void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp);
 
 #endif /* CIMBA_CMB_OBJECTQUEUE_H */

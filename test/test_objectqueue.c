@@ -231,7 +231,7 @@ void test_queue(double duration)
 int main(void)
 {
     cmi_test_print_line("*");
-    printf("****************************   Testing buffers   *****************************\n");
+    printf("**************************   Testing object queues   ***************************\n");
     cmi_test_print_line("*");
 
     test_queue(1000000);
