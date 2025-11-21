@@ -25,8 +25,8 @@
 
 #include "cmb_assert.h"
 
-#define CMI_UNINITIALIZED 0xDEADBEEF
-#define CMI_INITIALIZED 0xCAFEBABE
+#define CMI_UNINITIALIZED 0xBAADF00DBAADF00D
+#define CMI_INITIALIZED   0x00FA151F1AB1E000
 
 /*
  * Convenience functions to encapsulate repetitive error handling

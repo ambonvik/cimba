@@ -35,6 +35,7 @@ struct cmb_mempool *cmb_mempool_create(void)
 {
     struct cmb_mempool *mp = cmi_malloc(sizeof(*mp));
     cmi_memset(mp, 0u, sizeof(*mp));
+    mp->cookie = CMI_UNINITIALIZED;
 
     return mp;
 }
@@ -64,6 +65,7 @@ void cmb_mempool_initialize(struct cmb_mempool *mp,
     cmb_assert_release((obj_sz % 8u) == 0);
     cmb_assert_release(obj_num > 0u);
 
+    mp->cookie = CMI_INITIALIZED;
     mp->obj_sz = obj_sz;
 
     /* Calculate the size of memory to allocate in each chunk */
@@ -130,6 +132,7 @@ void cmb_mempool_destroy(struct cmb_mempool *mp)
 void cmb_mempool_expand(struct cmb_mempool *mp)
 {
     cmb_assert_release(mp->next_obj == NULL);
+    cmb_assert_release(mp->cookie == CMI_INITIALIZED);
 
     /* Expand the area list if necessary */
     if (++mp->chunk_list_cnt == mp->chunk_list_len) {

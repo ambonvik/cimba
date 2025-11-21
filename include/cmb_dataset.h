@@ -28,7 +28,6 @@
 #define CIMBA_CMB_DATASET_H
 
 #include "cmb_assert.h"
-#include "cmb_dataset.h"
 #include "cmb_datasummary.h"
 
 /**

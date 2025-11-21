@@ -4,11 +4,15 @@
  *
  * Each call to the logger tags the message with a logging flag value.
  * The flag value  is matched against the simulation logging mask. If a
- * bitwise or of the current mask and the provided flags is non-zero, the
- * message gets printed. This allows more combinations of system and user
- * logging levels than a simple linear logging verbosity level.
+ * bitwise `and` (`&`) of the current mask and the provided flags is non-zero,
+ * the message gets printed. This allows more combinations of system and user
+ * logging levels than a simple linear logging verbosity level. A single logging
+ * message can be flagged by a bitmask with several bits set, matching any of
+ * those bits in the current mask. A 32-bit unsigned integer is used for the
+ * flags, with the top four bits reserved for Cimba use, leaving 28 bits for
+ * user application.
  *
- * Using 32-bit unsigned for the flags, top four bits reserved for Cimba use.
+ * The initial logging bitmask is `0xFFFFFFFF`, printing everything.
  */
 
 /*
@@ -56,10 +60,8 @@
 /**
  * @brief Turn on logging flags according to the bitmask, for example
  * `cmb_logger_flags_on(CMB_LOGGER_INFO)`, or some user-defined mask.
- * The user application can freely define up to 28 different flag values for
- * fine-grained logging control.
  *
- * The initial value is `0xFFFFFFFF', printing everything.
+ * The initial value is `0xFFFFFFFF`, printing everything.
  *
  * @param flags A 32-bit bitmask, top 4 bits reserved for Cimba use, the rest
  *              user defined.
@@ -70,7 +72,7 @@
  * @brief Turn off logging flags according to the bitmask, for example
  * `cmb_logger_flags_off(CMB_LOGGER_INFO)`, or some user-defined mask.
  *
- * The initial value is `0xFFFFFFFF', printing everything. Use this function to
+ * The initial value is `0xFFFFFFFF`, printing everything. Use this function to
  * selectively turn off unwanted verbosity.
  *
  * @param flags A 32-bit bitmask, top 4 bits reserved for Cimba use, the rest
