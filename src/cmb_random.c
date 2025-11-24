@@ -720,13 +720,13 @@ struct cmb_random_alias *cmb_random_alias_create(const unsigned n,
 }
 
 /* Deallocate the alias lookup table when done sampling */
-void cmb_random_alias_destroy(struct cmb_random_alias *pa)
+void cmb_random_alias_destroy(struct cmb_random_alias *ap)
 {
-    cmb_assert_release(pa != NULL);
-    cmb_assert_release(pa->uprob != NULL);
-    cmb_assert_release(pa->alias != NULL);
+    cmb_assert_release(ap != NULL);
+    cmb_assert_release(ap->uprob != NULL);
+    cmb_assert_release(ap->alias != NULL);
 
-    cmi_free(pa->uprob);
-    cmi_free(pa->alias);
-    cmi_free(pa);
+    cmi_free(ap->uprob);
+    cmi_free(ap->alias);
+    cmi_free(ap);
 }

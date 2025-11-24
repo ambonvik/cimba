@@ -620,7 +620,7 @@ static void test_quality_chisquare(const double v)
 {
     printf("\nQuality testing chisquare distribution, v %g\n", v);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_chisquare(v));
+    QTEST_EXECUTE(cmb_random_chisquared(v));
 
     print_expected(MAX_ITER, true, v, true, 2.0 * v,
                                  true, sqrt(8.0 / v), true, 12.0 / v);
@@ -631,7 +631,7 @@ static void test_quality_chisquare(const double v)
 static void test_quality_f_dist(const double a, const double b) {
     printf("\nQuality testing f distribution, a %g, b %g\n", a, b);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_f_dist(a, b));
+    QTEST_EXECUTE(cmb_random_F_dist(a, b));
 
     const double mean = (b > 2.0) ? b / (b - 2.0) : HUGE_VAL;
     const double var = (b > 4.0) ? (2.0 * (b * b) * (a + b - 2.0)) / (a * (b - 2) * (b - 2) * (b - 4.0)) : HUGE_VAL;
