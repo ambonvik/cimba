@@ -108,6 +108,7 @@ void cmb_event_queue_terminate(void)
     cmi_hashheap_terminate(event_queue);
     cmi_hashheap_destroy(event_queue);
     event_queue = NULL;
+    sim_time = 0.0;
 }
 
 /*

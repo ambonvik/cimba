@@ -1,6 +1,28 @@
-/*
- * cmb_random.h - pseudo-random number generators and distributions.
+/**
+ * @file cmb_random.h
+ * @brief Fast, high quality pseudo-random number generators and distributions.
  *
+ * The main generator gives 64-bit pseudo-random numbers with 256 bits of state
+ * and a cycle of at least 2^64 samples. It is seeded by a 64-bit value but
+ * amplifies that to a 265-bit state by using an auiliary generator with 64 bits
+ * state to bootstrap the initial 256-bit state for the main generator. All
+ * later pseudo-random numbers come from the same stream.
+ *
+ * Suitable 64-bit seeds can be obtained from hardware entropy by calling
+ * `cmb_random_get_hwseed`. It will use the best available entropy source on the
+ * current hardware, such as the `RDSEED` or `RDRAND` instruction. If no
+ * suitable hardware instruction is available, this function will do a mashup of
+ * clock time and CPU cycle count to get a random seed value.
+ *
+ * The various random number distributions are built on this generator. They use
+ * the fastest available algorithms without making any compromises on accuracy.
+ * A wide range of random number distributions are provided, both academically
+ * important ones like beta and gamma, and more empirical ones like triangular
+ * and PERT. For arbitrary non-uniform discrete distributions, efficient Vose
+ * alias sampling is provided.
+ */
+
+/*
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
  *
  * The normal and exponential distributions below are based on code at
@@ -29,33 +51,59 @@
 
 #include "cmb_assert.h"
 
-/*
- * Initiate pseudo-random number distribution using a 64-bit seed. Will be
- * bootstrapped internally to a 256-bit state by an auxiliary pseudo-random
- * number generator only used for this purpose. Call before any sampling.
- * Can be called again later to reset seed to initial (or some other) state.
+/**
+ * @brief Initiate pseudo-random number distribution using a 64-bit seed. Call
+ *        before drawing samples from any random number distributions. Can be
+ *        called again later to reset seed to initial (or some other) state.
+ *
+ * The given seed will be bootstrapped internally to a 256-bit state by an
+ * auxiliary pseudo-random number generator only used for this purpose.
+ *
+ * @param seed Initial seed value to be used, preferrably a random 64-bit value.
  */
 extern void cmb_random_initialize(uint64_t seed);
 
-/*
- * Get a suitable 64-bit seed from hardware entropy source.
- * Architecture dependent, see src/arch/cmb_random_hwseed_*.c
+/**
+ * @brief Get the seed that was used for the ongoing run in this thread. Used as
+ *        debugging tool, e.g., to enable repeating whatever sequence of events
+ *        led to some unexpected result, possibly in a debugger or with more
+ *        `printf()` statements enabled next time.
+ *
+ * @return The 64-bit seed that was used to initialize the generator. If it
+ *         returns ´0x0000DEAD5EED0000` the generator was never initialized.
+ */
+extern uint64_t cmb_random_get_curseed(void);
+
+/**
+ * @brief Get a suitable 64-bit seed from hardware entropy source.
+ *
+ * Architecture dependent, see `src/arch/cmb_random_hwseed_*.c` for details.
+ *
+ * @return A random 64-bit value from the best available entropy source of the
+ *         current CPU hardware.
  */
 extern uint64_t cmb_random_get_hwseed(void);
 
-/*
- * Main pseudo-random number generator - 64 bits output, 256 bits state.
+/**
+ * @brief Main pseudo-random number generator - 64 bits output, 256 bits state.
  * An implementation of Chris Doty-Humphrey's sfc64. Fast and high quality.
+ *
  * Public domain, see https://pracrand.sourceforge.net
+ *
+ * @return A uniformly distributed pseudo-random 64-bit unsigned bit pattern.
  */
 extern uint64_t cmb_random_sfc64(void);
 
-/*
- * Get pseudo-random number uniformly distributed on interval [0, 1].
+/**
+ * @brief Get pseudo-random number uniformly distributed on interval [0, 1].
+ *
  * A 64-bit double has 53 bits significand. We discard the bottom 11 bits and
  * scale the result by 2^(-53) to get a number in [0.0, 1.0].
  * See also IEEE 754 Standard for Floating-Point Arithmetic, or
  * https://en.wikipedia.org/wiki/Double-precision_floating-point_format
+ *
+ * @return A uniformly distributed pseudo-random double precision value
+ *         between 0 and 1.
  */
 static inline double cmb_random(void)
 {
@@ -488,12 +536,12 @@ extern int cmb_random_flip(void);
 
 /*
  * A single Bernoulli trial. Returns 1 with probability p, otherwise 0.
- * 0 < p < 1. Used for any binary yes/no outcome of independent and
+ * 0 <= p <= 1. Used for any binary yes/no outcome of independent and
  * identically distributed trials. A fair coin flip if p = 0.5.
  */
 static inline unsigned cmb_random_bernoulli(const double p)
 {
-    cmb_assert_release((p > 0.0) && (p <= 1.0));
+    cmb_assert_release((p >= 0.0) && (p <= 1.0));
 
     return (cmb_random() <= p) ? 1 : 0;
 }

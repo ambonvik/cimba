@@ -43,6 +43,9 @@ static CMB_THREAD_LOCAL struct {
     uint64_t a, b, c, d;
 } prng_state = { DUMMY_SEED, DUMMY_SEED, DUMMY_SEED, DUMMY_SEED };
 
+/* Storage for the seed used in this thread */
+static CMB_THREAD_LOCAL uint64_t initial_seed = DUMMY_SEED;
+
 /*
  * Main pseudo-random number generator - 64 bits output, 256 bits state.
  * An implementation of Chris Doty-Humphrey's sfc64. Fast and high quality.
@@ -89,6 +92,7 @@ static uint64_t splitmix64(void)
  */
 void cmb_random_initialize(const uint64_t seed)
 {
+    initial_seed = seed;
     splitmix_initialize(seed);
     prng_state.a = splitmix64();
     prng_state.b = splitmix64();
@@ -98,6 +102,15 @@ void cmb_random_initialize(const uint64_t seed)
     for (int i = 0; i < 20; i++) {
         (void)cmb_random_sfc64();
     }
+}
+
+/*
+ * Return The 64-bit seed that was used to initialize the generator.
+ * If it returns ´0x0000DEAD5EED0000` the generator was never initialized.
+ */
+uint64_t cmb_random_get_curseed(void)
+{
+    return initial_seed;
 }
 
 /*

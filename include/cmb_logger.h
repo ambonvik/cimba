@@ -12,6 +12,9 @@
  * flags, with the top four bits reserved for Cimba use, leaving 28 bits for
  * user application.
  *
+ *  Format of a logging line:
+ *  `[trial_index] time process_name function (line) : [label] formatted_message`
+ *
  * The initial logging bitmask is `0xFFFFFFFF`, printing everything.
  */
 
@@ -82,15 +85,18 @@ extern void cmb_logger_flags_off(uint32_t flags);
 
 /**
  * @brief Prototype function to format simulation times into strings for output,
- * taking a `double`as argument and returning a `const char *`.
+ * taking a `double`as argument and returning a `const char *`. It must also
+ * be reentrant and threadsafe to avoid overwriting by other threads
+ * potentially calling the same function at the same time.
  */
 typedef const char *(cmb_timeformatter_func)(double t);
 
 /**
  * @brief Set function to format simulation times into strings for output.
  *
- * @param tf A formatting function taking a `double`as argument and returning a
- * `const char *`.
+ * @param tf A reentrant and threadsafe formatting function taking a `double` as
+ * argument and returning a `const char *`. See `cmb_logger.c` for one way to
+ * do this.
  */
 extern void cmb_set_timeformatter(cmb_timeformatter_func *tf);
 
@@ -206,6 +212,8 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func *tf);
     cmi_logger_user(fp, flags, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
 
 /** @cond */
+extern CMB_THREAD_LOCAL uint64_t cmi_logger_trial_idx;
+
 #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
     extern void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...)
                           __attribute__((noreturn, format(printf,4,5)));

@@ -23,7 +23,6 @@
 
 #include <pthread.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <xmmintrin.h>
 
@@ -67,6 +66,7 @@ static void *worker_thread_func(void *arg)
         }
 
         void *trial = ((char *)cmg_experiment_arr) + (idx * cmg_trial_struct_sz);
+        cmi_logger_trial_idx = idx;
 
         if (cmg_trial_func != NULL) {
             /* Normal usage, a common function, multiple data */
@@ -115,7 +115,7 @@ void cimba_run_experiment(void *your_experiment_array,
         pthread_create(&threads[ui], NULL, worker_thread_func, (void *)ui);
     }
 
-    /* ...worker threads are executing your trials in the background ... */
+    /* ...worker threads are executing your trials in the background here... */
 
     /* Wait for all worker threads to finish */
     for (uint64_t ui = 0u; ui < ncores; ui++) {

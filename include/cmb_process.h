@@ -194,8 +194,7 @@ extern void cmb_process_start(struct cmb_process *pp);
 extern int64_t cmb_process_hold(double dur);
 
 /**
- * @brief  Wait for some other proceess to finish. Similar to pthreads `join`.
- *         Called from within a process.
+ * @brief  Wait for some other proceess to finish. Called from within a process.
  *
  * Returns immediately if the awaited process already is finished.
  *

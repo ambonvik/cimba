@@ -28,14 +28,34 @@
 
 #include "cmi_config.h"
 
-/* The current logging level. Initially everything on. */
-CMB_THREAD_LOCAL uint32_t cmi_logger_mask = 0xFFFFFFFF;
-
+/* Maximum length of a formatted time string before it gets truncated */
 #define TSTRBUF_SZ 32
 
+/* A trial array index guaranteed not to be used any time soon */
+#define CMI_NO_TRIAL_IDX 0xFFFFFFFFu
+
+/* The current logging level. Initially everything on. */
+static CMB_THREAD_LOCAL uint32_t cmi_logger_mask = 0xFFFFFFFFu;
+
+/* A mutex to ensure that only one thread can be writing at the same time */
+static pthread_mutex_t cmi_logger_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/*
+ * The index of the currently executing trial in this worker thread,
+ * see worker_thread_func() in cimba.c
+ */
+CMB_THREAD_LOCAL uint64_t cmi_logger_trial_idx = CMI_NO_TRIAL_IDX;
+
+/*
+ * Default time formatting function.
+ *
+ * The buffer has to be thread local to avoid overwriting by other threads
+ * potentially calling the same function at the same time. If replacing by your
+ * own version, make sure it is reentrant and threadsafe.
+ */
 static const char *time_to_string(const double t)
 {
-    static char timestrbuf[TSTRBUF_SZ];
+    static CMB_THREAD_LOCAL char timestrbuf[TSTRBUF_SZ];
 
     (void)snprintf(timestrbuf, TSTRBUF_SZ, "%#10.5g", t);
 
@@ -43,7 +63,7 @@ static const char *time_to_string(const double t)
 }
 
 /* Pointer to current time formatting function */
-CMB_THREAD_LOCAL static const char *(*timeformatter)(double) = time_to_string;
+static CMB_THREAD_LOCAL const char *(*timeformatter)(double) = time_to_string;
 
 void cmb_set_timeformatter(cmb_timeformatter_func *fp)
 {
@@ -77,8 +97,10 @@ void cmb_logger_flags_off(uint32_t flags)
 
 /*
  * cmb_vfprintf : Core logger func, fprintf-style with flags for matching with
- * the mask. Produces a single line of logging output. Overall output format:
- *      time process_name function (line) : [label] formatted_message
+ * the mask. Produces a single line of logging output.
+ * Overall output format:
+ *      [trial_index] time process_name function (line) : [label] formatted_message
+ *
  * Returns the number of characters written, in case anyone cares.
  */
 int cmb_vfprintf(FILE *fp,
@@ -90,7 +112,13 @@ int cmb_vfprintf(FILE *fp,
 {
     int ret = 0;
     if ((flags & cmi_logger_mask) != 0) {
-       int r = fprintf(fp, "%s\t", timeformatter(cmb_time()));
+        pthread_mutex_lock(&cmi_logger_mutex);
+        int r = 0;
+        if (cmi_logger_trial_idx != CMI_NO_TRIAL_IDX) {
+            r += fprintf(fp, "%llu\t", cmi_logger_trial_idx);
+        }
+
+        r += fprintf(fp, "%s\t", timeformatter(cmb_time()));
         assert(r > 0);
         ret += r;
 
@@ -134,6 +162,7 @@ int cmb_vfprintf(FILE *fp,
         ret += r;
 
         fflush(fp);
+        pthread_mutex_unlock(&cmi_logger_mutex);
     }
 
     return ret;

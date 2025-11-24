@@ -36,7 +36,8 @@
 
 #include "cimba.h"
 
-#define USERFLAG 0x00000001
+#define USERFLAG1 0x00000001
+#define USERFLAG2 0x00000002
 
 /*
  * Define the entities that make up our simulated world.
@@ -117,15 +118,15 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
     cmb_logger_user(stdout,
-                    USERFLAG,
+                    USERFLAG1,
                     "Started arrival, queue %s",
                     cmb_buffer_get_name(bp));
     const double mean_interarr = 1.0 / ctx->trl->utilization;
 
     while (true) {
-        cmb_logger_user(stdout, USERFLAG, "Holding");
+        cmb_logger_user(stdout, USERFLAG1, "Holding");
         (void)cmb_process_hold(cmb_random_exponential(mean_interarr));
-        cmb_logger_user(stdout, USERFLAG, "Arrival");
+        cmb_logger_user(stdout, USERFLAG1, "Arrival");
         uint64_t n = 1u;
         (void)cmb_buffer_put(bp, &n);
     }
@@ -142,7 +143,7 @@ void *service_proc(struct cmb_process *me, void *vctx)
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
     cmb_logger_user(stdout,
-                    USERFLAG,
+                    USERFLAG1,
                     "Started service, queue %s",
                     cmb_buffer_get_name(bp));
 
@@ -152,12 +153,12 @@ void *service_proc(struct cmb_process *me, void *vctx)
 
     while (true) {
         cmb_logger_user(stdout,
-                        USERFLAG,
+                        USERFLAG1,
                         "Holding shape %f scale %f",
                         shape,
                         scale);
         (void)cmb_process_hold(cmb_random_gamma(shape, scale));
-        cmb_logger_user(stdout, USERFLAG, "Getting");
+        cmb_logger_user(stdout, USERFLAG1, "Getting");
         uint64_t n = 1u;
         (void)cmb_buffer_get(bp, &n);
     }
@@ -169,11 +170,13 @@ void *service_proc(struct cmb_process *me, void *vctx)
 void run_mg1_trial(void *vtrl)
 {
     struct trial *trl = vtrl;
-    // if (trl->seed == 0u) {
+    if (trl->seed == 0u) {
         const uint64_t seed = cmb_random_get_hwseed();
         cmb_random_initialize(seed);
         trl->seed = seed;
-    // }
+    }
+
+    cmb_logger_user(stdout, USERFLAG2, "Trial seed: 0x%016llx", trl->seed);
 
     struct context *ctx = malloc(sizeof(*ctx));
     ctx->trl = trl;
@@ -183,7 +186,7 @@ void run_mg1_trial(void *vtrl)
 
     /* Do not disturb, except for significant warnings and errors */
     cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG);
+    cmb_logger_flags_off(USERFLAG1);
 
     /* Start from an empty event queue */
     cmb_event_queue_initialize(0.0);
