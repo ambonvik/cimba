@@ -83,17 +83,19 @@ typedef void (cmb_event_func)(void *subject, void *object);
  * @brief Initialize the event queue itself. Must be called before any events
  * can be scheduled or executed. Expects to find an empty event queue.
  *
- * Note that there is no `cmb_event_queue_create`, `_reset`, or `_destroy`. There
- * ìs only one (thread local) event queue per thread, no need to create another.
- * Hence, no need for the usual self pointer as first argument to this function
- * either, it acts on the one and only event queue in this thread.
- *
  * Call at the beginning of your simulation trial to start from a fresh state.
  * Also make sure to call `cmb_event_queue_terminate` at the end of your trial
- * to free up space. Calling `cmb_event_queue_initialize` again on the next
- * trial in the same worker thread without calling `cmb_event_queue_terminate`
- * at the end of the previous trial will fire an assert about the event queue
- * not being `NULL` in `cmb_event_queue_initialize`.
+ * to free up space.
+ *
+ * Note that there is no `cmb_event_queue_create`, `_reset`, or `_destroy`.
+ * There ìs only one (thread local) event queue per thread, no need to create
+ * another. Hence, no need for the usual self pointer as first argument to this
+ * function either, it acts on the one and only event queue in this thread.
+ *
+ * Calling `cmb_event_queue_initialize` again on the next trial in the same
+ * worker thread without calling `cmb_event_queue_terminate` at the end of the
+ * previous trial will fire an assert about the event queue not being `NULL` in
+ * `cmb_event_queue_initialize`.
  *
  * @param start_time The starting value for the simulation clock, usually 0.
  */
@@ -103,9 +105,11 @@ extern void cmb_event_queue_initialize(double start_time);
  * @brief Reset event queue to fresh state. Free's memory allocated for internal
  *        workings of the event queue.
  *
- * No argument needed, acts on the current thread's event queue. Call at the end
- * of your simulation trials to clean up allocated space for the event queue. A
- * necessary step before starting the next trial in the same worker thread.
+ * No argument needed, acts on the current thread's event queue.
+ *
+ * Call at the end of every simulation trial to clean up allocated space for the
+ * event queue. Then call `cmb_event_queue_initialize()` again at the start of
+ * the next trial.
  */
 extern void cmb_event_queue_terminate(void);
 

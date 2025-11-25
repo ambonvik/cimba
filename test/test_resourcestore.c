@@ -1,5 +1,5 @@
 /*
-* Test script for resources.
+* Test script for resource store (i.e. counting semaphore).
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -23,7 +23,7 @@
 #include "cmb_random.h"
 #include "cmb_logger.h"
 #include "cmb_process.h"
-#include "cmb_store.h"
+#include "cmb_resourcestore.h"
 
 #include "cmi_memutils.h"
 #include "test.h"
@@ -38,7 +38,7 @@ struct simulation {
     struct cmb_process *mice[NUM_MICE];
     struct cmb_process *rats[NUM_RATS];
     struct cmb_process *cats[NUM_CATS];
-    struct cmb_store *cheese;
+    struct cmb_resourcestore *cheese;
 };
 
 
@@ -69,7 +69,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
     cmb_assert_release(ctx != NULL);
 
     struct simulation *tstexp = ctx;
-    struct cmb_store *sp = tstexp->cheese;
+    struct cmb_resourcestore *sp = tstexp->cheese;
     uint64_t amount_held = 0u;
 
     // ReSharper disable once CppDFAEndlessLoop
@@ -77,7 +77,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
         const uint64_t amount_req = cmb_random_dice(1, 10);
         (void)cmb_process_set_priority(me, cmb_random_dice(-10, 10));
         cmb_logger_user(stdout, USERFLAG, "Acquiring %llu...", amount_req);
-        int64_t sig = cmb_store_acquire(sp, amount_req);
+        int64_t sig = cmb_resourcestore_acquire(sp, amount_req);
         cmb_logger_user(stdout, USERFLAG, "Acquire returned signal %lld", sig);
         if (sig == CMB_PROCESS_SUCCESS) {
             amount_held += amount_req;
@@ -98,14 +98,14 @@ void *mousefunc(struct cmb_process *me, void *ctx)
                                 "Holds %llu, releasing %llu",
                                 amount_held,
                                 amount_rel);
-                cmb_store_release(sp, amount_rel);
+                cmb_resourcestore_release(sp, amount_rel);
                 amount_held -= amount_rel;
             }
             else if (sig == CMB_PROCESS_PREEMPTED) {
                 cmb_logger_user(stdout,
                                 USERFLAG,
                                 "Someone stole all my %s from me!",
-                                cmb_store_get_name(sp));
+                                cmb_resourcestore_get_name(sp));
                 amount_held = 0u;
             }
             else {
@@ -119,7 +119,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout,
                             USERFLAG,
                             "Preempted during acquire, all my %s is gone",
-                            cmb_store_get_name(sp));
+                            cmb_resourcestore_get_name(sp));
             amount_held = 0u;
         }
         else {
@@ -139,7 +139,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout,
                             USERFLAG,
                             "Someone stole the rest of my %s, sig %lld!",
-                            cmb_store_get_name(sp), sig);
+                            cmb_resourcestore_get_name(sp), sig);
             amount_held = 0u;
         }
     }
@@ -151,14 +151,14 @@ void *ratfunc(struct cmb_process *me, void *ctx)
     cmb_assert_release(ctx != NULL);
 
     struct simulation *tstexp = ctx;
-    struct cmb_store *sp = tstexp->cheese;
+    struct cmb_resourcestore *sp = tstexp->cheese;
     uint64_t amount_held = 0u;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         const uint64_t amount_req = cmb_random_dice(1, 10);
         cmb_logger_user(stdout, USERFLAG, "Preempting %llu...", amount_req);
-        int64_t sig = cmb_store_preempt(sp, amount_req);
+        int64_t sig = cmb_resourcestore_preempt(sp, amount_req);
         cmb_logger_user(stdout, USERFLAG, "Preempt returned signal %lld", sig);
 
         if (sig == CMB_PROCESS_SUCCESS) {
@@ -181,13 +181,13 @@ void *ratfunc(struct cmb_process *me, void *ctx)
                                 "Holds %llu, releasing %llu",
                                 amount_held,
                                 amount_rel);
-                cmb_store_release(sp, amount_rel);
+                cmb_resourcestore_release(sp, amount_rel);
                 amount_held -= amount_rel;
             }
             else if (sig == CMB_PROCESS_PREEMPTED) {
                 cmb_logger_user(stdout, USERFLAG,
                                 "Someone stole my %s from me, sig %lld!",
-                                cmb_store_get_name(sp), sig);
+                                cmb_resourcestore_get_name(sp), sig);
                 amount_held = 0u;
             }
             else {
@@ -198,7 +198,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
         else if (sig == CMB_PROCESS_PREEMPTED) {
             cmb_logger_user(stdout, USERFLAG,
                             "Preempted during own preempt, all my %s is gone",
-                            cmb_store_get_name(sp));
+                            cmb_resourcestore_get_name(sp));
             amount_held = 0u;
         }
         else {
@@ -216,7 +216,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout,
                             USERFLAG,
                             "Someone stole the rest of my %s, sig %lld!",
-                            cmb_store_get_name(sp),
+                            cmb_resourcestore_get_name(sp),
                             sig);
             amount_held = 0u;
         }
@@ -262,9 +262,9 @@ void test_store(void)
     cmb_event_queue_initialize(0.0);
 
     printf("Create a store\n");
-    storetest->cheese = cmb_store_create();
-    cmb_store_initialize(storetest->cheese, "Cheese", 20u);
-    cmb_store_start_recording(storetest->cheese);
+    storetest->cheese = cmb_resourcestore_create();
+    cmb_resourcestore_initialize(storetest->cheese, "Cheese", 20u);
+    cmb_resourcestore_start_recording(storetest->cheese);
 
     char scratchpad[32];
     printf("Create three small mice to compete for the cheese\n");
@@ -313,8 +313,8 @@ void test_store(void)
     cmb_event_queue_execute();
 
     printf("Report statistics...\n");
-    cmb_store_stop_recording(storetest->cheese);
-    cmb_store_print_report(storetest->cheese, stdout);
+    cmb_resourcestore_stop_recording(storetest->cheese);
+    cmb_resourcestore_print_report(storetest->cheese, stdout);
 
     printf("Clean up\n");
     struct cmb_process **cpp = (struct cmb_process **) storetest;
@@ -323,7 +323,7 @@ void test_store(void)
         cmb_process_destroy(cpp[ui]);
     }
 
-    cmb_store_destroy(storetest->cheese);
+    cmb_resourcestore_destroy(storetest->cheese);
     cmb_event_queue_terminate();
     free(storetest);
 }

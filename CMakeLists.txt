@@ -21,7 +21,7 @@ set(API_HEADERS
         include/cmb_process.h
         include/cmb_random.h
         include/cmb_resource.h
-        include/cmb_store.h
+        include/cmb_resourcestore.h
         include/cmb_wtdsummary.h
         include/cmb_timeseries.h
 )
@@ -52,7 +52,7 @@ set(SOURCES
         src/cmb_process.c
         src/cmb_random.c
         src/cmb_resource.c
-        src/cmb_store.c
+        src/cmb_resourcestore.c
         src/cmb_timeseries.c
         src/cmb_wtdsummary.c
         src/cmi_coroutine.c
@@ -101,8 +101,8 @@ target_link_libraries(test_hashheap PRIVATE cimba)
 add_executable(test_resource test/test_resource.c test/test.h)
 target_link_libraries(test_resource PRIVATE cimba)
 
-add_executable(test_store test/test_store.c test/test.h)
-target_link_libraries(test_store PRIVATE cimba)
+add_executable(test_resourcestore test/test_resourcestore.c test/test.h)
+target_link_libraries(test_resourcestore PRIVATE cimba)
 
 add_executable(test_buffer test/test_buffer.c test/test.h)
 target_link_libraries(test_buffer PRIVATE cimba)

@@ -62,7 +62,7 @@ extern const char *cimba_version(void);
 #include "cmb_process.h"
 #include "cmb_random.h"
 #include "cmb_resource.h"
-#include "cmb_store.h"
+#include "cmb_resourcestore.h"
 #include "cmb_timeseries.h"
 #include "cmb_wtdsummary.h"
 
@@ -92,7 +92,7 @@ extern const char *cimba_version(void);
  * happen to share the same worker thread, with possibly unexpected results
  * unless you are very careful in initialziing and clearing the variable in each
  * trial). Alternatively, put a `mutex` on it, or other methods to make it
- * thread safe. 
+ * thread safe.
  */
 typedef void (cimba_trial_func)(void *trial_struct);
 

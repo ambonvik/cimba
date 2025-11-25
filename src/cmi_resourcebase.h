@@ -54,7 +54,7 @@ typedef void (cmi_resourcebase_scram_func)(struct cmi_resourcebase *res,
  * function is stored in the virtual base class for calling the appropriate
  * reprio function for each derived class. For some resource classes (e.g. a
  * binary semaphore cmb_resource) this is trivial, for others (e.g. a counting
- * semaphore cmb_store) with many simultaneous holding processes it is decidedly
+ * semaphore cmb_resourcestore) with many simultaneous holding processes it is decidedly
  * less trivial to do. The process that changes its priority can simply call
  * (*reprio) and get the correct handling for each resource it holds.
  */

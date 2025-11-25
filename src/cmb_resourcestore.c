@@ -1,11 +1,11 @@
 /*
- * cmb_store.c - a counting semaphore that supports acquire, release, and
+ * cmb_resourcestore.c - a counting semaphore that supports acquire, release, and
  * preempt in specific amounts against a fixed resource capacity, where a
  * process also can acquire more of a resource it already holds some amount
  * of, or release parts of its holding. Several processes can be holding parts
  * of the resource capacity at the same time, possibly also different amounts.
  *
- * The cmb_store adds numeric values for capacity and usage to the base
+ * The cmb_resourcestore adds numeric values for capacity and usage to the base
  * resource. These values are unsigned integers to avoid any rounding issues
  * from floating-point calculations, both faster and higher resolution (if
  * scaled properly to 64-bit range).
@@ -41,17 +41,17 @@
 
 #include "cmb_assert.h"
 #include "cmb_logger.h"
-#include "cmb_store.h"
+#include "cmb_resourcestore.h"
 
 #include "cmi_memutils.h"
 
 
 /*
- * cmb_store_create : Allocate memory for a store object.
+ * cmb_resourcestore_create : Allocate memory for a store object.
  */
-struct cmb_store *cmb_store_create(void)
+struct cmb_resourcestore *cmb_resourcestore_create(void)
 {
-    struct cmb_store *sp = cmi_malloc(sizeof(*sp));
+    struct cmb_resourcestore *sp = cmi_malloc(sizeof(*sp));
     cmi_memset(sp, 0, sizeof(*sp));
     ((struct cmi_resourcebase *)sp)->cookie = CMI_UNINITIALIZED;
 
@@ -94,7 +94,7 @@ void store_scram(struct cmi_resourcebase *rbp,
     cmb_assert_release(pp != NULL);
     cmb_assert_release(handle != 0u);
 
-    struct cmb_store *sp = (struct cmb_store *)rbp;
+    struct cmb_resourcestore *sp = (struct cmb_resourcestore *)rbp;
     struct cmi_hashheap *hp = &(sp->holders);
     void **item = cmi_hashheap_get_item(hp, handle);
     cmb_assert_debug(item[0] == pp);
@@ -121,18 +121,18 @@ void store_reprio(struct cmi_resourcebase *rbp,
     cmb_assert_release(rbp != NULL);
     cmb_assert_release(handle != 0u);
 
-    struct cmb_store *sp = (struct cmb_store *)rbp;
+    struct cmb_resourcestore *sp = (struct cmb_resourcestore *)rbp;
     struct cmi_hashheap *hp = &(sp->holders);
     const double dkey = cmi_hashheap_get_dkey(hp, handle);
     cmi_hashheap_reprioritize(hp, handle, dkey, pri);
 }
 
 /*
- * cmb_store_initialize : Make an allocated store object ready for use.
+ * cmb_resourcestore_initialize : Make an allocated store object ready for use.
  */
 #define HOLDERS_INIT_EXP 3u
 
-void cmb_store_initialize(struct cmb_store *sp,
+void cmb_resourcestore_initialize(struct cmb_resourcestore *sp,
                           const char *name,
                           const uint64_t capacity)
 {
@@ -154,9 +154,9 @@ void cmb_store_initialize(struct cmb_store *sp,
 }
 
 /*
- * cmb_store_terminate : Un-initializes a store object.
+ * cmb_resourcestore_terminate : Un-initializes a store object.
  */
-void cmb_store_terminate(struct cmb_store *sp)
+void cmb_resourcestore_terminate(struct cmb_resourcestore *sp)
 {
     cmb_assert_release(sp != NULL);
 
@@ -166,18 +166,18 @@ void cmb_store_terminate(struct cmb_store *sp)
 }
 
 /*
- * cmb_store_destroy : Deallocates memory for a store object.
+ * cmb_resourcestore_destroy : Deallocates memory for a store object.
  */
-void cmb_store_destroy(struct cmb_store *sp)
+void cmb_resourcestore_destroy(struct cmb_resourcestore *sp)
 {
     cmb_assert_release(sp != NULL);
 
-    cmb_store_terminate(sp);
+    cmb_resourcestore_terminate(sp);
     cmi_free(sp);
 }
 
 /*
- * store_available : pre-packaged demand function for a cmb_store, allowing the
+ * store_available : pre-packaged demand function for a cmb_resourcestore, allowing the
  * requesting process to grab some whenever there is something to grab,
  */
 static bool store_available(const struct cmi_resourcebase *rbp,
@@ -188,7 +188,7 @@ static bool store_available(const struct cmi_resourcebase *rbp,
     cmb_unused(pp);
     cmb_unused(ctx);
 
-    const struct cmb_store *sp = (struct cmb_store *)rbp;
+    const struct cmb_resourcestore *sp = (struct cmb_resourcestore *)rbp;
     const uint64_t avail = sp->capacity - sp->in_use;
 
     return (avail > 0u);
@@ -228,7 +228,7 @@ static uint64_t store_reset_holder(const struct cmi_hashheap *hp,
     return surplus;
 }
 
-static void record_sample(struct cmb_store *sp) {
+static void record_sample(struct cmb_resourcestore *sp) {
     cmb_assert_release(sp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
@@ -240,7 +240,7 @@ static void record_sample(struct cmb_store *sp) {
     }
 }
 
-void cmb_store_start_recording(struct cmb_store *sp)
+void cmb_resourcestore_start_recording(struct cmb_resourcestore *sp)
 {
     cmb_assert_release(sp != NULL);
 
@@ -250,7 +250,7 @@ void cmb_store_start_recording(struct cmb_store *sp)
     record_sample(sp);
 }
 
-void cmb_store_stop_recording(struct cmb_store *sp)
+void cmb_resourcestore_stop_recording(struct cmb_resourcestore *sp)
 {
     cmb_assert_release(sp != NULL);
 
@@ -260,7 +260,7 @@ void cmb_store_stop_recording(struct cmb_store *sp)
     rbp->is_recording = false;
 }
 
-struct cmb_timeseries *cmb_store_get_history(struct cmb_store *sp)
+struct cmb_timeseries *cmb_resourcestore_get_history(struct cmb_resourcestore *sp)
 {
     cmb_assert_release(sp != NULL);
 
@@ -270,7 +270,7 @@ struct cmb_timeseries *cmb_store_get_history(struct cmb_store *sp)
     return &(rbp->history);
 }
 
-void cmb_store_print_report(struct cmb_store *sp, FILE *fp) {
+void cmb_resourcestore_print_report(struct cmb_resourcestore *sp, FILE *fp) {
     cmb_assert_release(sp != NULL);
 
     fprintf(fp, "Store resource utilization for %s:\n", sp->core.name);
@@ -285,7 +285,7 @@ void cmb_store_print_report(struct cmb_store *sp, FILE *fp) {
     cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(sp->capacity + 1u));
 }
 
-uint64_t cmb_store_held_by_process(struct cmb_store *sp,
+uint64_t cmb_resourcestore_held_by_process(struct cmb_resourcestore *sp,
                                    struct cmb_process *pp)
 {
     cmb_assert_release(sp != NULL);
@@ -339,7 +339,7 @@ static uint64_t store_sum_holder_items(const struct cmi_hashheap *hp,
     return sum;
 }
 
-static uint64_t store_update_record(struct cmb_store *store,
+static uint64_t store_update_record(struct cmb_resourcestore *store,
                                     struct cmi_hashheap *store_holders,
                                     struct cmb_process *caller,
                                     struct cmi_resourcetag **caller_rtloc,
@@ -371,7 +371,7 @@ static uint64_t store_update_record(struct cmb_store *store,
  * some and try to increase its holding with this call, or obtain its first
  * helping.
  */
-int64_t cmi_store_acquire_inner(struct cmb_store *sp,
+int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
                                 const uint64_t claim_amount,
                                 const bool preempt)
 {
@@ -560,7 +560,7 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
             }
             else {
                 /* Put back all. */
-                const uint64_t holds_now = cmb_store_held_by_process(sp, caller);
+                const uint64_t holds_now = cmb_resourcestore_held_by_process(sp, caller);
                 sp->in_use -= holds_now;
                 cmb_assert_debug(sp->in_use <= sp->capacity);
                 record_sample(sp);
@@ -582,7 +582,7 @@ int64_t cmi_store_acquire_inner(struct cmb_store *sp,
     }
 }
 
-int64_t cmb_store_acquire(struct cmb_store *sp, const uint64_t amount)
+int64_t cmb_resourcestore_acquire(struct cmb_resourcestore *sp, const uint64_t amount)
 {
     cmb_assert_release(sp != NULL);
     cmb_assert_release(amount > 0u);
@@ -591,7 +591,7 @@ int64_t cmb_store_acquire(struct cmb_store *sp, const uint64_t amount)
     return cmi_store_acquire_inner(sp, amount, false);
 }
 
-int64_t cmb_store_preempt(struct cmb_store *sp, const uint64_t amount)
+int64_t cmb_resourcestore_preempt(struct cmb_resourcestore *sp, const uint64_t amount)
 {
     cmb_assert_release(sp != NULL);
     cmb_assert_release(amount > 0u);
@@ -601,10 +601,10 @@ int64_t cmb_store_preempt(struct cmb_store *sp, const uint64_t amount)
 }
 
 /*
- * cmb_store_release : Release an amount of the resource, not necessarily
+ * cmb_resourcestore_release : Release an amount of the resource, not necessarily
  * everything that the calling process holds.
  */
-void cmb_store_release(struct cmb_store *sp, const uint64_t amount)
+void cmb_resourcestore_release(struct cmb_resourcestore *sp, const uint64_t amount)
 {
     cmb_assert_release(sp != NULL);
     cmb_assert_release(amount > 0u);
