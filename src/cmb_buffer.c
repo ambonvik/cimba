@@ -20,10 +20,7 @@
  * limitations under the License.
  */
 
-#include "cmb_assert.h"
-#include "cmb_buffer.h"
-#include "cmb_logger.h"
-#include "cmb_process.h"
+#include "cimba.h"
 
 #include "cmi_memutils.h"
 
@@ -51,11 +48,15 @@ void cmb_buffer_initialize(struct cmb_buffer *bp,
     cmb_assert_release(capacity > 0u);
 
     cmi_resourcebase_initialize(&(bp->core), name);
+
     cmi_resourceguard_initialize(&(bp->front_guard), &(bp->core));
     cmi_resourceguard_initialize(&(bp->rear_guard), &(bp->core));
 
     bp->capacity = capacity;
     bp->level = 0u;
+
+    bp->is_recording = false;
+    cmb_timeseries_initialize(&(bp->history));
 }
 
 /*
@@ -67,6 +68,10 @@ void cmb_buffer_terminate(struct cmb_buffer *bp)
 
     cmi_resourceguard_terminate(&(bp->rear_guard));
     cmi_resourceguard_terminate(&(bp->front_guard));
+
+    bp->is_recording = false;
+    cmb_timeseries_terminate(&(bp->history));
+
     cmi_resourcebase_terminate(&(bp->core));
 }
 
@@ -90,6 +95,7 @@ static bool buffer_has_content(const struct cmi_resourcebase *rbp,
                                const void *ctx)
 {
     cmb_assert_release(rbp != NULL);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_unused(pp);
     cmb_unused(ctx);
 
@@ -107,6 +113,7 @@ static bool buffer_has_space(const struct cmi_resourcebase *rbp,
                              const void *ctx)
 {
     cmb_assert_release(rbp != NULL);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_unused(pp);
     cmb_unused(ctx);
 
@@ -117,10 +124,10 @@ static bool buffer_has_space(const struct cmi_resourcebase *rbp,
 
 static void record_sample(struct cmb_buffer *bp) {
     cmb_assert_release(bp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
-    if (rbp->is_recording) {
-        struct cmb_timeseries *ts = &(rbp->history);
+    if (bp->is_recording) {
+        struct cmb_timeseries *ts = &(bp->history);
         cmb_timeseries_add(ts, (double)(bp->level), cmb_time());
     }
 }
@@ -128,41 +135,34 @@ static void record_sample(struct cmb_buffer *bp) {
 void cmb_buffer_start_recording(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
-
-    rbp->is_recording = true;
+    bp->is_recording = true;
     record_sample(bp);
 }
 
 void cmb_buffer_stop_recording(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
-
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
     record_sample(bp);
-    rbp->is_recording = false;
+    bp->is_recording = false;
 }
 
 struct cmb_timeseries *cmb_buffer_get_history(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
-
-    return &(rbp->history);
+    return &(bp->history);
 }
 
 void cmb_buffer_print_report(struct cmb_buffer *bp, FILE *fp) {
     cmb_assert_release(bp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
-    const struct cmb_timeseries *ts = &(rbp->history);
+    const struct cmb_timeseries *ts = &(bp->history);
 
     fprintf(fp, "Buffer levels for %s\n", bp->core.name);
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
@@ -242,8 +242,11 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
         /* Wait at the front door until some more becomes available  */
         cmb_assert_debug(rem_claim > 0u);
         cmb_logger_info(stdout, "Waiting for content");
-        cmb_logger_info(stdout, "%s capacity %llu level %llu",
-                       rbp->name, bp->capacity, bp->level);
+        cmb_logger_info(stdout,
+                        "%s capacity %llu level %llu",
+                        rbp->name,
+                        bp->capacity,
+                        bp->level);
         cmi_resourceguard_signal(&(bp->rear_guard));
         const int64_t sig = cmi_resourceguard_wait(&(bp->front_guard),
                                                    buffer_has_content,

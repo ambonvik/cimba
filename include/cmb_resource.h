@@ -31,13 +31,16 @@
 
 #include "cmb_process.h"
 
+#include "cmi_holdable.h"
 #include "cmi_resourcebase.h"
 #include "cmi_resourceguard.h"
 
 struct cmb_resource {
-    struct cmi_resourcebase core;
+    struct cmi_holdable core;
     struct cmi_resourceguard front_guard;
     struct cmb_process *holder;
+    bool is_recording;
+    struct cmb_timeseries history;
 };
 
 /*

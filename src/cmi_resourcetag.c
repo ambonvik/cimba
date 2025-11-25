@@ -34,11 +34,11 @@ static CMB_THREAD_LOCAL struct cmb_mempool *resource_tag_pool = NULL;
  * cmi_resourcetag_list_add : Add a resource to the given list location.
  */
 void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
-                              struct cmi_resourcebase *rbp,
+                              struct cmi_holdable *hrp,
                               const uint64_t handle)
 {
     cmb_assert_debug(rtloc != NULL);
-    cmb_assert_debug(rbp != NULL);
+    cmb_assert_debug(hrp != NULL);
 
     /* Lazy initalization of the memory pool for process tags */
     if (resource_tag_pool == NULL) {
@@ -51,7 +51,7 @@ void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
     /* Get one and add it to the head of the list */
     struct cmi_resourcetag *rtag = cmb_mempool_get(resource_tag_pool);
     rtag->next = *rtloc;
-    rtag->res = rbp;
+    rtag->res = hrp;
     rtag->handle = handle;
     *rtloc = rtag;
 }
@@ -61,15 +61,15 @@ void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
  * location.
  */
 bool cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
-                                 const struct cmi_resourcebase *rbp)
+                                 const struct cmi_holdable *hrp)
 {
     cmb_assert_debug(rtloc != NULL);
-    cmb_assert_debug(rbp != NULL);
+    cmb_assert_debug(hrp != NULL);
 
     struct cmi_resourcetag **rtpp = rtloc;
     while (*rtpp != NULL) {
         struct cmi_resourcetag *rtag = *rtpp;
-        if (rtag->res == rbp) {
+        if (rtag->res == hrp) {
             *rtpp = rtag->next;
             cmb_mempool_put(resource_tag_pool, rtag);
             return true;
@@ -88,15 +88,15 @@ bool cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
  * Returns the associated handle value if found, zero if not.
  */
 uint64_t cmi_resourcetag_list_find_handle(struct cmi_resourcetag **rtloc,
-                                   const struct cmi_resourcebase *rbp)
+                                          const struct cmi_holdable *hrp)
 {
     cmb_assert_debug(rtloc != NULL);
-    cmb_assert_debug(rbp != NULL);
+    cmb_assert_debug(hrp != NULL);
 
     struct cmi_resourcetag **rtpp = rtloc;
     while (*rtpp != NULL) {
         struct cmi_resourcetag *rtag = *rtpp;
-        if (rtag->res == rbp) {
+        if (rtag->res == hrp) {
             return rtag->handle;
         }
         else {
@@ -127,9 +127,9 @@ void cmi_resourcetag_list_scram_all(struct cmi_resourcetag **rtloc)
 
     /* Process it, calling scram() for each resource */
     while (rtag != NULL) {
-        struct cmi_resourcebase *rbp = rtag->res;
+        struct cmi_holdable *hrp = rtag->res;
         const uint64_t handle = rtag->handle;
-        (*(rbp->scram))(rbp, pp, handle);
+        (*(hrp->drop))(hrp, pp, handle);
 
         struct cmi_resourcetag *tmp = rtag->next;
         cmb_mempool_put(resource_tag_pool, rtag);
@@ -147,11 +147,11 @@ void cmi_resourcetag_list_print(struct cmi_resourcetag **rtloc, FILE *fp)
     fprintf(fp, "\t\t\tresource list at %p\n", (void *)rtloc);
     struct cmi_resourcetag *rtag = *rtloc;
     while (rtag != NULL) {
-        const struct cmi_resourcebase *rbp = rtag->res;
+        const struct cmi_holdable *rbp = rtag->res;
         fprintf(fp, "\t\t\t\trbp %p res %p handle %llu",
                     (void *)rtag, (void *)rbp, rtag->handle);
         cmb_assert_debug(rbp != NULL);
-        fprintf(fp, " name %s\n", rbp->name);
+        fprintf(fp, " name %s\n", rbp->base.name);
         rtag = rtag->next;
     }
 }

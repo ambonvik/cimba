@@ -57,7 +57,9 @@ struct cmb_objectqueue {
     uint64_t length_now;                    /**< The current queue length */
     struct queue_tag *queue_head;           /**< The head of the queue, `NULL` if empty */
     struct queue_tag *queue_end;            /**< The tail of the queue, `NULL` if empty */
-    struct cmb_dataset wait_times;          /**< Additional data set for tracking the waiting times */
+    bool is_recording;                      /**< Is it recording its history? */
+    struct cmb_timeseries history;          /**< History of queue lengths */
+    struct cmb_dataset wait_times;          /**< Additional data set for history of waiting times */
 };
 
 /**

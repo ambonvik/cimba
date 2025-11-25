@@ -84,6 +84,8 @@ void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
     oqp->queue_head = NULL;
     oqp->queue_end = NULL;
 
+    oqp->is_recording = false;
+    cmb_timeseries_initialize(&(oqp->history));
     cmb_dataset_initialize(&(oqp->wait_times));
 }
 
@@ -105,6 +107,8 @@ void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
     oqp->queue_end = NULL;
 
     cmb_dataset_terminate(&(oqp->wait_times));
+    cmb_timeseries_terminate(&(oqp->history));
+
     cmi_resourceguard_terminate(&(oqp->rear_guard));
     cmi_resourceguard_terminate(&(oqp->front_guard));
     cmi_resourcebase_terminate(&(oqp->core));
@@ -147,6 +151,7 @@ static bool queue_has_space(const struct cmi_resourcebase *rbp,
                              const void *ctx)
 {
     cmb_assert_release(rbp != NULL);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_unused(pp);
     cmb_unused(ctx);
 
@@ -155,12 +160,16 @@ static bool queue_has_space(const struct cmi_resourcebase *rbp,
     return (oqp->length_now < oqp->capacity);
 }
 
+/*
+ * Record queue length, the waiting times will be updated when objects
+ * leave the cmb_objectqueue
+ */
 static void record_sample(struct cmb_objectqueue *oqp) {
     cmb_assert_release(oqp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
-    if (rbp->is_recording) {
-        struct cmb_timeseries *ts = &(rbp->history);
+    if (oqp->is_recording) {
+        struct cmb_timeseries *ts = &(oqp->history);
         cmb_timeseries_add(ts, (double)(oqp->length_now), cmb_time());
     }
 }
@@ -168,49 +177,43 @@ static void record_sample(struct cmb_objectqueue *oqp) {
 void cmb_objectqueue_start_recording(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
-    rbp->is_recording = true;
+    oqp->is_recording = true;
     record_sample(oqp);
 }
 
 void cmb_objectqueue_stop_recording(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     record_sample(oqp);
-    rbp->is_recording = false;
+    oqp->is_recording = false;
 }
 
 struct cmb_timeseries *cmb_objectqueue_get_history(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
-
-    return &(rbp->history);
+    return &(oqp->history);
 }
 
 struct cmb_dataset *cmb_queue_get_wait_times(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
     return &(oqp->wait_times);
 }
 
 void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp) {
     cmb_assert_release(oqp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
     fprintf(fp, "Queue lengths for %s:\n", oqp->core.name);
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
-    const struct cmb_timeseries *ts = &(rbp->history);
+    const struct cmb_timeseries *ts = &(oqp->history);
 
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
     (void)cmb_timeseries_summarize(ts, ws);
@@ -266,8 +269,10 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
             }
 
             *objectloc = tag->object;
-            record_sample(oqp);
-            cmb_dataset_add(&(oqp->wait_times), cmb_time() - tag->timestamp);
+            if (oqp->is_recording) {
+                record_sample(oqp);
+                cmb_dataset_add(&(oqp->wait_times), cmb_time() - tag->timestamp);
+            }
 
             cmb_logger_info(stdout, "Success, got %p", *objectloc);
             tag->next = NULL;

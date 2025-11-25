@@ -84,9 +84,9 @@ static bool holder_queue_check(const struct cmi_heap_tag *a,
 }
 
 /*
- * store_scram : forcibly eject a holder process without resuming it.
+ * store_drop : forcibly eject a holder process without resuming it.
  */
-void store_scram(struct cmi_resourcebase *rbp,
+void store_drop(struct cmi_holdable *rbp,
                  const struct cmb_process *pp,
                  const uint64_t handle)
 {
@@ -112,17 +112,17 @@ void store_scram(struct cmi_resourcebase *rbp,
 }
 
 /*
- * storee_reprio : dummy reprio function. Does nothing.
+ * store_reprio : dummy reprio function. Does nothing.
  */
-void store_reprio(struct cmi_resourcebase *rbp,
+void store_reprio(struct cmi_holdable *rbp,
                   const uint64_t handle,
                   const int64_t pri)
 {
     cmb_assert_release(rbp != NULL);
     cmb_assert_release(handle != 0u);
 
-    struct cmb_resourcestore *sp = (struct cmb_resourcestore *)rbp;
-    struct cmi_hashheap *hp = &(sp->holders);
+    const struct cmb_resourcestore *sp = (struct cmb_resourcestore *)rbp;
+    const struct cmi_hashheap *hp = &(sp->holders);
     const double dkey = cmi_hashheap_get_dkey(hp, handle);
     cmi_hashheap_reprioritize(hp, handle, dkey, pri);
 }
@@ -140,11 +140,12 @@ void cmb_resourcestore_initialize(struct cmb_resourcestore *sp,
     cmb_assert_release(name != NULL);
     cmb_assert_release(capacity > 0u);
 
-    cmi_resourcebase_initialize(&(sp->core), name);
-    sp->core.scram = store_scram;
+    cmi_holdable_initialize(&(sp->core), name);
+    sp->core.drop = store_drop;
     sp->core.reprio = store_reprio;
 
-    cmi_resourceguard_initialize(&(sp->front_guard), &(sp->core));
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    cmi_resourceguard_initialize(&(sp->front_guard), rbp);
     cmi_hashheap_initialize(&(sp->holders),
                             HOLDERS_INIT_EXP,
                             holder_queue_check);
@@ -162,7 +163,7 @@ void cmb_resourcestore_terminate(struct cmb_resourcestore *sp)
 
     cmi_hashheap_terminate(&(sp->holders));
     cmi_resourceguard_terminate(&(sp->front_guard));
-    cmi_resourcebase_terminate(&(sp->core));
+    cmi_holdable_terminate(&(sp->core));
 }
 
 /*
@@ -232,8 +233,9 @@ static void record_sample(struct cmb_resourcestore *sp) {
     cmb_assert_release(sp != NULL);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
-    if (rbp->is_recording) {
-        struct cmb_timeseries *ts = &(rbp->history);
+    cmb_assert_debug(rbp->cookie == CMI_INITIALIZED);
+    if (sp->is_recording) {
+        struct cmb_timeseries *ts = &(sp->history);
         const double x = (double)(sp->in_use);
         const double t = cmb_time();
         cmb_timeseries_add(ts, x, t);
@@ -246,7 +248,7 @@ void cmb_resourcestore_start_recording(struct cmb_resourcestore *sp)
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
-    rbp->is_recording = true;
+    sp->is_recording = true;
     record_sample(sp);
 }
 
@@ -257,7 +259,7 @@ void cmb_resourcestore_stop_recording(struct cmb_resourcestore *sp)
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     record_sample(sp);
-    rbp->is_recording = false;
+    sp->is_recording = false;
 }
 
 struct cmb_timeseries *cmb_resourcestore_get_history(struct cmb_resourcestore *sp)
@@ -267,16 +269,16 @@ struct cmb_timeseries *cmb_resourcestore_get_history(struct cmb_resourcestore *s
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
-    return &(rbp->history);
+    return &(sp->history);
 }
 
 void cmb_resourcestore_print_report(struct cmb_resourcestore *sp, FILE *fp) {
     cmb_assert_release(sp != NULL);
 
-    fprintf(fp, "Store resource utilization for %s:\n", sp->core.name);
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
-    const struct cmb_timeseries *ts = &(rbp->history);
+    fprintf(fp, "Store resource utilization for %s:\n", rbp->name);
+    const struct cmb_timeseries *ts = &(sp->history);
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
     (void)cmb_timeseries_summarize(ts, ws);
     cmb_wtdsummary_print(ws, fp, true);

@@ -186,11 +186,11 @@ void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
     /* Is this process holding any resources that need to update records? */
     struct cmi_resourcetag *rtag = pp->resources_listhead;
     while (rtag != NULL) {
-        struct cmi_resourcebase *rbp = rtag->res;
-        cmb_assert_debug(rbp != NULL);
+        struct cmi_holdable *hrp = rtag->res;
+        cmb_assert_debug(hrp != NULL);
         const uint64_t handle = rtag->handle;
         if (handle != 0ull) {
-            (*(rbp->reprio))(rbp, handle, pri);
+            (*(hrp->reprio))(hrp, handle, pri);
         }
 
         rtag = rtag->next;

@@ -70,6 +70,8 @@ struct cmb_buffer {
     struct cmi_resourceguard rear_guard;    /**< Rear waiting room for putters */
     uint64_t capacity;                      /**< The buffer size, possibly UINT64_MAX for unlimited */
     uint64_t level;                         /**< The current level in the buffer */
+    bool is_recording;                      /**< Is the buffer recording its history? */
+    struct cmb_timeseries history;         /**< The bufer level history */
 };
 
 /**

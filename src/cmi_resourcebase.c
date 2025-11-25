@@ -18,51 +18,21 @@
  * limitations under the License.
  */
 
-#include "cmb_assert.h"
-#include "cmb_logger.h"
-#include "cmb_process.h"
+#include "cimba.h"
 
 #include "cmi_resourcebase.h"
-
-/*
- * base_scram : dummy scram function, to be replaced by appropriate scram in
- * derived classes. Does nothing.
- */
-void base_scram(struct cmi_resourcebase *rbp,
-                const struct cmb_process *pp,
-                const uint64_t handle)
-{
-    cmb_assert_release(rbp != NULL);
-    cmb_assert_release(pp != NULL);
-    cmb_unused(handle);
-}
-
-/*
- * base_reprio : dummy holders reprioritization function. Does nothing.
- */
-void base_reprio(struct cmi_resourcebase *rbp, const uint64_t handle, const int64_t pri)
-{
-    cmb_assert_release(rbp != NULL);
-    cmb_unused(handle);
-    cmb_unused(pri);
-}
 
 /*
  * cmi_resourcebase_initialize : Make an already allocated resource core
  * object ready for use with a given capacity.
  */
 void cmi_resourcebase_initialize(struct cmi_resourcebase *rbp,
-                                  const char *name)
+                                 const char *name)
 {
     cmb_assert_release(rbp != NULL);
 
     rbp->cookie = CMI_INITIALIZED;
     cmi_resourcebase_set_name(rbp, name);
-    rbp->scram = base_scram;
-    rbp->reprio = base_reprio;
-    rbp->is_recording = false;
-
-    cmb_timeseries_initialize(&(rbp->history));
 }
 
 /*
@@ -73,7 +43,6 @@ void cmi_resourcebase_terminate(struct cmi_resourcebase *rbp)
     cmb_assert_release(rbp != NULL);
 
     rbp->cookie = CMI_UNINITIALIZED;
-    cmb_timeseries_terminate(&(rbp->history));
 }
 
 /*

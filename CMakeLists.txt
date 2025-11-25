@@ -31,12 +31,14 @@ set(HEADERS
         src/cmi_config.h
         src/cmi_dataset.h
         src/cmi_hashheap.h
+        src/cmi_holdable.h
         src/cmi_memutils.h
         src/cmi_processtag.h
         src/cmi_resourcebase.h
         src/cmi_resourceguard.h
         src/cmi_resourcetag.h
         src/cmi_waitable.h
+        src/cmi_holdable.h
 )
 
 set(SOURCES
@@ -46,6 +48,7 @@ set(SOURCES
         src/cmb_dataset.c
         src/cmb_datasummary.c
         src/cmb_event.c
+        src/cmi_holdable.c
         src/cmb_logger.c
         src/cmb_mempool.c
         src/cmb_objectqueue.c

@@ -42,15 +42,17 @@
 
 #include <stdint.h>
 
-#include "cmi_resourcebase.h"
+#include "cmi_holdable.h"
 #include "cmi_resourceguard.h"
 
 struct cmb_resourcestore {
-    struct cmi_resourcebase core;
+    struct cmi_holdable core;
     struct cmi_resourceguard front_guard;
     struct cmi_hashheap holders;
     uint64_t capacity;
     uint64_t in_use;
+    bool is_recording;
+    struct cmb_timeseries history;
 };
 
 /*
@@ -62,8 +64,8 @@ extern struct cmb_resourcestore *cmb_resourcestore_create(void);
  * cmb_resourcestore_initialize : Make an allocated store object ready for use.
  */
 extern void cmb_resourcestore_initialize(struct cmb_resourcestore *sp,
-                                    const char *name,
-                                    uint64_t capacity);
+                                         const char *name,
+                                         uint64_t capacity);
 
 /*
  * cmb_resourcestore_terminate : Un-initializes a store object.
@@ -86,7 +88,8 @@ extern void cmb_resourcestore_destroy(struct cmb_resourcestore *sp);
  * returns empty-handed. If interrupted by any other signal, it returns with the
  * same amount as it had at the beginning of the call.
  */
-extern int64_t cmb_resourcestore_acquire(struct cmb_resourcestore *sp, uint64_t amount);
+extern int64_t cmb_resourcestore_acquire(struct cmb_resourcestore *sp,
+                                         uint64_t amount);
 
 /*
  * cmb_resourcestore_preempt : Preempt the current holders and grab the resource
@@ -96,17 +99,19 @@ extern int64_t cmb_resourcestore_acquire(struct cmb_resourcestore *sp, uint64_t 
  * preempts processes with strictly lower priority than itself, otherwise acts
  * like cmb_resourcestore_acquire.
  *
- * As for cmb_resourcestore_acquire, it can either return with the requested amount,
- * an unchanged amount (interrupted), or nothing at all (preempted).
+ * As for cmb_resourcestore_acquire, it can either return with the requested
+ * amount, an unchanged amount (interrupted), or nothing at all (preempted).
  */
-extern int64_t cmb_resourcestore_preempt(struct cmb_resourcestore *sp, uint64_t amount);
+extern int64_t cmb_resourcestore_preempt(struct cmb_resourcestore *sp,
+                                         uint64_t amount);
 
 /*
- * cmb_resourcestore_release : Release an amount of the resource back to the store, not
- * necessarily everything that the calling process holds, but not more than it
- * is currently holding. Always returns immediately.
+ * cmb_resourcestore_release : Release an amount of the resource back to the
+ * store, not necessarily everything that the calling process holds, but not
+ * more than it is currently holding. Always returns immediately.
  */
-extern void cmb_resourcestore_release(struct cmb_resourcestore *sp, uint64_t amount);
+extern void cmb_resourcestore_release(struct cmb_resourcestore *sp,
+                                      uint64_t amount);
 
 /*
  * cmb_resourcestore_get_name : Returns name of store as const char *.
