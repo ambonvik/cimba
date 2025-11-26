@@ -52,7 +52,7 @@ void drop_holder(struct cmi_holdable *hrp,
     cmb_assert_debug(rp->holder == pp);
     rp->holder = NULL;
     record_sample(rp);
-    cmi_resourceguard_signal(&(rp->front_guard));
+    cmi_resourceguard_signal(&(rp->guard));
 }
 
 /*
@@ -66,7 +66,7 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
     cmb_assert_release(name != NULL);
 
     cmi_holdable_initialize(&(rp->core), name);
-    cmi_resourceguard_initialize(&(rp->front_guard), &(rp->core.base));
+    cmi_resourceguard_initialize(&(rp->guard), &(rp->core.base));
 
     rp->core.drop = drop_holder;
     rp->holder = NULL;
@@ -87,7 +87,7 @@ void cmb_resource_terminate(struct cmb_resource *rp)
     }
 
     cmb_timeseries_terminate(&(rp->history));
-    cmi_resourceguard_terminate(&(rp->front_guard));
+    cmi_resourceguard_terminate(&(rp->guard));
     cmi_holdable_terminate(&(rp->core));
 }
 
@@ -154,6 +154,8 @@ void cmb_resource_print_report(struct cmb_resource *rp, FILE *fp) {
     (void)cmb_timeseries_summarize(ts, ws);
     cmb_wtdsummary_print(ws, fp, true);
     cmb_wtdsummary_destroy(ws);
+
+    cmb_timeseries_print_histogram(ts, fp, 2u, 0.0, 1.0);
 }
 
 /*
@@ -196,7 +198,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     }
 
     /* Wait at the front door until resource becomes available */
-     const int64_t ret = cmi_resourceguard_wait(&(rp->front_guard),
+     const int64_t ret = cmi_resourceguard_wait(&(rp->guard),
                                                 is_available,
                                                 NULL);
 
@@ -209,7 +211,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     }
     else {
         cmb_logger_info(stdout,
-                        "Cancelled from acquiring %s, code %lld",
+                        "Did not acquire %s, code %lld",
                         rbp->name,
                         ret);
     }
@@ -234,7 +236,7 @@ void cmb_resource_release(struct cmb_resource *rp) {
     record_sample(rp);
 
     cmb_logger_info(stdout, "Released %s", hrp->base.name);
-    struct cmi_resourceguard *rgp = &(rp->front_guard);
+    struct cmi_resourceguard *rgp = &(rp->guard);
     cmi_resourceguard_signal(rgp);
 }
 

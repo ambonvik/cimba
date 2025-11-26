@@ -1,14 +1,11 @@
-/*
- * cmi_resource.h - a simple binary semaphore supporting acquire, release, and
- * preempt methods. Can only be held by one process at a time. Assigned to
- * waiting processes in priority order, then FIFO tie-breaker order.
- *
- * A process holding a resource may be preempted by a higher priority process.
- * For this purpose, the resources maintain a list of processes currently
- * holding (parts of) the resource, to enable use cases like machine breakdowns,
- * priority interrupts, or holding processes getting killed in more violent use
- * cases.
- *
+/**
+ * @file cmb_resource.h
+ * @brief A simple binary semaphore supporting acquire, release, and preempt
+ *        methods. Can only be held by one process at a time. Assigned to
+ *        waiting processes in priority order, then FIFO tie-breaker order.
+ */
+
+ /*
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,56 +32,85 @@
 #include "cmi_resourcebase.h"
 #include "cmi_resourceguard.h"
 
+/**
+ * @brief The resource struct, inherits all properties from `cmi_holdable` by
+ * composition and adds the resource guard, a single pointer to process holding
+ * the resource (if currently held), and a timeseries for logging its history.
+ */
 struct cmb_resource {
-    struct cmi_holdable core;
-    struct cmi_resourceguard front_guard;
-    struct cmb_process *holder;
-    bool is_recording;
-    struct cmb_timeseries history;
+    struct cmi_holdable core;           /**< The virtual base class */
+    struct cmi_resourceguard guard;     /**< The gatekeeper maintaining an orderly queue of waiting processes */
+    struct cmb_process *holder;         /**< The current holder, if any */
+    bool is_recording;                  /**< Is it currently recording history? */
+    struct cmb_timeseries history;      /**< The usage history, 1 for held, 0 for idle */
 };
 
-/*
- * cmb_resource_create : Allocate memory for a resource object.
+/**
+ * @brief Allocate memory for a resource object.
+ *
+ * @return Pointer to the newly created resource.
  */
 extern struct cmb_resource *cmb_resource_create(void);
 
-/*
- * cmb_resource_initialize : Make an allocated resource object ready for use.
+/**
+ * @brief Make an allocated resource object ready for use.
+ *
+ * @param rp Pointer to an already allocated resource object.
+ * @param name A null-terminated string naming the resource.
  */
 extern void cmb_resource_initialize(struct cmb_resource *rp,
                                     const char *name);
 
-/*
- * cmb_resource_terminate : Un-initializes a resource object.
+/**
+ * @brief Un-initializes a resource object.
+ *
+ * @param rp Pointer to an already allocated resource object.
  */
 extern void cmb_resource_terminate(struct cmb_resource *rp);
 
-/*
- * cmb_resource_destroy : Deallocates memory for a resource object.
+/**
+ * @brief  Deallocates memory for a resource object.
+ *
+ * @param rp Pointer to an already allocated resource object.
  */
 extern void cmb_resource_destroy(struct cmb_resource *rp);
 
-/*
- * cmb_resource_acquire : Request and if necessary wait for the resource.
- * Returns CMB_PROCESS_SUCCESS if all is well.
+/**
+ * @brief  Request and if necessary make the current process wait for the
+ *         resource. Returns immediately if available.
+ *
+ * @param rp Pointer to an initialized resource object.
+ *
+ * @return  `CMB_PROCESS_SUCCESS` if all is well, otherwise the signal value
+ *          received when interrupted or preempted.
  */
 extern int64_t cmb_resource_acquire(struct cmb_resource *rp);
 
-/*
- * cmb_resource_release : Release the resource.
+/**
+ * @brief   Release the resource.
+ *
+ * @param rp Pointer to an initialized resource object.
  */
 extern void cmb_resource_release(struct cmb_resource *rp);
 
 
-/*
- * cmb_resource_preempt : Preempt the current holder and grab the resource, if
- * the calling process has higher priority than the current holder. Otherwise,
- * it politely waits for its turn at the front gate.
+/**
+ * @brief Preempt the current holder and grab the resource if the calling
+ *        process has higher priority than the current holder. Otherwise,
+ *        it will politely wait for its turn.
+ *
+ * @param rp Pointer to an initialized resource object.
+ *
+ * @return  `CMB_PROCESS_SUCCESS` if all is well, otherwise the signal value
+ *          received when interrupted or preempted.
  */
 extern int64_t cmb_resource_preempt(struct cmb_resource *rp);
 
-/*
- * cmb_resource_get_name : Returns name of resource as const char *.
+/**
+ * @brief Returns name of resource as const char *.
+ *
+ * @param rp Pointer to an initialized resource object.
+ * @return The name of the process as a null-terminated text string.
  */
 static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
 {
@@ -96,9 +122,37 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
     return rbp->name;
 }
 
+/**
+ * @brief Turn on data recording.
+ *
+ * @param rp Pointer to an initialized resource object.
+ */
 extern void cmb_resource_start_recording(struct cmb_resource *rp);
+
+/**
+ * @brief Turn off data recording.
+ *
+ * @param rp Pointer to an initialized resource object.
+ */
 extern void cmb_resource_stop_recording(struct cmb_resource *rp);
+
+/**
+ * @brief Get the recorded timeseries of resource usage.
+ *
+ * @param rp Pointer to an initialized resource object.
+ * @return Pointer to a `cmb_timeseries` containing the resource usage history.
+ */
 extern struct cmb_timeseries *cmb_resource_get_history(struct cmb_resource *rp);
+
+/**
+ * @brief Print a simple text mode report of the resource usage, ncluding key
+ *        statistical metrics and a histogram. Mostly intended for debugging
+ *        purposes, not presentation graphics.
+ *
+ * @param rp Pointer to an initialized resource object.
+ * @param fp File pointer, possibly `stdout`.
+ */
 extern void cmb_resource_print_report(struct cmb_resource *rp, FILE *fp);
+
 
 #endif /* CIMBA_CMB_RESOURCE_H */

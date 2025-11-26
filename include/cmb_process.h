@@ -96,9 +96,7 @@
  * The `waiters_listhead` contain any processes that are waiting for this
  * process to finish. The `resources_listhead` contains any resources held by
  * this process, to be released if the process is stopped by someone else.
- *
- * todo: Consider waiting for any of several things, needs a list of waitables.
- */
+*/
 struct cmb_process {
     struct cmi_coroutine cr;            /**< The parent coroutine */
     char name[CMB_PROCESS_NAMEBUF_SZ];  /**< The process name string */

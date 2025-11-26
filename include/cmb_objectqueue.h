@@ -183,8 +183,8 @@ extern struct cmb_dataset *cmb_objectqueue_get_waiting_times(struct cmb_objectqu
 
 /**
  * @brief Print a simple text mode report of the queue lengths and waiting times,
- * including key statical metrics and histograms. Mostly intended for debugging
- * purposes, not presentation graphics.
+ *        including key statisticcal metrics and histograms. Mostly intended for
+ *        debugging purposes, not presentation graphics.
  *
  * @param oqp Pointer to a `cmb_objectqueue`
  * @param fp File pointer, possibly `stdout`.
