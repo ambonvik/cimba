@@ -258,8 +258,8 @@ uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
     cmb_assert_release(src != NULL);
     cmb_assert_release(src->cookie == CMI_INITIALIZED);
     cmb_assert_release(tgt != NULL);
-    cmb_assert_release(tgt->cookie == CMI_INITIALIZED);
 
+    tgt->cookie = CMI_INITIALIZED;
     tgt->count = src->count;
     tgt->cursize = src->cursize;
     tgt->min = src->min;

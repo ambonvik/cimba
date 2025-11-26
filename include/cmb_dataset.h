@@ -43,9 +43,9 @@ struct cmb_dataset {
 };
 
 /**
- * @brief Allocate memory for dataset.
+ * @brief Allocate memory for a dataset.
  *
- * Remember to call a matching `cmb_dataset_destroy`when done to avoid memory
+ * Remember to call a matching `cmb_dataset_destroy` when done to avoid memory
  * leakage.
  *
  * @return A freshly allocated dataset object.
@@ -59,10 +59,10 @@ extern struct cmb_dataset *cmb_dataset_create(void);
 extern void cmb_dataset_initialize(struct cmb_dataset *dsp);
 
 /**
- * @brief Un-initialize it, returning it to newly initialized state. In effect,
- *        a `cmb_dataset_terminate`followed by a `cmb_dataset_initialize`.
+ * @brief Re-initialize it, returning it to newly initialized state.
  * @param dsp Pointer to an already allocated dataset object.
- */extern void cmb_dataset_reset(struct cmb_dataset *dsp);
+ */
+extern void cmb_dataset_reset(struct cmb_dataset *dsp);
 
 /**
  * @brief Un-initialize it, returning it to newly created state.
@@ -92,8 +92,8 @@ extern uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
                                   const struct cmb_dataset *s2);
 
 /**
- * @brief  Free memory allocated by `cmb_dataset_create` for the dataset and its
- * arrays.
+ * @brief Free memory allocated by `cmb_dataset_create` for the dataset and its
+ *        arrays.
  *
  * Do not call unless the dataset was created on the heap by
  * `cmb_dataset_create`. Use `cmb_dataset_terminate` instead to free the data

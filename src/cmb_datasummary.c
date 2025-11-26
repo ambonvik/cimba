@@ -99,6 +99,7 @@ uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
     cmb_assert_release(dsp2->cookie == CMI_INITIALIZED);
 
     struct cmb_datasummary cs = { 0 };
+    cmb_datasummary_initialize(&cs);
     cs.count = dsp1->count + dsp2->count;
     cs.min = (dsp1->min < dsp2->min) ? dsp1->min : dsp2->min;
     cs.max = (dsp1->max > dsp2->max) ? dsp1->max : dsp2->max;

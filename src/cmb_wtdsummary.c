@@ -161,6 +161,7 @@ uint64_t cmb_wtdsummary_merge(struct cmb_wtdsummary *tgt,
     cmb_assert_release(((struct cmb_datasummary *)ws2)->cookie == CMI_INITIALIZED);
 
     struct cmb_wtdsummary tws = { 0 };
+    cmb_wtdsummary_initialize(&tws);
     struct cmb_datasummary *ts = (struct cmb_datasummary *)(&tws);
     const struct cmb_datasummary *dsp1 = (struct cmb_datasummary *)ws1;
     const struct cmb_datasummary *dsp2 = (struct cmb_datasummary *)ws2;
