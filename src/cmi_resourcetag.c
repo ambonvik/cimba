@@ -109,10 +109,10 @@ uint64_t cmi_resourcetag_list_find_handle(struct cmi_resourcetag **rtloc,
 }
 
 /*
- * cmi_resourcetag_list_scram_all : Calls the scram function for each resource
+ * cmi_resourcetag_list_drop_all : Calls the scram function for each resource
  * in the list
  */
-void cmi_resourcetag_list_scram_all(struct cmi_resourcetag **rtloc)
+void cmi_resourcetag_list_drop_all(struct cmi_resourcetag **rtloc)
 {
     cmb_assert_debug(rtloc != NULL);
 

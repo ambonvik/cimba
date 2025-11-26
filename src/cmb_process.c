@@ -472,7 +472,7 @@ static void pstopevt(void *vp, void *arg) {
 
     /* Release any resources held by this process */
     if (tgt->resources_listhead != NULL) {
-        cmi_resourcetag_list_scram_all(&(tgt->resources_listhead));
+        cmi_resourcetag_list_drop_all(&(tgt->resources_listhead));
     }
 
     /* Wake up any processes waiting for this process to finish */

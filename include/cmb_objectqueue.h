@@ -15,7 +15,7 @@
  * `cmb_buffer` and `cmb_objectqueue` essentially deal with assigning the
  * available space in the resource to processes, not lending pieces of a
  * resource to processes. The objects holding a part of a `cmb_objectqueue` are
- * already in the queue. Hence, no need for forced removal (scram) of holder
+ * already in the queue. Hence, no need for forced removal (drop) of holder
  * processes either.
  */
 

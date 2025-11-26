@@ -55,10 +55,10 @@ extern uint64_t cmi_resourcetag_list_find_handle(struct cmi_resourcetag **rtloc,
                                                  const struct cmi_holdable *hrp);
 
 /*
- * cmi_resourcetag_list_scram_all : Calls the respective scram function for each
+ * cmi_resourcetag_list_drop_all : Calls the respective drop function for each
  * resource in the given list location, removing them from the list.
  */
-extern void cmi_resourcetag_list_scram_all(struct cmi_resourcetag **rtloc);
+extern void cmi_resourcetag_list_drop_all(struct cmi_resourcetag **rtloc);
 
 /*
  * cmi_resourcetag_list_print : Print the list of waiting processes

@@ -126,12 +126,12 @@ void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp)
 }
 
 /*
- * queue_has_content : pre-packaged demand function for a cmb_objectqueue, allowing
+ * has_content : pre-packaged demand function for a cmb_objectqueue, allowing
  * the getting process to grab some whenever there is something to grab.
  */
-static bool queue_has_content(const struct cmi_resourcebase *rbp,
-                               const struct cmb_process *pp,
-                               const void *ctx)
+static bool has_content(const struct cmi_resourcebase *rbp,
+                        const struct cmb_process *pp,
+                        const void *ctx)
 {
     cmb_assert_release(rbp != NULL);
     cmb_unused(pp);
@@ -143,12 +143,12 @@ static bool queue_has_content(const struct cmi_resourcebase *rbp,
 }
 
 /*
- * queue_has_space : pre-packaged demand function for a cmb_objectqueue, allowing
+ * has_space : pre-packaged demand function for a cmb_objectqueue, allowing
  * the putting process to stuff in some whenever there is space.
  */
-static bool queue_has_space(const struct cmi_resourcebase *rbp,
-                             const struct cmb_process *pp,
-                             const void *ctx)
+static bool has_space(const struct cmi_resourcebase *rbp,
+                      const struct cmb_process *pp,
+                      const void *ctx)
 {
     cmb_assert_release(rbp != NULL);
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
@@ -288,7 +288,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
         cmb_assert_debug(oqp->length_now == 0u);
         cmb_logger_info(stdout, "Waiting for an object");
         const int64_t sig = cmi_resourceguard_wait(&(oqp->front_guard),
-                                                   queue_has_content,
+                                                   has_content,
                                                    NULL);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_info(stdout,"Trying again");
@@ -366,7 +366,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
         cmb_assert_debug(oqp->length_now == oqp->capacity);
         cmb_logger_info(stdout, "Waiting for space");
         const int64_t sig = cmi_resourceguard_wait(&(oqp->rear_guard),
-                                                   queue_has_space,
+                                                   has_space,
                                                    NULL);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_info(stdout,"Trying again");
