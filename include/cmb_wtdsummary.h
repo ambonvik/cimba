@@ -56,7 +56,7 @@ extern struct cmb_wtdsummary *cmb_wtdsummary_create(void);
 /**
  *  @brief Initialize a weighted data summary, not necessarily allocated on the
  *         heap.
- *  @param wsp Pointer to a `cmb_wtdsummary` object.
+ *  @param wsp Pointer to a weighted data summary.
  */
 extern void cmb_wtdsummary_initialize(struct cmb_wtdsummary *wsp);
 
@@ -64,7 +64,7 @@ extern void cmb_wtdsummary_initialize(struct cmb_wtdsummary *wsp);
  * @brief Reset a previously used weighted data summary to newly initialized
  *        state.
  *
-*  @param wsp Pointer to a valid `cmb_datasummary` object.
+*  @param wsp Pointer to a weighted data summary.
  */
 extern void cmb_wtdsummary_reset(struct cmb_wtdsummary *wsp);
 
@@ -72,15 +72,14 @@ extern void cmb_wtdsummary_reset(struct cmb_wtdsummary *wsp);
  * @brief Un-initialize the weighted data summary, returning it to newly created
  *        state.
  *
- * @param wsp Pointer to a weighted data summary object.
+ * @param wsp Pointer to a weighted data summary.
  */
 extern void cmb_wtdsummary_terminate(struct cmb_wtdsummary *wsp);
 
 /**
- * @brief Deallocate (free) the allocated memory for a weighted data summary
- *        object.
+ * @brief Deallocate (free) the allocated memory for a weighted data summary.
  *
- * @param wsp Pointer to a weighted data summary object previously created by
+ * @param wsp Pointer to a weighted data summary previously created by
  *              `cmb_datasummary_create`.
  */
 extern void cmb_wtdsummary_destroy(struct cmb_wtdsummary *wsp);
@@ -89,8 +88,7 @@ extern void cmb_wtdsummary_destroy(struct cmb_wtdsummary *wsp);
  * @brief Add a sample `(x, w)` to the weighted summary. Zero weight samples
  *        are ignored, not even counted.
  *
- * @param wsp Pointer to a weighted data summary object previously created by
- *              `cmb_datasummary_create`.
+ * @param wsp Pointer to a weighted data summary.
  * @param x Sample value to be added.
  * @param w Sample weight to be added.
  *
@@ -101,16 +99,18 @@ extern uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
                                    double w);
 
 /**
- * @brief Merge two weighted datasets. Tha target may be one of the merged sets.
+ * @brief Merge two weighted data summaries. Tha target may be one of the
+ *        sources.
  *
  * See: Pébay & al, "Numerically stable, scalable formulas for parallel and
  *      online computation of higher-order multivariate central moments with
  *      arbitrary weights", Computational Statistics (2016) 31:1305–1325
  *
- * @param tgt Pointer to weighted weighted summary to receive the
- *            merge. Any previous content will be overwritten.
- * @param ws1 Pointer to a weighted data summary.
- * @param ws2 Pointer to a weighted data summary.
+ * @param tgt Pointer to a weighted weighted summary to receive the
+ *            merge. Any previous content will be overwritten. Possibly equal to
+ *            `ws1`or `ws2`, or a separate third weighted data summary.
+ * @param ws1 Pointer to a weighted data summary to be merged.
+ * @param ws2 Pointer to a weighted data summary to be merged.
  *
  * @return The combined sample count.
  */

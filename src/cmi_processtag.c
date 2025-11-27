@@ -46,7 +46,7 @@ static void ptwuevt(void *vp, void *arg)
     else {
         const struct cmb_process *pp = (struct cmb_process *)vp;
         cmb_logger_warning(stdout,
-                          "process wait wakeup call found process %s dead",
+                           "process wait wakeup call found process %s dead",
                            cmb_process_get_name(pp));
     }
 }
@@ -74,8 +74,8 @@ void cmi_processtag_list_wake_all(struct cmi_processtag **ptloc,
         const double time = cmb_time();
         const int64_t priority = cmb_process_get_priority(pp);
         (void)cmb_event_schedule(ptwuevt,
-                                pp,
-                                (void *)signal,
+                                 pp,
+                                 (void *)signal,
                                  time,
                                  priority);
 
@@ -100,8 +100,8 @@ void cmi_processtag_list_add(struct cmi_processtag **ptloc,
     if (process_tag_pool == NULL) {
         process_tag_pool = cmb_mempool_create();
         cmb_mempool_initialize(process_tag_pool,
-                              64u,
-                              sizeof(struct cmi_processtag));
+                               64u,
+                               sizeof(struct cmi_processtag));
     }
 
     /* Get one and add it to the head of the list */

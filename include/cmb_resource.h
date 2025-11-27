@@ -123,6 +123,34 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
 }
 
 /**
+ * @brief Returns number of resources currently in use
+ *
+ * @param rp Pointer to resource
+ * @return The number of units in use, 0 or 1
+ */
+static inline uint64_t cmb_resource_in_use(struct cmb_resource *rp)
+{
+    cmb_assert_debug(rsp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+
+    return (rp->holder != NULL) ? 1u : 0u;
+}
+
+/**
+ * @brief Returns number of currently available resources
+ *
+ * @param rp Pointer to resource
+ * @return The number of units not in use, 0 or 1
+ */
+static inline uint64_t cmb_resource_available(struct cmb_resource *rp)
+{
+    cmb_assert_debug(rsp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+
+    return (rp->holder == NULL) ? 1u : 0u;
+}
+
+/**
  * @brief Turn on data recording.
  *
  * @param rp Pointer to an initialized resource object.

@@ -54,7 +54,7 @@ struct cmb_objectqueue {
     struct cmi_resourceguard front_guard;   /**< Front waiting room for getters */
     struct cmi_resourceguard rear_guard;    /**< Rear waiting room for putters */
     uint64_t capacity;                      /**< The maximum size, possibly `UINT64_MAX` for unlimited */
-    uint64_t length_now;                    /**< The current queue length */
+    uint64_t length;                        /**< The current queue length */
     struct queue_tag *queue_head;           /**< The head of the queue, `NULL` if empty */
     struct queue_tag *queue_end;            /**< The tail of the queue, `NULL` if empty */
     bool is_recording;                      /**< Is it recording its history? */
@@ -104,7 +104,7 @@ extern void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp);
  * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
  * object pointer will be `NULL`.
  *
- * @param oqp Pointer to a `cmb_objectqueue`
+ * @param oqp Pointer to an object queue
  * @param objectloc Pointer to the location for storing the obtained object.
  *
  * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
@@ -125,7 +125,7 @@ extern int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp,
  * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
  * object pointer will still be unchanged.
  *
- * @param oqp Pointer to a `cmb_objectqueue`
+ * @param oqp Pointer to an object queue
  * @param objectloc Pointer to the location where the object is stored.
  *
  * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
@@ -136,7 +136,7 @@ extern int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp,
 /**
  * @brief Returns name of queue as `const char *`.
  *
- * @param oqp Pointer to a `cmb_objectqueue`
+ * @param oqp Pointer to an object queue
  * @return A null-terminated string containing the name of the object queue.
  */
 static inline const char *cmb_objectqueue_get_name(struct cmb_objectqueue *oqp)
@@ -150,23 +150,52 @@ static inline const char *cmb_objectqueue_get_name(struct cmb_objectqueue *oqp)
 }
 
 /**
+ * @brief Returns current object queue length
+ *
+ * @param oqp Pointer to an object queue
+ * @return The current queue length
+ */
+static inline uint64_t cmb_objectqueue_length(struct cmb_objectqueue *oqp)
+{
+    cmb_assert_debug(oqp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+
+    return oqp->length;
+}
+
+/**
+ * @brief Returns current free space in object queue
+ *
+ * @param oqp Pointer to an object queue
+ * @return The available space in the queue
+ */
+static inline uint64_t cmb_objectqueue_space(struct cmb_objectqueue *oqp)
+{
+    cmb_assert_release(oqp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_debug(oqp->level <= oqp->capacity);
+
+    return (oqp->capacity - oqp->length);
+}
+
+/**
  * @brief Turn on data recording.
  *
- * @param oqp Pointer to a `cmb_objectqueue`
+ * @param oqp Pointer to a object queue
  */
 extern void cmb_objectqueue_start_recording(struct cmb_objectqueue *oqp);
 
 /**
  * @brief Turn off data recording.
  *
- * @param oqp Pointer to a `cmb_objectqueue`
+ * @param oqp Pointer to an object queue
  */
 extern void cmb_objectqueue_stop_recording(struct cmb_objectqueue *oqp);
 
 /**
  * @brief Get the recorded timeseries of queue lengths.
  *
- * @param oqp Pointer to a `cmb_objectqueue`
+ * @param oqp Pointer to an object queue
  * @return Pointer to a `cmb_timeseries` containing the queue length history.
  */
 extern struct cmb_timeseries *cmb_objectqueue_get_history(struct cmb_objectqueue *oqp);
@@ -176,7 +205,7 @@ extern struct cmb_timeseries *cmb_objectqueue_get_history(struct cmb_objectqueue
  * series, since each sample value is associated with an object, not a point in
  * time.
  *
- * @param oqp Pointer to a `cmb_objectqueue`
+ * @param oqp Pointer to an object queue
  * @return Pointer to a `cmb_dataset` containing the waiting times.
  */
 extern struct cmb_dataset *cmb_objectqueue_get_waiting_times(struct cmb_objectqueue *oqp);
@@ -186,7 +215,7 @@ extern struct cmb_dataset *cmb_objectqueue_get_waiting_times(struct cmb_objectqu
  *        including key statisticcal metrics and histograms. Mostly intended for
  *        debugging purposes, not presentation graphics.
  *
- * @param oqp Pointer to a `cmb_objectqueue`
+ * @param oqp Pointer to an object queue
  * @param fp File pointer, possibly `stdout`.
  */
 extern void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp);

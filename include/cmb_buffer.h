@@ -159,6 +159,35 @@ static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
 }
 
 /**
+ * @brief Returns current level in buffer
+ *
+ * @param bp Pointer to a buffer
+ * @return The current buffer level
+ */
+static inline uint64_t cmb_buffer_level(struct cmb_buffer *bp)
+{
+    cmb_assert_debug(rsp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
+
+    return bp->level;
+}
+
+/**
+ * @brief Returns current free space in buffer
+ *
+ * @param bp Pointer to a buffer
+ * @return The available space in the buffer
+ */
+static inline uint64_t cmb_buffer_space(struct cmb_buffer *bp)
+{
+    cmb_assert_release(bp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
+    cmb_assert_debug(bp->level <= bp->capacity);
+
+    return (bp->capacity - bp->level);
+}
+
+/**
  * @brief Turn on data recording.
  *
  * @param bp Pointer to the buffer object.

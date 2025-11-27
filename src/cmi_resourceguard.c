@@ -10,8 +10,17 @@
  *
  * When some other process signals the resource guard, it evaluates the demand
  * function for the first process in the priority queue. If true, the process is
- * resumed and can grab the resource. When done, it puts it back and signals the
- * quard to evaluate waiting demand again.
+ * resumed and can grab the resource. When done, the resumed process puts the
+ * resource back and signals the guard to evaluate waiting demand functions
+ * again.
+ *
+ * The hashheap entries provide four 64-bit payload fields. Usage:
+ * item[0] - pointer to the waiting process
+ * item[1] - pointer to its demand function
+ * item[2] - its context pointer
+ * item[3] - not used here
+ *
+ * todo: Extend to allow other resourceguard objects to receive signals by binding.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -61,7 +70,7 @@ static bool guard_queue_check(const struct cmi_heap_tag *a,
 #define GUARD_INIT_EXP 3u
 
 void cmi_resourceguard_initialize(struct cmi_resourceguard *rgp,
-                                   struct cmi_resourcebase *rbp)
+                                  struct cmi_resourcebase *rbp)
 {
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(rbp != NULL);
@@ -90,8 +99,8 @@ void cmi_resourceguard_terminate(struct cmi_resourceguard *rgp)
  * Cannot be called from the main process, will fire an assert if attempted.
  */
 int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
-                                cmb_resourceguard_demand_func *demand,
-                                void *ctx)
+                               cmb_resourceguard_demand_func *demand,
+                               void *ctx)
 {
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(demand != NULL);
@@ -106,20 +115,20 @@ int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
     const double entry_time = cmb_time();
     const int64_t priority = cmb_process_get_priority(pp);
 
-    uint64_t handle = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
-                         (void *)pp,
-                         (void *)demand,
-                         ctx,
-                         NULL,
-                         entry_time,
-                         priority);
+    const uint64_t handle = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
+                                                 (void *)pp,
+                                                 (void *)demand,
+                                                 ctx,
+                                                 NULL,
+                                                 entry_time,
+                                                 priority);
 
     pp->waitsfor.type = CMI_WAITABLE_RESOURCE;
     pp->waitsfor.ptr = rgp;
     pp->waitsfor.handle = handle;
 
     cmb_logger_info(stdout,
-                   "Waits in line for %s",
+                    "Waits in line for %s",
                     rgp->guarded_resource->name);
 
     /* Yield to the scheduler, collect the return signal value when resumed */
@@ -157,19 +166,16 @@ static void prpwuevt(void *vp, void *arg)
  * Resumes zero or one waiting processes. Call it again if there is a chance
  * that more than one process could be ready, e.g. if some process just returned
  * five units of a resource and there are several processes waiting for one
- * unit each.
+ * unit each. This does not allow priority inversion where lower-priority
+ * processes could monopolize the resource while a higher-priority process is
+ * starved.
  *
  * In cases where some waiting process needs to bypass another, e.g. if there
  * are three available units of the resource, the first process in the queue
- * demands five, and there are three more behind it that demands one each, it is
+ * demands five, and there are three more behind it that demand one each, it is
  * up to the application to dynamically change process priorities to bring the
- * correct process to the front of the queue.
- *
- * We have four 64-bit payload fields in the hash_heap entries. Usage:
- * item[0] - pointer to the process itself
- * item[1] - pointer to its demand function
- * item[2] - its context pointer
- * item[3] - not used here
+ * correct process to the front of the queue (and manage the risk of successive
+ * lower-priority processes permanently starving the higher-priority one).
  */
 bool cmi_resourceguard_signal(struct cmi_resourceguard *rgp)
 {
@@ -183,7 +189,7 @@ bool cmi_resourceguard_signal(struct cmi_resourceguard *rgp)
     /* Decode first entry in the hashheap */
     void **item = cmi_hashheap_peek_item(hp);
     struct cmb_process *pp = (struct cmb_process *)(item[0]);
-    cmb_resourceguard_demand_func *demand = *(cmb_resourceguard_demand_func **)&(item[1]);
+    cmb_resourceguard_demand_func *demand = (cmb_resourceguard_demand_func *)(item[1]);
     const void *ctx = item[2];
 
     /* Is the demand met? */
@@ -194,8 +200,8 @@ bool cmi_resourceguard_signal(struct cmi_resourceguard *rgp)
         const double time = cmb_time();
         const int64_t priority = cmb_process_get_priority(pp);
         (void)cmb_event_schedule(prpwuevt,
-                                pp,
-                                (void *)CMB_PROCESS_SUCCESS,
+                                 pp,
+                                 (void *)CMB_PROCESS_SUCCESS,
                                  time,
                                  priority);
         return true;
@@ -225,8 +231,8 @@ bool cmi_resourceguard_cancel(struct cmi_resourceguard *rgp,
         const double time = cmb_time();
         const int64_t priority = cmb_process_get_priority(pp);
         (void)cmb_event_schedule(prpwuevt,
-                                pp,
-                                (void *)CMB_PROCESS_CANCELLED,
+                                 pp,
+                                 (void *)CMB_PROCESS_CANCELLED,
                                  time,
                                  priority);
         return true;
@@ -241,7 +247,7 @@ bool cmi_resourceguard_cancel(struct cmi_resourceguard *rgp,
  * Returns true if found and successfully cancelled, false if not.
  */
 bool cmi_resourceguard_remove(struct cmi_resourceguard *rgp,
-                               const struct cmb_process *pp)
+                              const struct cmb_process *pp)
 {
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(pp != NULL);

@@ -37,15 +37,15 @@ struct cmi_resourceguard {
  * typedef cmb_resourceguard_demand_func : function prototype for a resource demand
  */
 typedef bool (cmb_resourceguard_demand_func)(const struct cmi_resourcebase *res,
-                                        const struct cmb_process *pp,
-                                        const void *ctx);
+                                             const struct cmb_process *pp,
+                                             const void *ctx);
 
 /*
  * cmi_resourceguard_initialize : Make an already allocated resource guard
  * object ready for use.
  */
 extern void cmi_resourceguard_initialize(struct cmi_resourceguard *rgp,
-                                          struct cmi_resourcebase *rbp);
+                                         struct cmi_resourcebase *rbp);
 
 /*
  * cmi_resourceguard_terminate : Un-initializes a resource guard object.
@@ -62,8 +62,8 @@ extern void cmi_resourceguard_terminate(struct cmi_resourceguard *rgp);
  * Cannot be called from the main process.
  */
 extern int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
-                                       cmb_resourceguard_demand_func *demand,
-                                       void *ctx);
+                                      cmb_resourceguard_demand_func *demand,
+                                      void *ctx);
 
 /*
  * cmi_resourceguard_signal : Plings the bell for a resource guard to check if
@@ -93,14 +93,14 @@ extern bool cmi_resourceguard_signal(struct cmi_resourceguard *rgp);
  * Returns true if the found, false if not.
  */
 extern bool cmi_resourceguard_cancel(struct cmi_resourceguard *rgp,
-                                      struct cmb_process *pp);
+                                     struct cmb_process *pp);
 
 /*
  * cmi_resourceguard_remove : Remove this process from the priority queue
  * without resuming it. Returns true if the found, false if not.
  */
 extern bool cmi_resourceguard_remove(struct cmi_resourceguard *rgp,
-                                      const struct cmb_process *pp);
+                                     const struct cmb_process *pp);
 
 
 #endif /* CIMBA_CMI_RESOURCEGUARD_H */

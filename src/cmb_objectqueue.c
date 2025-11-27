@@ -79,7 +79,7 @@ void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
     cmi_resourceguard_initialize(&(oqp->rear_guard), &(oqp->core));
 
     oqp->capacity = capacity;
-    oqp->length_now = 0u;
+    oqp->length = 0u;
 
     oqp->queue_head = NULL;
     oqp->queue_end = NULL;
@@ -102,7 +102,7 @@ void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
         cmb_mempool_put(queue_tag_pool, tag);
     }
 
-    oqp->length_now = 0u;
+    oqp->length = 0u;
     oqp->queue_head = NULL;
     oqp->queue_end = NULL;
 
@@ -157,7 +157,7 @@ static bool has_space(const struct cmi_resourcebase *rbp,
 
     const struct cmb_objectqueue *oqp = (struct cmb_objectqueue *)rbp;
 
-    return (oqp->length_now < oqp->capacity);
+    return (oqp->length < oqp->capacity);
 }
 
 /*
@@ -170,7 +170,7 @@ static void record_sample(struct cmb_objectqueue *oqp) {
 
     if (oqp->is_recording) {
         struct cmb_timeseries *ts = &(oqp->history);
-        cmb_timeseries_add(ts, (double)(oqp->length_now), cmb_time());
+        cmb_timeseries_add(ts, (double)(oqp->length), cmb_time());
     }
 }
 
@@ -256,14 +256,14 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
     while (true) {
         cmb_assert_debug(oqp->length_now <= oqp->capacity);
         cmb_logger_info(stdout, "%s capacity %llu length now %llu",
-                       rbp->name, oqp->capacity, oqp->length_now);
+                       rbp->name, oqp->capacity, oqp->length);
         cmb_logger_info(stdout, "Gets an object from %s", rbp->name);
 
         if (oqp->queue_head != NULL) {
             /* There is one ready */
             struct queue_tag *tag = oqp->queue_head;
             oqp->queue_head = tag->next;
-            oqp->length_now--;
+            oqp->length--;
             if (oqp->queue_head == NULL) {
                 oqp->queue_end = NULL;
             }
@@ -335,9 +335,9 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
     while (true) {
         cmb_assert_debug(oqp->length_now <= oqp->capacity);
         cmb_logger_info(stdout, "%s capacity %llu length now %llu",
-                        rbp->name, oqp->capacity, oqp->length_now);
+                        rbp->name, oqp->capacity, oqp->length);
         cmb_logger_info(stdout, "Puts object %p into %s", *objectloc, rbp->name);
-        if (oqp->length_now < oqp->capacity) {
+        if (oqp->length < oqp->capacity) {
             /* There is space */
             struct queue_tag *tag = cmb_mempool_get(queue_tag_pool);
             tag->object = *objectloc;
@@ -352,7 +352,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
             }
 
             oqp->queue_end = tag;
-            oqp->length_now++;
+            oqp->length++;
             cmb_assert_debug(oqp->length_now <= oqp->capacity);
 
             record_sample(oqp);

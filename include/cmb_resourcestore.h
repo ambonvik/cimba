@@ -178,6 +178,36 @@ static inline const char *cmb_resourcestore_get_name(struct cmb_resourcestore *r
 }
 
 /**
+ * @brief Returns number of resources currently in use
+ *
+ * @param rsp Pointer to a resource store
+ * @return The number of units in use
+ */
+static inline uint64_t cmb_resourcestore_in_use(struct cmb_resourcestore *rsp)
+{
+    cmb_assert_release(rsp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
+    cmb_assert_debug(rsp->in_use <= rsp->capacity);
+
+    return rsp->in_use;
+}
+
+/**
+ * @brief Returns number of currently available resources
+ *
+ * @param rsp Pointer to a resource store
+ * @return The number of units not in use
+ */
+static inline uint64_t cmb_resourcestore_available(struct cmb_resourcestore *rsp)
+{
+    cmb_assert_release(rsp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
+    cmb_assert_debug(rsp->in_use <= rsp->capacity);
+
+    return (rsp->capacity - rsp->in_use);
+}
+
+/**
  * @brief Turn on data recording.
  *
  * @param rsp Pointer to an initialized resource store object.
