@@ -1,6 +1,8 @@
 /*
- * cmb_list.c - a generic singly linked list of 64-byte objects, reserving
- *              two 64-bit fields for metadata.
+ * cmb_list.c - a generic singly linked list of 32-byte objects, inlined for
+ *              efficiency and unified across multiple use cases for code size.
+ *              Only basic add (push) and remove methods here, others need to
+ *              be implemented at point of usage from exposed struct content.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -27,24 +29,54 @@
 
 struct cmi_list_tag {
     struct cmi_list_tag *next;
-    double dstamp;
-    uint64_t ustamp;
-    void *payload;
+    double dbl;
+    uint64_t uint;
+    void *ptr;
 };
 
-extern void cmi_list_add(struct cmi_list_tag **lloc,
-                         double dstamp,
-                         uint64_t ustamp,
-                         void *payload);
+static inline void cmi_list_add(struct cmi_list_tag **lloc,
+                                const double dstamp,
+                                const uint64_t ustamp,
+                                void *payload)
+{
+    cmb_assert_debug(lloc != NULL);
+    cmb_assert_debug(payload != NULL);
 
-extern bool cmi_list_remove(struct cmi_list_tag **lloc,
-                            const void *payload);
+    struct cmi_list_tag *ltag = NULL;
+    cmb_assert_debug(sizeof(*ltag) == 32u);
+    ltag = cmi_mempool_get(&cmi_mempool_32b);
+    cmb_assert_debug(ltag != NULL);
 
-extern double cmi_list_get_dstamp(struct cmi_list_tag **lloc,
-                                  const void *payload);
+    ltag->next = *lloc;
+    ltag->dbl = dstamp;
+    ltag->uint = ustamp;
+    ltag->ptr = payload;
 
-extern uint64_t cmi_list_get_ustamp(struct cmi_list_tag **lloc,
-                                    const void *payload);
+    *lloc = ltag;
+}
 
+
+static inline bool cmi_list_remove(struct cmi_list_tag **lloc,
+                                   const void *target)
+{
+    cmb_assert_debug(lloc != NULL);
+    cmb_assert_debug(target != NULL);
+
+    struct cmi_list_tag **ltpp = lloc;
+    while (*ltpp != NULL) {
+        struct cmi_list_tag *ltag = *ltpp;
+        if (ltag->ptr == target) {
+            *ltpp = ltag->next;
+            cmi_mempool_put(&cmi_mempool_32b, ltag);
+
+            return true;
+        }
+        else {
+            ltpp = &(ltag->next);
+        }
+    }
+
+    return false;
+}
 
 #endif /* CIMBA_CMI_LIST_H */

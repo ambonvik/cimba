@@ -173,7 +173,7 @@ static inline uint64_t cmb_objectqueue_space(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
-    cmb_assert_debug(oqp->level <= oqp->capacity);
+    cmb_assert_debug(oqp->length <= oqp->capacity);
 
     return (oqp->capacity - oqp->length);
 }

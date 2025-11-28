@@ -292,6 +292,23 @@ void cmb_resourcestore_print_report(struct cmb_resourcestore *rsp, FILE *fp) {
     cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(rsp->capacity + 1u));
 }
 
+static uint64_t find_handle(struct cmi_list_tag **rtloc,
+                            const struct cmi_holdable *hrp)
+{
+    cmb_assert_release(rtloc != NULL);
+    cmb_assert_release(hrp != NULL);
+
+    const struct cmi_list_tag *rtp = *rtloc;
+    while (rtp != NULL) {
+        if (rtp->ptr == hrp) {
+            return rtp->uint;
+        }
+        rtp = rtp->next;
+    }
+
+    return 0u;
+}
+
 uint64_t cmb_resourcestore_held_by_process(struct cmb_resourcestore *rsp,
                                            struct cmb_process *pp)
 {
@@ -300,9 +317,9 @@ uint64_t cmb_resourcestore_held_by_process(struct cmb_resourcestore *rsp,
     cmb_assert_release(pp != NULL);
 
     uint64_t ret = 0u;
-    struct cmi_resourcetag **rtloc = &(pp->resources_listhead);
+    struct cmi_list_tag **rtloc = &(pp->resources_listhead);
     const struct cmi_holdable *hrp = (struct cmi_holdable *)rsp;
-    const uint64_t handle = cmi_resourcetag_list_find_handle(rtloc, hrp);
+    const uint64_t handle = find_handle(rtloc, hrp);
     if (handle != 0u) {
         const struct cmi_hashheap *hp = &(rsp->holders);
         void **item = cmi_hashheap_get_item(hp, handle);
@@ -349,7 +366,7 @@ static uint64_t sum_holder_items(const struct cmi_hashheap *hp,
 static uint64_t update_record(struct cmb_resourcestore *store,
                               struct cmi_hashheap *store_holders,
                               const struct cmb_process *caller,
-                              struct cmi_resourcetag **caller_rtloc,
+                              struct cmi_list_tag **caller_rtloc,
                               uint64_t caller_handle,
                               const uint64_t amount)
 {
@@ -367,7 +384,7 @@ static uint64_t update_record(struct cmb_resourcestore *store,
         /* Not held already, create a new entry and cross-reference */
         caller_handle = add_new_holder(store_holders, caller, amount);
         struct cmi_holdable *hrp = (struct cmi_holdable *)store;
-        cmi_resourcetag_list_add(caller_rtloc, hrp, caller_handle);
+        cmi_list_add(caller_rtloc, cmb_time(), caller_handle, hrp);
     }
 
     return caller_handle;
@@ -393,10 +410,10 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
     /* Does the caller already hold some? */
     uint64_t initially_held = 0u;
     struct cmi_hashheap *hp = &(sp->holders);
-    struct cmi_resourcetag **caller_rtloc = &(caller->resources_listhead);
+    struct cmi_list_tag **caller_rtloc = &(caller->resources_listhead);
     const struct cmi_holdable *hrp = (struct cmi_holdable *)sp;
 
-    uint64_t caller_hdle = cmi_resourcetag_list_find_handle(caller_rtloc, hrp);
+    uint64_t caller_hdle = find_handle(caller_rtloc, hrp);
     if (caller_hdle != 0u) {
         /* It does, note the amount in case we need to roll back to here */
         void **item = cmi_hashheap_get_item(hp, caller_hdle);
@@ -474,9 +491,8 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
                 cmb_assert_debug(loot <= sp->in_use);
 
                 /* Remove the resource from victim's resource list */
-                struct cmi_resourcetag **victim_rtloc
-                                            = &(victim->resources_listhead);
-                const bool found = cmi_resourcetag_list_remove(victim_rtloc, hrp);
+                struct cmi_list_tag **victim_rtloc = &(victim->resources_listhead);
+                const bool found = cmi_list_remove(victim_rtloc, hrp);
                 cmb_assert_debug(found == true);
 
                 /* Schedule a wakeup for it, but do not switch context yet */
@@ -572,7 +588,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
                 record_sample(sp);
 
                 /* There may be a record created during this call, delete it */
-                const bool found = cmi_resourcetag_list_remove(caller_rtloc, hrp);
+                const bool found = cmi_list_remove(caller_rtloc, hrp);
                 if (found == true) {
                     cmb_assert_debug(caller_hdle != 0u);
                     cmi_hashheap_cancel(hp, caller_hdle);
@@ -620,9 +636,9 @@ void cmb_resourcestore_release(struct cmb_resourcestore *rsp, const uint64_t amo
     struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_debug(pp != NULL);
 
-    struct cmi_resourcetag **rtloc = &(pp->resources_listhead);
+    struct cmi_list_tag **rtloc = &(pp->resources_listhead);
     struct cmi_holdable *hrp = (struct cmi_holdable *)rsp;
-    const uint64_t caller_handle = cmi_resourcetag_list_find_handle(rtloc, hrp);
+    const uint64_t caller_handle = find_handle(rtloc, hrp);
     cmb_assert_debug(caller_handle != 0u);
 
     void **item = cmi_hashheap_get_item(&(rsp->holders), caller_handle);
@@ -642,7 +658,7 @@ void cmb_resourcestore_release(struct cmb_resourcestore *rsp, const uint64_t amo
         cmb_assert_debug(found == true);
 
         /* ...and from the process */
-        found = cmi_resourcetag_list_remove(&(pp->resources_listhead), hrp);
+        found = cmi_list_remove(&(pp->resources_listhead), hrp);
         cmb_assert_debug(found == true);
     }
     else {

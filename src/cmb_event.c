@@ -26,8 +26,8 @@
 
 #include "cmi_config.h"
 #include "cmi_hashheap.h"
+#include "cmi_list.h"
 #include "cmi_memutils.h"
-#include "cmi_processtag.h"
 
 /*
  * sim_time : The simulation clock. It can be initiated to start from a
@@ -193,25 +193,27 @@ int64_t cmb_event_priority(const uint64_t handle)
 
 /*
  * cmi_event_tag_loc : Get a pointer to the location of the fourth payload
- * item, to be used for a list of processes waiting for this event.
+ * item, used as the head of a list of processes waiting for this event.
  * Not part of the public API for the cmb_event module, used by cmb_process.c
  */
-struct cmi_processtag **cmi_event_tag_loc(const uint64_t handle)
+struct cmi_list_tag **cmi_event_tag_loc(const uint64_t handle)
 {
     cmb_assert_release(event_queue != NULL);
 
     void **tmp = cmi_hashheap_get_item(event_queue, handle);
     cmb_assert_debug(tmp != NULL);
 
-    return (struct cmi_processtag **)&(tmp[3]);
+    return (struct cmi_list_tag **)&(tmp[3]);
 }
+
+/* Friendly function in cmb_process.c, not part of public API */
+extern void cmi_process_wake_all(struct cmi_list_tag **ptloc, int64_t signal);
 
 /*
  * cmb_event_execute_next : Remove and execute the next event, update clock.
  * cmi_hashheap_dequeue returns a pointer to the location of the event.
  * Copy the values to local variables before executing the event.
  */
-
 bool cmb_event_execute_next(void)
 {
     if (cmb_event_queue_is_empty()) {
@@ -228,8 +230,8 @@ bool cmb_event_execute_next(void)
     void *object = tmp[2];
     void **wait_loc = &(tmp[3]);
     if (*wait_loc != NULL) {
-        cmi_processtag_list_wake_all((struct cmi_processtag **)wait_loc,
-                                     CMB_PROCESS_SUCCESS);
+        cmi_process_wake_all((struct cmi_list_tag **)wait_loc,
+                             CMB_PROCESS_SUCCESS);
     }
 
     /* Execute the event */
@@ -268,8 +270,8 @@ void cmb_event_cancel(const uint64_t handle)
     cmb_assert_debug(tmp != NULL);
     void **wait_loc = &(tmp[3]);
     if (*wait_loc != NULL) {
-        cmi_processtag_list_wake_all((struct cmi_processtag **)wait_loc,
-                                     CMB_PROCESS_CANCELLED);
+        cmi_process_wake_all((struct cmi_list_tag **)wait_loc,
+                             CMB_PROCESS_CANCELLED);
     }
 
     (void)cmi_hashheap_cancel(event_queue, handle);
@@ -410,9 +412,6 @@ void cmb_event_queue_print(FILE *fp)
                 htp->item[1],
                 htp->item[2],
                 htp->item[3]);
-        if (htp->item[3] != NULL) {
-            cmi_processtag_list_print((struct cmi_processtag **)&(htp->item[3]), fp);
-        }
     }
     fprintf(fp, "---------------------------------------------\n");
     fflush(fp);

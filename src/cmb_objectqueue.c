@@ -37,18 +37,15 @@
 #include "cmi_memutils.h"
 
 /*
- * struct queue_tag : A tag for the singly linked list that is a queue
+ * struct queue_tag : A tag for the singly linked list that is a queue.
+ * Padded by 8 bytes to add up to a 32-byte object.
  */
 struct queue_tag {
     struct queue_tag *next;
-    void *object;
     double timestamp;
+    uint64_t padding;
+    void *object;
 };
-
-/*
- * queue_tag_pool : Memory pool of resource tags
- */
-static CMB_THREAD_LOCAL struct cmi_mempool *queue_tag_pool = NULL;
 
 struct cmb_objectqueue *cmb_objectqueue_create(void)
 {
@@ -90,7 +87,7 @@ void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
     while (oqp->queue_head != NULL) {
         struct queue_tag *tag = oqp->queue_head;
         oqp->queue_head = tag->next;
-        cmi_mempool_put(queue_tag_pool, tag);
+        cmi_mempool_put(&cmi_mempool_32b, tag);
     }
 
     oqp->length = 0u;
@@ -229,7 +226,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     while (true) {
-        cmb_assert_debug(oqp->length_now <= oqp->capacity);
+        cmb_assert_debug(oqp->length <= oqp->capacity);
         cmb_logger_info(stdout, "%s capacity %llu length now %llu",
                        rbp->name, oqp->capacity, oqp->length);
         cmb_logger_info(stdout, "Gets an object from %s", rbp->name);
@@ -237,6 +234,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
         if (oqp->queue_head != NULL) {
             /* There is one ready */
             struct queue_tag *tag = oqp->queue_head;
+            cmb_assert_debug(sizeof(*tag) == 32u);
             oqp->queue_head = tag->next;
             oqp->length--;
             if (oqp->queue_head == NULL) {
@@ -252,7 +250,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
             cmb_logger_info(stdout, "Success, got %p", *objectloc);
             tag->next = NULL;
             tag->object = NULL;
-            cmi_mempool_put(queue_tag_pool, tag);
+            cmi_mempool_put(&cmi_mempool_32b, tag);
 
             cmi_resourceguard_signal(&(oqp->rear_guard));
 
@@ -260,7 +258,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
         }
 
         /* Wait at the front door until some more becomes available  */
-        cmb_assert_debug(oqp->length_now == 0u);
+        cmb_assert_debug(oqp->length == 0u);
         cmb_logger_info(stdout, "Waiting for an object");
         const int64_t sig = cmi_resourceguard_wait(&(oqp->front_guard),
                                                    has_content,
@@ -273,7 +271,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
                             "Interrupted by signal %lld, returns without object",
                             sig);
             *objectloc = NULL;
-            cmb_assert_debug(oqp->length_now <= oqp->capacity);
+            cmb_assert_debug(oqp->length <= oqp->capacity);
 
             return sig;
         }
@@ -285,24 +283,16 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(objectloc != NULL);
 
-    /* Lazy initalization of the memory pool for process tags */
-    if (queue_tag_pool == NULL) {
-        queue_tag_pool = cmi_mempool_create();
-        cmi_mempool_initialize(queue_tag_pool,
-                               sizeof(struct queue_tag),
-                               64u);
-    }
-
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     while (true) {
-        cmb_assert_debug(oqp->length_now <= oqp->capacity);
+        cmb_assert_debug(oqp->length <= oqp->capacity);
         cmb_logger_info(stdout, "%s capacity %llu length now %llu",
                         rbp->name, oqp->capacity, oqp->length);
         cmb_logger_info(stdout, "Puts object %p into %s", *objectloc, rbp->name);
         if (oqp->length < oqp->capacity) {
             /* There is space */
-            struct queue_tag *tag = cmi_mempool_get(queue_tag_pool);
+            struct queue_tag *tag = cmi_mempool_get(&cmi_mempool_32b);
             tag->object = *objectloc;
             tag->timestamp = cmb_time();
             tag->next = NULL;
@@ -316,7 +306,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
 
             oqp->queue_end = tag;
             oqp->length++;
-            cmb_assert_debug(oqp->length_now <= oqp->capacity);
+            cmb_assert_debug(oqp->length <= oqp->capacity);
 
             record_sample(oqp);
             cmb_logger_info(stdout, "Success, put %p", *objectloc);
@@ -326,7 +316,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
         }
 
         /* Wait at the back door until some more becomes available  */
-        cmb_assert_debug(oqp->length_now == oqp->capacity);
+        cmb_assert_debug(oqp->length == oqp->capacity);
         cmb_logger_info(stdout, "Waiting for space");
         const int64_t sig = cmi_resourceguard_wait(&(oqp->rear_guard),
                                                    has_space,
@@ -340,7 +330,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
                             sig,
                             *objectloc,
                             rbp->name);
-            cmb_assert_debug(oqp->length_now <= oqp->capacity);
+            cmb_assert_debug(oqp->length <= oqp->capacity);
 
             return sig;
         }

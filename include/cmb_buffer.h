@@ -166,7 +166,7 @@ static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
  */
 static inline uint64_t cmb_buffer_level(struct cmb_buffer *bp)
 {
-    cmb_assert_debug(rsp != NULL);
+    cmb_assert_debug(bp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
     return bp->level;

@@ -24,7 +24,6 @@
 #include "cmb_resource.h"
 #include "cmi_coroutine.h"
 #include "cmi_memutils.h"
-#include "cmi_processtag.h"
 
 /*
  * cmb_process_create : Allocate memory for the process.
@@ -95,7 +94,7 @@ void cmb_process_destroy(struct cmb_process *pp)
 }
 
 /*
- * pstartevt : The event handler that actually starts the process
+ * pstartevt : The event that actually starts the process
  * coroutine after being scheduled by cmb_process_start.
  */
 static void pstartevt(void *vp, void *arg)
@@ -184,11 +183,11 @@ void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
     }
 
     /* Is this process holding any resources that need to update records? */
-    struct cmi_resourcetag *rtag = pp->resources_listhead;
+    struct cmi_list_tag *rtag = pp->resources_listhead;
     while (rtag != NULL) {
-        struct cmi_holdable *hrp = rtag->res;
+        struct cmi_holdable *hrp = rtag->ptr;
         cmb_assert_debug(hrp != NULL);
-        const uint64_t handle = rtag->handle;
+        const uint64_t handle = rtag->uint;
         if (handle != 0ull) {
             (*(hrp->reprio))(hrp, handle, pri);
         }
@@ -239,8 +238,8 @@ struct cmb_process *cmb_process_get_current(void)
 }
 
 /*
- * phwuevt : The event that actually resumes the
- * process coroutine after being scheduled by cmb_process_hold.
+ * phwuevt : The event that resumes the process after being scheduled by
+ *           cmb_process_hold.
  */
 static void phwuevt(void *vp, void *arg)
 {
@@ -302,7 +301,25 @@ int64_t cmb_process_hold(const double dur)
     return sig;
 }
 
-/* The pwwuevt wakeup event is in cmi_processtag.c instead of here */
+/*
+ * ptwuevt : The event that resumes the process after being scheduled by
+ *           cmb_process_wait_*.
+ */
+static void ptwuevt(void *vp, void *arg)
+{
+    cmb_assert_debug(vp != NULL);
+
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)vp;
+    if (cp->status == CMI_COROUTINE_RUNNING) {
+        (void)cmi_coroutine_resume(cp, arg);
+    }
+    else {
+        const struct cmb_process *pp = (struct cmb_process *)vp;
+        cmb_logger_warning(stdout,
+                           "process wait wakeup call found process %s dead",
+                           cmb_process_get_name(pp));
+    }
+}
 
 /*
  * cmb_process_wait_process : Wait for some other process (awaited) to finish.
@@ -328,7 +345,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
         /* Nope, register it both here and there */
         pp->waitsfor.type = CMI_WAITABLE_PROCESS;
         pp->waitsfor.ptr = awaited;
-        cmi_processtag_list_add(&(awaited->waiters_listhead), pp);
+        cmi_list_add(&(awaited->waiters_listhead), cmb_time(), 0u, pp);
 
         /* Yield to the scheduler and collect the return signal value */
         const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
@@ -341,7 +358,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
 }
 
 /* A friendly function in cmi_event.c, not part of public interface */
-extern struct cmi_processtag **cmi_event_tag_loc(uint64_t handle);
+extern struct cmi_list_tag **cmi_event_tag_loc(uint64_t handle);
 
 /*
  * cmb_process_wait_event : Wait for an event to occur.
@@ -359,8 +376,8 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     cmb_assert_debug(pp->waitsfor.handle == 0ull);
 
     /* Add the current process to the list of processes waiting for the event */
-    struct cmi_processtag **loc = cmi_event_tag_loc(ev_handle);
-    cmi_processtag_list_add(loc, pp);
+    struct cmi_list_tag **loc = cmi_event_tag_loc(ev_handle);
+    cmi_list_add(loc, cmb_time(), 0u, pp);
 
     /* Yield to the scheduler and collect the return signal value */
     pp->waitsfor.type = CMI_WAITABLE_EVENT;
@@ -371,6 +388,35 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     pp->waitsfor.type = CMI_WAITABLE_NONE;
     pp->waitsfor.handle = 0ull;
     return ret;
+}
+
+/* Note: extern scope as an internal function, used by cmb_event.c */
+void cmi_process_wake_all(struct cmi_list_tag **ptloc, const int64_t signal)
+{
+    cmb_assert_debug(ptloc != NULL);
+
+    /* Unlink the tag chain */
+    struct cmi_list_tag *ptag = *ptloc;
+    *ptloc = NULL;
+
+    /* Process it, scheduling a wakeup call for each process */
+    while (ptag != NULL) {
+        struct cmb_process *pp = ptag->ptr;
+        cmb_assert_debug(pp != NULL);
+        const double time = cmb_time();
+        const int64_t priority = cmb_process_get_priority(pp);
+        (void)cmb_event_schedule(ptwuevt,
+                                 pp,
+                                 (void *)signal,
+                                 time,
+                                 priority);
+
+        struct cmi_list_tag *tmp = ptag->next;
+        cmi_mempool_put(&cmi_mempool_32b, ptag);
+        ptag = tmp;
+    }
+
+    cmb_assert_debug(*ptloc == NULL);
 }
 
 /*
@@ -385,13 +431,13 @@ void cmb_process_exit(void *retval)
     cmb_logger_info(stdout, "Exit with value %p", retval);
 
     if (pp->waiters_listhead != NULL) {
-        cmi_processtag_list_wake_all(&(pp->waiters_listhead), CMB_PROCESS_SUCCESS);
+        cmi_process_wake_all(&(pp->waiters_listhead), CMB_PROCESS_SUCCESS);
     }
 
     cmi_coroutine_exit(retval);
 }
 
-static void cmi_process_cease_and_desist(struct cmb_process *tgt)
+static void stop_waiting(struct cmb_process *tgt)
 {
     cmb_assert_debug(tgt != NULL);
 
@@ -407,12 +453,12 @@ static void cmi_process_cease_and_desist(struct cmb_process *tgt)
         cmb_event_cancel(tgt->waitsfor.handle);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_EVENT) {
-        struct cmi_processtag **loc = cmi_event_tag_loc(tgt->waitsfor.handle);
-        const bool found = cmi_processtag_list_remove(loc, tgt);
+        struct cmi_list_tag **loc = cmi_event_tag_loc(tgt->waitsfor.handle);
+        const bool found = cmi_list_remove(loc, tgt);
         cmb_assert_debug(found == true);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_PROCESS) {
-        const bool found = cmi_processtag_list_remove(&(tgt->waiters_listhead), tgt);
+        const bool found = cmi_list_remove(&(tgt->waiters_listhead), tgt);
         cmb_assert_debug(found == true);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_RESOURCE) {
@@ -436,7 +482,7 @@ static void phintevt(void *vp, void *arg)
     cmb_assert_debug((int64_t)arg != CMB_PROCESS_SUCCESS);
 
     struct cmb_process *tgt = (struct cmb_process *)vp;
-    cmi_process_cease_and_desist(tgt);
+    stop_waiting(tgt);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
     cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
@@ -460,6 +506,34 @@ void cmb_process_interrupt(struct cmb_process *pp,
     (void)cmb_event_schedule(phintevt, pp, (void *)sig, t, pri);
 }
 
+void cmi_process_drop_all(struct cmi_list_tag **rtloc)
+{
+    cmb_assert_debug(rtloc != NULL);
+
+    /* Unlink the tag chain */
+    struct cmi_list_tag *rtag = *rtloc;
+    *rtloc = NULL;
+
+    /* Get a pointer to the process this resource list belongs to */
+    const struct cmb_process *pp = cmi_container_of(rtloc,
+                                                    struct cmb_process,
+                                                    resources_listhead);
+    cmb_assert_debug(pp != NULL);
+
+    /* Process it, calling scram() for each resource */
+    while (rtag != NULL) {
+        struct cmi_holdable *hrp = rtag->ptr;
+        const uint64_t handle = rtag->uint;
+        (*(hrp->drop))(hrp, pp, handle);
+
+        struct cmi_list_tag *tmp = rtag->next;
+        cmi_mempool_put(&cmi_mempool_32b, rtag);
+        rtag = tmp;
+    }
+
+    cmb_assert_debug(*rtloc == NULL);
+}
+
 /*
  * pstopevt : The event handler that actually stops the process
  * coroutine after being scheduled by cmb_process_stop.
@@ -468,16 +542,16 @@ static void pstopevt(void *vp, void *arg) {
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *tgt = (struct cmb_process *)vp;
-    cmi_process_cease_and_desist(tgt);
+    stop_waiting(tgt);
 
     /* Release any resources held by this process */
     if (tgt->resources_listhead != NULL) {
-        cmi_resourcetag_list_drop_all(&(tgt->resources_listhead));
+        cmi_process_drop_all(&(tgt->resources_listhead));
     }
 
     /* Wake up any processes waiting for this process to finish */
     if (tgt->waiters_listhead != NULL) {
-        cmi_processtag_list_wake_all(&(tgt->waiters_listhead), CMB_PROCESS_STOPPED);
+        cmi_process_wake_all(&(tgt->waiters_listhead), CMB_PROCESS_STOPPED);
     }
 
     /* Stop the underlying coroutine */

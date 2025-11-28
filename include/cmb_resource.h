@@ -130,7 +130,7 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
  */
 static inline uint64_t cmb_resource_in_use(struct cmb_resource *rp)
 {
-    cmb_assert_debug(rsp != NULL);
+    cmb_assert_debug(rp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
 
     return (rp->holder != NULL) ? 1u : 0u;
@@ -144,7 +144,7 @@ static inline uint64_t cmb_resource_in_use(struct cmb_resource *rp)
  */
 static inline uint64_t cmb_resource_available(struct cmb_resource *rp)
 {
-    cmb_assert_debug(rsp != NULL);
+    cmb_assert_debug(rp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
 
     return (rp->holder == NULL) ? 1u : 0u;

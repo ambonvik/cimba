@@ -18,7 +18,8 @@
  * limitations under the License.
  */
 
-#include "cimba.h"
+#include "cmb_logger.h"
+#include "cmb_resource.h"
 
 #include "cmi_memutils.h"
 
@@ -178,7 +179,7 @@ static void resource_grab(struct cmb_resource *rp, struct cmb_process *pp)
 {
     rp->holder = pp;
     struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
-    cmi_resourcetag_list_add(&(pp->resources_listhead), hrp, 0u);
+    cmi_list_add(&(pp->resources_listhead), cmb_time(), 0u, hrp);
 }
 
 int64_t cmb_resource_acquire(struct cmb_resource *rp)
@@ -229,7 +230,7 @@ void cmb_resource_release(struct cmb_resource *rp) {
     struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
     struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_debug(pp != NULL);
-    cmi_resourcetag_list_remove(&(pp->resources_listhead), hrp);
+    cmi_list_remove(&(pp->resources_listhead), hrp);
 
     cmb_assert_debug(rp->holder == pp);
     rp->holder = NULL;
@@ -276,7 +277,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     }
     else if (myprio >= victim->priority) {
         /* Kick it out. No record_sample needed, remains occupied. */
-        cmi_resourcetag_list_remove(&(victim->resources_listhead), hrp);
+        cmi_list_remove(&(victim->resources_listhead), hrp);
         rp->holder = NULL;
         (void)cmb_event_schedule(prpwuevt,
                                 (void *)victim,

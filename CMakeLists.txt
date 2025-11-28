@@ -33,10 +33,8 @@ set(HEADERS
         src/cmi_holdable.h
         src/cmi_mempool.h
         src/cmi_memutils.h
-        src/cmi_processtag.h
         src/cmi_resourcebase.h
         src/cmi_resourceguard.h
-        src/cmi_resourcetag.h
         src/cmi_waitable.h
         src/cmi_holdable.h
         src/cmi_list.h
@@ -61,10 +59,8 @@ set(SOURCES
         src/cmi_hashheap.c
         src/cmi_holdable.c
         src/cmi_mempool.c
-        src/cmi_processtag.c
         src/cmi_resourcebase.c
         src/cmi_resourceguard.c
-        src/cmi_resourcetag.c
         src/cmi_random_exp_zig.inc
         src/cmi_random_nor_zig.inc
         src/arch/cmi_memutils_Win64.c

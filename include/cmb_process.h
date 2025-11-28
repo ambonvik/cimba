@@ -43,8 +43,7 @@
 #include "cmb_event.h"
 
 #include "cmi_coroutine.h"
-#include "cmi_processtag.h"
-#include "cmi_resourcetag.h"
+#include "cmi_list.h"
 #include "cmi_waitable.h"
 
 /**
@@ -98,12 +97,12 @@
  * this process, to be released if the process is stopped by someone else.
 */
 struct cmb_process {
-    struct cmi_coroutine cr;            /**< The parent coroutine */
-    char name[CMB_PROCESS_NAMEBUF_SZ];  /**< The process name string */
-    int64_t priority;                   /**< The current process priority */
+    struct cmi_coroutine cr;                /**< The parent coroutine */
+    char name[CMB_PROCESS_NAMEBUF_SZ];      /**< The process name string */
+    int64_t priority;                       /**< The current process priority */
     struct cmi_process_waitable waitsfor;   /**< What the process is waiting for, if anything */
-    struct cmi_processtag *waiters_listhead; /**< Other processes waiting for this process to finish */
-    struct cmi_resourcetag *resources_listhead; /**< Any resources held by this process */
+    struct cmi_list_tag *waiters_listhead;  /**< Other processes waiting for this process to finish */
+    struct cmi_list_tag *resources_listhead; /**< Any resources held by this process */
 };
 
 /**
