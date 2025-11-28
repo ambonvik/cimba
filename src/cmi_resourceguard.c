@@ -99,7 +99,7 @@ void cmi_resourceguard_terminate(struct cmi_resourceguard *rgp)
  * Cannot be called from the main process, will fire an assert if attempted.
  */
 int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
-                               cmb_resourceguard_demand_func *demand,
+                               cmi_resourceguard_demand_func *demand,
                                void *ctx)
 {
     cmb_assert_release(rgp != NULL);
@@ -189,7 +189,7 @@ bool cmi_resourceguard_signal(struct cmi_resourceguard *rgp)
     /* Decode first entry in the hashheap */
     void **item = cmi_hashheap_peek_item(hp);
     struct cmb_process *pp = (struct cmb_process *)(item[0]);
-    cmb_resourceguard_demand_func *demand = (cmb_resourceguard_demand_func *)(item[1]);
+    cmi_resourceguard_demand_func *demand = (cmi_resourceguard_demand_func *)(item[1]);
     const void *ctx = item[2];
 
     /* Is the demand met? */

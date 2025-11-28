@@ -34,9 +34,9 @@ struct cmi_resourceguard {
 };
 
 /*
- * typedef cmb_resourceguard_demand_func : function prototype for a resource demand
+ * typedef cmi_resourceguard_demand_func : function prototype for a resource demand
  */
-typedef bool (cmb_resourceguard_demand_func)(const struct cmi_resourcebase *res,
+typedef bool (cmi_resourceguard_demand_func)(const struct cmi_resourcebase *res,
                                              const struct cmb_process *pp,
                                              const void *ctx);
 
@@ -62,7 +62,7 @@ extern void cmi_resourceguard_terminate(struct cmi_resourceguard *rgp);
  * Cannot be called from the main process.
  */
 extern int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
-                                      cmb_resourceguard_demand_func *demand,
+                                      cmi_resourceguard_demand_func *demand,
                                       void *ctx);
 
 /*
