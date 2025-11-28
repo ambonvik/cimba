@@ -384,7 +384,7 @@ static uint64_t update_record(struct cmb_resourcestore *store,
         /* Not held already, create a new entry and cross-reference */
         caller_handle = add_new_holder(store_holders, caller, amount);
         struct cmi_holdable *hrp = (struct cmi_holdable *)store;
-        cmi_list_add(caller_rtloc, cmb_time(), caller_handle, hrp);
+        cmi_list_add(caller_rtloc, 0.0, caller_handle, hrp);
     }
 
     return caller_handle;

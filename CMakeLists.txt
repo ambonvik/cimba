@@ -3,6 +3,7 @@ project(cimba LANGUAGES C ASM)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Wall -Wextra")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
+set(CMAKE_C_FLAGS_ULTIMATE "${CMAKE_C_FLAGS_ULTIMATE} -O3 -DNASSERT")
 enable_language(ASM_NASM)
 
 include_directories(include src)

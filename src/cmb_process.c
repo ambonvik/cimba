@@ -345,7 +345,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
         /* Nope, register it both here and there */
         pp->waitsfor.type = CMI_WAITABLE_PROCESS;
         pp->waitsfor.ptr = awaited;
-        cmi_list_add(&(awaited->waiters_listhead), cmb_time(), 0u, pp);
+        cmi_list_add(&(awaited->waiters_listhead), 0.0, 0u, pp);
 
         /* Yield to the scheduler and collect the return signal value */
         const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
@@ -377,7 +377,7 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
 
     /* Add the current process to the list of processes waiting for the event */
     struct cmi_list_tag **loc = cmi_event_tag_loc(ev_handle);
-    cmi_list_add(loc, cmb_time(), 0u, pp);
+    cmi_list_add(loc, 0.0, 0u, pp);
 
     /* Yield to the scheduler and collect the return signal value */
     pp->waitsfor.type = CMI_WAITABLE_EVENT;
