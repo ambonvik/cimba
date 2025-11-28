@@ -19,16 +19,16 @@
 #include "cmb_logger.h"
 #include "cmb_process.h"
 #include "cmb_resource.h"
-#include "cmb_mempool.h"
 
 #include "cmi_config.h"
+#include "cmi_mempool.h"
 #include "cmi_memutils.h"
 #include "cmi_resourcetag.h"
 
 /*
  * process_tag_pool : Memory pool of resource tags
  */
-static CMB_THREAD_LOCAL struct cmb_mempool *resource_tag_pool = NULL;
+static CMB_THREAD_LOCAL struct cmi_mempool *resource_tag_pool = NULL;
 
 /*
  * cmi_resourcetag_list_add : Add a resource to the given list location.
@@ -42,14 +42,14 @@ void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
 
     /* Lazy initalization of the memory pool for process tags */
     if (resource_tag_pool == NULL) {
-        resource_tag_pool = cmb_mempool_create();
-        cmb_mempool_initialize(resource_tag_pool,
+        resource_tag_pool = cmi_mempool_create();
+        cmi_mempool_initialize(resource_tag_pool,
                               64u,
                               sizeof(struct cmi_resourcetag));
     }
 
     /* Get one and add it to the head of the list */
-    struct cmi_resourcetag *rtag = cmb_mempool_get(resource_tag_pool);
+    struct cmi_resourcetag *rtag = cmi_mempool_get(resource_tag_pool);
     rtag->next = *rtloc;
     rtag->res = hrp;
     rtag->handle = handle;
@@ -71,7 +71,7 @@ bool cmi_resourcetag_list_remove(struct cmi_resourcetag **rtloc,
         struct cmi_resourcetag *rtag = *rtpp;
         if (rtag->res == hrp) {
             *rtpp = rtag->next;
-            cmb_mempool_put(resource_tag_pool, rtag);
+            cmi_mempool_put(resource_tag_pool, rtag);
             return true;
         }
         else {
@@ -132,7 +132,7 @@ void cmi_resourcetag_list_drop_all(struct cmi_resourcetag **rtloc)
         (*(hrp->drop))(hrp, pp, handle);
 
         struct cmi_resourcetag *tmp = rtag->next;
-        cmb_mempool_put(resource_tag_pool, rtag);
+        cmi_mempool_put(resource_tag_pool, rtag);
         rtag = tmp;
     }
 

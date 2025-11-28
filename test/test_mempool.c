@@ -17,7 +17,7 @@
  */
 #include <stdio.h>
 
-#include "cmb_mempool.h"
+#include "cmi_mempool.h"
 
 #include "test.h"
 
@@ -27,46 +27,46 @@ int main(void)
     printf("Testing memory pool\n");
     size_t obj_sz = 32u;
     uint64_t obj_num = 16u;
-    printf("cmb_mempool_create: %llu objects size %llu\n", obj_num, obj_sz);
-    struct cmb_mempool *mp = cmb_mempool_create();
-    cmb_mempool_initialize(mp, obj_num, obj_sz);
+    printf("cmi_mempool_create: %llu objects size %llu\n", obj_num, obj_sz);
+    struct cmi_mempool *mp = cmi_mempool_create();
+    cmi_mempool_initialize(mp, obj_num, obj_sz);
 
-    printf("cmb_mempool_get: ... ");
-    void *vp = cmb_mempool_get(mp);
+    printf("cmi_mempool_get: ... ");
+    void *vp = cmi_mempool_get(mp);
     printf("got %p\n", vp);
 
-    printf("cmb_mempool_put: ... ");
-    cmb_mempool_put(mp, vp);
+    printf("cmi_mempool_put: ... ");
+    cmi_mempool_put(mp, vp);
     printf("done\n");
 
-    printf("cmb_mempool_destroy: Deleting the pool ... ");
-    cmb_mempool_destroy(mp);
+    printf("cmi_mempool_destroy: Deleting the pool ... ");
+    cmi_mempool_destroy(mp);
     printf("done\n");
 
     cmi_test_print_line("-");
     obj_sz = 64u;
     obj_num = 57u;
-    printf("cmb_mempool_create: %llu objects size %llu\n", obj_num, obj_sz);
-    mp = cmb_mempool_create();
-    cmb_mempool_initialize(mp, obj_num, obj_sz);
+    printf("cmi_mempool_create: %llu objects size %llu\n", obj_num, obj_sz);
+    mp = cmi_mempool_create();
+    cmi_mempool_initialize(mp, obj_num, obj_sz);
 
-    printf("cmb_mempool_get: pulling out 101 of them, forcing a pool expand ... ");
-    void *vp_first = cmb_mempool_get(mp);
+    printf("cmi_mempool_get: pulling out 101 of them, forcing a pool expand ... ");
+    void *vp_first = cmi_mempool_get(mp);
     for (unsigned ui = 0; ui < 100; ui++) {
-        vp = cmb_mempool_get(mp);
+        vp = cmi_mempool_get(mp);
     }
     printf("done\n");
     printf("First %p\n", vp_first);
     printf("Last %p\n", vp);
 
-    printf("cmb_mempool_put: returning the first and last ... ");
-    cmb_mempool_put(mp, vp_first);
-    cmb_mempool_put(mp, vp);
+    printf("cmi_mempool_put: returning the first and last ... ");
+    cmi_mempool_put(mp, vp_first);
+    cmi_mempool_put(mp, vp);
     printf("done\n");
 
-    printf("cmb_mempool_destroy: Deleting the pool ... ");
-    cmb_mempool_terminate(mp);
-    cmb_mempool_destroy(mp);
+    printf("cmi_mempool_destroy: Deleting the pool ... ");
+    cmi_mempool_terminate(mp);
+    cmi_mempool_destroy(mp);
     printf("done\n");
 
 

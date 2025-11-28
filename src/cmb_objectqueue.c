@@ -33,7 +33,7 @@
 #include "cmb_objectqueue.h"
 #include "cmb_process.h"
 
-#include "cmb_mempool.h"
+#include "cmi_mempool.h"
 #include "cmi_memutils.h"
 
 /*
@@ -48,11 +48,8 @@ struct queue_tag {
 /*
  * queue_tag_pool : Memory pool of resource tags
  */
-static CMB_THREAD_LOCAL struct cmb_mempool *queue_tag_pool = NULL;
+static CMB_THREAD_LOCAL struct cmi_mempool *queue_tag_pool = NULL;
 
-/*
- * cmb_objectqueue_create : Allocate memory for a queue object.
- */
 struct cmb_objectqueue *cmb_objectqueue_create(void)
 {
     struct cmb_objectqueue *oqp = cmi_malloc(sizeof *oqp);
@@ -62,9 +59,6 @@ struct cmb_objectqueue *cmb_objectqueue_create(void)
     return oqp;
 }
 
-/*
- * cmb_objectqueue_initialize : Make an allocated queue object ready for use.
- */
 void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
                                 const char *name,
                                 const uint64_t capacity)
@@ -89,9 +83,6 @@ void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
     cmb_dataset_initialize(&(oqp->wait_times));
 }
 
-/*
- * cmb_objectqueue_terminate : Un-initializes a queue object.
- */
 void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
@@ -99,7 +90,7 @@ void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
     while (oqp->queue_head != NULL) {
         struct queue_tag *tag = oqp->queue_head;
         oqp->queue_head = tag->next;
-        cmb_mempool_put(queue_tag_pool, tag);
+        cmi_mempool_put(queue_tag_pool, tag);
     }
 
     oqp->length = 0u;
@@ -114,9 +105,6 @@ void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
     cmi_resourcebase_terminate(&(oqp->core));
 }
 
-/*
- * cmb_objectqueue_destroy : Deallocates memory for a queue object.
- */
 void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
@@ -232,19 +220,6 @@ void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp) {
     cmb_dataset_print_histogram(&(oqp->wait_times), fp, nbin, 0.0, (double)(oqp->capacity + 1u));
 }
 
-/*
- * cmb_objectqueue_get : Request and if necessary wait for an amount of the
- * queue resource.
- *
- * Note that the amount argument is a pointer to where the amount is stored.
- * The return value CMB_PROCESS_SUCCESS (0) indicates that all went well and
- * the value *amount equals the requested amount.
- *
- * If the call was interrupted for some reason, it will be partially fulfilled,
- * and *amount will be the quantity obtained before interrupted. The return
- * value is the interrupt signal received, some value other than
- * CMB_PROCESS_SUCCESS.
- */
 int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
 {
     cmb_assert_release(oqp != NULL);
@@ -277,7 +252,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
             cmb_logger_info(stdout, "Success, got %p", *objectloc);
             tag->next = NULL;
             tag->object = NULL;
-            cmb_mempool_put(queue_tag_pool, tag);
+            cmi_mempool_put(queue_tag_pool, tag);
 
             cmi_resourceguard_signal(&(oqp->rear_guard));
 
@@ -305,18 +280,6 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
     }
 }
 
-/*
- * cmb_objectqueue_put : Put an object into the queue, if necessary waiting for free
- * space.
- *
- * Note that the object argument is a pointer to where the object is stored.
- * The return value CMB_PROCESS_SUCCESS (0) indicates that all went well. The
- * _put() call doe snot change the value at this location.
- *
- * If the call was interrupted for some reason, the return value is the
- * interrupt signal received, some value other than CMB_PROCESS_SUCCESS. The
- * object pointer will still be unchanged.
- */
 int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
 {
     cmb_assert_release(oqp != NULL);
@@ -324,8 +287,8 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
 
     /* Lazy initalization of the memory pool for process tags */
     if (queue_tag_pool == NULL) {
-        queue_tag_pool = cmb_mempool_create();
-        cmb_mempool_initialize(queue_tag_pool,
+        queue_tag_pool = cmi_mempool_create();
+        cmi_mempool_initialize(queue_tag_pool,
                               64u,
                               sizeof(struct queue_tag));
     }
@@ -339,7 +302,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
         cmb_logger_info(stdout, "Puts object %p into %s", *objectloc, rbp->name);
         if (oqp->length < oqp->capacity) {
             /* There is space */
-            struct queue_tag *tag = cmb_mempool_get(queue_tag_pool);
+            struct queue_tag *tag = cmi_mempool_get(queue_tag_pool);
             tag->object = *objectloc;
             tag->timestamp = cmb_time();
             tag->next = NULL;

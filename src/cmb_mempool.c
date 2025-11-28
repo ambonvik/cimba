@@ -1,5 +1,5 @@
 /*
- * cmb_mempool.c - internal memory pool for generic small objects.
+ * cmi_mempool.c - internal memory pool for generic small objects.
  *
  * The memory pool is handled as a stack of objects, popping from and pushing
  * to the front end of the pool. Memory is allocated in larger contiguous
@@ -24,16 +24,15 @@
 
 #include <stdio.h>
 
-#include "cmb_mempool.h"
-
+#include "cmi_mempool.h"
 #include "cmi_memutils.h"
 
 /*
- * cmb_mempool_create : Allocate memory for a (zeroed) memory pool object.
+ * cmi_mempool_create : Allocate memory for a (zeroed) memory pool object.
  */
-struct cmb_mempool *cmb_mempool_create(void)
+struct cmi_mempool *cmi_mempool_create(void)
 {
-    struct cmb_mempool *mp = cmi_malloc(sizeof(*mp));
+    struct cmi_mempool *mp = cmi_malloc(sizeof(*mp));
     cmi_memset(mp, 0u, sizeof(*mp));
     mp->cookie = CMI_UNINITIALIZED;
 
@@ -43,7 +42,7 @@ struct cmb_mempool *cmb_mempool_create(void)
 #define CHUNK_LIST_SIZE 64u
 
 /*
- * cmb_mempool_initialize : Set up a memory pool for objects of size obj_sz bytes.
+ * cmi_mempool_initialize : Set up a memory pool for objects of size obj_sz bytes.
  * chunk_list keeps track of the allocated memory to be able to free it later.
  * The chunk_list resizes as needed, starting from CHUNK_LIST_SIZE defined above.
  * next_obj points to the first available object in the pool, NULL if empty.
@@ -58,7 +57,7 @@ struct cmb_mempool *cmb_mempool_create(void)
  * We'll allocate actual object memory on first call to cmi_mempool_get, hence
  * leaving the object list empty for now.
  */
-void cmb_mempool_initialize(struct cmb_mempool *mp,
+void cmi_mempool_initialize(struct cmi_mempool *mp,
                             const uint64_t obj_num,
                             const size_t obj_sz)
 {
@@ -90,11 +89,11 @@ void cmb_mempool_initialize(struct cmb_mempool *mp,
 }
 
 /*
- * cmb_mempool_terminate : Free all memory allocated to the memory pool except
- * the cmb_mempool object itself. All allocated objects from the pool will
+ * cmi_mempool_terminate : Free all memory allocated to the memory pool except
+ * the cmi_mempool object itself. All allocated objects from the pool will
  * become invalid.
  */
-void cmb_mempool_terminate(struct cmb_mempool *mp)
+void cmi_mempool_terminate(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp != NULL);
 
@@ -112,24 +111,24 @@ void cmb_mempool_terminate(struct cmb_mempool *mp)
 }
 
 /*
- * cmb_mempool_destroy : Free all memory that was allocated to the pool,
+ * cmi_mempool_destroy : Free all memory that was allocated to the pool,
  * including the mempool object itself. All application pointers to objects
  * previously allocated from this pool will become invalid.
  */
-void cmb_mempool_destroy(struct cmb_mempool *mp)
+void cmi_mempool_destroy(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp != NULL);
 
-    cmb_mempool_terminate(mp);
+    cmi_mempool_terminate(mp);
     cmi_free(mp);
 }
 
 /*
- * cmb_mempool_expand : Increase the memory pool size by the same amount as
+ * cmi_mempool_expand : Increase the memory pool size by the same amount as
  * originally allocated, obj_sz * obj_num. The allocated memory is aligned to
  * the system memory page size.
  */
-void cmb_mempool_expand(struct cmb_mempool *mp)
+void cmi_mempool_expand(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp->next_obj == NULL);
     cmb_assert_release(mp->cookie == CMI_INITIALIZED);
