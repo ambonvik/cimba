@@ -44,8 +44,8 @@ void cmi_resourcetag_list_add(struct cmi_resourcetag **rtloc,
     if (resource_tag_pool == NULL) {
         resource_tag_pool = cmi_mempool_create();
         cmi_mempool_initialize(resource_tag_pool,
-                              64u,
-                              sizeof(struct cmi_resourcetag));
+                               sizeof(struct cmi_resourcetag),
+                               64u);
     }
 
     /* Get one and add it to the head of the list */

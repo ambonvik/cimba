@@ -24,15 +24,35 @@
 int main(void)
 {
     cmi_test_print_line("=");
-    printf("Testing memory pool\n");
+    printf("Testing built-in memory pools\n");
+
+    printf("cmi_mempool_get(&cmi_mempool_32b): ... ");
+    void *vp = cmi_mempool_get(&cmi_mempool_32b);
+    printf("got %p\n", vp);
+
+    printf("cmi_mempool_put(&cmi_mempool_32b): ... ");
+    cmi_mempool_put(&cmi_mempool_32b, vp);
+    printf("done\n");
+
+    printf("cmi_mempool_get(&cmi_mempool_64b): ... ");
+    vp = cmi_mempool_get(&cmi_mempool_64b);
+    printf("got %p\n", vp);
+
+    printf("cmi_mempool_put(&cmi_mempool_64b): ... ");
+    cmi_mempool_put(&cmi_mempool_64b, vp);
+    printf("done\n");
+
+    cmi_test_print_line("-");
+
+    printf("Testing created memory pools\n");
     size_t obj_sz = 32u;
     uint64_t obj_num = 16u;
     printf("cmi_mempool_create: %llu objects size %llu\n", obj_num, obj_sz);
     struct cmi_mempool *mp = cmi_mempool_create();
-    cmi_mempool_initialize(mp, obj_num, obj_sz);
+    cmi_mempool_initialize(mp, obj_sz, obj_num);
 
     printf("cmi_mempool_get: ... ");
-    void *vp = cmi_mempool_get(mp);
+    vp = cmi_mempool_get(mp);
     printf("got %p\n", vp);
 
     printf("cmi_mempool_put: ... ");
@@ -43,12 +63,11 @@ int main(void)
     cmi_mempool_destroy(mp);
     printf("done\n");
 
-    cmi_test_print_line("-");
     obj_sz = 64u;
     obj_num = 57u;
     printf("cmi_mempool_create: %llu objects size %llu\n", obj_num, obj_sz);
     mp = cmi_mempool_create();
-    cmi_mempool_initialize(mp, obj_num, obj_sz);
+    cmi_mempool_initialize(mp, obj_sz, obj_num);
 
     printf("cmi_mempool_get: pulling out 101 of them, forcing a pool expand ... ");
     void *vp_first = cmi_mempool_get(mp);
@@ -68,7 +87,6 @@ int main(void)
     cmi_mempool_terminate(mp);
     cmi_mempool_destroy(mp);
     printf("done\n");
-
 
     cmi_test_print_line("=");
 }

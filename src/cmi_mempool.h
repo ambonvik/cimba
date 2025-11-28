@@ -33,9 +33,13 @@
 
 #include <stdint.h>
 
-#include "../include/cmb_assert.h"
+#include "cmb_assert.h"
 
+#include "cmi_config.h"
 #include "cmi_memutils.h"
+
+/* Additional cookie value for the predefined memory pools */
+#define CMI_MAGIC_COOKIE 0x123456789abcdef0u
 
 /*
  * A memory pool for reuseable objects of a particular size.
@@ -50,6 +54,10 @@ struct cmi_mempool {
     void **chunk_list;
     void *next_obj;
 };
+
+/* Pre-defined memory pools for 32- and 64-byte objects  */
+extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_32b;
+extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_64b;
 
 /*
  * Allocate memory for a cmi_mempool struct, not yet for the objects to
@@ -69,8 +77,8 @@ extern struct cmi_mempool *cmi_mempool_create(void);
  * absolute.
  */
 extern void cmi_mempool_initialize(struct cmi_mempool *mp,
-                                   uint64_t obj_num,
-                                   size_t obj_sz);
+                                   size_t obj_sz,
+                                   uint64_t obj_num);
 
 /*
  * Free all memory allocated to the memory pool except the `cmi_mempool`
@@ -97,10 +105,12 @@ extern void cmi_mempool_expand(struct cmi_mempool *mp);
 static inline void *cmi_mempool_get(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp != NULL);
-    cmb_assert_release(mp->cookie == CMI_INITIALIZED);
+    /* Allow for first call to the predefined memory pools to be initialized */
+    cmb_assert_release((mp->cookie == CMI_INITIALIZED)
+                       || (mp->cookie == CMI_MAGIC_COOKIE));
 
     if (mp->next_obj == NULL) {
-        /* Pool empty, refill it */
+        /* Pool empty, refill it, initialize first if needed */
         cmi_mempool_expand(mp);
     }
 

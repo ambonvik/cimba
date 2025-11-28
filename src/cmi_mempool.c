@@ -25,7 +25,16 @@
 #include <stdio.h>
 
 #include "cmi_mempool.h"
-#include "cmi_memutils.h"
+
+/* Initial size of the memory chunk list as such */
+#define CHUNK_LIST_SIZE 64u
+
+/*
+ * Two conveniently predefined memory pools for 32- and 64-bit objects,
+ * lazy initialization when needed, only pre-store arguments to initialize call.
+ */
+CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_32b = { CMI_MAGIC_COOKIE, 32u, 128u };
+CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_64b = { CMI_MAGIC_COOKIE, 64u, 64u };
 
 /*
  * cmi_mempool_create : Allocate memory for a (zeroed) memory pool object.
@@ -38,8 +47,6 @@ struct cmi_mempool *cmi_mempool_create(void)
 
     return mp;
 }
-
-#define CHUNK_LIST_SIZE 64u
 
 /*
  * cmi_mempool_initialize : Set up a memory pool for objects of size obj_sz bytes.
@@ -58,8 +65,8 @@ struct cmi_mempool *cmi_mempool_create(void)
  * leaving the object list empty for now.
  */
 void cmi_mempool_initialize(struct cmi_mempool *mp,
-                            const uint64_t obj_num,
-                            const size_t obj_sz)
+                            const size_t obj_sz,
+                            const uint64_t obj_num)
 {
     cmb_assert_release((obj_sz % 8u) == 0);
     cmb_assert_release(obj_num > 0u);
@@ -131,7 +138,12 @@ void cmi_mempool_destroy(struct cmi_mempool *mp)
 void cmi_mempool_expand(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp->next_obj == NULL);
-    cmb_assert_release(mp->cookie == CMI_INITIALIZED);
+    cmb_assert_release((mp->cookie == CMI_INITIALIZED)
+                       || (mp->cookie == CMI_MAGIC_COOKIE));
+
+    if (mp->cookie == CMI_MAGIC_COOKIE) {
+        cmi_mempool_initialize(mp, mp->obj_sz, mp->incr_num);
+    }
 
     /* Expand the area list if necessary */
     if (++mp->chunk_list_cnt == mp->chunk_list_len) {

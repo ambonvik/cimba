@@ -289,8 +289,8 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
     if (queue_tag_pool == NULL) {
         queue_tag_pool = cmi_mempool_create();
         cmi_mempool_initialize(queue_tag_pool,
-                              64u,
-                              sizeof(struct queue_tag));
+                               sizeof(struct queue_tag),
+                               64u);
     }
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
