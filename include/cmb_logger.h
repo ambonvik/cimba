@@ -12,8 +12,13 @@
  * flags, with the top four bits reserved for Cimba use, leaving 28 bits for
  * user application.
  *
- *  Format of a logging line:
- *  `[trial_index] time process_name function (line) : [label] formatted_message`
+ * Will print the trial number as the first field if part of a multi-trial
+ * experiment. Will print the random number seed for message levels warning and
+ * above to enable reproducing the suspect condition in a debugger or with
+ * additional logging turned on.
+ *
+ * Format of a logging line:
+ *  `[trial_index] [seed] time process_name function (line) : [label] formatted_message`
  *
  * The initial logging bitmask is `0xFFFFFFFF`, printing everything.
  */

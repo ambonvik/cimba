@@ -25,6 +25,7 @@
 #include "cmb_event.h"
 #include "cmb_process.h"
 #include "cmb_logger.h"
+#include "cmb_random.h"
 
 #include "cmi_config.h"
 
@@ -94,12 +95,18 @@ void cmb_logger_flags_off(uint32_t flags)
     cmi_logger_mask &= ~flags;
 }
 
-
 /*
  * cmb_vfprintf : Core logger func, fprintf-style with flags for matching with
- * the mask. Produces a single line of logging output.
+ * the mask. Produces a single line of logging output. Will print the trial
+ * number as the first field if part of a multi-trial experiment. Will print the
+ * random number seed for message levels warning and above to enable reproducing
+ * the suspect condition in a debugger or with additional logging turned on.
+ *
+ * Uses standard assert calls to avoid infinite recursion, since our custom
+ * cmb_assert_debug and cmb_assert_release will end up here if failed.
+ *
  * Overall output format:
- *      [trial_index] time process_name function (line) : [label] formatted_message
+ * [trial_index] [seed] time process_name function (line) : [label] formatted_message
  *
  * Returns the number of characters written, in case anyone cares.
  */
@@ -115,10 +122,18 @@ int cmb_vfprintf(FILE *fp,
         pthread_mutex_lock(&cmi_logger_mutex);
         int r = 0;
         if (cmi_logger_trial_idx != CMI_NO_TRIAL_IDX) {
-            r += fprintf(fp, "%llu\t", cmi_logger_trial_idx);
+            r = fprintf(fp, "%llu\t", cmi_logger_trial_idx);
+            assert(r > 0);
+            ret += r;
         }
 
-        r += fprintf(fp, "%s\t", timeformatter(cmb_time()));
+        if (flags >= CMB_LOGGER_WARNING) {
+            r = fprintf(fp, "0x%llx\t", cmb_random_get_curseed());
+            assert(r > 0);
+            ret += r;
+        }
+
+        r = fprintf(fp, "%s\t", timeformatter(cmb_time()));
         assert(r > 0);
         ret += r;
 

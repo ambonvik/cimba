@@ -64,8 +64,8 @@ static const char *myformatter(const double t)
 
     const unsigned r = snprintf(mybuf,
                                MYBUFLEN,
-                               "%02d %02d:%02d:%06.3f",
-                               days, hours, minutes, seconds);
+                               "%02d-%02d:%02d:%06.3f",
+                               days + 1u, hours, minutes, seconds);
     assert((r > 0) && (r < MYBUFLEN));
 
     return mybuf;
