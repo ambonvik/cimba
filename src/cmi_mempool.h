@@ -55,7 +55,8 @@ struct cmi_mempool {
     void *next_obj;
 };
 
-/* Pre-defined memory pools for 32- and 64-byte objects  */
+/* Pre-defined memory pools for generig 16-, 32-, and 64-byte objects  */
+extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_16b;
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_32b;
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_64b;
 
@@ -133,5 +134,11 @@ static inline void cmi_mempool_put(struct cmi_mempool *mp, void *op)
     *(void **)op = mp->next_obj;
     mp->next_obj = op;
 }
+
+/*
+ * Deallocate any allocated memory in the thread local pools.
+ * Call when exiting a pthread.
+ */
+extern void cmi_mempool_cleanup(void *arg);
 
 #endif /* CIMBA_CMI_MEMPOOL_H */

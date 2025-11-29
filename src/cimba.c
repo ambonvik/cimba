@@ -28,6 +28,7 @@
 
 #include "cimba.h"
 
+#include "cmi_mempool.h"
 #include "cmi_memutils.h"
 
 /* Only used from here, no header file needed */
@@ -58,9 +59,14 @@ static void *worker_thread_func(void *arg)
 {
     cmb_unused(arg);
 
+    /* Make sure we free any thread local allocations before we exit */
+    pthread_cleanup_push(cmi_mempool_cleanup, NULL);
+
     while (true) {
         /* stdatomic.h broken on Windows, using gcc/clang intrinsic instead for now */
-        const uint64_t idx = __atomic_fetch_add(&cmg_next_trial_idx, 1, __ATOMIC_SEQ_CST);
+        const uint64_t idx = __atomic_fetch_add(&cmg_next_trial_idx,
+                                                1,
+                                                __ATOMIC_SEQ_CST);
         if (idx >= cmg_total_trials) {
             break;
         }
@@ -79,6 +85,9 @@ static void *worker_thread_func(void *arg)
             (*trial_func)(trial);
         }
     }
+
+    /* Made it this far, execute the cleanup function before exiting thread */
+    pthread_cleanup_pop(1);
 
     return NULL;
 }
@@ -124,6 +133,3 @@ void cimba_run_experiment(void *your_experiment_array,
 
     cmi_free(threads);
 }
-
-
-

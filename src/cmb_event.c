@@ -196,18 +196,18 @@ int64_t cmb_event_priority(const uint64_t handle)
  * item, used as the head of a list of processes waiting for this event.
  * Not part of the public API for the cmb_event module, used by cmb_process.c
  */
-struct cmi_list_tag **cmi_event_tag_loc(const uint64_t handle)
+struct cmi_list_tag16 **cmi_event_tag_loc(const uint64_t handle)
 {
     cmb_assert_release(event_queue != NULL);
 
     void **tmp = cmi_hashheap_get_item(event_queue, handle);
     cmb_assert_debug(tmp != NULL);
 
-    return (struct cmi_list_tag **)&(tmp[3]);
+    return (struct cmi_list_tag16 **)&(tmp[3]);
 }
 
 /* Friendly function in cmb_process.c, not part of public API */
-extern void cmi_process_wake_all(struct cmi_list_tag **ptloc, int64_t signal);
+extern void cmi_process_wake_all(struct cmi_list_tag32 **ptloc, int64_t signal);
 
 /*
  * cmb_event_execute_next : Remove and execute the next event, update clock.
@@ -230,7 +230,7 @@ bool cmb_event_execute_next(void)
     void *object = tmp[2];
     void **wait_loc = &(tmp[3]);
     if (*wait_loc != NULL) {
-        cmi_process_wake_all((struct cmi_list_tag **)wait_loc,
+        cmi_process_wake_all((struct cmi_list_tag32 **)wait_loc,
                              CMB_PROCESS_SUCCESS);
     }
 
@@ -270,7 +270,7 @@ void cmb_event_cancel(const uint64_t handle)
     cmb_assert_debug(tmp != NULL);
     void **wait_loc = &(tmp[3]);
     if (*wait_loc != NULL) {
-        cmi_process_wake_all((struct cmi_list_tag **)wait_loc,
+        cmi_process_wake_all((struct cmi_list_tag32 **)wait_loc,
                              CMB_PROCESS_CANCELLED);
     }
 

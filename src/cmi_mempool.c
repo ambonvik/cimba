@@ -30,9 +30,10 @@
 #define CHUNK_LIST_SIZE 64u
 
 /*
- * Two conveniently predefined memory pools for 32- and 64-bit objects,
+ * Conveniently predefined memory pools for 16-, 32-, and 64-bit objects,
  * lazy initialization when needed, only pre-store arguments to initialize call.
  */
+CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_16b = { CMI_MAGIC_COOKIE, 16u, 256u };
 CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_32b = { CMI_MAGIC_COOKIE, 32u, 128u };
 CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_64b = { CMI_MAGIC_COOKIE, 64u, 64u };
 
@@ -169,4 +170,24 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
     *vp = NULL;
 
     cmb_assert_debug(mp->next_obj != NULL);
+}
+
+/*
+ * cmi_mempool_clanup : Function to deallocate any allocated memory in the
+ * thread local pools. Call when exiting a pthread.
+ */
+void cmi_mempool_cleanup(void *arg)
+{
+    cmb_unused(arg);
+
+    if (cmi_mempool_16b.cookie == CMI_INITIALIZED) {
+        cmi_mempool_terminate(&cmi_mempool_16b);
+    }
+    if (cmi_mempool_32b.cookie == CMI_INITIALIZED) {
+        cmi_mempool_terminate(&cmi_mempool_32b);
+    }
+    if (cmi_mempool_64b.cookie == CMI_INITIALIZED) {
+        cmi_mempool_terminate(&cmi_mempool_64b);
+    }
+
 }

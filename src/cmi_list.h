@@ -1,6 +1,7 @@
 /*
- * cmb_list.c - a generic singly linked list of 32-byte objects, inlined for
- *              efficiency and unified across multiple use cases for code size.
+ * cmb_list.c - a generic singly linked list of 16- or 32-byte objects. Using
+ *              two different memory pools, need to distinguish between these
+ *              cases, hence the apparent code duplication below.
  *              Only basic add (push) and remove methods here, others need to
  *              be implemented at point of usage from exposed struct content.
  *
@@ -27,14 +28,60 @@
 
 #include "cmi_mempool.h"
 
-struct cmi_list_tag {
-    struct cmi_list_tag *next;
+/* 16-byte version, just the linked list of pointers to something */
+struct cmi_list_tag16 {
+    struct cmi_list_tag16 *next;
+    void *ptr;
+};
+
+static inline void cmi_list_add16(struct cmi_list_tag16 **lloc, void *payload)
+{
+    cmb_assert_debug(lloc != NULL);
+    cmb_assert_debug(payload != NULL);
+
+    struct cmi_list_tag16 *ltag = NULL;
+    cmb_assert_debug(sizeof(*ltag) == 16u);
+    ltag = cmi_mempool_get(&cmi_mempool_16b);
+    cmb_assert_debug(ltag != NULL);
+
+    ltag->next = *lloc;
+    ltag->ptr = payload;
+
+    *lloc = ltag;
+}
+
+static inline bool cmi_list_remove16(struct cmi_list_tag16 **lloc,
+                                     const void *target)
+{
+    cmb_assert_debug(lloc != NULL);
+    cmb_assert_debug(target != NULL);
+
+    struct cmi_list_tag16 **ltpp = lloc;
+    while (*ltpp != NULL) {
+        struct cmi_list_tag16 *ltag = *ltpp;
+        if (ltag->ptr == target) {
+            *ltpp = ltag->next;
+            cmi_mempool_put(&cmi_mempool_16b, ltag);
+
+            return true;
+        }
+        else {
+            ltpp = &(ltag->next);
+        }
+    }
+
+    return false;
+}
+
+/* 32-byte version, adding two 64-bit fields for object metadata */
+struct cmi_list_tag32 {
+    struct cmi_list_tag32 *next;
     double dbl;
     uint64_t uint;
     void *ptr;
 };
 
-static inline void cmi_list_add(struct cmi_list_tag **lloc,
+static inline void cmi_list_add32(struct cmi_list_tag32 **lloc,
                                 const double dstamp,
                                 const uint64_t ustamp,
                                 void *payload)
@@ -42,7 +89,7 @@ static inline void cmi_list_add(struct cmi_list_tag **lloc,
     cmb_assert_debug(lloc != NULL);
     cmb_assert_debug(payload != NULL);
 
-    struct cmi_list_tag *ltag = NULL;
+    struct cmi_list_tag32 *ltag = NULL;
     cmb_assert_debug(sizeof(*ltag) == 32u);
     ltag = cmi_mempool_get(&cmi_mempool_32b);
     cmb_assert_debug(ltag != NULL);
@@ -55,16 +102,15 @@ static inline void cmi_list_add(struct cmi_list_tag **lloc,
     *lloc = ltag;
 }
 
-
-static inline bool cmi_list_remove(struct cmi_list_tag **lloc,
-                                   const void *target)
+static inline bool cmi_list_remove32(struct cmi_list_tag32 **lloc,
+                                     const void *target)
 {
     cmb_assert_debug(lloc != NULL);
     cmb_assert_debug(target != NULL);
 
-    struct cmi_list_tag **ltpp = lloc;
+    struct cmi_list_tag32 **ltpp = lloc;
     while (*ltpp != NULL) {
-        struct cmi_list_tag *ltag = *ltpp;
+        struct cmi_list_tag32 *ltag = *ltpp;
         if (ltag->ptr == target) {
             *ltpp = ltag->next;
             cmi_mempool_put(&cmi_mempool_32b, ltag);

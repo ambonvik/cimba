@@ -27,10 +27,12 @@
 #include "cmb_process.h"
 
 #include "cmi_hashheap.h"
+#include "cmi_list.h"
 
 struct cmi_resourceguard {
     struct cmi_hashheap priority_queue;
     struct cmi_resourcebase *guarded_resource;
+    struct cmi_list_tag *observers;
 };
 
 /*

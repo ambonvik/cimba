@@ -101,8 +101,8 @@ struct cmb_process {
     char name[CMB_PROCESS_NAMEBUF_SZ];      /**< The process name string */
     int64_t priority;                       /**< The current process priority */
     struct cmi_process_waitable waitsfor;   /**< What the process is waiting for, if anything */
-    struct cmi_list_tag *waiters_listhead;  /**< Other processes waiting for this process to finish */
-    struct cmi_list_tag *resources_listhead; /**< Any resources held by this process */
+    struct cmi_list_tag16 *waiters_listhead;  /**< Other processes waiting for this process to finish */
+    struct cmi_list_tag32 *resources_listhead; /**< Any resources held by this process */
 };
 
 /**

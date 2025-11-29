@@ -80,6 +80,7 @@ void cmi_resourceguard_initialize(struct cmi_resourceguard *rgp,
                             guard_queue_check);
 
     rgp->guarded_resource = rbp;
+    rgp->observers = NULL;
 }
 
 void cmi_resourceguard_terminate(struct cmi_resourceguard *rgp)

@@ -75,6 +75,7 @@ extern void cmb_process_terminate(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
+    /* todo: make sure we recycle any waiting tags here */
     pp->waiters_listhead = NULL;
     pp->resources_listhead = NULL;
 
@@ -183,7 +184,7 @@ void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
     }
 
     /* Is this process holding any resources that need to update records? */
-    struct cmi_list_tag *rtag = pp->resources_listhead;
+    struct cmi_list_tag32 *rtag = pp->resources_listhead;
     while (rtag != NULL) {
         struct cmi_holdable *hrp = rtag->ptr;
         cmb_assert_debug(hrp != NULL);
@@ -345,7 +346,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
         /* Nope, register it both here and there */
         pp->waitsfor.type = CMI_WAITABLE_PROCESS;
         pp->waitsfor.ptr = awaited;
-        cmi_list_add(&(awaited->waiters_listhead), 0.0, 0u, pp);
+        cmi_list_add16(&(awaited->waiters_listhead), pp);
 
         /* Yield to the scheduler and collect the return signal value */
         const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
@@ -358,7 +359,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
 }
 
 /* A friendly function in cmi_event.c, not part of public interface */
-extern struct cmi_list_tag **cmi_event_tag_loc(uint64_t handle);
+extern struct cmi_list_tag16 **cmi_event_tag_loc(uint64_t handle);
 
 /*
  * cmb_process_wait_event : Wait for an event to occur.
@@ -376,8 +377,8 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     cmb_assert_debug(pp->waitsfor.handle == 0ull);
 
     /* Add the current process to the list of processes waiting for the event */
-    struct cmi_list_tag **loc = cmi_event_tag_loc(ev_handle);
-    cmi_list_add(loc, 0.0, 0u, pp);
+    struct cmi_list_tag16 **loc = cmi_event_tag_loc(ev_handle);
+    cmi_list_add16(loc, pp);
 
     /* Yield to the scheduler and collect the return signal value */
     pp->waitsfor.type = CMI_WAITABLE_EVENT;
@@ -391,12 +392,12 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
 }
 
 /* Note: extern scope as an internal function, used by cmb_event.c */
-void cmi_process_wake_all(struct cmi_list_tag **ptloc, const int64_t signal)
+void cmi_process_wake_all(struct cmi_list_tag16 **ptloc, const int64_t signal)
 {
     cmb_assert_debug(ptloc != NULL);
 
     /* Unlink the tag chain */
-    struct cmi_list_tag *ptag = *ptloc;
+    struct cmi_list_tag16 *ptag = *ptloc;
     *ptloc = NULL;
 
     /* Process it, scheduling a wakeup call for each process */
@@ -411,8 +412,8 @@ void cmi_process_wake_all(struct cmi_list_tag **ptloc, const int64_t signal)
                                  time,
                                  priority);
 
-        struct cmi_list_tag *tmp = ptag->next;
-        cmi_mempool_put(&cmi_mempool_32b, ptag);
+        struct cmi_list_tag16 *tmp = ptag->next;
+        cmi_mempool_put(&cmi_mempool_16b, ptag);
         ptag = tmp;
     }
 
@@ -453,12 +454,12 @@ static void stop_waiting(struct cmb_process *tgt)
         cmb_event_cancel(tgt->waitsfor.handle);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_EVENT) {
-        struct cmi_list_tag **loc = cmi_event_tag_loc(tgt->waitsfor.handle);
-        const bool found = cmi_list_remove(loc, tgt);
+        struct cmi_list_tag16 **loc = cmi_event_tag_loc(tgt->waitsfor.handle);
+        const bool found = cmi_list_remove16(loc, tgt);
         cmb_assert_debug(found == true);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_PROCESS) {
-        const bool found = cmi_list_remove(&(tgt->waiters_listhead), tgt);
+        const bool found = cmi_list_remove16(&(tgt->waiters_listhead), tgt);
         cmb_assert_debug(found == true);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_RESOURCE) {
@@ -506,19 +507,14 @@ void cmb_process_interrupt(struct cmb_process *pp,
     (void)cmb_event_schedule(phintevt, pp, (void *)sig, t, pri);
 }
 
-void cmi_process_drop_all(struct cmi_list_tag **rtloc)
+void cmi_process_drop_all(struct cmb_process *pp, struct cmi_list_tag32 **rtloc)
 {
+    cmb_assert_debug(pp != NULL);
     cmb_assert_debug(rtloc != NULL);
 
     /* Unlink the tag chain */
-    struct cmi_list_tag *rtag = *rtloc;
+    struct cmi_list_tag32 *rtag = *rtloc;
     *rtloc = NULL;
-
-    /* Get a pointer to the process this resource list belongs to */
-    const struct cmb_process *pp = cmi_container_of(rtloc,
-                                                    struct cmb_process,
-                                                    resources_listhead);
-    cmb_assert_debug(pp != NULL);
 
     /* Process it, calling scram() for each resource */
     while (rtag != NULL) {
@@ -526,7 +522,7 @@ void cmi_process_drop_all(struct cmi_list_tag **rtloc)
         const uint64_t handle = rtag->uint;
         (*(hrp->drop))(hrp, pp, handle);
 
-        struct cmi_list_tag *tmp = rtag->next;
+        struct cmi_list_tag32 *tmp = rtag->next;
         cmi_mempool_put(&cmi_mempool_32b, rtag);
         rtag = tmp;
     }
@@ -546,7 +542,7 @@ static void pstopevt(void *vp, void *arg) {
 
     /* Release any resources held by this process */
     if (tgt->resources_listhead != NULL) {
-        cmi_process_drop_all(&(tgt->resources_listhead));
+        cmi_process_drop_all(tgt, &(tgt->resources_listhead));
     }
 
     /* Wake up any processes waiting for this process to finish */
