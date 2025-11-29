@@ -24,6 +24,7 @@ set(API_HEADERS
         include/cmb_resourcestore.h
         include/cmb_wtdsummary.h
         include/cmb_timeseries.h
+        include/cmb_condition.h
 )
 
 set(HEADERS

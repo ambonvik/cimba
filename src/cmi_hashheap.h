@@ -114,7 +114,7 @@ struct cmi_hashheap {
 
 /*
  * cmi_hashheap_create : Allocate memory for a new priority queue.
- * Initializes the pointers to NULL, call cmi_hashmap_init next.
+ * Initializes the pointers to NULL, call cmi_hashmap_initialize next.
  */
 extern struct cmi_hashheap *cmi_hashheap_create(void);
 
@@ -139,8 +139,18 @@ extern void cmi_hashheap_initialize(struct cmi_hashheap *hp,
  * Does not reset the item counter for issuing new handles, continues series.
  */
 extern void cmi_hashheap_clear(struct cmi_hashheap *hp);
-extern void cmi_hashheap_reset(struct cmi_hashheap *hp);
+
+/*
+ * cmi_hashheap_terminate : Return the hashheap to a newly created state
+ * freeing any allocated memory for the heap and hash map.
+ */
 extern void cmi_hashheap_terminate(struct cmi_hashheap *hp);
+
+/*
+ * cmi_hashheap_reset : Return the hashheap to a newly initialized state.
+ * Equivalent to cmi_hasheap_terminate() followed by cmi_hasheap_initialize()
+ */
+extern void cmi_hashheap_reset(struct cmi_hashheap *hp);
 
 /*
  * cmi_hashheap_destroy : Free memory allocated for the priority queue,

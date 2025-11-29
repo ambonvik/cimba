@@ -66,16 +66,16 @@ struct cmb_resourcestore {
 };
 
 /**
- * @brief  Allocate memory for a resource store object.
+ * @brief  Allocate memory for a resource store.
  *
- * @return Pointer to an allocated resource store object.
+ * @return Pointer to an allocated resource store.
  */
 extern struct cmb_resourcestore *cmb_resourcestore_create(void);
 
 /**
- * @brief  Make an allocated resource store object ready for use.
+ * @brief  Make an allocated resource store ready for use.
  *
- * @param rsp Pointer to an allocated resource store object.
+ * @param rsp Pointer to a resource store.
  * @param name A null-terminated string naming the resource store.
  * @param capacity The maximum amount that can be assigned at the same time.
  */
@@ -84,14 +84,14 @@ extern void cmb_resourcestore_initialize(struct cmb_resourcestore *rsp,
                                          uint64_t capacity);
 
 /**
- * @brief  Un-initializes a store object.
+ * @brief  Un-initializes a resource store.
  *
- * @param rsp Pointer to an allocated resource store object.
+ * @param rsp Pointer to a resource store.
  */
 extern void cmb_resourcestore_terminate(struct cmb_resourcestore *rsp);
 
 /**
- * @brief Deallocates memory for a store object.
+ * @brief Deallocates memory for a resource store.
  *
  * @param rsp Pointer to an allocated resource store object.
  */
@@ -101,16 +101,16 @@ extern void cmb_resourcestore_destroy(struct cmb_resourcestore *rsp);
  * @brief Return the amount of this store that is currently held by the given
  *        process, possibly zero.
  *
- * @param rsp Pointer to an initialized resource store object.
+ * @param rsp Pointer to a resource store.
  * @param pp Pointer to a `cmb_process`
  *
- * @return The amount from this `cmb_resourcestore`that is held by the process.
+ * @return The amount from this resource store that is held by the process.
  */
 extern uint64_t cmb_resourcestore_held_by_process(struct cmb_resourcestore *rsp,
                                                   struct cmb_process *pp);
 
 /**
- * @brief Request and if necessary wait for an amount of the reource store.
+ * @brief Request and if necessary wait for an amount of the resource store.
  *        The calling process may already hold some and try to increase its
  *        holding with this call, or to obtain its first helping.
  *
@@ -125,8 +125,11 @@ extern uint64_t cmb_resourcestore_held_by_process(struct cmb_resourcestore *rsp,
  * In particular, do not assume that the process has received the requested
  * amount when it returns.
  *
- * @param rsp Pointer to an allocated resource store object.
+ * @param rsp Pointer to a resource store.
  * @param amount The requested amount.
+*
+ * @return `CMB_PROCESS_SUCCESS` if successful, otherwise the signal received
+ *         when preempted or interrupted.
  */
 extern int64_t cmb_resourcestore_acquire(struct cmb_resourcestore *rsp,
                                          uint64_t amount);
@@ -144,8 +147,11 @@ extern int64_t cmb_resourcestore_acquire(struct cmb_resourcestore *rsp,
  * amount received or held is not returned by this function, only the signal
  * value.
  *
- * @param rsp Pointer to an allocated resource store object.
+ * @param rsp Pointer to a resource store.
  * @param amount The requested amount.
+ *
+ * @return `CMB_PROCESS_SUCCESS` if successful, otherwise the signal received
+ *         when preempted or interrupted.
  */
 extern int64_t cmb_resourcestore_preempt(struct cmb_resourcestore *rsp,
                                          uint64_t amount);
@@ -155,7 +161,7 @@ extern int64_t cmb_resourcestore_preempt(struct cmb_resourcestore *rsp,
  *        everything that the calling process holds, but not more than it is
  *        currently holding. Always returns immediately.
  *
- * @param rsp Pointer to an allocated resource store object.
+ * @param rsp Pointer to a resource store.
  * @param amount The requested amount.
  */
 extern void cmb_resourcestore_release(struct cmb_resourcestore *rsp,
@@ -164,7 +170,7 @@ extern void cmb_resourcestore_release(struct cmb_resourcestore *rsp,
 /**
  * @brief Returns name of store as const char *.
  *
- * @param rsp Pointer to an allocated resource store object.
+ * @param rsp Pointer to a resource store.
  * @return A null-terminated string with the name of the resource store.
  */
 static inline const char *cmb_resourcestore_get_name(struct cmb_resourcestore *rsp)
@@ -210,31 +216,31 @@ static inline uint64_t cmb_resourcestore_available(struct cmb_resourcestore *rsp
 /**
  * @brief Turn on data recording.
  *
- * @param rsp Pointer to an initialized resource store object.
+ * @param rsp Pointer to a resource store.
  */
 extern void cmb_resourcestore_start_recording(struct cmb_resourcestore *rsp);
 
 /**
  * @brief Turn off data recording.
  *
- * @param rsp Pointer to an initialized resource object.
+ * @param rsp Pointer to a resource store.
  */
 extern void cmb_resourcestore_stop_recording(struct cmb_resourcestore *rsp);
 
 /**
  * @brief Get the recorded timeseries of resource usage.
  *
- * @param rsp Pointer to an initialized resource object.
- * @return Pointer to a `cmb_timeseries` containing the resource usage history.
+ * @param rsp Pointer to a resource store.
+ * @return Pointer to a `cmb_timeseries` containing the usage history.
  */
 extern struct cmb_timeseries *cmb_resourcestore_get_history(struct cmb_resourcestore *rsp);
 
 /**
- * @brief Print a simple text mode report of the resource usage, ncluding key
+ * @brief Print a simple text mode report of the resource usage, including key
  *        statistical metrics and a histogram. Mostly intended for debugging
  *        purposes, not presentation graphics.
  *
- * @param rsp Pointer to an initialized resource object.
+ * @param rsp Pointer to a resource store.
  * @param fp File pointer, possibly `stdout`.
  */
 extern void cmb_resourcestore_print_report(struct cmb_resourcestore *rsp, FILE *fp);

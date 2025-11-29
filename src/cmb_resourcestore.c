@@ -186,16 +186,18 @@ void cmb_resourcestore_destroy(struct cmb_resourcestore *rsp)
  * allowing the requesting process to grab some whenever there is something
  * to grab.
  */
-static bool is_available(const struct cmi_resourcebase *rbp,
+static bool is_available(const struct cmi_resourceguard *rgp,
                          const struct cmb_process *pp,
                          const void *ctx)
 {
-    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(rgp != NULL);
     cmb_unused(pp);
     cmb_unused(ctx);
 
-    const struct cmb_resourcestore *sp = (struct cmb_resourcestore *)rbp;
-    const uint64_t avail = sp->capacity - sp->in_use;
+    const struct cmi_resourcebase *rbp = rgp->guarded_resource;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    const struct cmb_resourcestore *rsp = (struct cmb_resourcestore *)rbp;
+    const uint64_t avail = rsp->capacity - rsp->in_use;
 
     return (avail > 0u);
 }

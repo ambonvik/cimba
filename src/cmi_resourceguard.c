@@ -194,8 +194,7 @@ bool cmi_resourceguard_signal(struct cmi_resourceguard *rgp)
     const void *ctx = item[2];
 
     /* Is the demand met? */
-    const struct cmi_resourcebase *rbp = rgp->guarded_resource;
-    if ((*demand)(rbp, pp, ctx)) {
+    if ((*demand)(rgp, pp, ctx)) {
         /* Yes, pull the process off the queue and schedule a wakeup event */
         (void)cmi_hashheap_dequeue(hp);
         const double time = cmb_time();

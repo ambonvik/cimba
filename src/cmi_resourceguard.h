@@ -38,7 +38,7 @@ struct cmi_resourceguard {
 /*
  * typedef cmi_resourceguard_demand_func : function prototype for a resource demand
  */
-typedef bool (cmi_resourceguard_demand_func)(const struct cmi_resourcebase *res,
+typedef bool (cmi_resourceguard_demand_func)(const struct cmi_resourceguard *rgp,
                                              const struct cmb_process *pp,
                                              const void *ctx);
 
