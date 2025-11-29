@@ -263,3 +263,32 @@ bool cmi_resourceguard_remove(struct cmi_resourceguard *rgp,
         return false;
     }
 }
+
+/*
+ * cmi_resourceguard_register : Register another resource guard as an observer
+ * of this one, forwarding signals and causing the observer to evaluate its
+ * demand predicates as well.
+ */
+void cmi_resourceguard_register(struct cmi_resourceguard *rgp,
+                                struct cmi_resourceguard *obs)
+{
+    cmb_assert_release(rgp != NULL);
+    cmb_assert_release(obs != NULL);
+
+    cmi_list_add16(&(rgp->observers), obs);
+}
+
+/*
+ * cmi_resourceguard_unregister : Un-register another resource guard as an observer
+ * of this one, forwarding signals and causing the observer to evaluate its
+ * demand predicates as well. Returns true if the found, false if not.
+ */
+bool cmi_resourceguard_unregister(struct cmi_resourceguard *rgp,
+                                  struct cmi_resourceguard *obs)
+{
+    cmb_assert_release(rgp != NULL);
+    cmb_assert_release(obs != NULL);
+
+    return cmi_list_remove16(&(rgp->observers), obs);
+}
+

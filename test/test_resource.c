@@ -37,11 +37,9 @@ static void end_sim_evt(void *subject, void *object)
     const uint64_t n = (uint64_t)object;
     cmb_logger_info(stdout, "===> end_sim: game over <===");
     for (unsigned ui = 0; ui < n; ui++) {
+        cmb_logger_info(stdout, "Stopping process %s", cpp[ui]->name);
         cmb_process_stop(cpp[ui], NULL);
     }
-
-    /* To be sure that we got everything */
-    cmb_event_queue_clear();
 }
 
 void *procfunc1(struct cmb_process *me, void *ctx)

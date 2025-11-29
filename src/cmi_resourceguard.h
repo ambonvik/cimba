@@ -32,7 +32,7 @@
 struct cmi_resourceguard {
     struct cmi_hashheap priority_queue;
     struct cmi_resourcebase *guarded_resource;
-    struct cmi_list_tag *observers;
+    struct cmi_list_tag16 *observers;
 };
 
 /*
@@ -104,5 +104,20 @@ extern bool cmi_resourceguard_cancel(struct cmi_resourceguard *rgp,
 extern bool cmi_resourceguard_remove(struct cmi_resourceguard *rgp,
                                      const struct cmb_process *pp);
 
+/*
+ * cmi_resourceguard_register : Register another resource guard as an observer
+ * of this one, forwarding signals and causing the observer to evaluate its
+ * demand predicates as well.
+ */
+extern void cmi_resourceguard_register(struct cmi_resourceguard *rgp,
+                                       struct cmi_resourceguard *obs);
+
+/*
+ * cmi_resourceguard_unregister : Un-register another resource guard as an observer
+ * of this one, forwarding signals and causing the observer to evaluate its
+ * demand predicates as well. Returns true if the found, false if not.
+ */
+extern bool cmi_resourceguard_unregister(struct cmi_resourceguard *rgp,
+                                         struct cmi_resourceguard *obs);
 
 #endif /* CIMBA_CMI_RESOURCEGUARD_H */

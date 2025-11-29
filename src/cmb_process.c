@@ -438,6 +438,29 @@ void cmb_process_exit(void *retval)
     cmi_coroutine_exit(retval);
 }
 
+void cmi_process_drop_all(struct cmb_process *pp, struct cmi_list_tag32 **rtloc)
+{
+    cmb_assert_debug(pp != NULL);
+    cmb_assert_debug(rtloc != NULL);
+
+    /* Unlink the tag chain */
+    struct cmi_list_tag32 *rtag = *rtloc;
+    *rtloc = NULL;
+
+    /* Process it, calling drop() for each resource */
+    while (rtag != NULL) {
+        struct cmi_holdable *hrp = rtag->ptr;
+        const uint64_t handle = rtag->uint;
+        (*(hrp->drop))(hrp, pp, handle);
+
+        struct cmi_list_tag32 *tmp = rtag->next;
+        cmi_mempool_put(&cmi_mempool_32b, rtag);
+        rtag = tmp;
+    }
+
+    cmb_assert_debug(*rtloc == NULL);
+}
+
 static void stop_waiting(struct cmb_process *tgt)
 {
     cmb_assert_debug(tgt != NULL);
@@ -452,6 +475,7 @@ static void stop_waiting(struct cmb_process *tgt)
 
     if (tgt->waitsfor.type == CMI_WAITABLE_CLOCK) {
         cmb_event_cancel(tgt->waitsfor.handle);
+        cmi_process_drop_all(tgt, &(tgt->resources_listhead));
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_EVENT) {
         struct cmi_list_tag16 **loc = cmi_event_tag_loc(tgt->waitsfor.handle);
@@ -507,29 +531,6 @@ void cmb_process_interrupt(struct cmb_process *pp,
     (void)cmb_event_schedule(phintevt, pp, (void *)sig, t, pri);
 }
 
-void cmi_process_drop_all(struct cmb_process *pp, struct cmi_list_tag32 **rtloc)
-{
-    cmb_assert_debug(pp != NULL);
-    cmb_assert_debug(rtloc != NULL);
-
-    /* Unlink the tag chain */
-    struct cmi_list_tag32 *rtag = *rtloc;
-    *rtloc = NULL;
-
-    /* Process it, calling scram() for each resource */
-    while (rtag != NULL) {
-        struct cmi_holdable *hrp = rtag->ptr;
-        const uint64_t handle = rtag->uint;
-        (*(hrp->drop))(hrp, pp, handle);
-
-        struct cmi_list_tag32 *tmp = rtag->next;
-        cmi_mempool_put(&cmi_mempool_32b, rtag);
-        rtag = tmp;
-    }
-
-    cmb_assert_debug(*rtloc == NULL);
-}
-
 /*
  * pstopevt : The event handler that actually stops the process
  * coroutine after being scheduled by cmb_process_stop.
@@ -538,17 +539,6 @@ static void pstopevt(void *vp, void *arg) {
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *tgt = (struct cmb_process *)vp;
-    stop_waiting(tgt);
-
-    /* Release any resources held by this process */
-    if (tgt->resources_listhead != NULL) {
-        cmi_process_drop_all(tgt, &(tgt->resources_listhead));
-    }
-
-    /* Wake up any processes waiting for this process to finish */
-    if (tgt->waiters_listhead != NULL) {
-        cmi_process_wake_all(&(tgt->waiters_listhead), CMB_PROCESS_STOPPED);
-    }
 
     /* Stop the underlying coroutine */
     struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
@@ -559,6 +549,19 @@ static void pstopevt(void *vp, void *arg) {
         cmb_logger_warning(stdout,
                            "pstopevt: tgt %s not running",
                            tgt->name);
+    }
+
+    /* Cancel this process from any resources it may be waiting for */
+    stop_waiting(tgt);
+
+    /* Wake up any processes waiting for this process to finish */
+    if (tgt->waiters_listhead != NULL) {
+        cmi_process_wake_all(&(tgt->waiters_listhead), CMB_PROCESS_STOPPED);
+    }
+
+    /* Release any resources held by this process */
+    if (tgt->resources_listhead != NULL) {
+        cmi_process_drop_all(tgt, &(tgt->resources_listhead));
     }
 }
 

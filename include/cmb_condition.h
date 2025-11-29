@@ -6,21 +6,22 @@
  *        fulfilled. The application provides the demand predicate function to
  *        be evaluated.
  *
- * The other waitable classes (e.g., resource, resource store, buffer, or object
- * queue) are special cases of this class, using pre-packaged demand functions
+ * Classes like `cmb_resource` or `cmb_buffer` use pre-packaged demand functions
  * for simple conditions (such as "buffer level greater than zero") and update
  * the resource state accordingly (such as decrementing the buffer level by the
- * correct amount). Using the `cmb_condition` instead, the user application
+ * correct amount). When using the `cmb_condition` instead, the user application
  * provides the demand predicate function and takes the correct action when
- * reactivated. The demand predicate function can be different for each waiting
- * process, and will be evaluated for each waiting process separately.
+ * a waiting process is reactivated. The demand predicate function can even be
+ * different for each waiting process. It will be evaluated for each waiting
+ * process separately.
  *
- * When signaled, the condition variable evaluates the predicate for all waiting
- * functions and reactivates all that evaluate to `true`. The condition variable
- * cannot know what happens next, so it is the calling processes' responsibility
- * to recheck the condition and wait again if it no longer is satisfied. This is
- * different from classes like `cmb_resource`, where we can assign the resource
- * to the acquiring process and know that no other processes need to be awakened.
+ * When signalled, the condition variable evaluates the predicate function for
+ * all waiting processes and reactivates all that evaluate to `true`. The
+ * condition variable cannot know what happens next, so it is the calling
+ * processes' own responsibility to recheck the condition and wait again if it
+ * no longer is satisfied. This is different from classes like `cmb_resource`,
+ * where we can assign the resource to the acquiring process and know that no
+ * other processes need to be awakened.
  *
  * The `cmb_condition` also provides methods to subscribe to signals from other
  * resource guard objects and to unsubscribe. Recall that in a discrete event
@@ -29,8 +30,7 @@
  * something has changed, can re-evaluate the demand functions for its waiting
  * processes, and reactivate as justified. Strictly speaking, this is an
  * "observer" design pattern, not "subscriber" (since the observed subject is
- * aware that the observers exist). For consistency, we will use the terms
- * "register" and "unregister" for observers.
+ * aware that the observers exist).
  *
  * When registering observers, do not create any cycles where e.g. condition A
  * gets signalled from B, B gets signalled from C, and C gets signalled from A.
