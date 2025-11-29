@@ -75,9 +75,9 @@ extern void cmb_process_terminate(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    /* todo: make sure we recycle any waiting tags here */
-    pp->waiters_listhead = NULL;
-    pp->resources_listhead = NULL;
+    /* Should not have any waiters or hold any resources at this point */
+    cmb_assert_debug(pp->waiters_listhead == NULL);
+    cmb_assert_debug(pp->resources_listhead == NULL);
 
     cmi_coroutine_terminate((struct cmi_coroutine *)pp);
 }
