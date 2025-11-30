@@ -112,6 +112,9 @@ target_link_libraries(test_buffer PRIVATE cimba)
 add_executable(test_objectqueue test/test_objectqueue.c test/test.h)
 target_link_libraries(test_objectqueue PRIVATE cimba)
 
+add_executable(test_condition test/test_condition.c test/test.h)
+target_link_libraries(test_condition PRIVATE cimba)
+
 add_executable(test_cimba test/test_cimba.c test/test.h)
 target_link_libraries(test_cimba PRIVATE cimba pthread)
 

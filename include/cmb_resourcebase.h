@@ -1,14 +1,19 @@
-/*
- * cmb_resourcebase.h - the virtual base class for resources a process can wait
- * for, providing polymorphic functions to be called for members of any derived
- * class and allowing lists of miscellaneous resource types together.
+/**
+ * @file cmb_resourcebase.h
+ * @brief The virtual base class for all resources a process can wait for.
  *
- * Most importantly, a cmb_resource guard will need a pointer to a
- * cmb_resourcebase object to evaluate the demand function for a particular
- * resource. That function will cast the cmb_resourcebase pointer to the
+ * This class provides polymorphic functions to be called for members of any
+ * derived class and allows lists of miscellaneous resource types together.
+ *
+ * Most importantly, a `cmb_resourceguard` will need a pointer to a
+ * `cmb_resourcebase` object to evaluate the demand function for a particular
+ * resource. That function will cast the `cmb_resourcebase` pointer to the
  * appropriate type of resource and determine if the resource is available or
- * not. A common base class is needed for the polymorphism to work.
- *
+ * not. A common base class is needed for this polymorphism to work. For the
+ * same reason, `cmb_condition`is also derived from `cmb_resourcebase`.
+ */
+
+/*
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,34 +39,34 @@
 
 #include "cmi_memutils.h"
 
-/* Maximum length of a resource name, anything longer will be truncated */
+/**
+ * @brief Maximum length of a resource name, anything longer will be truncated
+ */
 #define CMB_RESOURCEBASE_NAMEBUF_SZ 32
 
-/*
- * struct cmb_resourcebase : includes the timeseries head by composition, but
- * its data array will only be allocated as needed.
+/**
+ * @brief Virtual base class.
  */
 struct cmb_resourcebase {
-    uint64_t cookie;
-    char name[CMB_RESOURCEBASE_NAMEBUF_SZ];
+    uint64_t cookie;                        /**< Initialization trap */
+    char name[CMB_RESOURCEBASE_NAMEBUF_SZ]; /**< Resource name */
 };
 
-/*
- * cmb_resourcebase_initialize : Make an already allocated resource core
- * object ready for use.
+/**
+ * @brief Make an already allocated resource base object ready for use.
  */
 extern void cmb_resourcebase_initialize(struct cmb_resourcebase *rbp,
                                         const char *name);
 
-/*
- * cmb_resourcebase_terminate : Un-initializes a resource core object.
+/**
+ * @brief  Un-initializes a resource base object.
  */
 extern void cmb_resourcebase_terminate(struct cmb_resourcebase *rcp);
 
-/*
- * cmb_resourcebase_set_name : Set a new name for the resource.
+/**
+ * @brief  Set a new name for the resource.
  *
- * The name is held in a fixed size buffer of size CMB_RESOURCEBASE_NAMEBUF_SZ.
+ * The name is held in a fixed size buffer of size `CMB_RESOURCEBASE_NAMEBUF_SZ`.
  * If the new name is too large for the buffer, it will be truncated at one less
  * than the buffer size, leaving space for the terminating zero char.
  */

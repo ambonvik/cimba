@@ -52,9 +52,6 @@
 #include "cmb_resourcebase.h"
 #include "cmb_resourceguard.h"
 
-/* Maximum length of a resource name, anything longer will be truncated */
-#define CMB_CONDITION_NAMEBUF_SZ 32
-
 /**
  * @brief The condition struct, basically a named resource guard.
  */
@@ -71,7 +68,13 @@ struct cmb_condition {
  *
  * Same as the `cmb_resourceguard_demand_func`, except the first argument type,
  * which only needs a typecast to reach the base class.
- */
+ *
+ * @param cnd Pointer to a condition object.
+ * @param prc Pointer to a process
+ * @param ctx Pointer to whatever context is needed to determine the outcome.
+ *
+ * @return `true` if the demand is considered satisfied, `false` if not.
+*/
 typedef bool (cmb_condition_demand_func)(const struct cmb_condition *cnd,
                                          const struct cmb_process *prc,
                                          const void *ctx);

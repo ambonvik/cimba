@@ -523,6 +523,9 @@ static inline double cmb_random_PERT(const double min,
  * (memoryless, constant failure rate) with mean `scale` when `shape = 1.0`.
  * Looks similar to a normal distribution for `shape` around 4.
  *
+ * Also used for wind speed simulation, often with `shape` around 2 and `scale`
+ * somewhere around 5 to 15.
+ *
  * See also https://en.wikipedia.org/wiki/Weibull_distribution
  */
 static inline double cmb_random_weibull(const double shape, const double scale)

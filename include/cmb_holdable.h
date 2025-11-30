@@ -1,10 +1,19 @@
-/*
- * cmb_holdable.h - extends the base cmb_resourcebase class to the derived
- * subclass of resources that can be held by a process. The cmb_resource and
- * cmb_resourcestore will be derived from here, but not cmb_buffer since there
- * is no way the process can "hold" a buffer in the same way as holding an
- * acquired resource.
+/**
+* @file cmb_holdable.h
+* @brief A virtual class that extends `cmb_resourcebase` to the derived
+ *       subclass of resources that can be held by a process.
  *
+ * The `cmb_resource` and `cmb_resourcestore` are derived from here, but not
+ * `cmb_buffer` since there is no meaningful way a process can "hold" a buffer
+ * in the same way as holding an acquired resource.
+ *
+ * There is no `cmb_holdable_create()` or `cmb_holdable_destroy()` functions,
+ * since this class only will appear as an intermediate derived class between
+ * `cmb_resourcebase` and the specific resource types, never on its own.
+
+ */
+
+/*
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,12 +39,13 @@
 
 struct cmb_holdable;
 
-/*
- * typedef cmb_holdable_drop_func : function prototype for a resource scram,
- * to be used when a process is killed and needs to release all held resources
- * no matter what type these are. The drop function removes a process from the
- * resource's holder list without resuming the process, a different procedure
- * from the process itself releasing the resource.
+/**
+ * @brief Function prototype for a resource drop, to be used when a process is killed
+ *        and needs to release all held resources no matter what type these are.
+ *
+ * The drop function removes a process from the resource's holder list without
+ * resuming the process, a different procedure from the process itself releasing
+ * the resource.
  *
  * The process pointer argument is needed since the calling (current) process is
  * not the victim process here. The handle arg is for cases where the resource
@@ -45,23 +55,23 @@ typedef void (cmb_holdable_drop_func)(struct cmb_holdable *hrp,
                                       const struct cmb_process *pp,
                                       uint64_t handle);
 
-/*
- * typedef cmi_resourcebase_reprio_func : function prototype for reshuffling a
- * resource holders' list if a process changes priority. A pointer to this type
- * function is stored in the virtual base class for calling the appropriate
- * reprio function for each derived class. For some resource classes (e.g. a
- * binary semaphore cmb_resource) this is trivial, for others (e.g. a counting
- * semaphore cmb_resourcestore) with many simultaneous holding processes it is decidedly
- * less trivial to do. The process that changes its priority can simply call
- * (*reprio) and get the correct handling for each resource it holds.
+/**
+ * @brief Function prototype for reshuffling a resource holders' list if a
+ *        process changes priority.
+ *
+ * A pointer to this type of function is stored in the virtual base class for
+ * calling the appropriate `reprio` function for each derived class. For some
+ * resource classes (e.g. a binary semaphore `cmb_resource`) this is trivial,
+ * for others (e.g. a counting semaphore `cmb_resourcestore`) with many
+ * holding processes less so. The process that changes its priority can simply
+ * call `(*reprio)` for each resource it holds and get the correct handling.
  */
 typedef void (cmb_holdable_reprio_func)(struct cmb_holdable *hrp,
                                         uint64_t handle,
                                         int64_t pri);
 
-/*
- * struct cmb_holdable : includes the timeseries head by composition, but
- * its data array will only be allocated as needed.
+/**
+ * @brief The holdable kind of resources.
  */
 struct cmb_holdable {
     struct cmb_resourcebase base;
@@ -69,7 +79,19 @@ struct cmb_holdable {
     cmb_holdable_reprio_func *reprio;
 };
 
+/**
+ * @brief  Make a holdable resource ready for use.
+ *
+ * @param hrp Pointer to a holdable resource
+ * @param name A null-terminated string naming the holdable resource
+ */
 extern void cmb_holdable_initialize(struct cmb_holdable *hrp, const char *name);
+
+/**
+ * @brief  Un-initialize a holdable resource.
+ *
+ * @param hrp Pointer to a holdable resource
+ */
 extern void cmb_holdable_terminate(struct cmb_holdable *hrp);
 
 #endif /* CIMBA_CMB_HOLDABLE_H */
