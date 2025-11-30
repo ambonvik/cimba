@@ -51,7 +51,7 @@ struct cmb_objectqueue *cmb_objectqueue_create(void)
 {
     struct cmb_objectqueue *oqp = cmi_malloc(sizeof *oqp);
     cmi_memset(oqp, 0, sizeof *oqp);
-    ((struct cmi_resourcebase *)oqp)->cookie = CMI_UNINITIALIZED;
+    ((struct cmb_resourcebase *)oqp)->cookie = CMI_UNINITIALIZED;
 
     return oqp;
 }
@@ -64,10 +64,10 @@ void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
     cmb_assert_release(name != NULL);
     cmb_assert_release(capacity > 0u);
 
-    cmi_resourcebase_initialize(&(oqp->core), name);
+    cmb_resourcebase_initialize(&(oqp->core), name);
 
-    cmi_resourceguard_initialize(&(oqp->front_guard), &(oqp->core));
-    cmi_resourceguard_initialize(&(oqp->rear_guard), &(oqp->core));
+    cmb_resourceguard_initialize(&(oqp->front_guard), &(oqp->core));
+    cmb_resourceguard_initialize(&(oqp->rear_guard), &(oqp->core));
 
     oqp->capacity = capacity;
     oqp->length = 0u;
@@ -97,9 +97,9 @@ void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
     cmb_dataset_terminate(&(oqp->wait_times));
     cmb_timeseries_terminate(&(oqp->history));
 
-    cmi_resourceguard_terminate(&(oqp->rear_guard));
-    cmi_resourceguard_terminate(&(oqp->front_guard));
-    cmi_resourcebase_terminate(&(oqp->core));
+    cmb_resourceguard_terminate(&(oqp->rear_guard));
+    cmb_resourceguard_terminate(&(oqp->front_guard));
+    cmb_resourcebase_terminate(&(oqp->core));
 }
 
 void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp)
@@ -114,7 +114,7 @@ void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp)
  * has_content : pre-packaged demand function for a cmb_objectqueue, allowing
  * the getting process to grab some whenever there is something to grab.
  */
-static bool has_content(const struct cmi_resourcebase *rbp,
+static bool has_content(const struct cmb_resourcebase *rbp,
                         const struct cmb_process *pp,
                         const void *ctx)
 {
@@ -132,7 +132,7 @@ static bool has_content(const struct cmi_resourcebase *rbp,
  * has_space : pre-packaged demand function for a cmb_objectqueue, allowing
  * the putting process to stuff in some whenever there is space.
  */
-static bool has_space(const struct cmi_resourcebase *rbp,
+static bool has_space(const struct cmb_resourcebase *rbp,
                       const struct cmb_process *pp,
                       const void *ctx)
 {
@@ -152,7 +152,7 @@ static bool has_space(const struct cmi_resourcebase *rbp,
  */
 static void record_sample(struct cmb_objectqueue *oqp) {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
     if (oqp->is_recording) {
         struct cmb_timeseries *ts = &(oqp->history);
@@ -163,7 +163,7 @@ static void record_sample(struct cmb_objectqueue *oqp) {
 void cmb_objectqueue_start_recording(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
     oqp->is_recording = true;
     record_sample(oqp);
@@ -172,7 +172,7 @@ void cmb_objectqueue_start_recording(struct cmb_objectqueue *oqp)
 void cmb_objectqueue_stop_recording(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
     record_sample(oqp);
     oqp->is_recording = false;
@@ -181,7 +181,7 @@ void cmb_objectqueue_stop_recording(struct cmb_objectqueue *oqp)
 struct cmb_timeseries *cmb_objectqueue_get_history(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
     return &(oqp->history);
 }
@@ -189,14 +189,14 @@ struct cmb_timeseries *cmb_objectqueue_get_history(struct cmb_objectqueue *oqp)
 struct cmb_dataset *cmb_queue_get_wait_times(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
     return &(oqp->wait_times);
 }
 
 void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp) {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
     fprintf(fp, "Queue lengths for %s:\n", oqp->core.name);
     const struct cmb_timeseries *ts = &(oqp->history);
@@ -223,7 +223,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(objectloc != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     while (true) {
@@ -253,7 +253,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
             tag->object = NULL;
             cmi_mempool_put(&cmi_mempool_32b, tag);
 
-            cmi_resourceguard_signal(&(oqp->rear_guard));
+            cmb_resourceguard_signal(&(oqp->rear_guard));
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -261,7 +261,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
         /* Wait at the front door until some more becomes available  */
         cmb_assert_debug(oqp->length == 0u);
         cmb_logger_info(stdout, "Waiting for an object");
-        const int64_t sig = cmi_resourceguard_wait(&(oqp->front_guard),
+        const int64_t sig = cmb_resourceguard_wait(&(oqp->front_guard),
                                                    has_content,
                                                    NULL);
         if (sig == CMB_PROCESS_SUCCESS) {
@@ -284,7 +284,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(objectloc != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     while (true) {
         cmb_assert_debug(oqp->length <= oqp->capacity);
@@ -311,7 +311,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
 
             record_sample(oqp);
             cmb_logger_info(stdout, "Success, put %p", *objectloc);
-            cmi_resourceguard_signal(&(oqp->front_guard));
+            cmb_resourceguard_signal(&(oqp->front_guard));
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -319,7 +319,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
         /* Wait at the back door until some more becomes available  */
         cmb_assert_debug(oqp->length == oqp->capacity);
         cmb_logger_info(stdout, "Waiting for space");
-        const int64_t sig = cmi_resourceguard_wait(&(oqp->rear_guard),
+        const int64_t sig = cmb_resourceguard_wait(&(oqp->rear_guard),
                                                    has_space,
                                                    NULL);
         if (sig == CMB_PROCESS_SUCCESS) {

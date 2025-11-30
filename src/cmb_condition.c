@@ -38,16 +38,16 @@ void cmb_condition_initialize(struct cmb_condition *cvp,
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(name != NULL);
 
-    cmi_resourcebase_initialize((struct cmi_resourcebase *)cvp, name);
-    cmi_resourceguard_initialize(&(cvp->guard), (struct cmi_resourcebase *)cvp);
+    cmb_resourcebase_initialize((struct cmb_resourcebase *)cvp, name);
+    cmb_resourceguard_initialize(&(cvp->guard), (struct cmb_resourcebase *)cvp);
 }
 
 void cmb_condition_terminate(struct cmb_condition *cvp)
 {
     cmb_assert_release(cvp != NULL);
 
-    cmi_resourceguard_terminate(&(cvp->guard));
-    cmi_resourcebase_terminate((struct cmi_resourcebase *)cvp);
+    cmb_resourceguard_terminate(&(cvp->guard));
+    cmb_resourcebase_terminate((struct cmb_resourcebase *)cvp);
 }
 
 void cmb_condition_destroy(struct cmb_condition *cvp)
@@ -65,8 +65,8 @@ int64_t cmb_condition_wait(struct cmb_condition *cvp,
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(dmnd != NULL);
 
-    return cmi_resourceguard_wait(&(cvp->guard),
-                                  (cmi_resourceguard_demand_func *)dmnd,
+    return cmb_resourceguard_wait(&(cvp->guard),
+                                  (cmb_resourceguard_demand_func *)dmnd,
                                   ctx);
 }
 
@@ -149,7 +149,7 @@ bool cmi_condition_cancel(struct cmb_condition *cvp,
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(pp != NULL);
 
-    return cmi_resourceguard_cancel((struct cmi_resourceguard *)cvp, pp);
+    return cmb_resourceguard_cancel((struct cmb_resourceguard *)cvp, pp);
 }
 
 bool cmi_condition_remove(struct cmb_condition *cvp,
@@ -158,5 +158,5 @@ bool cmi_condition_remove(struct cmb_condition *cvp,
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(pp != NULL);
 
-    return cmi_resourceguard_remove((struct cmi_resourceguard *)cvp, pp);
+    return cmb_resourceguard_remove((struct cmb_resourceguard *)cvp, pp);
 }

@@ -1,5 +1,5 @@
 /*
- * cmi_holdable.h - extends the base cmb_resourcebase class to the derived
+ * cmb_holdable.h - extends the base cmb_resourcebase class to the derived
  * subclass of resources that can be held by a process. The cmb_resource and
  * cmb_resourcestore will be derived from here, but not cmb_buffer since there
  * is no way the process can "hold" a buffer in the same way as holding an
@@ -20,19 +20,18 @@
  * limitations under the License.
  */
 
-#ifndef CIMBA_CMI_HOLDABLE_H
-#define CIMBA_CMI_HOLDABLE_H
+#ifndef CIMBA_CMB_HOLDABLE_H
+#define CIMBA_CMB_HOLDABLE_H
 
 #include <stdint.h>
 
 #include "cmb_process.h"
+#include "cmb_resourcebase.h"
 
-#include "cmi_resourcebase.h"
-
-struct cmi_holdable;
+struct cmb_holdable;
 
 /*
- * typedef cmi_holdable_drop_func : function prototype for a resource scram,
+ * typedef cmb_holdable_drop_func : function prototype for a resource scram,
  * to be used when a process is killed and needs to release all held resources
  * no matter what type these are. The drop function removes a process from the
  * resource's holder list without resuming the process, a different procedure
@@ -42,7 +41,7 @@ struct cmi_holdable;
  * not the victim process here. The handle arg is for cases where the resource
  * can look it up in its hash map for efficiency, zero if not applicable.
  */
-typedef void (cmi_holdable_drop_func)(struct cmi_holdable *hrp,
+typedef void (cmb_holdable_drop_func)(struct cmb_holdable *hrp,
                                       const struct cmb_process *pp,
                                       uint64_t handle);
 
@@ -56,22 +55,21 @@ typedef void (cmi_holdable_drop_func)(struct cmi_holdable *hrp,
  * less trivial to do. The process that changes its priority can simply call
  * (*reprio) and get the correct handling for each resource it holds.
  */
-typedef void (cmi_holdable_reprio_func)(struct cmi_holdable *hrp,
+typedef void (cmb_holdable_reprio_func)(struct cmb_holdable *hrp,
                                         uint64_t handle,
                                         int64_t pri);
 
-
 /*
- * struct cmi_holdable : includes the timeseries head by composition, but
+ * struct cmb_holdable : includes the timeseries head by composition, but
  * its data array will only be allocated as needed.
  */
-struct cmi_holdable {
-    struct cmi_resourcebase base;
-    cmi_holdable_drop_func *drop;
-    cmi_holdable_reprio_func *reprio;
+struct cmb_holdable {
+    struct cmb_resourcebase base;
+    cmb_holdable_drop_func *drop;
+    cmb_holdable_reprio_func *reprio;
 };
 
-extern void cmi_holdable_initialize(struct cmi_holdable *hrp, const char *name);
-extern void cmi_holdable_terminate(struct cmi_holdable *hrp);
+extern void cmb_holdable_initialize(struct cmb_holdable *hrp, const char *name);
+extern void cmb_holdable_terminate(struct cmb_holdable *hrp);
 
-#endif /* CIMBA_CMI_HOLDABLE_H */
+#endif /* CIMBA_CMB_HOLDABLE_H */

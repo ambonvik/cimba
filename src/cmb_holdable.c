@@ -1,5 +1,5 @@
 /*
- * cmi_holdable.h - extends the base cmb_resourcebase class to the derived
+ * cmb_holdable.h - extends the base cmb_resourcebase class to the derived
  * subclass of resources that can be held by a process. The cmb_resource and
  * cmb_resourcestore will be derived from here, but not cmb_buffer since there
  * is no way the process can "hold" a buffer in the same way as holding an
@@ -20,17 +20,17 @@
  * limitations under the License.
  */
 
-#include "cmi_holdable.h"
+#include "cmb_holdable.h"
 
-void cmi_holdable_initialize(struct cmi_holdable *hrp, const char *name)
+void cmb_holdable_initialize(struct cmb_holdable *hrp, const char *name)
 {
     hrp->drop = NULL;
     hrp->reprio = NULL;
 
-    cmi_resourcebase_initialize((struct cmi_resourcebase *)hrp, name);
+    cmb_resourcebase_initialize((struct cmb_resourcebase *)hrp, name);
 }
 
-void cmi_holdable_terminate(struct cmi_holdable *hrp)
+void cmb_holdable_terminate(struct cmb_holdable *hrp)
 {
-    cmi_resourcebase_terminate((struct cmi_resourcebase *)hrp);
+    cmb_resourcebase_terminate((struct cmb_resourcebase *)hrp);
 }

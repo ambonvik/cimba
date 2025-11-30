@@ -42,13 +42,13 @@
  * limitations under the License.
  */
 
-#ifndef CIMBA_CMB_STORE_H
-#define CIMBA_CMB_STORE_H
+#ifndef CIMBA_CMB_RESOURCESTORE_H
+#define CIMBA_CMB_RESOURCESTORE_H
 
 #include <stdint.h>
 
-#include "cmi_holdable.h"
-#include "cmi_resourceguard.h"
+#include "cmb_holdable.h"
+#include "cmb_resourceguard.h"
 
 /**
  * @brief The resourcestore struct, inherits all properties from `cmi_holdable`
@@ -56,8 +56,8 @@
  * some amount of the resource, and a timeseries for logging its history.
  */
 struct cmb_resourcestore {
-    struct cmi_holdable core;           /**< The virtual base class */
-    struct cmi_resourceguard guard;     /**< The gatekeeper maintaining an orderly queue of waiting processes */
+    struct cmb_holdable core;           /**< The virtual base class */
+    struct cmb_resourceguard guard;     /**< The gatekeeper maintaining an orderly queue of waiting processes */
     struct cmi_hashheap holders;        /**< The processes currently holding some, if any */
     uint64_t capacity;                  /**< The maximum amount that can be assigned to processes */
     uint64_t in_use;                    /**< The amount currently in use, less than or equal to the capacity */
@@ -177,7 +177,7 @@ static inline const char *cmb_resourcestore_get_name(struct cmb_resourcestore *r
 {
     cmb_assert_debug(rsp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
+    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rsp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return rbp->name;
@@ -192,7 +192,7 @@ static inline const char *cmb_resourcestore_get_name(struct cmb_resourcestore *r
 static inline uint64_t cmb_resourcestore_in_use(struct cmb_resourcestore *rsp)
 {
     cmb_assert_release(rsp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
     cmb_assert_debug(rsp->in_use <= rsp->capacity);
 
     return rsp->in_use;
@@ -207,7 +207,7 @@ static inline uint64_t cmb_resourcestore_in_use(struct cmb_resourcestore *rsp)
 static inline uint64_t cmb_resourcestore_available(struct cmb_resourcestore *rsp)
 {
     cmb_assert_release(rsp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
     cmb_assert_debug(rsp->in_use <= rsp->capacity);
 
     return (rsp->capacity - rsp->in_use);
@@ -246,4 +246,4 @@ extern struct cmb_timeseries *cmb_resourcestore_get_history(struct cmb_resources
 extern void cmb_resourcestore_print_report(struct cmb_resourcestore *rsp, FILE *fp);
 
 
-#endif /* CIMBA_CMB_STORE_H */
+#endif /* CIMBA_CMB_RESOURCESTORE_H */

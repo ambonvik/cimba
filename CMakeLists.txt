@@ -16,11 +16,14 @@ set(API_HEADERS
         include/cmb_dataset.h
         include/cmb_datasummary.h
         include/cmb_event.h
+        include/cmb_holdable.h
         include/cmb_logger.h
         include/cmb_objectqueue.h
         include/cmb_process.h
         include/cmb_random.h
         include/cmb_resource.h
+        include/cmb_resourcebase.h
+        include/cmb_resourceguard.h
         include/cmb_resourcestore.h
         include/cmb_wtdsummary.h
         include/cmb_timeseries.h
@@ -32,13 +35,9 @@ set(HEADERS
         src/cmi_config.h
         src/cmi_dataset.h
         src/cmi_hashheap.h
-        src/cmi_holdable.h
         src/cmi_mempool.h
         src/cmi_memutils.h
-        src/cmi_resourcebase.h
-        src/cmi_resourceguard.h
         src/cmi_waitable.h
-        src/cmi_holdable.h
         src/cmi_list.h
 )
 
@@ -49,20 +48,20 @@ set(SOURCES
         src/cmb_dataset.c
         src/cmb_datasummary.c
         src/cmb_event.c
+        src/cmb_holdable.c
         src/cmb_logger.c
         src/cmb_objectqueue.c
         src/cmb_process.c
         src/cmb_random.c
         src/cmb_resource.c
+        src/cmb_resourcebase.c
+        src/cmb_resourceguard.c
         src/cmb_resourcestore.c
         src/cmb_timeseries.c
         src/cmb_wtdsummary.c
         src/cmi_coroutine.c
         src/cmi_hashheap.c
-        src/cmi_holdable.c
         src/cmi_mempool.c
-        src/cmi_resourcebase.c
-        src/cmi_resourceguard.c
         src/cmi_random_exp_zig.inc
         src/cmi_random_nor_zig.inc
         src/arch/cmi_memutils_Win64.c

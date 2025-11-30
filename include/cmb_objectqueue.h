@@ -41,18 +41,17 @@
 #include <stdint.h>
 
 #include "cmb_assert.h"
-
-#include "cmi_resourcebase.h"
-#include "cmi_resourceguard.h"
+#include "cmb_resourcebase.h"
+#include "cmb_resourceguard.h"
 
 /**
  * @brief A fixed capacity queue for passing arbitrary objects from one or more
  *        producer (putter) processes to one or more consumer (getter) processes.
  */
 struct cmb_objectqueue {
-    struct cmi_resourcebase core;           /**< The virtual base class */
-    struct cmi_resourceguard front_guard;   /**< Front waiting room for getters */
-    struct cmi_resourceguard rear_guard;    /**< Rear waiting room for putters */
+    struct cmb_resourcebase core;           /**< The virtual base class */
+    struct cmb_resourceguard front_guard;   /**< Front waiting room for getters */
+    struct cmb_resourceguard rear_guard;    /**< Rear waiting room for putters */
     uint64_t capacity;                      /**< The maximum size, possibly `UINT64_MAX` for unlimited */
     uint64_t length;                        /**< The current queue length */
     struct queue_tag *queue_head;           /**< The head of the queue, `NULL` if empty */
@@ -143,7 +142,7 @@ static inline const char *cmb_objectqueue_get_name(struct cmb_objectqueue *oqp)
 {
     cmb_assert_debug(oqp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return rbp->name;
@@ -158,7 +157,7 @@ static inline const char *cmb_objectqueue_get_name(struct cmb_objectqueue *oqp)
 static inline uint64_t cmb_objectqueue_length(struct cmb_objectqueue *oqp)
 {
     cmb_assert_debug(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
     return oqp->length;
 }
@@ -172,7 +171,7 @@ static inline uint64_t cmb_objectqueue_length(struct cmb_objectqueue *oqp)
 static inline uint64_t cmb_objectqueue_space(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
     cmb_assert_debug(oqp->length <= oqp->capacity);
 
     return (oqp->capacity - oqp->length);

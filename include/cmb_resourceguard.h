@@ -1,5 +1,5 @@
 /*
- * cmi_resourceguard.h - the gatekeeper class for resources a process can wait
+ * cmb_resourceguard.h - the gatekeeper class for resources a process can wait
  * for. It is derived from cmi_hashheap by composition and inherits its methods,
  * adding a pointer to the resource it guards and a list of any observer
  * resource guards that get signals forwarded from this one.
@@ -19,8 +19,8 @@
  * limitations under the License.
  */
 
-#ifndef CIMBA_CMI_RESOURCEGUARD_H
-#define CIMBA_CMI_RESOURCEGUARD_H
+#ifndef CIMBA_CMB_RESOURCEGUARD_H
+#define CIMBA_CMB_RESOURCEGUARD_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -30,33 +30,33 @@
 #include "cmi_hashheap.h"
 #include "cmi_list.h"
 
-struct cmi_resourceguard {
+struct cmb_resourceguard {
     struct cmi_hashheap priority_queue;
-    struct cmi_resourcebase *guarded_resource;
+    struct cmb_resourcebase *guarded_resource;
     struct cmi_list_tag16 *observers;
 };
 
 /*
- * typedef cmi_resourceguard_demand_func : function prototype for a resource demand
+ * typedef cmb_resourceguard_demand_func : function prototype for a resource demand
  */
-typedef bool (cmi_resourceguard_demand_func)(const struct cmi_resourcebase *rbp,
+typedef bool (cmb_resourceguard_demand_func)(const struct cmb_resourcebase *rbp,
                                              const struct cmb_process *pp,
                                              const void *ctx);
 
 /*
- * cmi_resourceguard_initialize : Make an already allocated resource guard
+ * cmb_resourceguard_initialize : Make an already allocated resource guard
  * object ready for use.
  */
-extern void cmi_resourceguard_initialize(struct cmi_resourceguard *rgp,
-                                         struct cmi_resourcebase *rbp);
+extern void cmb_resourceguard_initialize(struct cmb_resourceguard *rgp,
+                                         struct cmb_resourcebase *rbp);
 
 /*
- * cmi_resourceguard_terminate : Un-initializes a resource guard object.
+ * cmb_resourceguard_terminate : Un-initializes a resource guard object.
  */
-extern void cmi_resourceguard_terminate(struct cmi_resourceguard *rgp);
+extern void cmb_resourceguard_terminate(struct cmb_resourceguard *rgp);
 
 /*
- * cmi_resourceguard_wait : Enqueue and suspend the calling process until it
+ * cmb_resourceguard_wait : Enqueue and suspend the calling process until it
  * reaches the front of the priority queue and its demand function returns true.
  * ctx is whatever context the demand function needs to evaluate if it is
  * satisfied or not, such as the number of units needed from the resource or
@@ -64,12 +64,12 @@ extern void cmi_resourceguard_terminate(struct cmi_resourceguard *rgp);
  * Returns whatever signal was received when the process was reactivated.
  * Cannot be called from the main process.
  */
-extern int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
-                                      cmi_resourceguard_demand_func *demand,
+extern int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
+                                      cmb_resourceguard_demand_func *demand,
                                       const void *ctx);
 
 /*
- * cmi_resourceguard_signal : Plings the bell for a resource guard to check if
+ * cmb_resourceguard_signal : Plings the bell for a resource guard to check if
  * any of the waiting processes should be resumed. Will evaluate the demand
  * function for the first process in the queue, if any, and will resume it if
  * (and only if) its demand function (*demand)(rp, pp, ctx) returns true.
@@ -88,37 +88,37 @@ extern int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
  * up to the application to dynamically change process priorities to bring the
  * correct process to the front of the queue and make it eligible to resume.
   */
-extern bool cmi_resourceguard_signal(struct cmi_resourceguard *rgp);
+extern bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp);
 
 /*
- * cmi_resourceguard_cancel : Remove this process from the priority queue
+ * cmb_resourceguard_cancel : Remove this process from the priority queue
  * and resume it with a CMB_PROCESS_CANCELLED signal.
  * Returns true if the found, false if not.
  */
-extern bool cmi_resourceguard_cancel(struct cmi_resourceguard *rgp,
+extern bool cmb_resourceguard_cancel(struct cmb_resourceguard *rgp,
                                      struct cmb_process *pp);
 
 /*
- * cmi_resourceguard_remove : Remove this process from the priority queue
+ * cmb_resourceguard_remove : Remove this process from the priority queue
  * without resuming it. Returns true if the found, false if not.
  */
-extern bool cmi_resourceguard_remove(struct cmi_resourceguard *rgp,
+extern bool cmb_resourceguard_remove(struct cmb_resourceguard *rgp,
                                      const struct cmb_process *pp);
 
 /*
- * cmi_resourceguard_register : Register another resource guard as an observer
+ * cmb_resourceguard_register : Register another resource guard as an observer
  * of this one, forwarding signals and causing the observer to evaluate its
  * demand predicates as well.
  */
-extern void cmi_resourceguard_register(struct cmi_resourceguard *rgp,
-                                       struct cmi_resourceguard *obs);
+extern void cmb_resourceguard_register(struct cmb_resourceguard *rgp,
+                                       struct cmb_resourceguard *obs);
 
 /*
- * cmi_resourceguard_unregister : Un-register another resource guard as an observer
+ * cmb_resourceguard_unregister : Un-register another resource guard as an observer
  * of this one, forwarding signals and causing the observer to evaluate its
  * demand predicates as well. Returns true if the found, false if not.
  */
-extern bool cmi_resourceguard_unregister(struct cmi_resourceguard *rgp,
-                                         struct cmi_resourceguard *obs);
+extern bool cmb_resourceguard_unregister(struct cmb_resourceguard *rgp,
+                                         struct cmb_resourceguard *obs);
 
-#endif /* CIMBA_CMI_RESOURCEGUARD_H */
+#endif /* CIMBA_CMB_RESOURCEGUARD_H */

@@ -49,8 +49,8 @@
 #ifndef CIMBA_CMB_CONDITION_H
 #define CIMBA_CMB_CONDITION_H
 
-#include "cmi_resourcebase.h"
-#include "cmi_resourceguard.h"
+#include "cmb_resourcebase.h"
+#include "cmb_resourceguard.h"
 
 /* Maximum length of a resource name, anything longer will be truncated */
 #define CMB_CONDITION_NAMEBUF_SZ 32
@@ -59,8 +59,8 @@
  * @brief The condition struct, basically a named resource guard.
  */
 struct cmb_condition {
-    struct cmi_resourcebase base;           /**< The parent class, providing name and initialization */
-    struct cmi_resourceguard guard;         /**< Providing the queueing mechanics */
+    struct cmb_resourcebase base;           /**< The parent class, providing name and initialization */
+    struct cmb_resourceguard guard;         /**< Providing the queueing mechanics */
 };
 
 /**
@@ -69,7 +69,7 @@ struct cmb_condition {
  *        pointer to the process, and a `void *` to basically any context the
  *        predicate function needs to determine a `true` or `false` result.
  *
- * Same as the `cmi_resourceguard_demand_func`, except the first argument type,
+ * Same as the `cmb_resourceguard_demand_func`, except the first argument type,
  * which only needs a typecast to reach the base class.
  */
 typedef bool (cmb_condition_demand_func)(const struct cmb_condition *cnd,
@@ -162,11 +162,11 @@ extern bool cmi_condition_remove(struct cmb_condition *cvp,
  * @param rgp Pointer to a resource guard.
  */
 static inline void cmi_condition_subscribe(struct cmb_condition *cvp,
-                                           struct cmi_resourceguard *rgp) {
+                                           struct cmb_resourceguard *rgp) {
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(rgp != NULL);
 
-    cmi_resourceguard_register(rgp, (struct cmi_resourceguard *)cvp);
+    cmb_resourceguard_register(rgp, (struct cmb_resourceguard *)cvp);
 }
 
 /**
@@ -179,11 +179,11 @@ static inline void cmi_condition_subscribe(struct cmb_condition *cvp,
  * @return `true` if the found, `false` if not.
  */
 static inline bool cmi_condition_unsubscribe(struct cmb_condition *cvp,
-                                             struct cmi_resourceguard *rgp) {
+                                             struct cmb_resourceguard *rgp) {
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(rgp != NULL);
 
-    return cmi_resourceguard_unregister(rgp, (struct cmi_resourceguard *)cvp);
+    return cmb_resourceguard_unregister(rgp, (struct cmb_resourceguard *)cvp);
 }
 
 #endif /* CIMBA_CMB_CONDITION_H */

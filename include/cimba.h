@@ -49,7 +49,7 @@
 extern const char *cimba_version(void);
 
 /*
- * Definitions of the different "classes" and functions provided by Cimba
+ * Declarations of the different "classes" and functions provided by Cimba
  */
 #include "cmb_assert.h"
 #include "cmb_buffer.h"
@@ -61,6 +61,8 @@ extern const char *cimba_version(void);
 #include "cmb_process.h"
 #include "cmb_random.h"
 #include "cmb_resource.h"
+#include "cmb_resourcebase.h"
+#include "cmb_resourceguard.h"
 #include "cmb_resourcestore.h"
 #include "cmb_timeseries.h"
 #include "cmb_wtdsummary.h"

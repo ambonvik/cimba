@@ -1,5 +1,5 @@
 /*
- * cmi_resourcebase.h - the virtual base class for resources a process can wait
+ * cmb_resourcebase.h - the virtual base class for resources a process can wait
  * for, providing polymorphic functions to be called for members of any derived
  * class and allowing lists of miscellaneous resource types together.
  *
@@ -24,8 +24,8 @@
  * limitations under the License.
  */
 
-#ifndef CIMBA_CMI_RESOURCEBASE_H
-#define CIMBA_CMI_RESOURCEBASE_H
+#ifndef CIMBA_CMB_RESOURCEBASE_H
+#define CIMBA_CMB_RESOURCEBASE_H
 
 #include <stdint.h>
 
@@ -38,34 +38,34 @@
 #define CMB_RESOURCEBASE_NAMEBUF_SZ 32
 
 /*
- * struct cmi_resourcebase : includes the timeseries head by composition, but
+ * struct cmb_resourcebase : includes the timeseries head by composition, but
  * its data array will only be allocated as needed.
  */
-struct cmi_resourcebase {
+struct cmb_resourcebase {
     uint64_t cookie;
     char name[CMB_RESOURCEBASE_NAMEBUF_SZ];
 };
 
 /*
- * cmi_resourcebase_initialize : Make an already allocated resource core
+ * cmb_resourcebase_initialize : Make an already allocated resource core
  * object ready for use.
  */
-extern void cmi_resourcebase_initialize(struct cmi_resourcebase *rbp,
+extern void cmb_resourcebase_initialize(struct cmb_resourcebase *rbp,
                                         const char *name);
 
 /*
- * cmi_resourcebase_terminate : Un-initializes a resource core object.
+ * cmb_resourcebase_terminate : Un-initializes a resource core object.
  */
-extern void cmi_resourcebase_terminate(struct cmi_resourcebase *rcp);
+extern void cmb_resourcebase_terminate(struct cmb_resourcebase *rcp);
 
 /*
- * cmi_resourcebase_set_name : Set a new name for the resource.
+ * cmb_resourcebase_set_name : Set a new name for the resource.
  *
  * The name is held in a fixed size buffer of size CMB_RESOURCEBASE_NAMEBUF_SZ.
  * If the new name is too large for the buffer, it will be truncated at one less
  * than the buffer size, leaving space for the terminating zero char.
  */
-extern void cmi_resourcebase_set_name(struct cmi_resourcebase *rbp,
+extern void cmb_resourcebase_set_name(struct cmb_resourcebase *rbp,
                                       const char *name);
 
-#endif /* CIMBA_CMI_RESOURCEBASE_H */
+#endif /* CIMBA_CMB_RESOURCEBASE_H */

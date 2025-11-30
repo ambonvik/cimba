@@ -27,10 +27,9 @@
 #include <stdint.h>
 
 #include "cmb_process.h"
+#include "cmb_holdable.h"
+#include "cmb_resourceguard.h"
 
-#include "cmi_holdable.h"
-#include "cmi_resourcebase.h"
-#include "cmi_resourceguard.h"
 
 /**
  * @brief The resource struct, inherits all properties from `cmi_holdable` by
@@ -38,8 +37,8 @@
  * the resource (if currently held), and a timeseries for logging its history.
  */
 struct cmb_resource {
-    struct cmi_holdable core;           /**< The virtual base class */
-    struct cmi_resourceguard guard;     /**< The gatekeeper maintaining an orderly queue of waiting processes */
+    struct cmb_holdable core;           /**< The virtual base class */
+    struct cmb_resourceguard guard;     /**< The gatekeeper maintaining an orderly queue of waiting processes */
     struct cmb_process *holder;         /**< The current holder, if any */
     bool is_recording;                  /**< Is it currently recording history? */
     struct cmb_timeseries history;      /**< The usage history, 1 for held, 0 for idle */
@@ -116,7 +115,7 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return rbp->name;
@@ -131,7 +130,7 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
 static inline uint64_t cmb_resource_in_use(struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)rp)->cookie == CMI_INITIALIZED);
 
     return (rp->holder != NULL) ? 1u : 0u;
 }
@@ -145,7 +144,7 @@ static inline uint64_t cmb_resource_in_use(struct cmb_resource *rp)
 static inline uint64_t cmb_resource_available(struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)rp)->cookie == CMI_INITIALIZED);
 
     return (rp->holder == NULL) ? 1u : 0u;
 }

@@ -53,7 +53,7 @@ struct cmb_resourcestore *cmb_resourcestore_create(void)
 {
     struct cmb_resourcestore *sp = cmi_malloc(sizeof(*sp));
     cmi_memset(sp, 0, sizeof(*sp));
-    ((struct cmi_resourcebase *)sp)->cookie = CMI_UNINITIALIZED;
+    ((struct cmb_resourcebase *)sp)->cookie = CMI_UNINITIALIZED;
 
     return sp;
 }
@@ -86,7 +86,7 @@ static bool holder_queue_check(const struct cmi_heap_tag *a,
 /*
  * drop_holder : forcibly eject a holder process without resuming it.
  */
-void drop_holder(struct cmi_holdable *rbp,
+void drop_holder(struct cmb_holdable *rbp,
                  const struct cmb_process *pp,
                  const uint64_t handle)
 {
@@ -108,13 +108,13 @@ void drop_holder(struct cmi_holdable *rbp,
 
     sp->in_use -= held;
     cmb_assert_debug(sp->in_use < sp->capacity);
-    cmi_resourceguard_signal(&(sp->guard));
+    cmb_resourceguard_signal(&(sp->guard));
 }
 
 /*
  * reprioritize_holder : handle changed priority for one of the holders.
  */
-void reprioritize_holder(struct cmi_holdable *rbp,
+void reprioritize_holder(struct cmb_holdable *rbp,
                          const uint64_t handle,
                          const int64_t pri)
 {
@@ -140,12 +140,12 @@ void cmb_resourcestore_initialize(struct cmb_resourcestore *rsp,
     cmb_assert_release(name != NULL);
     cmb_assert_release(capacity > 0u);
 
-    cmi_holdable_initialize(&(rsp->core), name);
+    cmb_holdable_initialize(&(rsp->core), name);
     rsp->core.drop = drop_holder;
     rsp->core.reprio = reprioritize_holder;
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
-    cmi_resourceguard_initialize(&(rsp->guard), rbp);
+    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rsp;
+    cmb_resourceguard_initialize(&(rsp->guard), rbp);
     cmi_hashheap_initialize(&(rsp->holders),
                             HOLDERS_INIT_EXP,
                             holder_queue_check);
@@ -166,8 +166,8 @@ void cmb_resourcestore_terminate(struct cmb_resourcestore *rsp)
 
     cmb_timeseries_terminate(&(rsp->history));
     cmi_hashheap_terminate(&(rsp->holders));
-    cmi_resourceguard_terminate(&(rsp->guard));
-    cmi_holdable_terminate(&(rsp->core));
+    cmb_resourceguard_terminate(&(rsp->guard));
+    cmb_holdable_terminate(&(rsp->core));
 }
 
 /*
@@ -186,7 +186,7 @@ void cmb_resourcestore_destroy(struct cmb_resourcestore *rsp)
  * allowing the requesting process to grab some whenever there is something
  * to grab.
  */
-static bool is_available(const struct cmi_resourcebase *rbp,
+static bool is_available(const struct cmb_resourcebase *rbp,
                          const struct cmb_process *pp,
                          const void *ctx)
 {
@@ -238,7 +238,7 @@ static uint64_t reset_holder(const struct cmi_hashheap *hp,
 static void record_sample(struct cmb_resourcestore *sp) {
     cmb_assert_release(sp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
+    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)sp;
     cmb_assert_debug(rbp->cookie == CMI_INITIALIZED);
     if (sp->is_recording) {
         struct cmb_timeseries *ts = &(sp->history);
@@ -252,7 +252,7 @@ void cmb_resourcestore_start_recording(struct cmb_resourcestore *rsp)
 {
     cmb_assert_release(rsp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
+    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rsp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     rsp->is_recording = true;
     record_sample(rsp);
@@ -262,7 +262,7 @@ void cmb_resourcestore_stop_recording(struct cmb_resourcestore *rsp)
 {
     cmb_assert_release(rsp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
+    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rsp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     record_sample(rsp);
     rsp->is_recording = false;
@@ -272,7 +272,7 @@ struct cmb_timeseries *cmb_resourcestore_get_history(struct cmb_resourcestore *r
 {
     cmb_assert_release(rsp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
+    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rsp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return &(rsp->history);
@@ -281,7 +281,7 @@ struct cmb_timeseries *cmb_resourcestore_get_history(struct cmb_resourcestore *r
 void cmb_resourcestore_print_report(struct cmb_resourcestore *rsp, FILE *fp) {
     cmb_assert_release(rsp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
+    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rsp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     fprintf(fp, "Store resource utilization for %s:\n", rbp->name);
     const struct cmb_timeseries *ts = &(rsp->history);
@@ -294,7 +294,7 @@ void cmb_resourcestore_print_report(struct cmb_resourcestore *rsp, FILE *fp) {
 }
 
 static uint64_t find_handle(struct cmi_list_tag32 **rtloc,
-                            const struct cmi_holdable *hrp)
+                            const struct cmb_holdable *hrp)
 {
     cmb_assert_release(rtloc != NULL);
     cmb_assert_release(hrp != NULL);
@@ -314,12 +314,12 @@ uint64_t cmb_resourcestore_held_by_process(struct cmb_resourcestore *rsp,
                                            struct cmb_process *pp)
 {
     cmb_assert_release(rsp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
     cmb_assert_release(pp != NULL);
 
     uint64_t ret = 0u;
     struct cmi_list_tag32 **rtloc = &(pp->resources_listhead);
-    const struct cmi_holdable *hrp = (struct cmi_holdable *)rsp;
+    const struct cmb_holdable *hrp = (struct cmb_holdable *)rsp;
     const uint64_t handle = find_handle(rtloc, hrp);
     if (handle != 0u) {
         const struct cmi_hashheap *hp = &(rsp->holders);
@@ -372,7 +372,7 @@ static uint64_t update_record(struct cmb_resourcestore *store,
                               const uint64_t amount)
 {
     cmb_assert_release(store != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)store)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)store)->cookie == CMI_INITIALIZED);
     cmb_assert_release(caller != NULL);
     cmb_assert_release(amount > 0u);
 
@@ -384,7 +384,7 @@ static uint64_t update_record(struct cmb_resourcestore *store,
     else {
         /* Not held already, create a new entry and cross-reference */
         caller_handle = add_new_holder(store_holders, caller, amount);
-        struct cmi_holdable *hrp = (struct cmi_holdable *)store;
+        struct cmb_holdable *hrp = (struct cmb_holdable *)store;
         cmi_list_add32(caller_rtloc, 0.0, caller_handle, hrp);
     }
 
@@ -402,7 +402,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
                                 const bool preempt)
 {
     cmb_assert_release(sp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)sp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)sp)->cookie == CMI_INITIALIZED);
     cmb_assert_release(claim_amount > 0u);
     cmb_assert_debug(sp->in_use <= sp->capacity);
 
@@ -412,7 +412,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
     uint64_t initially_held = 0u;
     struct cmi_hashheap *hp = &(sp->holders);
     struct cmi_list_tag32 **caller_rtloc = &(caller->resources_listhead);
-    const struct cmi_holdable *hrp = (struct cmi_holdable *)sp;
+    const struct cmb_holdable *hrp = (struct cmb_holdable *)sp;
 
     uint64_t caller_hdle = find_handle(caller_rtloc, hrp);
     if (caller_hdle != 0u) {
@@ -453,7 +453,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
                             rem_claim);
 
             /* In case someone else can use the leftovers */
-            cmi_resourceguard_signal(&(sp->guard));
+            cmb_resourceguard_signal(&(sp->guard));
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -543,7 +543,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
                                     surplus);
 
                     /* In case someone else can use the leftovers */
-                    cmi_resourceguard_signal(&(sp->guard));
+                    cmb_resourceguard_signal(&(sp->guard));
 
                     return CMB_PROCESS_SUCCESS;
                 }
@@ -556,7 +556,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
 
         /* Wait at the front door until some more becomes available  */
         cmb_assert_debug(rem_claim > 0u);
-        const int64_t sig = cmi_resourceguard_wait(&(sp->guard),
+        const int64_t sig = cmb_resourceguard_wait(&(sp->guard),
                                                    is_available,
                                                    NULL);
         if (sig == CMB_PROCESS_PREEMPTED) {
@@ -579,7 +579,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
                 cmb_assert_debug(sp->in_use <= sp->capacity);
                 record_sample(sp);
 
-                cmi_resourceguard_signal(&(sp->guard));
+                cmb_resourceguard_signal(&(sp->guard));
             }
             else {
                 /* Put back all. */
@@ -629,7 +629,7 @@ int64_t cmb_resourcestore_preempt(struct cmb_resourcestore *rsp, const uint64_t 
 void cmb_resourcestore_release(struct cmb_resourcestore *rsp, const uint64_t amount)
 {
     cmb_assert_release(rsp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmb_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
     cmb_assert_release(amount > 0u);
     cmb_assert_release(rsp->in_use >= amount);
     cmb_assert_release(amount < rsp->capacity);
@@ -638,7 +638,7 @@ void cmb_resourcestore_release(struct cmb_resourcestore *rsp, const uint64_t amo
     cmb_assert_debug(pp != NULL);
 
     struct cmi_list_tag32 **rtloc = &(pp->resources_listhead);
-    struct cmi_holdable *hrp = (struct cmi_holdable *)rsp;
+    struct cmb_holdable *hrp = (struct cmb_holdable *)rsp;
     const uint64_t caller_handle = find_handle(rtloc, hrp);
     cmb_assert_debug(caller_handle != 0u);
 
@@ -673,6 +673,6 @@ void cmb_resourcestore_release(struct cmb_resourcestore *rsp, const uint64_t amo
     record_sample(rsp);
     cmb_logger_info(stdout, "Released %lld of %s", amount, hrp->base.name);
 
-    struct cmi_resourceguard *rgp = &(rsp->guard);
-    cmi_resourceguard_signal(rgp);
+    struct cmb_resourceguard *rgp = &(rsp->guard);
+    cmb_resourceguard_signal(rgp);
 }
