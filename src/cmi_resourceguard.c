@@ -20,8 +20,6 @@
  * item[2] - its context pointer
  * item[3] - not used here
  *
- * todo: Extend to allow other resourceguard objects to receive signals by binding.
- *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -101,7 +99,7 @@ void cmi_resourceguard_terminate(struct cmi_resourceguard *rgp)
  */
 int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
                                cmi_resourceguard_demand_func *demand,
-                               void *ctx)
+                               const void *ctx)
 {
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(demand != NULL);
@@ -119,7 +117,7 @@ int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
     const uint64_t handle = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
                                                  (void *)pp,
                                                  (void *)demand,
-                                                 ctx,
+                                                 (void *)ctx,
                                                  NULL,
                                                  entry_time,
                                                  priority);
@@ -144,10 +142,9 @@ int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
 }
 
 /*
- * prpwuevt : The event handler that actually resumes the process coroutine after
- * being scheduled by cmb_resource_guard_wait
+ * resgrd_waitwu_evt : The event that actually resumes the process coroutine
  */
-static void prpwuevt(void *vp, void *arg)
+static void resgrd_waitwu_evt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
@@ -189,27 +186,35 @@ bool cmi_resourceguard_signal(struct cmi_resourceguard *rgp)
 
     /* Decode first entry in the hashheap */
     void **item = cmi_hashheap_peek_item(hp);
-    struct cmb_process *pp = (struct cmb_process *)(item[0]);
-    cmi_resourceguard_demand_func *demand = (cmi_resourceguard_demand_func *)(item[1]);
+    struct cmb_process *pp = item[0];
+    cmi_resourceguard_demand_func *demand = item[1];
     const void *ctx = item[2];
 
-    /* Is the demand met? */
-    if ((*demand)(rgp, pp, ctx)) {
+    /* Evaluate its demand predicate */
+    bool ret = false;
+    const struct cmi_resourcebase *rbp = rgp->guarded_resource;
+    if ((*demand)(rbp, pp, ctx)) {
         /* Yes, pull the process off the queue and schedule a wakeup event */
         (void)cmi_hashheap_dequeue(hp);
         const double time = cmb_time();
         const int64_t priority = cmb_process_get_priority(pp);
-        (void)cmb_event_schedule(prpwuevt,
+        (void)cmb_event_schedule(resgrd_waitwu_evt,
                                  pp,
                                  (void *)CMB_PROCESS_SUCCESS,
                                  time,
                                  priority);
-        return true;
+        ret = true;
     }
-    else {
-        /* No, leave it where it is */
-        return false;
+
+    /* Forward the signal to any observers */
+    const struct cmi_list_tag16 *tmp = rgp->observers;
+    while (tmp != NULL) {
+        struct cmi_resourceguard *obs = (struct cmi_resourceguard *)tmp->ptr;
+        cmi_resourceguard_signal(obs);
+        tmp = tmp->next;
     }
+
+    return ret;
 }
 
 /*
@@ -223,28 +228,27 @@ bool cmi_resourceguard_cancel(struct cmi_resourceguard *rgp,
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(pp != NULL);
 
+    bool ret = false;
     struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
     const uint64_t handle = pp->waitsfor.handle;
-
     if (handle != 0u) {
         (void)cmi_hashheap_cancel(hp, handle);
         const double time = cmb_time();
         const int64_t priority = cmb_process_get_priority(pp);
-        (void)cmb_event_schedule(prpwuevt,
+        (void)cmb_event_schedule(resgrd_waitwu_evt,
                                  pp,
                                  (void *)CMB_PROCESS_CANCELLED,
                                  time,
                                  priority);
-        return true;
+        ret = true;
     }
-    else {
-        return false;
-    }
+
+    return ret;
 }
 
 /*
  * cmi_resourceguard_remove : Remove this process from the priority queue.
- * Returns true if found and successfully cancelled, false if not.
+ * Returns true if found and successfully removed, false if not.
  */
 bool cmi_resourceguard_remove(struct cmi_resourceguard *rgp,
                               const struct cmb_process *pp)
@@ -252,22 +256,25 @@ bool cmi_resourceguard_remove(struct cmi_resourceguard *rgp,
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(pp != NULL);
 
+    bool ret = false;
     struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
     const uint64_t handle = pp->waitsfor.handle;
-
     if (handle != 0u) {
         (void)cmi_hashheap_cancel(hp, handle);
-        return true;
+        ret = true;
     }
-    else {
-        return false;
-    }
+
+    return ret;
 }
 
 /*
  * cmi_resourceguard_register : Register another resource guard as an observer
  * of this one, forwarding signals and causing the observer to evaluate its
  * demand predicates as well.
+ *
+ * When registering observers, do not create any cycles where e.g. condition A
+ * gets signalled from B, B gets signalled from C, and C gets signalled from A.
+ * That will not end well.
  */
 void cmi_resourceguard_register(struct cmi_resourceguard *rgp,
                                 struct cmi_resourceguard *obs)

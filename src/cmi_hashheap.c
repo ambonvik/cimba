@@ -358,7 +358,6 @@ void cmi_hashheap_reset(struct cmi_hashheap *hp)
     cmi_hashheap_initialize(hp, hexp, cmp);
 }
 
-
 /*
  * cmi_hashheap_terminate : Deallocate the internal structures
  */
@@ -487,9 +486,9 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_cancel : Cancel the given event and reshuffle heap
+ * cmi_hashheap_remove : Remove the given entry and reshuffle heap
  */
-bool cmi_hashheap_cancel(struct cmi_hashheap *hp, const uint64_t handle)
+bool cmi_hashheap_remove(struct cmi_hashheap *hp, const uint64_t handle)
 {
     cmb_assert_release(hp != NULL);
     cmb_assert_release(handle != 0u);
@@ -742,11 +741,12 @@ uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
         }
     }
 
-    /* Second pass, cancel the matching events, never mind the
-     * heap reshuffling underneath us for each cancel.
+    /*
+     * Second pass, remove the matching events, never mind the
+     * heap reshuffling underneath us for each cancellation.
      */
     for (uint64_t ui = 0u; ui < cnt; ui++) {
-        cmi_hashheap_cancel(hp, tmp[ui]);
+        cmi_hashheap_remove(hp, tmp[ui]);
     }
 
     cmi_free(tmp);

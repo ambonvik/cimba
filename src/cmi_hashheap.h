@@ -248,11 +248,19 @@ static inline int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_cancel: Remove item from the priority queue. Returns true if
+ * cmi_hashheap_remove: Remove item from the priority queue. Returns true if
  * found (and removed), false if not found (already removed). Either way,
  * the item will not be in the queue at the end of this call.
  */
-extern bool cmi_hashheap_cancel(struct cmi_hashheap *hp, uint64_t handle);
+extern bool cmi_hashheap_remove(struct cmi_hashheap *hp, uint64_t handle);
+
+/*
+ * cmi_hashehap_cancel : Syntactic sugar for cmi_hasheap_remove
+ */
+static inline bool cmi_hashheap_cancel(struct cmi_hashheap *hp, uint64_t handle)
+{
+    return cmi_hashheap_remove(hp, handle);
+}
 
 /*
  * cmi_hashheap_is_enqueued : Is the given item currently in the queue?

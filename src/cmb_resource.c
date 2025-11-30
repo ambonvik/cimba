@@ -162,15 +162,15 @@ void cmb_resource_print_report(struct cmb_resource *rp, FILE *fp) {
 /*
  * is_available : pre-packaged demand function for a cmb_resource
  */
-static bool is_available(const struct cmi_resourceguard *rgp,
+static bool is_available(const struct cmi_resourcebase *rbp,
                          const struct cmb_process *pp,
                          const void *ctx)
 {
-    cmb_assert_release(rgp != NULL);
+    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_assert_release(pp != NULL);
     cmb_unused(ctx);
 
-    const struct cmi_resourcebase *rbp = rgp->guarded_resource;
     const struct cmb_resource *rp = (struct cmb_resource *)rbp;
 
     return (rp->holder == NULL);
@@ -243,10 +243,10 @@ void cmb_resource_release(struct cmb_resource *rp) {
 }
 
 /*
- * prpwuevt : The event handler that actually resumes the process coroutine after
+ * resgrd_waitwu_evt : The event handler that actually resumes the process coroutine after
  * being scheduled by cmb_resource_preempt
  */
-static void prpwuevt(void *vp, void *arg)
+static void resgrd_waitwu_evt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
@@ -280,7 +280,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
         /* Kick it out. No record_sample needed, remains occupied. */
         cmi_list_remove32(&(victim->resources_listhead), hrp);
         rp->holder = NULL;
-        (void)cmb_event_schedule(prpwuevt,
+        (void)cmb_event_schedule(resgrd_waitwu_evt,
                                 (void *)victim,
                                 (void *)CMB_PROCESS_PREEMPTED,
                                  cmb_time(),

@@ -239,10 +239,10 @@ struct cmb_process *cmb_process_get_current(void)
 }
 
 /*
- * phwuevt : The event that resumes the process after being scheduled by
+ * proc_holdwu_evt : The event that resumes the process after being scheduled by
  *           cmb_process_hold.
  */
-static void phwuevt(void *vp, void *arg)
+static void proc_holdwu_evt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
@@ -280,7 +280,7 @@ int64_t cmb_process_hold(const double dur)
     /* Set an alarm clock */
     const int64_t pri = cmb_process_get_priority(pp);
     pp->waitsfor.type = CMI_WAITABLE_CLOCK;
-    pp->waitsfor.handle = cmb_event_schedule(phwuevt,
+    pp->waitsfor.handle = cmb_event_schedule(proc_holdwu_evt,
                                     pp, NULL, t, pri);
 
     /* Yield to the scheduler and collect the return signal value */
@@ -303,10 +303,10 @@ int64_t cmb_process_hold(const double dur)
 }
 
 /*
- * ptwuevt : The event that resumes the process after being scheduled by
+ * proc_waitwu_evt : The event that resumes the process after being scheduled by
  *           cmb_process_wait_*.
  */
-static void ptwuevt(void *vp, void *arg)
+static void proc_waitwu_evt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
@@ -406,7 +406,7 @@ void cmi_process_wake_all(struct cmi_list_tag16 **ptloc, const int64_t signal)
         cmb_assert_debug(pp != NULL);
         const double time = cmb_time();
         const int64_t priority = cmb_process_get_priority(pp);
-        (void)cmb_event_schedule(ptwuevt,
+        (void)cmb_event_schedule(proc_waitwu_evt,
                                  pp,
                                  (void *)signal,
                                  time,
@@ -498,10 +498,10 @@ static void stop_waiting(struct cmb_process *tgt)
 }
 
 /*
- * phintevt : The event handler that actually interrupts the
+ * proc_intrpt_evt : The event that actually interrupts the
  * process coroutine after being scheduled by cmb_process_interrupt.
  */
-static void phintevt(void *vp, void *arg)
+static void proc_intrpt_evt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     cmb_assert_debug((int64_t)arg != CMB_PROCESS_SUCCESS);
@@ -528,14 +528,14 @@ void cmb_process_interrupt(struct cmb_process *pp,
     cmb_logger_info(stdout, "Interrupt %s signal %lld priority %lld", pp->name, sig, pri);
 
     const double t = cmb_time();
-    (void)cmb_event_schedule(phintevt, pp, (void *)sig, t, pri);
+    (void)cmb_event_schedule(proc_intrpt_evt, pp, (void *)sig, t, pri);
 }
 
 /*
- * pstopevt : The event handler that actually stops the process
+ * proc_stop_evt : The event that actually stops the process
  * coroutine after being scheduled by cmb_process_stop.
  */
-static void pstopevt(void *vp, void *arg) {
+static void proc_stop_evt(void *vp, void *arg) {
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *tgt = (struct cmb_process *)vp;
@@ -547,7 +547,7 @@ static void pstopevt(void *vp, void *arg) {
     }
     else {
         cmb_logger_warning(stdout,
-                           "pstopevt: tgt %s not running",
+                           "proc_stop_evt: tgt %s not running",
                            tgt->name);
     }
 
@@ -585,5 +585,5 @@ void cmb_process_stop(struct cmb_process *pp, void *retval)
     /* Make sure all normal events happen first to ensure consistent state */
     const int64_t pri = INT64_MIN;
     const double t = cmb_time();
-    (void)cmb_event_schedule(pstopevt, pp, retval, t, pri);
+    (void)cmb_event_schedule(proc_stop_evt, pp, retval, t, pri);
 }

@@ -1,6 +1,6 @@
 /**
  * @file cmb_event.h
- * @brief Simulation event queue manager for discrete event simulation.
+ * @brief Event queue manager for discrete event simulation.
  * Provides routines to handle clock sequencing and event scheduling.
  *
  * An event is defined as a function taking two pointers to void as

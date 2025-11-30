@@ -69,6 +69,7 @@ set(SOURCES
         src/arch/cmb_random_hwseed_Win64.c
         src/arch/cmi_coroutine_context_Win64.c
         src/arch/cmi_cpu_cores_Win64.c
+        src/cmb_condition.c
 )
 
 set(ASM_SOURCES src/arch/cmi_coroutine_context_Win64.asm src/arch/cmi_random_hwseed_Win64.asm)

@@ -1,7 +1,8 @@
 /*
  * cmi_resourceguard.h - the gatekeeper class for resources a process can wait
  * for. It is derived from cmi_hashheap by composition and inherits its methods,
- * adding a pointer to the resource it guards.
+ * adding a pointer to the resource it guards and a list of any observer
+ * resource guards that get signals forwarded from this one.
  *
  *  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -38,7 +39,7 @@ struct cmi_resourceguard {
 /*
  * typedef cmi_resourceguard_demand_func : function prototype for a resource demand
  */
-typedef bool (cmi_resourceguard_demand_func)(const struct cmi_resourceguard *rgp,
+typedef bool (cmi_resourceguard_demand_func)(const struct cmi_resourcebase *rbp,
                                              const struct cmb_process *pp,
                                              const void *ctx);
 
@@ -65,7 +66,7 @@ extern void cmi_resourceguard_terminate(struct cmi_resourceguard *rgp);
  */
 extern int64_t cmi_resourceguard_wait(struct cmi_resourceguard *rgp,
                                       cmi_resourceguard_demand_func *demand,
-                                      void *ctx);
+                                      const void *ctx);
 
 /*
  * cmi_resourceguard_signal : Plings the bell for a resource guard to check if

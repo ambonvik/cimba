@@ -1,6 +1,6 @@
 /**
  * @file cmb_objectqueue.h
- * @brief A two-headed fixed-capacity queue where one or more producer processes
+ * @brief A fixed-capacity queue where one or more producer processes
  * can put arbitrary objects into the one end, and one or more consumer
  * processes can get objects out of the other end. If enough space is not
  * available, the producers wait, and if there is not enough content, the

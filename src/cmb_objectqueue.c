@@ -114,16 +114,15 @@ void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp)
  * has_content : pre-packaged demand function for a cmb_objectqueue, allowing
  * the getting process to grab some whenever there is something to grab.
  */
-static bool has_content(const struct cmi_resourceguard *rgp,
+static bool has_content(const struct cmi_resourcebase *rbp,
                         const struct cmb_process *pp,
                         const void *ctx)
 {
-    cmb_assert_release(rgp != NULL);
+    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_unused(pp);
     cmb_unused(ctx);
 
-    const struct cmi_resourcebase *rbp = rgp->guarded_resource;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     const struct cmb_objectqueue *oqp = (struct cmb_objectqueue *)rbp;
 
     return (oqp->queue_head != NULL);
@@ -133,16 +132,15 @@ static bool has_content(const struct cmi_resourceguard *rgp,
  * has_space : pre-packaged demand function for a cmb_objectqueue, allowing
  * the putting process to stuff in some whenever there is space.
  */
-static bool has_space(const struct cmi_resourceguard *rgp,
+static bool has_space(const struct cmi_resourcebase *rbp,
                       const struct cmb_process *pp,
                       const void *ctx)
 {
-    cmb_assert_release(rgp != NULL);
+    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_unused(pp);
     cmb_unused(ctx);
 
-    const struct cmi_resourcebase *rbp = rgp->guarded_resource;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     const struct cmb_objectqueue *oqp = (struct cmb_objectqueue *)rbp;
 
     return (oqp->length < oqp->capacity);

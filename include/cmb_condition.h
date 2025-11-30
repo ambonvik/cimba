@@ -23,18 +23,11 @@
  * where we can assign the resource to the acquiring process and know that no
  * other processes need to be awakened.
  *
- * The `cmb_condition` also provides methods to subscribe to signals from other
- * resource guard objects and to unsubscribe. Recall that in a discrete event
- * simulation, the state can only change at an event. By registering itself at
- * some resource guard, the condition variable receives a signal whenever
- * something has changed, can re-evaluate the demand functions for its waiting
- * processes, and reactivate as justified. Strictly speaking, this is an
- * "observer" design pattern, not "subscriber" (since the observed subject is
- * aware that the observers exist).
- *
- * When registering observers, do not create any cycles where e.g. condition A
- * gets signalled from B, B gets signalled from C, and C gets signalled from A.
- * That will not end well.
+ * Recall that in a discrete event simulation, the state can only change at an
+ * event. By registering itself as an observer at some other resource guard, the
+ * condition variable will receive a signal whenever something has changed, can
+ * re-evaluate the demand functions for its waiting processes, and reactivate as
+ * justified.
  */
 
 /*
@@ -56,21 +49,18 @@
 #ifndef CIMBA_CMB_CONDITION_H
 #define CIMBA_CMB_CONDITION_H
 
+#include "cmi_resourcebase.h"
 #include "cmi_resourceguard.h"
 
 /* Maximum length of a resource name, anything longer will be truncated */
-#define CMB_CONDIITON_NAMEBUF_SZ 32
-
+#define CMB_CONDITION_NAMEBUF_SZ 32
 
 /**
- * @brief The condition struct, basically a named resource guard. It inherits
- *        the properties of the resource guard, including a hash heap of waiting
- *        processes, each with a pointer to its demand function and the
- *        corresponding context argument.
+ * @brief The condition struct, basically a named resource guard.
  */
 struct cmb_condition {
-    struct cmi_resourceguard guard;      /**< The parent class */
-    char name[CMB_CONDIITON_NAMEBUF_SZ]; /**< The process name string */
+    struct cmi_resourcebase base;           /**< The parent class, providing name and initialization */
+    struct cmi_resourceguard guard;         /**< Providing the queueing mechanics */
 };
 
 /**
@@ -78,11 +68,13 @@ struct cmb_condition {
  *        pointer to the condition (allowing usage by derived classes), a
  *        pointer to the process, and a `void *` to basically any context the
  *        predicate function needs to determine a `true` or `false` result.
+ *
+ * Same as the `cmi_resourceguard_demand_func`, except the first argument type,
+ * which only needs a typecast to reach the base class.
  */
 typedef bool (cmb_condition_demand_func)(const struct cmb_condition *cnd,
                                          const struct cmb_process *prc,
                                          const void *ctx);
-
 
 /**
  * @brief  Allocate memory for a condition variable.
@@ -98,8 +90,7 @@ extern struct cmb_condition *cmb_condition_create(void);
  * @param name A null-terminated string naming the condition variable.
  */
 extern void cmb_condition_initialize(struct cmb_condition *cvp,
-                                         const char *name,
-                                         uint64_t capacity);
+                                     const char *name);
 
 /**
  * @brief  Un-initializes a condition variable.
@@ -116,8 +107,9 @@ extern void cmb_condition_terminate(struct cmb_condition *cvp);
 extern void cmb_condition_destroy(struct cmb_condition *cvp);
 
 /**
- * @brief Wait for the given demand to be satisfied, expressed as a predicate
- *        function that returns a boolean answer based on whatever state.
+ * @brief Make the current process wait for the given demand to be satisfied,
+ *        expressed as a predicate function that returns a boolean answer based
+ *        on whatever state.
  *
  * @param cvp Pointer to a condition variable.
  * @param dmnd The demand predicate function.
@@ -131,30 +123,67 @@ extern int64_t cmb_condition_wait(struct cmb_condition *cvp,
                                   const void *ctx);
 
 /**
- * @brief Cause the condition variable to re-evaluate the demand predicate for
- *        all waiting processes and reacivate those that evaluate as `true`.
+ * @brief Re-evaluate the demand predicate for all waiting processes and
+ *        reactivate those that evaluate as `true`.
  *
  * @param cvp Pointer to a condition variable.
  */
 extern bool cmb_condition_signal(struct cmb_condition *cvp);
 
 /**
- * @brief Register for signals from some other resource guard.
+ * @brief Remove the process from the priority queue and resume it with a
+ *        `CMB_PROCESS_CANCELLED` signal.
  *
  * @param cvp Pointer to a condition variable.
- * @param rgp Pointer to a resource guard.
+ * @param pp Pointer to a process, presumably waiting for the condition
+ *
+ * @return `true` if the found, `false` if not.
  */
-extern bool cmb_condition_register(struct cmb_condition *cvp,
-                                   struct cmi_resourceguard *rgp);
+extern bool cmi_condition_cancel(struct cmb_condition *cvp,
+                                 struct cmb_process *pp);
 
 /**
- * @brief Un-register for signals from some other resource guard.
+ * @brief Remove the process from the priority queue without resuming it. Used
+ *        e.g. when stopping a process and cancelling its appointments.
+ *
+ * @param cvp Pointer to a condition variable.
+ * @param pp Pointer to a process, presumably waiting for the condition
+ *
+ * @return `true` if the found, `false` if not.
+ */
+extern bool cmi_condition_remove(struct cmb_condition *cvp,
+                                 const struct cmb_process *pp);
+
+/**
+ * @brief Subscribe this condition variable to signals from the other resource
+ *        guard.
  *
  * @param cvp Pointer to a condition variable.
  * @param rgp Pointer to a resource guard.
  */
-extern bool cmb_condition_unregister(struct cmb_condition *cvp,
-                                     struct cmi_resourceguard *rgp);
+static inline void cmi_condition_subscribe(struct cmb_condition *cvp,
+                                           struct cmi_resourceguard *rgp) {
+    cmb_assert_release(cvp != NULL);
+    cmb_assert_release(rgp != NULL);
 
+    cmi_resourceguard_register(rgp, (struct cmi_resourceguard *)cvp);
+}
+
+/**
+ * @brief Un-subscribe this condition variable to signals from the other
+ *        resource guard.
+ *
+ * @param cvp Pointer to a condition variable.
+ * @param rgp Pointer to a resource guard.
+ *
+ * @return `true` if the found, `false` if not.
+ */
+static inline bool cmi_condition_unsubscribe(struct cmb_condition *cvp,
+                                             struct cmi_resourceguard *rgp) {
+    cmb_assert_release(cvp != NULL);
+    cmb_assert_release(rgp != NULL);
+
+    return cmi_resourceguard_unregister(rgp, (struct cmi_resourceguard *)cvp);
+}
 
 #endif /* CIMBA_CMB_CONDITION_H */
