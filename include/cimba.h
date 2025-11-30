@@ -53,6 +53,7 @@ extern const char *cimba_version(void);
  */
 #include "cmb_assert.h"
 #include "cmb_buffer.h"
+#include "cmb_condition.h"
 #include "cmb_dataset.h"
 #include "cmb_datasummary.h"
 #include "cmb_event.h"

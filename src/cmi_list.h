@@ -2,7 +2,7 @@
  * cmb_list.c - a generic singly linked list of 16- or 32-byte objects. Using
  *              two different memory pools, need to distinguish between these
  *              cases, hence the apparent code duplication below.
- *              Only basic add (push) and remove methods here, others need to
+ *              Only basic push, pop, and remove methods here, others need to
  *              be implemented at point of usage from exposed struct content.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
@@ -28,18 +28,18 @@
 
 #include "cmi_mempool.h"
 
-/* 16-byte version, just the linked list of pointers to something */
-struct cmi_list_tag16 {
-    struct cmi_list_tag16 *next;
+/* Implicit 16-byte version, just the linked list of pointers to something */
+struct cmi_list_tag {
+    struct cmi_list_tag *next;
     void *ptr;
 };
 
-static inline void cmi_list_add16(struct cmi_list_tag16 **lloc, void *payload)
+static inline void cmi_list_push(struct cmi_list_tag **lloc, void *payload)
 {
     cmb_assert_debug(lloc != NULL);
     cmb_assert_debug(payload != NULL);
 
-    struct cmi_list_tag16 *ltag = NULL;
+    struct cmi_list_tag *ltag = NULL;
     cmb_assert_debug(sizeof(*ltag) == 16u);
     ltag = cmi_mempool_get(&cmi_mempool_16b);
     cmb_assert_debug(ltag != NULL);
@@ -50,16 +50,30 @@ static inline void cmi_list_add16(struct cmi_list_tag16 **lloc, void *payload)
     *lloc = ltag;
 }
 
-static inline bool cmi_list_remove16(struct cmi_list_tag16 **lloc,
-                                     const void *target)
+static inline void *cmi_list_pop(struct cmi_list_tag **lloc)
 {
     cmb_assert_debug(lloc != NULL);
-    cmb_assert_debug(target != NULL);
 
-    struct cmi_list_tag16 **ltpp = lloc;
+    void *ret = NULL;
+    if (*lloc != NULL) {
+        struct cmi_list_tag *ltag = *lloc;
+        ret = ltag->ptr;
+        *lloc = ltag->next;
+        cmi_mempool_put(&cmi_mempool_16b, ltag);
+    }
+
+    return ret;
+}
+
+static inline bool cmi_list_remove(struct cmi_list_tag **lloc, const void *tgt)
+{
+    cmb_assert_debug(lloc != NULL);
+    cmb_assert_debug(tgt != NULL);
+
+    struct cmi_list_tag **ltpp = lloc;
     while (*ltpp != NULL) {
-        struct cmi_list_tag16 *ltag = *ltpp;
-        if (ltag->ptr == target) {
+        struct cmi_list_tag *ltag = *ltpp;
+        if (ltag->ptr == tgt) {
             *ltpp = ltag->next;
             cmi_mempool_put(&cmi_mempool_16b, ltag);
 
@@ -124,5 +138,118 @@ static inline bool cmi_list_remove32(struct cmi_list_tag32 **lloc,
 
     return false;
 }
+
+/* A doubly linked version, again 32 bytes per tag */
+struct cmi_dlist_tag {
+    struct cmi_dlist_tag *next;
+    struct cmi_dlist_tag *prev;
+    void *meta;
+    void *ptr;
+};
+
+/* Push item to the front */
+static inline void cmi_dlist_push(struct cmi_dlist_tag **dlhloc,
+                                  struct cmi_dlist_tag **dltloc,
+                                  void *meta,
+                                  void *payload)
+{
+    cmb_assert_debug(dlhloc != NULL);
+    cmb_assert_debug(dltloc != NULL);
+    cmb_assert_debug(payload != NULL);
+
+    struct cmi_dlist_tag *dtag = NULL;
+    cmb_assert_debug(sizeof(*dtag) == 32u);
+    dtag = cmi_mempool_get(&cmi_mempool_32b);
+    cmb_assert_debug(dtag != NULL);
+
+    dtag->ptr = payload;
+    dtag->meta = meta;
+
+    dtag->next = *dlhloc;
+    dtag->prev = NULL;
+    *dlhloc = dtag;
+    if (*dltloc == NULL) {
+        *dltloc = dtag;
+    }
+}
+
+/* Pop item from the front */
+static inline void *cmi_dlist_pop(struct cmi_dlist_tag **dlhloc,
+                                  struct cmi_dlist_tag **dltloc)
+{
+    cmb_assert_debug(dlhloc != NULL);
+    cmb_assert_debug(dltloc != NULL);
+
+    if (*dlhloc == NULL) {
+        return NULL;
+    }
+
+    struct cmi_dlist_tag *dtag = *dlhloc;
+    void *tmp = dtag->ptr;
+    *dlhloc = dtag->next;
+    if (*dlhloc != NULL) {
+        (*dlhloc)->prev = NULL;
+    }
+    else {
+        *dltloc = NULL;
+    }
+
+    cmi_mempool_put(&cmi_mempool_32b, dtag);
+
+    return tmp;
+}
+
+/* Add item to the back */
+static inline void cmi_dlist_add(struct cmi_dlist_tag **dlhloc,
+                                 struct cmi_dlist_tag **dltloc,
+                                 void *meta,
+                                 void *payload)
+{
+    cmb_assert_debug(dlhloc != NULL);
+    cmb_assert_debug(dltloc != NULL);
+    cmb_assert_debug(payload != NULL);
+
+    struct cmi_dlist_tag *dtag = NULL;
+    cmb_assert_debug(sizeof(*dtag) == 32u);
+    dtag = cmi_mempool_get(&cmi_mempool_32b);
+    cmb_assert_debug(dtag != NULL);
+
+    dtag->ptr = payload;
+    dtag->meta = meta;
+
+    dtag->next = NULL;
+    dtag->prev = *dltloc;
+    *dltloc = dtag;
+    if (*dlhloc == NULL) {
+        *dlhloc = dtag;
+    }
+}
+
+/* Pull item from the back */
+static inline void *cmi_dlist_pull(struct cmi_dlist_tag **dlhloc,
+                                   struct cmi_dlist_tag **dltloc)
+{
+    cmb_assert_debug(dlhloc != NULL);
+    cmb_assert_debug(dltloc != NULL);
+
+    if (*dltloc == NULL) {
+        return NULL;
+    }
+
+    struct cmi_dlist_tag *dtag = *dltloc;
+    void *tmp = dtag->ptr;
+    *dltloc = dtag->prev;
+    if (*dltloc != NULL) {
+        (*dltloc)->next = NULL;
+    }
+    else {
+        *dlhloc = NULL;
+    }
+
+    cmi_mempool_put(&cmi_mempool_32b, dtag);
+
+    return tmp;
+}
+
 
 #endif /* CIMBA_CMI_LIST_H */

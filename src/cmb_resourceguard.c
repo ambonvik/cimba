@@ -206,7 +206,7 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
     }
 
     /* Forward the signal to any observers */
-    const struct cmi_list_tag16 *tmp = rgp->observers;
+    const struct cmi_list_tag *tmp = rgp->observers;
     while (tmp != NULL) {
         struct cmb_resourceguard *obs = (struct cmb_resourceguard *)tmp->ptr;
         cmb_resourceguard_signal(obs);
@@ -281,7 +281,7 @@ void cmb_resourceguard_register(struct cmb_resourceguard *rgp,
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(obs != NULL);
 
-    cmi_list_add16(&(rgp->observers), obs);
+    cmi_list_push(&(rgp->observers), obs);
 }
 
 /*
@@ -295,6 +295,6 @@ bool cmb_resourceguard_unregister(struct cmb_resourceguard *rgp,
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(obs != NULL);
 
-    return cmi_list_remove16(&(rgp->observers), obs);
+    return cmi_list_remove(&(rgp->observers), obs);
 }
 

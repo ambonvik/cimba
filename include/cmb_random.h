@@ -3,13 +3,13 @@
  * @brief Fast, high quality pseudo-random number generators and distributions
  *        built from the ground up for multithreaded use.
  *
- * The main generator gives 64-bit pseudo-random numbers with 256 bits of state
+ * The main generator gives 64-bit pseudo-random numbers with 256 bits of env_state
  * and a cycle of at least 2^64 samples. It is seeded by a 64-bit value but
- * amplifies that to a 265-bit state by using an auiliary generator with 64 bits
- * state to bootstrap the initial 256-bit state for the main generator. All
+ * amplifies that to a 265-bit env_state by using an auiliary generator with 64 bits
+ * env_state to bootstrap the initial 256-bit env_state for the main generator. All
  * later pseudo-random numbers come from the same stream.
  *
- * The state is thread local, i.e., providing a separate random number stream
+ * The env_state is thread local, i.e., providing a separate random number stream
  * for each thread. Setting a new seed will determine the random number stream
  * for that thread until it is reset to some other seed. This makes it possible
  * to run independent identically distributed trials in separate threads without
@@ -26,10 +26,10 @@
  * alias sampling is provided.
  *
  * Most other pseudo-random number generators and distributions are not thread-
- * safe. The internal generator state is often kept as static variables between
+ * safe. The internal generator env_state is often kept as static variables between
  * calls, making it non-reentrant. Some common distributions, such as the
  * typical Box-Muller method for normal variates, also depend on static
- * variables to maintain state between call. making it unsuitable for our
+ * variables to maintain env_state between call. making it unsuitable for our
  * purpose. Luckily, the algorithms used here are not only thread-safe, but also
  * faster and statistically equally good or better.
  *
@@ -72,9 +72,9 @@
  *        distributions. Can be called again later to reset seed to initial (or
  *        some other) state.
  *
- * The given seed will be bootstrapped internally to a 256-bit state by an
+ * The given seed will be bootstrapped internally to a 256-bit env_state by an
  * auxiliary pseudo-random number generator only used for this purpose. The
- * state is thread local, i.e., the call is only effective for the currently
+ * env_state is thread local, i.e., the call is only effective for the currently
  * executing thread.
  *
  * @param seed Initial seed value to be used, preferrably a random 64-bit value.
@@ -279,7 +279,7 @@ extern double cmi_random_exp_not_hot(uint64_t u_cand_x);
  *
  * Used for modeling time intervals between successive events, such as
  * customer inter-arrival times, service times, times to fail or repair,
- * state transition times in Markov chains.
+ * env_state transition times in Markov chains.
  *
  * Uses an implementation of McFarland's improved ziggurat method.
  *
@@ -303,7 +303,7 @@ static inline double cmb_random_std_exponential(void)
  *
  * Used for modeling time intervals between successive events, such as
  * customer inter-arrival times, service times, times to fail or repair,
- * state transition times in Markov chains.
+ * env_state transition times in Markov chains.
  *
  * Uses an implementation of McFarland's improved ziggurat method.
  *

@@ -83,7 +83,7 @@ typedef void (cmb_event_func)(void *subject, void *object);
  * @brief Initialize the event queue itself. Must be called before any events
  * can be scheduled or executed. Expects to find an empty event queue.
  *
- * Call at the beginning of your simulation trial to start from a fresh state.
+ * Call at the beginning of your simulation trial to start from a fresh env_state.
  * Also make sure to call `cmb_event_queue_terminate` at the end of your trial
  * to free up space.
  *

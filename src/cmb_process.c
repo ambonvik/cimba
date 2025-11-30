@@ -78,6 +78,7 @@ extern void cmb_process_terminate(struct cmb_process *pp)
     /* Should not have any waiters or hold any resources at this point */
     cmb_assert_debug(pp->waiters_listhead == NULL);
     cmb_assert_debug(pp->resources_listhead == NULL);
+    cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
 
     cmi_coroutine_terminate((struct cmi_coroutine *)pp);
 }
@@ -346,7 +347,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
         /* Nope, register it both here and there */
         pp->waitsfor.type = CMI_WAITABLE_PROCESS;
         pp->waitsfor.ptr = awaited;
-        cmi_list_add16(&(awaited->waiters_listhead), pp);
+        cmi_list_push(&(awaited->waiters_listhead), pp);
 
         /* Yield to the scheduler and collect the return signal value */
         const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
@@ -359,7 +360,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
 }
 
 /* A friendly function in cmi_event.c, not part of public interface */
-extern struct cmi_list_tag16 **cmi_event_tag_loc(uint64_t handle);
+extern struct cmi_list_tag **cmi_event_tag_loc(uint64_t handle);
 
 /*
  * cmb_process_wait_event : Wait for an event to occur.
@@ -377,8 +378,8 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     cmb_assert_debug(pp->waitsfor.handle == 0ull);
 
     /* Add the current process to the list of processes waiting for the event */
-    struct cmi_list_tag16 **loc = cmi_event_tag_loc(ev_handle);
-    cmi_list_add16(loc, pp);
+    struct cmi_list_tag **loc = cmi_event_tag_loc(ev_handle);
+    cmi_list_push(loc, pp);
 
     /* Yield to the scheduler and collect the return signal value */
     pp->waitsfor.type = CMI_WAITABLE_EVENT;
@@ -392,12 +393,12 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
 }
 
 /* Note: extern scope as an internal function, used by cmb_event.c */
-void cmi_process_wake_all(struct cmi_list_tag16 **ptloc, const int64_t signal)
+void cmi_process_wake_all(struct cmi_list_tag **ptloc, const int64_t signal)
 {
     cmb_assert_debug(ptloc != NULL);
 
     /* Unlink the tag chain */
-    struct cmi_list_tag16 *ptag = *ptloc;
+    struct cmi_list_tag *ptag = *ptloc;
     *ptloc = NULL;
 
     /* Process it, scheduling a wakeup call for each process */
@@ -412,7 +413,7 @@ void cmi_process_wake_all(struct cmi_list_tag16 **ptloc, const int64_t signal)
                                  time,
                                  priority);
 
-        struct cmi_list_tag16 *tmp = ptag->next;
+        struct cmi_list_tag *tmp = ptag->next;
         cmi_mempool_put(&cmi_mempool_16b, ptag);
         ptag = tmp;
     }
@@ -478,12 +479,12 @@ static void stop_waiting(struct cmb_process *tgt)
         cmi_process_drop_all(tgt, &(tgt->resources_listhead));
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_EVENT) {
-        struct cmi_list_tag16 **loc = cmi_event_tag_loc(tgt->waitsfor.handle);
-        const bool found = cmi_list_remove16(loc, tgt);
+        struct cmi_list_tag **loc = cmi_event_tag_loc(tgt->waitsfor.handle);
+        const bool found = cmi_list_remove(loc, tgt);
         cmb_assert_debug(found == true);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_PROCESS) {
-        const bool found = cmi_list_remove16(&(tgt->waiters_listhead), tgt);
+        const bool found = cmi_list_remove(&(tgt->waiters_listhead), tgt);
         cmb_assert_debug(found == true);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_RESOURCE) {

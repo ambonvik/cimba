@@ -90,6 +90,15 @@
 #define CMB_PROCESS_CANCELLED (4LL)
 
 /**
+ * @brief The states a process can be in (direct from the underlying coroutine)
+ */
+enum cmb_process_state {
+    CMB_PROCESS_CREATED = 0,
+    CMB_PROCESS_RUNNING,
+    CMB_PROCESS_FINISHED
+};
+
+/**
  * @brief The process struct, inheriting all properties from `cmi_coroutine` by
  * composition and adds the name, priority, and whatever it may be waiting for.
  * The `waiters_listhead` contain any processes that are waiting for this
@@ -101,7 +110,7 @@ struct cmb_process {
     char name[CMB_PROCESS_NAMEBUF_SZ];      /**< The process name string */
     int64_t priority;                       /**< The current process priority */
     struct cmi_process_waitable waitsfor;   /**< What the process is waiting for, if anything */
-    struct cmi_list_tag16 *waiters_listhead;  /**< Other processes waiting for this process to finish */
+    struct cmi_list_tag *waiters_listhead;  /**< Other processes waiting for this process to finish */
     struct cmi_list_tag32 *resources_listhead; /**< Any resources held by this process */
 };
 
@@ -176,17 +185,10 @@ extern void cmb_process_start(struct cmb_process *pp);
 /**
  * @brief  Hold (sleep) for a specified duration of simulated time. Called from
  *         within a process.
- *
- * We provide a default value `CMB_PROCESS_INTERRUPTED` but the user application
- * can use whatever interrupt values it needs (except `CMB_PROCESS_SUCCESS`),
- * including defining an `enum` with any number of values. We do not do that
- * here, since it is unpredictable what and how many types of interrupts an
- * application may need, or what the different values will mean in the
- * application.
 *
  * @param dur The duration to hold for, relative to the current simulation time.
  * @return `CMB_PROCESS_SUCCESS` if returning normally at the scheduled time,
- *         something else if returning otherwise.
+ *        otherwise some other signal value indicating the type of interruption.
  */
 extern int64_t cmb_process_hold(double dur);
 
@@ -331,6 +333,22 @@ extern int64_t cmb_process_get_priority(const struct cmb_process *pp);
  * @param pri The new priority value.
  */
 extern void cmb_process_set_priority(struct cmb_process *pp, int64_t pri);
+
+/**
+ * @brief  Get the current state of the process
+ *
+ * @param pp Pointer to a process.
+ *
+ * @return The current state of the process and its underlying coroutine.
+ */
+static inline enum cmb_process_state cmb_process_get_state(const struct cmb_process *pp)
+{
+    cmb_assert_release(pp != NULL);
+
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
+
+    return (enum cmb_process_state)(cp->status);
+}
 
 /**
  * @brief  Get the stored exit value from the process, as set by

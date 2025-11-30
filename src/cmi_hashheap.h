@@ -141,13 +141,13 @@ extern void cmi_hashheap_initialize(struct cmi_hashheap *hp,
 extern void cmi_hashheap_clear(struct cmi_hashheap *hp);
 
 /*
- * cmi_hashheap_terminate : Return the hashheap to a newly created state
+ * cmi_hashheap_terminate : Return the hashheap to a newly created env_state
  * freeing any allocated memory for the heap and hash map.
  */
 extern void cmi_hashheap_terminate(struct cmi_hashheap *hp);
 
 /*
- * cmi_hashheap_reset : Return the hashheap to a newly initialized state.
+ * cmi_hashheap_reset : Return the hashheap to a newly initialized env_state.
  * Equivalent to cmi_hasheap_terminate() followed by cmi_hasheap_initialize()
  */
 extern void cmi_hashheap_reset(struct cmi_hashheap *hp);

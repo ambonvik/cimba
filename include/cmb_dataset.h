@@ -54,37 +54,44 @@ extern struct cmb_dataset *cmb_dataset_create(void);
 
 /**
  * @brief Initialize the dataset, clearing any data values.
+ *
  * @param dsp Pointer to an already allocated dataset object.
  */
 extern void cmb_dataset_initialize(struct cmb_dataset *dsp);
 
 /**
  * @brief Re-initialize it, returning it to newly initialized state.
+ *
  * @param dsp Pointer to an already allocated dataset object.
  */
 extern void cmb_dataset_reset(struct cmb_dataset *dsp);
 
 /**
  * @brief Un-initialize it, returning it to newly created state.
+ *
  * @param dsp Pointer to an already allocated dataset object.
  */
 extern void cmb_dataset_terminate(struct cmb_dataset *dsp);
 
 /**
  * @brief Copy `tgt` into `src`, overwriting whatever was in `tgt`.
+ *
  * @param tgt Pointer to the target dataset object.
  * @param src Pointer to the source dataset object.
+ *
  * @return Number of data points copied.
  */
 extern uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
                                  const struct cmb_dataset *src);
 
 /**
- * @brief  Merge `datasets `s1` and `s2` into dataset `tgt.
- *         The target may or may not be one of the two sources, but not NULL.
+ * @brief  Merge `datasets `s1` and `s2` into dataset `tgt`.
+ *         The target may or may not be one of the two sources, but not `NULL`.
+ *
  * @param tgt Pointer to the target dataset object.
  * @param s1 Pointer to the first source dataset object.
  * @param s2 Pointer to the second source dataset object.
+ *
  * @return Number of data points in the merged data set.
  */
 extern uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
@@ -96,8 +103,8 @@ extern uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
  *        arrays.
  *
  * Do not call unless the dataset was created on the heap by
- * `cmb_dataset_create`. Use `cmb_dataset_terminate` instead to free the data
- * array only if not.
+ * `cmb_dataset_create`. Otherwise only use `cmb_dataset_terminate` instead to
+ * free the internal data array.
  *
  * @param dsp Pointer to previously allocated dataset object.
  */
@@ -105,22 +112,27 @@ extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
 
 /**
  * @brief  Sort the data array in ascending order
+ *
  * @param dsp Pointer to a dataset object.
  */
 extern void cmb_dataset_sort(const struct cmb_dataset *dsp);
 
 /**
  * @brief  Add a single value to a dataset, resizing the array as needed.
+ *
  * @param dsp Pointer to a dataset object.
  * @param x The new sample value to add.
+ *
  * @return The new number of data values in the array.
  */
 extern uint64_t cmb_dataset_add(struct cmb_dataset *dsp, double x);
 
 /**
  * @brief  Calculate summary statistics of the data series
+ *
  * @param dsp Pointer to a dataset object.
  * @param dsump Pointer to a data summary object to store the results.
+ *
  * @return The number of data values included in the summary.
  */
 extern uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
@@ -128,7 +140,9 @@ extern uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
 
 /**
  * @brief Count the number of data values.
+ *
  * @param dsp Pointer to a dataset object.
+ *
  * @return The number of data values in the data set.
  */
 static inline uint64_t cmb_dataset_count(const struct cmb_dataset *dsp)
@@ -140,7 +154,9 @@ static inline uint64_t cmb_dataset_count(const struct cmb_dataset *dsp)
 
 /**
  * @brief The minimum sample value in the dataset.
+ *
  * @param dsp Pointer to a dataset object.
+ *
  * @return The minimum data value in the data set, `DBL_MAX` if no data yet.
  */
 static inline double cmb_dataset_min(const struct cmb_dataset *dsp)
@@ -152,7 +168,9 @@ static inline double cmb_dataset_min(const struct cmb_dataset *dsp)
 
 /**
  * @brief The maximum sample value in the dataset.
+ *
  * @param dsp Pointer to a dataset object.
+ *
  * @return The maximum data value in the data set, `-DBL_MAX` if no data yet.
  */
 static inline double cmb_dataset_max(const struct cmb_dataset *dsp)
@@ -169,6 +187,7 @@ static inline double cmb_dataset_max(const struct cmb_dataset *dsp)
  * Calling it on an empty dataset will generate a warning and return zero.
  *
  * @param dsp Pointer to a dataset object.
+ *
  * @return The maximum data value in the data set, zero if no data yet.
  */
 extern double cmb_dataset_median(const struct cmb_dataset *dsp);
@@ -179,6 +198,7 @@ extern double cmb_dataset_median(const struct cmb_dataset *dsp);
  *
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly `stdout`
+ *
  * @param lead_ins Flag for whether to add lead-in texts or just print the
  *                 numeric values.
  */

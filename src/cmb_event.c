@@ -196,14 +196,14 @@ int64_t cmb_event_priority(const uint64_t handle)
  * item, used as the head of a list of processes waiting for this event.
  * Not part of the public API for the cmb_event module, used by cmb_process.c
  */
-struct cmi_list_tag16 **cmi_event_tag_loc(const uint64_t handle)
+struct cmi_list_tag **cmi_event_tag_loc(const uint64_t handle)
 {
     cmb_assert_release(event_queue != NULL);
 
     void **tmp = cmi_hashheap_get_item(event_queue, handle);
     cmb_assert_debug(tmp != NULL);
 
-    return (struct cmi_list_tag16 **)&(tmp[3]);
+    return (struct cmi_list_tag **)&(tmp[3]);
 }
 
 /* Friendly function in cmb_process.c, not part of public API */

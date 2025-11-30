@@ -44,7 +44,7 @@
 struct cmb_resourceguard {
     struct cmi_hashheap priority_queue;         /**< The base hashheap class */
     struct cmb_resourcebase *guarded_resource;  /**< The resource it guards */
-    struct cmi_list_tag16 *observers;           /**< Any other resource guards observing this one */
+    struct cmi_list_tag *observers;           /**< Any other resource guards observing this one */
 };
 
 /**
@@ -110,11 +110,15 @@ extern int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
  * Returns `true` if some process was resumed, `false` otherwise, hence easy to
  * wrap in a loop like `while (cmb_resource_guard_signal(rgp)) { ... }`
  *
- * In cases where some waiting process needs to bypass another, e.g. if there
- * are three available units of the resource, the first process in the queue
- * demands five, and there are three more behind it that demands one each, it is
- * up to the application to dynamically change process priorities to bring the
- * correct process to the front of the queue and make it eligible to resume.
+ * By default, Cimba does not allow potential priority inversion where a
+ * sequence of lower-priority processes could starve a higher-priority process
+ * indefinitely. In cases where some waiting process needs to bypass another,
+ * e.g. if there are three available units of the resource, the first process in
+ * the queue demands five, and there are three more behind it that demands one
+ * each, it is up to the application to dynamically change process priorities to
+ * bring the correct process to the front of the queue and make it eligible to
+ * resume. If this sort of thing is important in your use case, you probably
+ * want to write that code yourself.
  *
  * @param rgp Pointer to a resource guard.
  */
