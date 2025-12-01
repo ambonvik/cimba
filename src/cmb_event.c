@@ -89,8 +89,6 @@ static bool heap_order_check(const struct cmi_heap_tag *a,
  */
 void cmb_event_queue_initialize(const double start_time)
 {
-    cmb_assert_release(event_queue == NULL);
-
     sim_time = start_time;
 
     event_queue = cmi_hashheap_create();
@@ -102,9 +100,6 @@ void cmb_event_queue_initialize(const double start_time)
  */
 void cmb_event_queue_terminate(void)
 {
-    cmb_assert_release(event_queue != NULL);
-    cmb_assert_debug(event_queue != NULL);
-
     cmi_hashheap_terminate(event_queue);
     cmi_hashheap_destroy(event_queue);
     event_queue = NULL;
@@ -116,9 +111,6 @@ void cmb_event_queue_terminate(void)
  */
 void cmb_event_queue_clear(void)
 {
-    cmb_assert_release(event_queue != NULL);
-    cmb_assert_debug(event_queue != NULL);
-
     cmi_hashheap_clear(event_queue);
 }
 

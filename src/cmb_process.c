@@ -76,9 +76,12 @@ extern void cmb_process_terminate(struct cmb_process *pp)
     cmb_assert_release(pp != NULL);
 
     /* Should not have any waiters or hold any resources at this point */
-    cmb_assert_debug(pp->waiters_listhead == NULL);
-    cmb_assert_debug(pp->resources_listhead == NULL);
-    cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
+    while (pp->resources_listhead != NULL) {
+        /* It had, just recycle the tags */
+        struct cmi_list_tag32 *rtag = pp->resources_listhead;
+        pp->resources_listhead = rtag->next;
+        cmi_mempool_put(&cmi_mempool_32b, rtag);
+    }
 
     cmi_coroutine_terminate((struct cmi_coroutine *)pp);
 }

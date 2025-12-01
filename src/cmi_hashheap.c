@@ -266,27 +266,25 @@ static void hashheap_grow(struct cmi_hashheap *hp)
     cmi_aligned_free(old_heaploc);
 }
 
-static void hashheap_nullify(struct cmi_hashheap *hp)
-{
-    cmb_assert_debug(hp != NULL);
-
-    hp->heap = NULL;
-    hp->heap_exp_init = 0u;
-    hp->heap_exp_cur = 0u;
-    hp->heap_size = 0u;
-    hp->heap_count = 0u;
-    hp->heap_compare = NULL;
-    hp->hash_map = NULL;
-    hp->hash_size = 0u;
-    hp->item_counter = 0u;
-}
-
 struct cmi_hashheap *cmi_hashheap_create(void)
 {
     struct cmi_hashheap *hp = cmi_malloc(sizeof(*hp));
-    hashheap_nullify(hp);
+    cmi_memset(hp, 0u, sizeof(*hp));
 
     return hp;
+}
+
+/*
+ * default_order_check : Test if heap_tag *a should go before *b. If so, return true.
+ * Order by dkey only, only provided as a default convenience function.
+ */
+static bool default_order_check(const struct cmi_heap_tag *a,
+                                 const struct cmi_heap_tag *b)
+{
+    cmb_assert_debug(a != NULL);
+    cmb_assert_debug(b != NULL);
+
+    return (a->dkey < b->dkey);
 }
 
 /*
@@ -310,7 +308,12 @@ void cmi_hashheap_initialize(struct cmi_hashheap *hp,
     hp->hash_size = 2u * hp->heap_size;
     hp->heap_count = 0u;
 
-    hp->heap_compare = cmp;
+    if (cmp == NULL ) {
+        hp->heap_compare = default_order_check;
+    }
+    else {
+        hp->heap_compare = cmp;
+    }
 
     /* Calculate the memory size needed, page aligned */
     const size_t heapbts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
@@ -336,14 +339,15 @@ void cmi_hashheap_initialize(struct cmi_hashheap *hp,
 void cmi_hashheap_clear(struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
-    cmb_assert_release(hp->heap != NULL);
 
-    /* heap_size is allowed number of entries, calculate size in bytes */
-    const size_t heapbts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
-    const size_t hashbts = (hp->heap_size * 2u) * sizeof(struct cmi_hash_tag);
-    const size_t initsz = heapbts + hashbts;
-    cmi_memset(hp->heap, 0u, initsz);
-    hp->heap_count = 0u;
+    if (hp->heap != NULL) {
+        /* heap_size is allowed number of entries, calculate size in bytes */
+        const size_t heapbts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
+        const size_t hashbts = (hp->heap_size * 2u) * sizeof(struct cmi_hash_tag);
+        const size_t initsz = heapbts + hashbts;
+        cmi_memset(hp->heap, 0u, initsz);
+        hp->heap_count = 0u;
+    }
 }
 
 void cmi_hashheap_reset(struct cmi_hashheap *hp)

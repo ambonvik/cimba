@@ -365,9 +365,9 @@ void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
 
         const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
                 ((lead_ins) ? "Min " : ""), min,
-                ((lead_ins) ? "  Quartile_1 " : "\t"), q1,
+                ((lead_ins) ? "  First " : "\t"), q1,
                 ((lead_ins) ? "  Median " : "\t"), med,
-                ((lead_ins) ? "  Quartile_3 " : "\t"), q3,
+                ((lead_ins) ? "  Third " : "\t"), q3,
                 ((lead_ins) ? "  Max " : "\t"), max);
         cmb_assert_release(r > 0);
         cmb_dataset_reset(&dsc);

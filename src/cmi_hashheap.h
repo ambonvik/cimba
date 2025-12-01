@@ -127,7 +127,8 @@ extern struct cmi_hashheap *cmi_hashheap_create(void);
  *
  * cmp is the application-defined compare function for this hashheap, taking
  * pointers to two heap tags and returning true if the first should go before
- * the second, using whatever consideration is approprate for the usage.
+ * the second, using whatever consideration is approprate for the usage. If
+ * NULL, we will sort in increasing `dkey` order.
  */
 extern void cmi_hashheap_initialize(struct cmi_hashheap *hp,
                                     uint16_t hexp,
@@ -196,9 +197,7 @@ static inline uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp)
  */
 static inline bool cmi_hashheap_is_empty(const struct cmi_hashheap *hp)
 {
-    cmb_assert_release(hp != NULL);
-
-    return (hp->heap_count == 0u);
+    return ((hp == NULL) || (hp->heap_count == 0u));
 }
 
 /*

@@ -517,9 +517,9 @@ void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp,
                   && (x050 <= x075) && (x075 <= xmax));
     const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
             ((lead_ins) ? "Min " : ""), xmin,
-            ((lead_ins) ? "  Quartile_1 " : "\t"), x025,
+            ((lead_ins) ? "  First " : "\t"), x025,
             ((lead_ins) ? "  Median " : "\t"), x050,
-            ((lead_ins) ? "  Quartile_3 " : "\t"), x075,
+            ((lead_ins) ? "  Third " : "\t"), x075,
             ((lead_ins) ? "  Max " : "\t"), xmax);
     cmb_assert_release(r > 0);
 
