@@ -100,13 +100,15 @@ enum cmb_process_state {
 
 /**
  * @brief The process struct, inheriting all properties from `cmi_coroutine` by
- * composition and adds the name, priority, and whatever it may be waiting for.
+ * composition, adding the name, priority, and lists of resources it may be
+ * holding and things it may be waiting for.
+ *
  * The `waiters_listhead` contain any processes that are waiting for this
  * process to finish. The `resources_listhead` contains any resources held by
  * this process, to be released if the process is stopped by someone else.
 */
 struct cmb_process {
-    struct cmi_coroutine cr;                /**< The parent coroutine */
+    struct cmi_coroutine core;              /**< The parent coroutine */
     char name[CMB_PROCESS_NAMEBUF_SZ];      /**< The process name string */
     int64_t priority;                       /**< The current process priority */
     struct cmi_process_waitable waitsfor;   /**< What the process is waiting for, if anything */

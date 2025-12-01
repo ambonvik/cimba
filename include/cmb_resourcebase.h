@@ -45,7 +45,7 @@
 #define CMB_RESOURCEBASE_NAMEBUF_SZ 32
 
 /**
- * @brief Virtual base class.
+ * @brief Virtual base class for various resources and condition variables.
  */
 struct cmb_resourcebase {
     uint64_t cookie;                        /**< Initialization trap */

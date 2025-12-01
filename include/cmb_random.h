@@ -819,9 +819,9 @@ extern unsigned cmb_random_loaded_dice(unsigned n, const double pa[n]);
  *        look-up
  */
 struct cmb_random_alias {
-    unsigned n;
-    uint64_t *uprob;
-    unsigned *alias;
+    unsigned n;         /**< The number of entries */
+    uint64_t *uprob;    /**< Probabilities encoded as unsigned 64-bit integers */
+    unsigned *alias;    /**< Alias indexes */
 };
 
 /**

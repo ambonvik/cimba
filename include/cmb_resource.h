@@ -33,8 +33,9 @@
 
 /**
  * @brief The resource struct, inherits all properties from `cmi_holdable` by
- * composition and adds the resource guard, a single pointer to process holding
- * the resource (if currently held), and a timeseries for logging its history.
+ * composition and adds the resource guard, a single pointer to the process
+ * holding the resource (if currently held), and a timeseries for logging its
+ * history.
  */
 struct cmb_resource {
     struct cmb_holdable core;           /**< The virtual base class */
