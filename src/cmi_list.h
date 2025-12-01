@@ -95,10 +95,10 @@ struct cmi_list_tag32 {
     void *ptr;
 };
 
-static inline void cmi_list_add32(struct cmi_list_tag32 **lloc,
-                                const double dstamp,
-                                const uint64_t ustamp,
-                                void *payload)
+static inline void cmi_list_push32(struct cmi_list_tag32 **lloc,
+                                   const double dstamp,
+                                   const uint64_t ustamp,
+                                   void *payload)
 {
     cmb_assert_debug(lloc != NULL);
     cmb_assert_debug(payload != NULL);
@@ -114,6 +114,21 @@ static inline void cmi_list_add32(struct cmi_list_tag32 **lloc,
     ltag->ptr = payload;
 
     *lloc = ltag;
+}
+
+static inline void *cmi_list_pop32(struct cmi_list_tag32 **lloc)
+{
+    cmb_assert_debug(lloc != NULL);
+
+    void *ret = NULL;
+    if (*lloc != NULL) {
+        struct cmi_list_tag32 *ltag = *lloc;
+        ret = ltag->ptr;
+        *lloc = ltag->next;
+        cmi_mempool_put(&cmi_mempool_32b, ltag);
+    }
+
+    return ret;
 }
 
 static inline bool cmi_list_remove32(struct cmi_list_tag32 **lloc,

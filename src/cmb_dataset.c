@@ -451,12 +451,11 @@ static void data_print_line(FILE *fp,
 }
 
 struct cmi_dataset_histogram *cmi_dataset_create_histogram(const unsigned num_bins,
-                                                    const double low_lim,
-                                                    const double high_lim)
+                                                           const double low_lim,
+                                                           const double high_lim)
 {
     cmb_assert_debug(num_bins > 0u);
     const double range = high_lim - low_lim;
-    cmb_assert_debug(range > 0.0);
 
     struct cmi_dataset_histogram *hp = cmi_malloc(sizeof(*hp));
     hp->num_bins = num_bins + 2u;

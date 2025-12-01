@@ -180,7 +180,7 @@ static void resource_grab(struct cmb_resource *rp, struct cmb_process *pp)
 {
     rp->holder = pp;
     struct cmb_holdable *hrp = (struct cmb_holdable *)rp;
-    cmi_list_add32(&(pp->resources_listhead), 0.0, 0u, hrp);
+    cmi_list_push32(&(pp->resources_listhead), 0.0, 0u, hrp);
 }
 
 int64_t cmb_resource_acquire(struct cmb_resource *rp)
