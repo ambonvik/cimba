@@ -53,12 +53,14 @@ struct simulation {
  * identical parameters (but different seeds) to perform replications.
  */
 struct trial {
+    /* Parameters */
     double service_cv;
     double utilization;
     double warmup;
     double duration;
     double cooldown;
     uint64_t seed;
+    /* Outcome */
     double avg_queue_length;
 };
 

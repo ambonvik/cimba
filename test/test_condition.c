@@ -71,6 +71,7 @@ struct trial {
     unsigned num_tugs;
     unsigned num_berths[2];
     double unloading_time_avg[2];
+    double duration;
     /* Outcomes */
     struct cmb_dataset *system_time[2];
 };
@@ -353,6 +354,20 @@ void end_sim_evt(void *subject, void *object)
     cmb_process_stop(sim->entertainment, NULL);
 }
 
+/* For now, set them here instead of in an external experiment array */
+void set_test_parameters(struct trial *trl)
+{
+    trl->arrival_rate = 0.25;
+    trl->percent_large = 0.25;
+    trl->num_tugs = 10;
+    trl->num_berths[SMALL] = 6;
+    trl->num_berths[LARGE] = 3;
+    trl->unloading_time_avg[SMALL] = 8.0;
+    trl->unloading_time_avg[LARGE] = 12.0;
+
+    trl->duration = 24.0 * 7 * 52 * 100;
+}
+
 void test_condition(void)
 {
     const uint64_t seed = cmb_random_get_hwseed();
@@ -365,17 +380,18 @@ void test_condition(void)
     cmb_logger_flags_off(USERFLAG1);
     cmb_logger_flags_off(USERFLAG2);
 
-    /* Our simulated world exists on the main stack */
+    /* Our simulated world exists on the main stack, initialize */
     struct simulation sim;
     cmi_memset(&sim, 0, sizeof(sim));
     struct env_state state = { 0.0, 0.0, 0.0 };
-    struct trial trial = { 0.25, 0.25, 10, { 6, 3 }, { 8.0, 12.0 }, { NULL, NULL } };
-    struct context ctx = { &sim, &state, &trial };
+    struct trial trl;
+    set_test_parameters(&trl);
+    struct context ctx = { &sim, &state, &trl };
 
     /* Create the statistics collectors */
     for (int i = 0; i < 2; i++) {
-        trial.system_time[i] = cmb_dataset_create();
-        cmb_dataset_initialize(trial.system_time[i]);
+        trl.system_time[i] = cmb_dataset_create();
+        cmb_dataset_initialize(trl.system_time[i]);
     }
 
     /* Create weather and tide processes */
@@ -389,13 +405,13 @@ void test_condition(void)
 
     /* Create the resources, turn on recording with no warmup period */
     sim.tugs = cmb_resourcestore_create();
-    cmb_resourcestore_initialize(sim.tugs, "Tugs", trial.num_tugs);
+    cmb_resourcestore_initialize(sim.tugs, "Tugs", trl.num_tugs);
     cmb_resourcestore_start_recording(sim.tugs);
     for (int i = 0; i < 2; i++) {
         sim.berths[i] = cmb_resourcestore_create();
         cmb_resourcestore_initialize(sim.berths[i],
             ((i == 0)? "Small berth" : "Large berth"),
-            trial.num_berths[i]);
+            trl.num_berths[i]);
         cmb_resourcestore_start_recording(sim.berths[i]);
     }
 
@@ -427,12 +443,12 @@ void test_condition(void)
     /* Report statistics */
     for (int i = 0; i < 2; i++) {
         printf("\nSystem times for %s ships:\n", ((i == 0) ? "small" : "large"));
-        const unsigned n = cmb_dataset_count(trial.system_time[i]);
+        const unsigned n = cmb_dataset_count(trl.system_time[i]);
         if (n > 0) {
             struct cmb_datasummary dsumm;
-            cmb_dataset_summarize(trial.system_time[i], &dsumm);
+            cmb_dataset_summarize(trl.system_time[i], &dsumm);
             cmb_datasummary_print(&dsumm, stdout, true);
-            cmb_dataset_print_histogram(trial.system_time[i], stdout, 20, 0.0, 0.0);
+            cmb_dataset_print_histogram(trl.system_time[i], stdout, 20, 0.0, 0.0);
         }
     }
 
@@ -460,7 +476,7 @@ void test_condition(void)
 
     /* Clean up */
     for (int i = 0; i < 2; i++) {
-        cmb_dataset_destroy(trial.system_time[i]);
+        cmb_dataset_destroy(trl.system_time[i]);
         cmb_resourcestore_destroy(sim.berths[i]);
      }
 
