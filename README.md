@@ -1,3 +1,4 @@
+Public alpha version.
 # Cimba
 
 ## A multithreaded discrete event simulation library in C
@@ -23,6 +24,4 @@ Windows using CMake. Next step to add Linux support (expected to
 give significantly faster execution due to simpler
 context switching between coroutines), then improved documentation, before returning
 to Windows to add a MVSC build chain. 64-bit AMD64/x86-64 
-architecture only, no plans to add support for 32-bit CPU's. Other 64-bit 
-architectures may happen later. Planned to go public once Linux version and 
-half-decent documentation is done.
+architecture only, no plans to add support for 32-bit CPU's.
