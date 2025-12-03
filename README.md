@@ -1,4 +1,3 @@
-Public alpha version.
 # Cimba
 
 ## A multithreaded discrete event simulation library in C
