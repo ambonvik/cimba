@@ -1,5 +1,5 @@
 /*
- * cmi_memutils_Win64.c - System dependent utility functions
+ * cmi_memutils.c - System dependent utility functions
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *

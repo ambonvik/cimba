@@ -1,5 +1,5 @@
 /*
-* cmi_coroutine_context_Win64.c - Windows specific coroutine initialization
+ * cmi_coroutine_context.c - Windows specific coroutine initialization
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *

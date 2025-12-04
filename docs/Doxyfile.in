@@ -1,0 +1,9 @@
+# Doxyfile.in
+
+PROJECT_NAME    = "@PROJECT_NAME@"
+PROJECT_NUMBER  = "@VERSION@"
+OUTPUT_DIRECTORY = "@OUTPUT_DIR@"
+INPUT           = ../src
+RECURSIVE       = YES
+GENERATE_XML    = YES
+GENERATE_HTML   = NO    # Leave that to Sphinx

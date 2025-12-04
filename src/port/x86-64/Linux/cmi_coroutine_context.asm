@@ -1,5 +1,5 @@
 ;
-; cmi_coroutine_context_Win64.asm
+; cmi_coroutine_context.asm
 ;
 ; Context switch and launcher/trampoline for coroutines.
 ; For 64-bits Windows on AMD64/x86-64 architecture.

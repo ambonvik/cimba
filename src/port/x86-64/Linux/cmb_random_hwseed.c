@@ -1,5 +1,5 @@
 /*
-* cmb_random_hwseed_Win64.c - Windows specific hardware seed
+ * cmb_random_hwseed.c - Windows specific hardware seed
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -21,7 +21,7 @@
 #include "cmb_assert.h"
 #include "cmb_random.h"
 
-/* Assembly functions, see cmi_random_hwseed_Win64.asm */
+/* Assembly functions, see cmi_random_hwseed.asm */
 extern int cmi_cpu_has_rdseed(void);
 extern int cmi_cpu_has_rdrand(void);
 extern uint64_t cmi_rdseed(void);

@@ -1,0 +1,5 @@
+option('enable_docs',
+       type : 'boolean',
+       value : true,
+       description : 'Build the docs'
+)

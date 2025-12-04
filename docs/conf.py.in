@@ -1,0 +1,13 @@
+import os
+import sys
+
+project = '@PROJECT_NAME@'
+version = '@VERSION@'
+
+extensions = ['breathe']
+
+breathe_projects = {
+    "@PROJECT_NAME@": "@OUTPUT_DIR@/xml"
+}
+
+breathe_default_project = "@PROJECT_NAME@"
