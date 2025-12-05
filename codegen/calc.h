@@ -18,6 +18,7 @@
 
 #ifndef CMI_CALC_H
 #define CMI_CALC_H
+
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
@@ -35,9 +36,9 @@ struct layer {
     double tgt_area;
 };
 
-inline double layer_error(double x, void *vp)
+static inline double layer_error(double x, void *vp)
 {
-    struct layer *lp = vp;
+    const struct layer *lp = vp;
     return (x - lp->x0) * (pdf(x) - lp->y0) - lp->tgt_area;
 }
 
@@ -46,18 +47,18 @@ struct segment {
     double x2, y2;
 };
 
-inline double linear_int(double x, struct segment *sp)
+static inline double linear_int(double x, struct segment *sp)
 {
     return sp->y1 + (x - sp->x1) * (sp->y2 - sp->y1) / (sp->x2 - sp->x1);
 }
 
-inline double segment_error(double x, void *vp)
+static inline double segment_error(double x, void *vp)
 {
     struct segment *sp = vp;
     return linear_int(x, sp) - pdf(x);
 }
 
-inline double dist_deriv(double x, void *vp)
+static inline double dist_deriv(double x, void *vp)
 {
     struct segment *sp = vp;
     double a = (sp->y2 - sp->y1)/(sp->x2 - sp->x1);

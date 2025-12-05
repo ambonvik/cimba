@@ -18,10 +18,11 @@
  */
 
 #include <float.h>
+#include <math.h>
+#include <inttypes.h>
 #include <stdio.h>
 
 #include "cmb_datasummary.h"
-#include "cmb_logger.h"
 
 #include "cmi_memutils.h"
 
@@ -171,7 +172,7 @@ void cmb_datasummary_print(const struct cmb_datasummary *dsp,
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(fp != NULL);
 
-    int r = fprintf(fp, "%s%8llu", ((lead_ins)? "N ": ""), dsp->count);
+    int r = fprintf(fp, "%s%8" PRIu64, ((lead_ins)? "N ": ""), dsp->count);
     cmb_assert_release(r > 0);
     if (dsp->count > 0u) {
         const double mean = cmb_datasummary_mean(dsp);

@@ -18,7 +18,7 @@
 
 #include <stdio.h>
 
-#include "cmi_calc.h"
+#include "calc.h"
 
 int cmi_bisection(double x_left,
                   double x_right,

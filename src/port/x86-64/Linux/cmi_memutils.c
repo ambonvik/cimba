@@ -1,5 +1,5 @@
 /*
- * cmi_memutils.c - System dependent utility functions
+ * cmi_memutils.c - System dependent utility functions, Linux/Posix version
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -16,8 +16,10 @@
  * limitations under the License.
  */
 
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
 #include <malloc.h>
-#include <windows.h>
 
 #include "cmb_assert.h"
 #include "cmi_memutils.h"
@@ -28,31 +30,28 @@
  */
 size_t cmi_get_pagesize(void)
 {
-    SYSTEM_INFO sys_info;
-    GetSystemInfo(&sys_info);
-
-    return sys_info.dwPageSize;
+    return (size_t)sysconf(_SC_PAGESIZE);
 }
 
 /*
  * cmi_aligned_alloc : Allocate memory aligned to some alignment value > 8
- * (as malloc gives by defeult). See also:
- * https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-malloc
+ * (as malloc gives by default). Straightforward call to aligned_alloc under
+ * Linux/Posix, not so on Windows, hence the need for a wrapper function for
+ * encapsulating the difference.
  *
- * Strict requirements to arguments, need to be powers of two, multiples of 8 (bytes),
+ * Strict requirements to arguments: powers of two, multiples of 8 (bytes),
  * and the sz argument needs to be an integer multiple of the alignment.
  * Usage example: align to page size, allocate an integer multiple of page size.
  */
 void *cmi_aligned_alloc(const size_t align, const size_t sz)
 {
-    cmb_assert_debug(align > 8u);
-    cmb_assert_debug((align % sizeof(void*)) == 0u);
-    cmb_assert_debug(cmi_is_power_of_two(align));
-    cmb_assert_debug(sz > 8u);
-    cmb_assert_debug((sz % align) == 0u);
+    cmb_assert_release(align > 8u);
+    cmb_assert_release((align % sizeof(void*)) == 0u);
+    cmb_assert_release(cmi_is_power_of_two(align));
+    cmb_assert_release(sz > 8u);
+    cmb_assert_release((sz % align) == 0u);
 
-    /* Note reversed order of arguments vs C standard aligned_alloc */
-    void *r = _aligned_malloc(sz, align);
+    void *r = aligned_alloc(align, sz);
     cmb_assert_release(r != NULL);
 
     return r;
@@ -60,35 +59,38 @@ void *cmi_aligned_alloc(const size_t align, const size_t sz)
 
 /*
  * cmi_aligned_free : Free a previously allocated aligned memory area.
- * Windows requires a separate function for this, see also:
- *   https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-free
+ * Windows requires a separate function for this, hence the wrapper.
  */
 void cmi_aligned_free(void *p)
 {
-    cmb_assert_debug(p != NULL);
-    _aligned_free(p);
+    cmb_assert_release(p != NULL);
+    free(p);
 }
 
 /*
  * cmi_aligned_realloc : Reallocate a previously allocated aligned memory area.
- * No standard C function for this, only in Windows.
- *   https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-realloc
+ * No standard C function for this, only in Windows, so we emulate it here.
  *
- * However, we keep the argument order of a hypothetical standard C function for
+ * We keep the argument order of a hypothetical standard C function for
  * consistency with standard realloc(ptr, sz) and aligned_alloc(alignment, sz)
  */
 void *cmi_aligned_realloc(void *p, const size_t align, const size_t sz)
 {
-    cmb_assert_debug(p != NULL);
-    cmb_assert_debug(align > 8u);
-    cmb_assert_debug((align % sizeof(void*)) == 0u);
-    cmb_assert_debug(cmi_is_power_of_two(align));
-    cmb_assert_debug(sz > 8u);
-    cmb_assert_debug((sz % align) == 0u);
+    cmb_assert_release(p != NULL);
+    cmb_assert_release(align > 8u);
+    cmb_assert_release((align % sizeof(void*)) == 0u);
+    cmb_assert_release(cmi_is_power_of_two(align));
+    cmb_assert_release(sz > 8u);
+    cmb_assert_release((sz % align) == 0u);
 
-    /* Note reversed order of arguments vs C standard aligned_alloc */
-    void *r = _aligned_realloc(p, sz, align);
+    /* Emulate realloc behavior for aligned memory on Linux */
+    void *r = aligned_alloc(align, sz);
     cmb_assert_release(r != NULL);
+
+    const size_t old_sz = malloc_usable_size(p);
+    const size_t copy_sz = (old_sz < sz) ? old_sz : sz;
+    memcpy(r, p, copy_sz);
+    free(p);
 
     return r;
 }

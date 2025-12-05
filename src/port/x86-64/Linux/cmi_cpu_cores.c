@@ -18,12 +18,9 @@
  */
 
 #include <stdint.h>
-#include <windows.h>
+#include <sys/sysinfo.h>
 
 uint32_t cmi_cpu_cores(void)
 {
-    SYSTEM_INFO sysinfo;
-    GetSystemInfo(&sysinfo);
-
-    return sysinfo.dwNumberOfProcessors;
+    return get_nprocs();
 }

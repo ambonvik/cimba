@@ -23,7 +23,10 @@
  * limitations under the License.
  */
 
-#include "cmi_calc.h"
+#include "inttypes.h"
+#include "math.h"
+
+#include "calc.h"
 
 #define ARRSIZE 256
 double xarr[ARRSIZE] = { 0.0 };
@@ -203,13 +206,13 @@ static void print_c_code(void)
     printf(" %.15g };\n", ldexp(yarr[ARRSIZE-1], -64));
 
     printf("\n/* Max distance from linear interpolation to actual pdf in\n");
-    PRINTF(" * each overhang, scaled to uint64_t */
-    printf("static const uint64_t exp_zig_u_concavity[%d] = { 0x%016llxull",
-           ARRSIZE, 0ull);
+    printf(" * each overhang, scaled to uint64_t */\n");
+    printf("static const uint64_t exp_zig_u_concavity[%d] = { 0x%016" PRIx64 "ull",
+           ARRSIZE, (uint64_t)0u);
     for (int i = 1; i <= i_max + 1; i++) {
-        uint64_t uconcavity = (uint64_t) ((double) UINT64_MAX * (concavity[i]
+        const uint64_t uconcavity = (uint64_t) ((double) UINT64_MAX * (concavity[i]
                                           / (yarr[i] - yarr[i - 1])));
-        printf(", 0x%016llxull", uconcavity);
+        printf(", 0x%016" PRIx64 "ull", uconcavity);
     }
     printf(" };\n");;
 
@@ -222,9 +225,9 @@ static void print_c_code(void)
 
     printf("static const uint64_t exp_zig_u_prob[%d] = {",ARRSIZE);
     for (int i = 0; i < ARRSIZE-1; i++) {
-        printf(" 0x%016llxull,", uprob[i]);
+        printf(" 0x%016" PRIx64 "ull,", uprob[i]);
     }
-    printf(" 0x%016llxull };\n", uprob[ARRSIZE-1]);
+    printf(" 0x%016" PRIx64 "ull };\n", uprob[ARRSIZE-1]);
 
     printf("\n/* Actual X value for the beginning of the tail */\n");
     printf("static const double exp_zig_x_tail_start = %.15g;\n", x_tail);

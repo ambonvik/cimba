@@ -1,7 +1,7 @@
 ;
 ; cmi_random_hwseed.asm
 ; Interface to CPU entropy sources.
-; For 64-bits Windows on AMD64/x86-64 architecture.
+; For 64-bits Linux on AMD64/x86-64 architecture.
 ; Written in NASM syntax.
 ;
 ; Copyright (c) Asbjørn M. Bonvik 2025.
@@ -18,15 +18,13 @@
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
 
-SECTION .text
+default rel
+
+section .text
 global cmi_cpu_has_rdseed
 global cmi_cpu_has_rdrand
 global cmi_rdseed
 global cmi_rdrand
-global cmi_threadid
-global cmi_rdtsc
-
-section .text
 
 ; Get rdseed flag from cpuid
 cmi_cpu_has_rdseed:
@@ -64,16 +62,4 @@ cmi_rdseed_retry:
 cmi_rdrand:
     rdrand rax              ; Request a 64-bit true random value in RAX
     jnc cmi_rdrand          ; Retry immediately if carry flag not set
-    ret
-
-; Get current thread ID (used if rdseed and rdrand are not available)
-cmi_threadid:
-    mov rax, qword [gs:0x48]    ; Thread ID is at offset 0x48 in TIB
-    ret
-
-; Get time-stamp counter as a 64-bit value (used if rdseed/rdrand not available)
-cmi_rdtsc:
-    rdtsc                  ; Read time-stamp counter into EDX:EAX
-    shl rdx, 32            ; Shift high 32 bits into position
-    or rax, rdx            ; Combine with low 32 bits to form 64-bit value
     ret

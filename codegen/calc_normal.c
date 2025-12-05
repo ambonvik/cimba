@@ -19,7 +19,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "cmi_calc.h"
+
+#include <inttypes.h>
+
+#include "calc.h"
 
 #define ARRSIZE 256
 double xarr[ARRSIZE] = { 0.0 };
@@ -259,7 +262,7 @@ static void print_c_code(void)
         int64_t iconcavity = (int64_t) ((double) INT64_MAX
                                          * ((concavity[i] * sqrt(2.0 * M_PI))
                                           / (yarr[i] - yarr[i - 1])));
-        printf(", 0x%016llxll", iconcavity);
+        printf(", 0x%016" PRIx64 "ll", iconcavity);
         if (iconcavity > max_iconcavity) {
             max_iconcavity = iconcavity;
         }
@@ -267,13 +270,13 @@ static void print_c_code(void)
     printf(" };\n");
 
     int64_t max_iconvexity = 0ll;
-    printf("static const int64_t nor_zig_i_convexity[%d] = { 0x%016llxll",
-          ARRSIZE, 0ll);
+    printf("static const int64_t nor_zig_i_convexity[%d] = { 0x%016" PRIx64 "ll",
+          ARRSIZE, (uint64_t)0u);
     for (int i = 1; i <= i_max + 1; i++) {
-        int64_t iconvexity = (int64_t) ((double) INT64_MAX
+        const int64_t iconvexity = (int64_t) ((double) INT64_MAX
                                         * ((convexity[i] * sqrt(2.0 * M_PI))
                                          / (yarr[i] - yarr[i - 1])));
-        printf(", 0x%016llxll", iconvexity);
+        printf(", 0x%016" PRIx64 "ll", iconvexity);
         if (iconvexity > max_iconvexity) {
             max_iconvexity = iconvexity;
         }
@@ -289,9 +292,9 @@ static void print_c_code(void)
 
     printf("static const int64_t nor_zig_i_prob[%d] = {",ARRSIZE);
     for (int i = 0; i < ARRSIZE-1; i++) {
-        printf(" 0x%016llxll,", iprob[i]);
+        printf(" 0x%016" PRIx64 "ll,", iprob[i]);
     }
-    printf(" 0x%016llxll };\n", iprob[ARRSIZE-1]);
+    printf(" 0x%016" PRIx64 "ll };\n", iprob[ARRSIZE-1]);
 
     printf("\n/* Layer where the inflection point occurs */\n");
     printf("static const uint8_t nor_zig_inflection = %d;\n",
@@ -301,9 +304,9 @@ static void print_c_code(void)
     printf("static const double nor_zig_inv_tail_start = %.15g;\n",
            1.0 / x_tail);
     printf("\n/* Maximal concavity and convexity value */\n");
-    printf("static const int64_t nor_zig_max_i_concavity = 0x%016llxll;\n",
+    printf("static const int64_t nor_zig_max_i_concavity = 0x%016" PRIx64 "ll;\n",
            max_iconcavity);
-    printf("static const int64_t nor_zig_max_i_convexity = 0x%016llxll;\n",
+    printf("static const int64_t nor_zig_max_i_convexity = 0x%016" PRIx64 "ll;\n",
            max_iconvexity);
 }
 

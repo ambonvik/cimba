@@ -18,6 +18,8 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
+
 #include "cmb_logger.h"
 #include "cmb_resource.h"
 
@@ -38,9 +40,9 @@ struct cmb_resource *cmb_resource_create(void)
 static void record_sample(struct cmb_resource *rp);
 
 /*
- * drop_holder : force a holder process to drop the resource
+ * resource_drop_holder : force a holder process to drop the resource
  */
-void drop_holder(struct cmb_holdable *hrp,
+static void resource_drop_holder(struct cmb_holdable *hrp,
                  const struct cmb_process *pp,
                  const uint64_t handle)
 {
@@ -69,7 +71,7 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
     cmb_holdable_initialize(&(rp->core), name);
     cmb_resourceguard_initialize(&(rp->guard), &(rp->core.base));
 
-    rp->core.drop = drop_holder;
+    rp->core.drop = resource_drop_holder;
     rp->holder = NULL;
 
     rp->is_recording = false;
@@ -84,7 +86,7 @@ void cmb_resource_terminate(struct cmb_resource *rp)
     cmb_assert_release(rp != NULL);
 
     if (rp->holder != NULL) {
-        drop_holder(&(rp->core), rp->holder, 0u);
+        resource_drop_holder(&(rp->core), rp->holder, 0u);
     }
 
     cmb_timeseries_terminate(&(rp->history));
@@ -213,7 +215,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     }
     else {
         cmb_logger_info(stdout,
-                        "Did not acquire %s, code %lld",
+                        "Did not acquire %s, code %" PRId64,
                         rbp->name,
                         ret);
     }
@@ -297,7 +299,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     else {
         /* Wait politely at the front door until resource becomes available */
         cmb_logger_info(stdout,
-                        "%s not preempted, holder %s priority %lld > my priority %lld",
+                        "%s not preempted, holder %s priority %" PRId64 " > my priority %" PRId64,
                          hrp->base.name,
                          victim->name,
                          victim->priority,

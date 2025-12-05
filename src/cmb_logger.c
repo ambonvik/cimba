@@ -115,20 +115,20 @@ int cmb_vfprintf(FILE *fp,
                  const char *func,
                  const int line,
                  const char *fmtstr,
-                 const va_list args)
+                 va_list args)
 {
     int ret = 0;
     if ((flags & cmi_logger_mask) != 0) {
         pthread_mutex_lock(&cmi_logger_mutex);
         int r = 0;
         if (cmi_logger_trial_idx != CMI_NO_TRIAL_IDX) {
-            r = fprintf(fp, "%llu\t", cmi_logger_trial_idx);
+            r = fprintf(fp, "%" PRIu64 "\t", cmi_logger_trial_idx);
             assert(r > 0);
             ret += r;
         }
 
         if (flags >= CMB_LOGGER_WARNING) {
-            r = fprintf(fp, "0x%llx\t", cmb_random_get_curseed());
+            r = fprintf(fp, "0x%" PRIx64 "\t", cmb_random_get_curseed());
             assert(r > 0);
             ret += r;
         }

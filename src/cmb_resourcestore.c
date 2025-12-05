@@ -37,6 +37,7 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 
 #include "cmb_assert.h"
@@ -84,9 +85,9 @@ static bool holder_queue_check(const struct cmi_heap_tag *a,
 }
 
 /*
- * drop_holder : forcibly eject a holder process without resuming it.
+ * resourcestore_drop_holder : forcibly eject a holder process without resuming it.
  */
-void drop_holder(struct cmb_holdable *rbp,
+static void resourcestore_drop_holder(struct cmb_holdable *rbp,
                  const struct cmb_process *pp,
                  const uint64_t handle)
 {
@@ -114,7 +115,7 @@ void drop_holder(struct cmb_holdable *rbp,
 /*
  * reprioritize_holder : handle changed priority for one of the holders.
  */
-void reprioritize_holder(struct cmb_holdable *rbp,
+static void reprioritize_holder(struct cmb_holdable *rbp,
                          const uint64_t handle,
                          const int64_t pri)
 {
@@ -141,7 +142,7 @@ void cmb_resourcestore_initialize(struct cmb_resourcestore *rsp,
     cmb_assert_release(capacity > 0u);
 
     cmb_holdable_initialize(&(rsp->core), name);
-    rsp->core.drop = drop_holder;
+    rsp->core.drop = resourcestore_drop_holder;
     rsp->core.reprio = reprioritize_holder;
 
     struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rsp;
@@ -421,7 +422,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
         initially_held = (uint64_t)item[1];
     }
 
-    cmb_logger_info(stdout, "Has %lld, requests %lld more from %s",
+    cmb_logger_info(stdout, "Has %" PRIu64 ", requests %" PRIu64 " more from %s",
                     initially_held, claim_amount, hrp->base.name);
 
     /*
@@ -449,7 +450,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
             cmb_assert_debug(sp->in_use <= sp->capacity);
             cmb_assert_debug(sum_holder_items(hp, 1) == sp->in_use);
             cmb_logger_info(stdout,
-                            "Success, %llu was already available",
+                            "Success, %" PRIu64 " was already available",
                             rem_claim);
 
             /* In case someone else can use the leftovers */
@@ -473,7 +474,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
             cmb_assert_debug(sp->in_use <= sp->capacity);
             cmb_assert_debug(sum_holder_items(hp, 1) == sp->in_use);
             cmb_logger_info(stdout,
-                            "Found %llu available, still wants %llu",
+                            "Found %" PRIu64 " available, still wants %" PRIu64,
                             available,
                             rem_claim);
         }
@@ -517,7 +518,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
                     cmb_assert_debug(sum_holder_items(hp, 1)
                                      == sp->in_use);
                     cmb_logger_info(stdout,
-                                    "Got %llu from %s, still needs %llu",
+                                    "Got %" PRIu64 " from %s, still needs %" PRIu64 "",
                                     loot,
                                     victim->name,
                                     rem_claim);
@@ -537,7 +538,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
 
                     cmb_assert_debug(sum_holder_items(hp, 1) == sp->in_use);
                     cmb_logger_info(stdout,
-                                    "Success, got %llu from %s, put back %llu",
+                                    "Success, got %" PRIu64 " from %s, put back %" PRIu64,
                                     loot,
                                     victim->name,
                                     surplus);
@@ -550,7 +551,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
             }
 
             cmb_logger_info(stdout,
-                            "No more victims, still wants %llu more",
+                            "No more victims, still wants %" PRIu64 " more",
                             rem_claim);
         }
 
@@ -567,7 +568,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
         }
         else if (sig != CMB_PROCESS_SUCCESS) {
             cmb_logger_info(stdout,
-                            "Interrupted by signal %lld, returning unchanged",
+                            "Interrupted by signal %" PRId64 ", returning unchanged",
                             sig);
             if (initially_held > 0u) {
                 /* Put back difference. It had some, there should be a record */
@@ -646,7 +647,7 @@ void cmb_resourcestore_release(struct cmb_resourcestore *rsp, const uint64_t amo
     cmb_assert_debug(item[0] == pp);
     const uint64_t held = (uint64_t)item[1];
     cmb_logger_info(stdout,
-                    "Has %lld, releasing %lld, total in use %llu",
+                    "Has %" PRIu64 ", releasing %" PRIu64 ", total in use %" PRIu64,
                     held,
                     amount,
                     rsp->in_use);
@@ -671,7 +672,7 @@ void cmb_resourcestore_release(struct cmb_resourcestore *rsp, const uint64_t amo
     rsp->in_use -= amount;
     cmb_assert_debug(rsp->in_use <= rsp->capacity);
     record_sample(rsp);
-    cmb_logger_info(stdout, "Released %lld of %s", amount, hrp->base.name);
+    cmb_logger_info(stdout, "Released %" PRIu64 " of %s", amount, hrp->base.name);
 
     struct cmb_resourceguard *rgp = &(rsp->guard);
     cmb_resourceguard_signal(rgp);

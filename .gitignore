@@ -113,6 +113,9 @@ CMakeUserPresets.json
 # CMake
 cmake-build-*/
 
+# Meson
+build/
+
 # Mongo Explorer plugin
 .idea/**/mongoSettings.xml
 

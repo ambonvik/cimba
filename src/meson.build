@@ -24,12 +24,16 @@ sources = files('cimba.c',
                 'cmi_mempool.c'
 )
 
+inc_int = include_directories('.')
+
 # Platform and operating system dependent source code
 subdir('port')
 
 cimba_lib = library('cimba',
                     sources,
+                    include_directories : [inc_api, inc_int],
                     c_args : [],
+                    link_args : ['-lm'],
                     dependencies : [project_deps, codegen_deps],
                     install : false,
                     version : meson.project_version(),
@@ -39,5 +43,5 @@ cimba_lib = library('cimba',
 
 my_lib_dep = declare_dependency(
                     link_with : cimba_lib,
-                    include_directories : include_directories('.')
+                    include_directories : [inc_api, inc_int]
 )

@@ -1,5 +1,5 @@
 /*
- * cmb_random_hwseed.c - Windows specific hardware seed
+ * cmb_random_hwseed.c - Linux specific hardware seed
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -16,7 +16,14 @@
  * limitations under the License.
  */
 
+/* Make sure we get the clock_gettime feature, and avoid Clang-Tidy complaint */
+#define _POSIX_C_SOURCE 199309L // NOLINT(bugprone-reserved-identifier)
+
+#include "pthread.h"
 #include <time.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <x86intrin.h>
 
 #include "cmb_assert.h"
 #include "cmb_random.h"
@@ -26,8 +33,6 @@ extern int cmi_cpu_has_rdseed(void);
 extern int cmi_cpu_has_rdrand(void);
 extern uint64_t cmi_rdseed(void);
 extern uint64_t cmi_rdrand(void);
-extern uint32_t cmi_threadid(void);
-extern uint32_t cmi_rdtsc(void);
 
 /* Windows-specific code to get a suitable 64-bit seed from hardware */
 uint64_t cmb_random_get_hwseed(void)
@@ -44,7 +49,7 @@ uint64_t cmb_random_get_hwseed(void)
     else {
         /* Some other (older?) CPU, build a decent seed ourselves */
         /* Start with thread id in top 32 bits */
-        const uint64_t tid = cmi_threadid();
+        const uint64_t tid = pthread_self();
         seed = (tid << 32);
 
         /* Add a mashup of clock values into low 32 bits */
@@ -55,7 +60,7 @@ uint64_t cmb_random_get_hwseed(void)
         seed += mash;
 
         /* XOR the whole thing with the 64-bit CPU cycle count since reset */
-        seed ^= cmi_rdtsc();
+        seed ^= __rdtsc();
     }
 
     cmb_assert_debug(seed != 0u);

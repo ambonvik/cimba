@@ -9,6 +9,7 @@ add_languages('nasm', required : true, native : true)
 
 project_deps = []
 
+subdir('include')
 
 subdir('codegen')
 subdir('src')
