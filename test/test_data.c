@@ -17,14 +17,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <time.h>
 
 #include "cmb_dataset.h"
 #include "cmb_datasummary.h"
 #include "cmb_random.h"
 #include "cmb_timeseries.h"
 #include "cmb_wtdsummary.h"
+
 #include "test.h"
 
 /* Test macros */
@@ -47,7 +50,7 @@ static void test_summary(void)
 
     printf("\nBasic summary reporting functions:\n");
     cmi_test_print_line("-");
-    printf("cmb_datasummary_count:\t%llu\n", cmb_datasummary_count(&ds));
+    printf("cmb_datasummary_count:\t%" PRIu64 "\n", cmb_datasummary_count(&ds));
     printf("cmb_datasummary_min:\t%#8.4g\n", cmb_datasummary_min(&ds));
     printf("cmb_datasummary_max:\t%#8.4g\n", cmb_datasummary_max(&ds));
     printf("cmb_datasummary_mean:\t%#8.4g\t(expected %#8.4g)\n", cmb_datasummary_mean(&ds), 0.5);
@@ -75,7 +78,7 @@ static void test_summary(void)
     cmb_datasummary_print(dsp, stdout, true);
     printf("\nMerging the two data summaries: cmb_datasummary_merge ... ");
     const uint64_t nn = cmb_datasummary_merge(dsp, dsp, &ds);
-    printf("Returned %llu samples\n", nn);
+    printf("Returned %" PRIu64 " samples\n", nn);
     printf("Merged summary: cmb_datasummary_print\n");
     cmb_datasummary_print(dsp, stdout, true);
 
@@ -105,7 +108,7 @@ static void test_wsummary(void)
 
     printf("\n\t\tUnweighted\tWeighted\tExpected:\n");
     cmi_test_print_line("-");
-    printf("Count:   \t%llu \t%llu \t%u\n", cmb_datasummary_count(&ds), cmb_wtdsummary_count(&dws), MAX_ITER);
+    printf("Count:   \t%" PRIu64 " \t%" PRIu64 " \t%u\n", cmb_datasummary_count(&ds), cmb_wtdsummary_count(&dws), MAX_ITER);
     printf("Minimum: \t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_datasummary_min(&ds), cmb_wtdsummary_min(&dws), 0.0);
     printf("Maximum: \t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_datasummary_max(&ds), cmb_wtdsummary_max(&dws), 1.0);
     printf("Mean:    \t%#8.4g\t%#8.4g\t%#8.4g\n", cmb_datasummary_mean(&ds), cmb_wtdsummary_mean(&dws), 0.5);
@@ -159,7 +162,7 @@ static void test_wsummary(void)
 
     printf("\nMerging the two: cmb_wtdsummary_merge ... ");
     const uint64_t nm = cmb_wtdsummary_merge(dwp, dwp, &dws);
-    printf("Returned %llu\n", nm);
+    printf("Returned %" PRIu64 "\n", nm);
     printf("Merged summary: cmb_wtdsummary_print\n");
     cmb_wtdsummary_print(dwp, stdout, true);
     printf("Cleaning up: cmb_wtdsummary_terminate, cmb_wtdsummary_destroy\n");
@@ -187,7 +190,7 @@ void test_dataset(void)
     printf("\nMaking a copy: cmb_dataset_copy ... ");
     struct cmb_dataset dsc = { 0 };
     const uint64_t un = cmb_dataset_copy(&dsc, &ds);
-    printf("Returned %llu\n", un);
+    printf("Returned %" PRIu64 "\n", un);
     printf("\nContent of copy: cmb_dataset_print:\n");
     cmb_dataset_print(&dsc, stdout);
     printf("\nSorting the copy: cmb_dataset_sort ...\n");
@@ -199,7 +202,7 @@ void test_dataset(void)
 
     printf("\nBasic dataset reporting functions:\n");
     cmi_test_print_line("-");
-    printf("cmb_dataset_count:\t%llu\n", cmb_dataset_count(&ds));
+    printf("cmb_dataset_count:\t%" PRIu64 "\n", cmb_dataset_count(&ds));
     printf("cmb_dataset_min:\t%#8.4g\n", cmb_dataset_min(&ds));
     printf("cmb_dataset_max:\t%#8.4g\n", cmb_dataset_max(&ds));
     printf("cmb_dataset_median:\t%#8.4g\n", cmb_dataset_median(&ds));
@@ -219,7 +222,7 @@ void test_dataset(void)
     struct cmb_datasummary dsum = { 0 };
     printf("\nSummarizing the dataset: cmb_dataset_summarize ...");
     const uint64_t um = cmb_dataset_summarize(&ds, &dsum);
-    printf("returned %llu\n", um);
+    printf("returned %" PRIu64 "\n", um);
 
     printf("Summary generated from the dataset:\n");
     cmb_datasummary_print(&dsum, stdout, true);
@@ -295,7 +298,7 @@ void test_timeseries(void)
 
     printf("\nBasic timeseries reporting functions:\n");
     cmi_test_print_line("-");
-    printf("cmb_timeseries_count:\t%llu\n", cmb_timeseries_count(tsp));
+    printf("cmb_timeseries_count:\t%" PRIu64 "\n", cmb_timeseries_count(tsp));
     printf("cmb_timeseries_min:\t%#8.4g\n", cmb_timeseries_min(tsp));
     printf("cmb_timeseries_max:\t%#8.4g\n", cmb_timeseries_max(tsp));
     cmi_test_print_line("-");
@@ -336,7 +339,7 @@ void test_timeseries(void)
 
     printf("Copying src into tgt: cmb_timeseries_copy ... ");
     uint64_t r = cmb_timeseries_copy(tsp, &ts);
-    printf("returned %llu\n", r);
+    printf("returned %" PRIu64 "\n", r);
     printf("Tgt: ");
     cmb_timeseries_summarize(tsp, &ws);
     cmb_wtdsummary_print(&ws, stdout, true);

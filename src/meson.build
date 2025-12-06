@@ -32,7 +32,7 @@ subdir('port')
 cimba_lib = library('cimba',
                     sources,
                     include_directories : [inc_api, inc_int],
-                    c_args : [],
+                    c_args : ['-Wno-pedantic'],
                     link_args : ['-lm'],
                     dependencies : [project_deps, codegen_deps],
                     install : false,

@@ -15,6 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include "cmi_mempool.h"
@@ -47,7 +50,8 @@ int main(void)
     printf("Testing created memory pools\n");
     size_t obj_sz = 32u;
     uint64_t obj_num = 16u;
-    printf("cmi_mempool_create: %llu objects size %llu\n", obj_num, obj_sz);
+    printf("cmi_mempool_create: %" PRIu64 " objects size %" PRIu64 "\n",
+           obj_num, obj_sz);
     struct cmi_mempool *mp = cmi_mempool_create();
     cmi_mempool_initialize(mp, obj_sz, obj_num);
 
@@ -65,7 +69,8 @@ int main(void)
 
     obj_sz = 64u;
     obj_num = 57u;
-    printf("cmi_mempool_create: %llu objects size %llu\n", obj_num, obj_sz);
+    printf("cmi_mempool_create: %" PRIu64 " objects size %" PRIu64 "\n",
+           obj_num, obj_sz);
     mp = cmi_mempool_create();
     cmi_mempool_initialize(mp, obj_sz, obj_num);
 

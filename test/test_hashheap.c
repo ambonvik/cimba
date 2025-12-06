@@ -15,6 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include "cmb_random.h"
@@ -70,7 +73,7 @@ int main(void)
     cmi_hashheap_initialize(hhp, 3u, heap_order_check);
     printf("Adding an item: cmi_hashheap_enqueue ... ");
     uint64_t handle = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, NULL, 1.0, 1);
-    printf("returned handle %llu\n", handle);
+    printf("returned handle %" PRIu64 "\n", handle);
     printf("Peekaboo: cmi_hashheap_peek ... \n");
     (void)cmi_hashheap_peek_item(hhp);
     printf("Pulling out an item: cmi_hashheap_dequeue ... \n");
@@ -104,7 +107,7 @@ int main(void)
         (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, NULL, d, i);
     }
 
-    printf("We now have %llu items\n", cmi_hashheap_count(hhp));
+    printf("We now have %" PRIu64 " items\n", cmi_hashheap_count(hhp));
     cmi_hashheap_print(hhp, stdout);
 
     while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {

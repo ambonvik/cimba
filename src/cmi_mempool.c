@@ -30,12 +30,27 @@
 #define CHUNK_LIST_SIZE 64u
 
 /*
- * Conveniently predefined memory pools for 16-, 32-, and 64-bit objects,
- * lazy initialization when needed, only pre-store arguments to initialize call.
+ * Conveniently predefined memory pools for 16-, 32-, and 64-bit objects.
+ * Pre-store arguments to initialize call, zero-initialize the rest to be
+ * calculated with proper values by cmi_mempool_initialize() when and if needed.
+ * The CMI_MAGIC_COOKIE informs other functions that the pool is not yet
+ * properly initialized, enabling cmi_mempool_expand() to do that automagically
+ * without an explicit initialiation call from the user code. But it needs to
+ * know what arguments it should feed to cmi_mempool_initialize(), and here
+ * they are.
  */
-CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_16b = { CMI_MAGIC_COOKIE, 16u, 256u };
-CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_32b = { CMI_MAGIC_COOKIE, 32u, 128u };
-CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_64b = { CMI_MAGIC_COOKIE, 64u, 64u };
+CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_16b = { CMI_MAGIC_COOKIE,
+                                                        16u,
+                                                        256u,
+                                                        0u, 0u, 0u, NULL, NULL };
+CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_32b = { CMI_MAGIC_COOKIE,
+                                                        32u,
+                                                        128u,
+                                                        0u, 0u, 0u, NULL, NULL };
+CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_64b = { CMI_MAGIC_COOKIE,
+                                                        64u,
+                                                        64u,
+                                                        0u, 0u, 0u, NULL, NULL };
 
 /*
  * cmi_mempool_create : Allocate memory for a (zeroed) memory pool object.

@@ -22,7 +22,9 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -36,7 +38,7 @@
 /* Test macros */
 #define MOMENTS 15
 #define ACFS 15
-#define MAX_ITER 100000000ull
+#define MAX_ITER UINT64_C(100000000)
 #define LEADINS true
 
 #define QTEST_PREPARE() \
@@ -44,7 +46,7 @@
     cmb_dataset_initialize(&ds)
 
 #define QTEST_EXECUTE(DUT) \
-    printf("Drawing %llu samples...\n", MAX_ITER); \
+    printf("Drawing %" PRIu64 " samples...\n", MAX_ITER); \
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) { \
         cmb_dataset_add(&ds, DUT); \
     }
@@ -87,7 +89,7 @@ static void print_expected(const uint64_t n,
                            const bool has_skew, const double skew,
                            const bool has_kurt, const double kurt)
 {
-    printf("\nExpected: N %8llu", n);
+    printf("\nExpected: N %8" PRIu64, n);
     print_single("Mean", has_mean, mean);
     print_single("StdDev", has_var, sqrt(var));
     print_single("Variance", has_var, var);
@@ -102,7 +104,7 @@ static void test_getsetseed(void)
 {
     printf("Getting hardware entropy seed ... ");
     const uint64_t seed = cmb_random_get_hwseed();
-    printf("%#llx\n", seed);
+    printf("%#" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
 }
 
@@ -112,7 +114,7 @@ static void test_quality_random(void)
     QTEST_PREPARE();
 
     /* Handle test execution outside macro to capture moments as well */
-    printf("Drawing %llu samples...\n", MAX_ITER);
+    printf("Drawing %" PRIu64 " samples...\n", MAX_ITER);
     double moment_r[MOMENTS] = { 0.0 };
     for (uint64_t ui = 0; ui < MAX_ITER; ui++) {
         const double xi = cmb_random();
@@ -186,9 +188,9 @@ static double exponential_inv(const double m)
 static void test_speed_exponential(const double m)
 {
     const uint64_t seed = cmb_random_get_hwseed();
-    printf("\nSpeed testing standard exponential distribution, seed = %#llx\n", seed);
+    printf("\nSpeed testing standard exponential distribution, seed = %#" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
-    printf("\nInversion method, drawing %llu samples...", MAX_ITER);
+    printf("\nInversion method, drawing %" PRIu64 " samples...", MAX_ITER);
 
     const clock_t csi = clock();
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
@@ -199,7 +201,7 @@ static void test_speed_exponential(const double m)
     printf("\t%.3e samples per second\n", (double)MAX_ITER / ti);
 
     cmb_random_initialize(seed);
-    printf("Ziggurat method, drawing %llu samples...", MAX_ITER);
+    printf("Ziggurat method, drawing %" PRIu64 " samples...", MAX_ITER);
     const clock_t csz = clock();
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
         (void)cmb_random_exponential(m);
@@ -272,7 +274,7 @@ static void test_quality_std_normal(void)
 
     double moment_r[MOMENTS] = { 0.0 };
     double moment_bm[MOMENTS] = { 0.0 };
-    printf("Drawing %llu samples...\n", MAX_ITER);
+    printf("Drawing %" PRIu64 " samples...\n", MAX_ITER);
     for (uint64_t ui = 0; ui < MAX_ITER; ui++) {
         const double xi = cmb_random_std_normal();
         cmb_dataset_add(&ds, xi);
@@ -339,9 +341,9 @@ static void test_quality_normal(const double m, const double s)
 static void test_speed_normal(const double m, const double s)
 {
     const uint64_t seed = cmb_random_get_hwseed();
-    printf("\nSpeed testing normal distribution, seed = %#llx\n", seed);
+    printf("\nSpeed testing normal distribution, seed = %#" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
-    printf("\nBox Muller method, drawing %llu samples...", MAX_ITER);
+    printf("\nBox Muller method, drawing %" PRIu64 " samples...", MAX_ITER);
 
     const clock_t csi = clock();
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
@@ -352,7 +354,7 @@ static void test_speed_normal(const double m, const double s)
     printf("\t%.3e samples per second\n", (double)MAX_ITER / ti);
 
     cmb_random_initialize(seed);
-    printf("Ziggurat method, drawing %llu samples...", MAX_ITER);
+    printf("Ziggurat method, drawing %" PRIu64 " samples...", MAX_ITER);
     const clock_t csz = clock();
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
         (void)cmb_random_normal(m, s);
@@ -789,7 +791,7 @@ static void test_quality_poisson(const double r)
     QTEST_PREPARE();
     QTEST_EXECUTE((double)cmb_random_poisson(r));
 
-    print_expected(MAX_ITER, true, r, true,r,true, 1.0 / sqrt(r), true, 1.0 / r);
+    print_expected(MAX_ITER, true, r, true, r, true, 1.0 / sqrt(r), true, 1.0 / r);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -876,7 +878,7 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
 {
     const uint64_t seed = cmb_random_get_hwseed();
     cmb_random_initialize(seed);
-    printf("\nSpeed testing vose alias sampling, %llu samples, seed = %#llx.\n", MAX_ITER, seed);
+    printf("\nSpeed testing vose alias sampling, %" PRIu64 " samples, seed = %#" PRIx64 ".\n", MAX_ITER, seed);
     printf("Iterations per second (ips)\n");
     printf("n\tips simple\tips alias\tspeedup\n");
     for (unsigned n = init; n <= end; n += step) {

@@ -30,6 +30,13 @@
 #include "cmb_assert.h"
 #include "cmb_datasummary.h"
 
+/** @cond */
+/* May not always get defined from math.h, but we need it here */
+#ifndef M_PI
+    #define M_PI 3.14159265358979323
+#endif
+/** @endcond */
+
 /**
  * @brief A data set with a conveniently resizing sample array.
  */

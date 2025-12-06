@@ -5,6 +5,8 @@ project('cimba', 'c',
         default_options : ['warning_level=3', 'c_std=c17']
 )
 
+add_project_arguments('-Wno-pedantic', language : 'c')
+
 add_languages('nasm', required : true, native : true)
 
 project_deps = []
