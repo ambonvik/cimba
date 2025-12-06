@@ -207,12 +207,12 @@ static void print_c_code(void)
 
     printf("\n/* Max distance from linear interpolation to actual pdf in\n");
     printf(" * each overhang, scaled to uint64_t */\n");
-    printf("static const uint64_t exp_zig_u_concavity[%d] = { 0x%016" PRIx64 "ull",
+    printf("static const uint64_t exp_zig_u_concavity[%d] = { UINT64_C(0x%016" PRIx64 ")",
            ARRSIZE, (uint64_t)0u);
     for (int i = 1; i <= i_max + 1; i++) {
         const uint64_t uconcavity = (uint64_t) ((double) UINT64_MAX * (concavity[i]
                                           / (yarr[i] - yarr[i - 1])));
-        printf(", 0x%016" PRIx64 "ull", uconcavity);
+        printf(", UINT64_C(0x%016" PRIx64 ")", uconcavity);
     }
     printf(" };\n");;
 
@@ -225,9 +225,9 @@ static void print_c_code(void)
 
     printf("static const uint64_t exp_zig_u_prob[%d] = {",ARRSIZE);
     for (int i = 0; i < ARRSIZE-1; i++) {
-        printf(" 0x%016" PRIx64 "ull,", uprob[i]);
+        printf(" UINT64_C(0x%016" PRIx64 "),", uprob[i]);
     }
-    printf(" 0x%016" PRIx64 "ull };\n", uprob[ARRSIZE-1]);
+    printf(" UINT64_C(0x%016" PRIx64 ") };\n", uprob[ARRSIZE-1]);
 
     printf("\n/* Actual X value for the beginning of the tail */\n");
     printf("static const double exp_zig_x_tail_start = %.15g;\n", x_tail);

@@ -42,6 +42,7 @@
 #ifndef CIMBA_CMB_LOGGER_H
 #define CIMBA_CMB_LOGGER_H
 
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -51,19 +52,19 @@
 /**
  * @brief Flag value for fatal error, terminates program.
  */
-#define CMB_LOGGER_FATAL    0x80000000ul
+#define CMB_LOGGER_FATAL    UINT32_C(0x80000000)
 /**
  * @brief Flag value for error, terminates thread.
  */
-#define CMB_LOGGER_ERROR    0x40000000ul
+#define CMB_LOGGER_ERROR    UINT32_C(0x40000000)
 /**
  * @brief Flag value for a warning message.
  */
-#define CMB_LOGGER_WARNING  0x20000000ul
+#define CMB_LOGGER_WARNING  UINT32_C(0x20000000)
 /**
  * @brief Flag value for an information message.
  */
-#define CMB_LOGGER_INFO     0x10000000ul
+#define CMB_LOGGER_INFO     UINT32_C(0x10000000)
 
 /**
  * @brief Turn on logging flags according to the bitmask, for example

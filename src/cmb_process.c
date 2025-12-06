@@ -168,7 +168,8 @@ void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
 
     const int64_t oldpri = pp->priority;
     pp->priority = pri;
-    cmb_logger_info(stdout, "Changed priority from %lld to %lld", oldpri, pri);
+    cmb_logger_info(stdout, "Changed priority from %" PRIi64 " to %" PRIu64,
+                    oldpri, pri);
 
     /* Any priority queues containing this process? */
     if (pp->waitsfor.type == CMI_WAITABLE_CLOCK) {
@@ -293,7 +294,7 @@ int64_t cmb_process_hold(const double dur)
     /* Back here again, possibly much later. */
     if (sig != CMB_PROCESS_SUCCESS) {
         /* Whatever woke us up was not the scheduled wakeup call */
-        cmb_logger_info(stdout, "Woken up, signal %lld", sig);
+        cmb_logger_info(stdout, "Woken up, signal %" PRIi64, sig);
         if (pp->waitsfor.handle != 0ull) {
             /* Should be handled already by wakeup event, but just in case */
             cmb_event_cancel(pp->waitsfor.handle);
@@ -529,7 +530,8 @@ void cmb_process_interrupt(struct cmb_process *pp,
 {
     cmb_assert_debug(pp != NULL);
     cmb_assert_debug(sig != 0);
-    cmb_logger_info(stdout, "Interrupt %s signal %lld priority %lld", pp->name, sig, pri);
+    cmb_logger_info(stdout, "Interrupt %s signal %" PRIi64 " priority %" PRIi64,
+                    pp->name, sig, pri);
 
     const double t = cmb_time();
     (void)cmb_event_schedule(proc_intrpt_evt, pp, (void *)sig, t, pri);

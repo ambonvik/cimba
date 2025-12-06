@@ -18,6 +18,7 @@
 
 /* Using standard asserts here to avoid recursive calls */
 #include <assert.h>
+#include <inttypes.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,10 +34,10 @@
 #define TSTRBUF_SZ 32
 
 /* A trial array index guaranteed not to be used any time soon */
-#define CMI_NO_TRIAL_IDX 0xFFFFFFFFu
+#define CMI_NO_TRIAL_IDX UINT32_C(0xFFFFFFFF)
 
 /* The current logging level. Initially everything on. */
-static CMB_THREAD_LOCAL uint32_t cmi_logger_mask = 0xFFFFFFFFu;
+static CMB_THREAD_LOCAL uint32_t cmi_logger_mask = UINT32_C(0xFFFFFFFF);
 
 /* A mutex to ensure that only one thread can be writing at the same time */
 static pthread_mutex_t cmi_logger_mutex = PTHREAD_MUTEX_INITIALIZER;

@@ -20,7 +20,11 @@
  * limitations under the License.
  */
 
-#include "cimba.h"
+#include <inttypes.h>
+#include <stdint.h>
+
+#include "cmb_buffer.h"
+#include "cmb_logger.h"
 
 #include "cmi_memutils.h"
 
@@ -200,16 +204,16 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
     *amntp = 0u;
     while (true) {
         cmb_assert_debug(bp->level <= bp->capacity);
-        cmb_logger_info(stdout, "%s capacity %llu level %llu",
+        cmb_logger_info(stdout, "%s capacity %" PRIu64 " level %" PRIu64,
                        rbp->name, bp->capacity, bp->level);
-        cmb_logger_info(stdout, "Gets %llu from %s", rem_claim, rbp->name);
+        cmb_logger_info(stdout, "Gets %" PRIu64 " from %s", rem_claim, rbp->name);
         if (bp->level >= rem_claim) {
             /* Grab what we need */
             bp->level -= rem_claim;
             record_sample(bp);
             *amntp += rem_claim;
             cmb_logger_info(stdout,
-                            "Success, %llu was available, got %llu",
+                            "Success, %" PRIu64 " was available, got %" PRIu64,
                             rem_claim,
                             *amntp);
             rem_claim = 0u;
@@ -231,7 +235,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
             *amntp += grab;
             rem_claim -= grab;
             cmb_logger_info(stdout,
-                            "Grabbed %llu, has %llu",
+                            "Grabbed %" PRIu64 ", has %" PRIu64,
                             grab,
                             *amntp);
 
@@ -243,7 +247,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
         cmb_assert_debug(rem_claim > 0u);
         cmb_logger_info(stdout, "Waiting for content");
         cmb_logger_info(stdout,
-                        "%s capacity %llu level %llu",
+                        "%s capacity %" PRIu64 " level %" PRIu64,
                         rbp->name,
                         bp->capacity,
                         bp->level);
@@ -256,7 +260,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
         }
         else {
             cmb_logger_info(stdout,
-                            "Interrupted by signal %lld, wanted %lld, returns with %llu",
+                            "Interrupted by signal %" PRIi64 " wanted %" PRIu64 ", returns with %" PRIu64,
                             sig,
                             init_claim,
                             *amntp);
@@ -294,16 +298,16 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
     uint64_t rem_claim = *amntp;
     while (true) {
         cmb_assert_debug(bp->level <= bp->capacity);
-        cmb_logger_info(stdout, "%s capacity %llu level %llu",
+        cmb_logger_info(stdout, "%s capacity %" PRIu64 " level %" PRIu64,
                         rbp->name, bp->capacity, bp->level);
-        cmb_logger_info(stdout, "Puts %lld into %s", rem_claim, rbp->name);
+        cmb_logger_info(stdout, "Puts %" PRIu64 " into %s", rem_claim, rbp->name);
         if ((bp->capacity - bp->level) >= rem_claim) {
             /* Push the remainder into the buffer */
             bp->level += rem_claim;
             record_sample(bp);
             *amntp -= rem_claim;
             cmb_logger_info(stdout,
-                            "Success, found room for %llu, has %llu remaining",
+                            "Success, found room for %" PRIu64 ", has %" PRIu64 " remaining",
                             rem_claim,
                             *amntp);
             rem_claim = 0u;
@@ -325,7 +329,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
             *amntp -= grab;
             rem_claim -= grab;
             cmb_logger_info(stdout,
-                            "Pushed in %llu, still has %llu remaining",
+                            "Pushed in %" PRIu64 ", still has %" PRIu64 " remaining",
                             grab,
                             *amntp);
 
@@ -335,7 +339,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
         /* Wait at the back door until some more becomes available  */
         cmb_assert_debug(rem_claim > 0u);
         cmb_logger_info(stdout, "Waiting for space");
-        cmb_logger_info(stdout, "%s capacity %llu level %llu",
+        cmb_logger_info(stdout, "%s capacity %" PRIu64 " level %" PRIu64,
                        rbp->name, bp->capacity, bp->level);
         cmb_resourceguard_signal(&(bp->front_guard));
         const int64_t sig = cmb_resourceguard_wait(&(bp->rear_guard),
@@ -346,7 +350,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
         }
         else {
             cmb_logger_info(stdout,
-                            "Interrupted by signal %lld, had %lld, returns with %llu left",
+                            "Interrupted by signal %" PRIi64 ", had %" PRIu64 ", returns with %" PRIu64 " left",
                             sig,
                             init_claim,
                             *amntp);

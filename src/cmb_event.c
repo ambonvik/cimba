@@ -396,7 +396,7 @@ void cmb_event_queue_print(FILE *fp)
     fprintf(fp, "---------------- Event queue ----------------\n");
     for (uint64_t ui = 1u; ui <= hcnt; ui++) {
         struct cmi_heap_tag *htp = &(event_queue->heap[ui]);
-        fprintf(fp, "time %#8.4g prio %lld : handle %llu %p %p %p %p\n",
+        fprintf(fp, "time %#8.4g prio %" PRIi64 ": handle %" PRIu64 " %p %p %p %p\n",
                 htp->dkey,
                 htp->ikey,
                 htp->handle,

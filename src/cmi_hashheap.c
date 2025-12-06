@@ -28,6 +28,8 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 #include "cmi_hashheap.h"
@@ -45,7 +47,7 @@ uint64_t hash_handle(const struct cmi_hashheap *hp, const uint64_t handle)
 {
     cmb_assert_debug(hp != NULL);
 
-    return (handle * 11400714819323198485llu) >> (64u - (hp->heap_exp_cur + 1));
+    return (handle * UINT64_C(11400714819323198485)) >> (64u - (hp->heap_exp_cur + 1));
 }
 
 /*
@@ -767,7 +769,7 @@ void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
     fprintf(fp, "---------------------------------- Hash heap -----------------------------------\n");
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
-        fprintf(fp, "%llu: handle %llu dkey %#8.4g ikey %lld : hash idx %llu : %p %p %p %p\n",
+        fprintf(fp, "%" PRIu64 ": handle %" PRIu64 " dkey %#8.4g ikey %" PRIi64 " : hash idx %" PRIu64 " : %p %p %p %p\n",
                 ui,
                 htp->handle,
                 htp->dkey,

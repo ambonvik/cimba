@@ -72,7 +72,7 @@ int64_t cmb_condition_wait(struct cmb_condition *cvp,
                                           (cmb_resourceguard_demand_func *)dmnd,
                                           ctx);
 
-    cmb_logger_info(stdout, "Condition %s returning signal %lld", rbp->name, sig);
+    cmb_logger_info(stdout, "Condition %s returning signal %" PRIi64, rbp->name, sig);
 
     return sig;
 }

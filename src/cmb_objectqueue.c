@@ -27,6 +27,8 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
+#include <stdint.h>
 
 #include "cmb_assert.h"
 #include "cmb_logger.h"
@@ -228,9 +230,8 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
 
     while (true) {
         cmb_assert_debug(oqp->length <= oqp->capacity);
-        cmb_logger_info(stdout, "%s capacity %llu length now %llu",
-                       rbp->name, oqp->capacity, oqp->length);
-        cmb_logger_info(stdout, "Gets an object from %s", rbp->name);
+        cmb_logger_info(stdout, "Gets an object from %s, length now %" PRIu64,
+                        rbp->name, oqp->length);
 
         if (oqp->queue_head != NULL) {
             /* There is one ready */
@@ -269,7 +270,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
         }
         else {
             cmb_logger_info(stdout,
-                            "Interrupted by signal %lld, returns without object",
+                            "Interrupted by signal %" PRIi64 " returns without object",
                             sig);
             *objectloc = NULL;
             cmb_assert_debug(oqp->length <= oqp->capacity);
@@ -288,7 +289,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     while (true) {
         cmb_assert_debug(oqp->length <= oqp->capacity);
-        cmb_logger_info(stdout, "%s capacity %llu length now %llu",
+        cmb_logger_info(stdout, "%s capacity %" PRIu64 " length now %" PRIu64,
                         rbp->name, oqp->capacity, oqp->length);
         cmb_logger_info(stdout, "Puts object %p into %s", *objectloc, rbp->name);
         if (oqp->length < oqp->capacity) {
@@ -327,7 +328,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
         }
         else {
             cmb_logger_info(stdout,
-                            "Interrupted by signal %lld, returns without putting object %p into %s",
+                            "Interrupted by signal %" PRIi64 ", returns without putting object %p into %s",
                             sig,
                             *objectloc,
                             rbp->name);
