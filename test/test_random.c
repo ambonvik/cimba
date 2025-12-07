@@ -916,7 +916,7 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
         const double t_alias = (double)(ce_alias - cs_alias) / CLOCKS_PER_SEC;
         const double ips_alias = MAX_ITER / t_alias;
         const double speedup = (ips_alias - ips_simple) / ips_simple;
-        printf("%u\t%9.4g\t%9.4g\t%+8.4g%%\n", n, ips_simple, ips_alias, 100.0 * speedup);
+        printf("%u\t%9.4g\t%9.4g\t%8.4g%%\n", n, ips_simple, ips_alias, 100.0 * speedup);
     }
 
     cmi_test_print_line("=");

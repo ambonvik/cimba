@@ -15,6 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
 
@@ -37,7 +39,7 @@ static void test_simple_event(void)
     const size_t stksz = 24 * 1024;
     printf("Create a coroutine\n");
     struct cmi_coroutine *cp = cmi_coroutine_create();
-    printf("Got %p, initialize it, stack size %llu\n", (void *)cp, stksz);
+    printf("Got %p, initialize it, stack size %" PRIu64 "\n", (void *)cp, stksz);
     cmi_coroutine_initialize(cp, corofunc, (void *)0x5EAF00D, NULL, stksz);
 
     /* The next call may look simple, but it exercises a lot of stuff.
@@ -71,9 +73,9 @@ static void *corofunc_2(struct cmi_coroutine *myself, void *context)
         /* Wrap the index number in a fortune cookie and pass it back */
         uint64_t *cookie = cmi_malloc(sizeof(*cookie));
         *cookie = ui;
-        printf("corofunc_2: Yields cookie %llu back to boss\n", *cookie);
+        printf("corofunc_2: Yields cookie %" PRIu64 " back to boss\n", *cookie);
         uint64_t *ticket = cmi_coroutine_yield(cookie);
-        printf("corofunc_2: Received ticket %llu in return\n", *ticket);
+        printf("corofunc_2: Received ticket %" PRIu64 " in return\n", *ticket);
         /* Toss it and try again */
         cmi_free(ticket);
     }
@@ -100,12 +102,12 @@ static void *corofunc_1(struct cmi_coroutine *myself, void *context)
     int cntr = 100;
     while (ret != NULL) {
         uint64_t *cookie = ret;
-        printf("corofunc_1: Got cookie %llu\n", *cookie);
+        printf("corofunc_1: Got cookie %" PRIu64 "\n", *cookie);
         /* Inedible, toss it */
         cmi_free(cookie);
         uint64_t *ticket = cmi_malloc(sizeof(*ticket));
         *ticket = cntr++;
-        printf("corofunc_1: Returns ticket %llu\n", *ticket);
+        printf("corofunc_1: Returns ticket %" PRIu64 "\n", *ticket);
         ret = cmi_coroutine_resume(buddy, ticket);
     }
 
@@ -118,7 +120,7 @@ static void test_asymmetric(void)
 {
     printf("Test asymmetric coroutines\n");
     const size_t stksz = 16 * 1024;
-    printf("Create two coroutines, stack size %llu\n", stksz);
+    printf("Create two coroutines, stack size %" PRIu64 "\n", stksz);
     struct cmi_coroutine *cp1 = cmi_coroutine_create();
     struct cmi_coroutine *cp2 = cmi_coroutine_create();
     cmi_coroutine_initialize(cp2, corofunc_2, NULL, NULL, stksz);

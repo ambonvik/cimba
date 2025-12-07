@@ -19,14 +19,12 @@
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
 
-SECTION .text
+section .text
 global cmi_coroutine_context_switch
 global cmi_coroutine_trampoline
 global cmi_coroutine_get_rsp
 global cmi_coroutine_get_stackbase
 global cmi_coroutine_get_stacklimit
-
-section .text
 
 ;-------------------------------------------------------------------------------
 ; Callable function to return the current StackBase (top of allocated stack)

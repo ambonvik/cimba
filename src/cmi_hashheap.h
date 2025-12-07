@@ -193,6 +193,18 @@ static inline uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp)
 }
 
 /*
+ * cmi_hashheap_last_handle : Returns the number of items ever enqueued.
+ */
+static inline uint64_t cmi_hashheap_last_handle(const struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+
+    return hp->item_counter;
+}
+
+
+
+/*
  * cmi_hashheap_is_empty : Returns true if count = 0, false otherwise
  */
 static inline bool cmi_hashheap_is_empty(const struct cmi_hashheap *hp)

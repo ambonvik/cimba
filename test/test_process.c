@@ -15,6 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <inttypes.h>
 #include <stdio.h>
 
 #include "cmb_event.h"
@@ -22,7 +24,6 @@
 #include "cmb_process.h"
 #include "cmb_random.h"
 
-#include "cmi_memutils.h"
 #include "test.h"
 
 #define USERFLAG 0x00000001
@@ -65,13 +66,13 @@ void *procfunc1(struct cmb_process *me, void *ctx)
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout,
                             USERFLAG,
-                            "Hold returned normal signal %lld",
+                            "Hold returned normal signal %" PRIi64,
                             sig);
         }
         else {
             cmb_logger_user(stdout,
                             USERFLAG,
-                            "Hold was interrupted signal %lld",
+                            "Hold was interrupted signal %" PRIi64,
                             sig);
         }
     }
@@ -111,7 +112,7 @@ void *procfunc3(struct cmb_process *me, void *ctx)
                     "Running, tgt %s",
                     cmb_process_get_name(tgt));
     int64_t r = cmb_process_wait_event(cuckoo_clock_handle);
-    cmb_logger_user(stdout, USERFLAG, "Got cuckoo, received %llu", r);
+    cmb_logger_user(stdout, USERFLAG, "Got cuckoo clock signal %" PRIi64, r);
 
     cmb_process_hold(cmb_random());
     cmb_logger_user(stdout,
@@ -121,7 +122,7 @@ void *procfunc3(struct cmb_process *me, void *ctx)
     r = cmb_process_wait_process(tgt);
     cmb_logger_user(stdout,
                     USERFLAG,
-                    "Tgt %s ended, we received signal %llu",
+                    "Tgt %s ended, we received signal %" PRIi64,
                     cmb_process_get_name(tgt), r);
 
     cmb_process_exit(NULL);
@@ -138,7 +139,7 @@ int main(void)
     cmi_test_print_line("*");
     printf("****************************   Testing processes   *****************************\n");
     cmi_test_print_line("*");
-    printf("seed: %llu\n", seed);
+    printf("seed: %" PRIi64 "\n", seed);
     printf("cmb_event_queue_initialize ...\n");
     cmb_event_queue_initialize(0.0);
     printf("cmb_process_create ...\n");

@@ -16,11 +16,12 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <time.h>
 
-#include "../include/cmb_objectqueue.h"
+#include "cmb_objectqueue.h"
 #include "cmb_event.h"
 #include "cmb_logger.h"
 #include "cmb_process.h"
@@ -76,7 +77,7 @@ void *putterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout, USERFLAG, "Hold returned normally");
         }
         else {
-            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %" PRIi64, sig);
         }
 
         cmb_logger_user(stdout,
@@ -90,7 +91,7 @@ void *putterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout, USERFLAG, "Put succeeded");
         }
         else {
-            cmb_logger_user(stdout, USERFLAG, "Put returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG, "Put returned signal %" PRIi64, sig);
         }
     }
 }
@@ -112,7 +113,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout, USERFLAG, "Hold returned normally");
         }
         else {
-            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %" PRIi64, sig);
         }
 
         cmb_logger_user(stdout,
@@ -125,7 +126,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout, USERFLAG, "Get succeeded");
         }
         else {
-            cmb_logger_user(stdout, USERFLAG, "Get returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG, "Get returned signal %" PRIi64, sig);
         }
     }
 }
@@ -148,7 +149,7 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
         const int64_t pri = cmb_random_dice(-5, 5);
         cmb_logger_user(stdout,
                         USERFLAG,
-                        "Interrupting %s with %lld",
+                        "Interrupting %s with signal %" PRIi64,
                         tgt[vic]->name,
                         sig);
         cmb_process_interrupt(tgt[vic], sig, pri);
@@ -162,7 +163,7 @@ void test_queue(double duration)
 
     const uint64_t seed = cmb_random_get_hwseed();
     cmb_random_initialize(seed);
-    printf("seed: %llx\n", seed);
+    printf("seed: %" PRIx64 "\n", seed);
 
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG);

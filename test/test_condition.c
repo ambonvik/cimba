@@ -26,6 +26,7 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <time.h>
@@ -103,6 +104,7 @@ void *weather_proc(struct cmb_process *me, void *vctx)
     struct env_state *env = ctx->state;
     const struct simulation *sim = ctx->sim;
 
+    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         /* Wind magnitude in meters per second */
         const double wmag = cmb_random_rayleigh(5.0);
@@ -137,6 +139,7 @@ void *tide_proc(struct cmb_process *me, void *vctx)
     struct env_state *env = ctx->state;
     const struct simulation *sim = ctx->sim;
 
+    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         /* A simple tide model with astronomical and weather-driven tides */
         const double t = cmb_time();
@@ -275,6 +278,9 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     double *t_sys_p = malloc(sizeof(double));
     *t_sys_p = t_dep - t_arr;
 
+    cmb_logger_user(stdout, USERFLAG1, "Ship %s arr %g dep %f time in system %f",
+        me->name, t_arr, t_dep, *t_sys_p);
+
     /* Note that returning from a process function has the same effect as calling
      * cmb_process_exit() with the return value as argument. */
     return t_sys_p;
@@ -292,6 +298,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
     const double p_large = trl->percent_large;
 
     uint64_t cnt = 0u;
+    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         cmb_process_hold(cmb_random_exponential(mean));
 
@@ -321,7 +328,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
         /* A ship needs a name */
         char namebuf[20];
         snprintf(namebuf, sizeof(namebuf),
-                 "Ship_%04llu%s",
+                 "Ship_%04" PRIu64 "%s",
                  ++cnt, ((shp->size == SMALL) ? "_small" : "_large"));
         cmb_process_initialize((struct cmb_process *)shp, namebuf, ship_proc, vctx, 0);
 
@@ -358,26 +365,28 @@ void *departure_proc(struct cmb_process *me, void *vctx)
     const struct trial *trl = ctx->trial;
     struct cmi_list_tag **dep_head = &(sim->departed_ships);
 
+    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         /* We do not need to loop here, this is the only process waiting */
         cmb_condition_wait(sim->davyjones, is_departed, vctx);
 
         /* Got one, collect its exit value */
         struct ship *shp = cmi_list_pop(dep_head);
-        double *t_sys = cmb_process_get_exit_value((struct cmb_process *)shp);
+        double *t_sys_p = cmb_process_get_exit_value((struct cmb_process *)shp);
+        cmb_assert_debug(t_sys_p != NULL);
         cmb_logger_user(stdout, USERFLAG1,
                         "Recycling ship %s, time in system %f",
                         ((struct cmb_process *)shp)->name,
-                        *t_sys);
+                        *t_sys_p);
 
         /* Add it to the statistics and clean up */
-        cmb_dataset_add(trl->system_time[shp->size], *t_sys);
+        cmb_dataset_add(trl->system_time[shp->size], *t_sys_p);
         /* Frees internally allocated mempry, but not the object itself */
         cmb_process_terminate((struct cmb_process *)shp);
         /* We malloc'ed it, call free() directly instead of cmb_process_destroy() */
         free(shp);
         /* The exit value was malloc'ed in the ship process, free it as well */
-        free(t_sys);
+        free(t_sys_p);
     }
 }
 
@@ -387,6 +396,7 @@ void *entertainment_proc(struct cmb_process *me, void *vctx)
     cmb_unused(me);
     cmb_unused(vctx);
 
+    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         /* Print one dot per simulated year */
         cmb_process_hold(24.0 * 7 * 52);
@@ -439,7 +449,7 @@ void test_condition(void)
 {
     /* Get a suitable seed from a hardware entropy source */
     const uint64_t seed = cmb_random_get_hwseed();
-    printf("seed: 0x%llx\n", seed);
+    printf("seed: 0x%" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
 
     /* Start the simulation clock from 0.0 and prepare the event queue */

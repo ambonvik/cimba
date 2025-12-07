@@ -1,5 +1,5 @@
 /*
- * cmi_coroutine_context.c - Windows specific coroutine initialization
+ * cmi_coroutine_context.c - Linux specific coroutine initialization
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -29,34 +30,24 @@
 extern void cmi_coroutine_trampoline(void);
 
 /*
- * Windows-specific code to allocate and initializa stack for a new coroutine.
+ * Linux-specific code to allocate and initializa stack for a new coroutine,
+ * see https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
  *
  * Populates the new stack with register values to be loaded when the
  * new coroutine gets activated for the first time. The context switch into
  * it happens in assembly, function cmi_coroutine_context_switch, see
- * src/arch/cmi_coroutine_context_*.asm
+ * src/port/x86-64/Linux//cmi_coroutine_context_*.asm
  *
- * Overall structure of the Win64 stack:
+ * Overall structure of the Linux stack:
  *  - Grows downwards, from high address.
  *  - The top must be 16-byte aligned.
- *  - Before calling a function, "shadow space" is allocated for at least 4
- *    arguments, R9, R8, RDX, and RCX (in that order, from the top downwards),
- *    more if the called function has more than four arguments (we don't).
+ *  - The first six function arguments are passed in registers RDI, RSI, RDX,
+ *    RCX, R8, and R9. Anything more is passed on the stack in reverse order.
  *  - The return instruction pointer (RIP) follows next, before the function's
  *    own stack frame for storing registers and local variables.
  *  - When first entering a function, the stack is 8 bytes off the 16-byte
  *    alignment, since the return instruction pointer is pushed to a previously
  *    aligned stack.
- *  - Before pushing 128-bit XMM registers to the stack, it needs to be 16-byte
- *    aligned again.
- *
- * See also:
- *  https://en.wikipedia.org/wiki/X86_calling_conventions#Microsoft_x64_calling_convention
- *  https://probablydance.com/2013/02/20/handmade-coroutines-for-windows/
- *  https://github.com/HirbodBehnam/UserContextSwitcher (a good Linux example)
- *  https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention
- *  https://learn.microsoft.com/en-us/cpp/build/stack-usage
- *  https://learn.microsoft.com/en-us/cpp/build/prolog-and-epilog
  *
  * Here, we set up a context with the launcher/trampoline function as the
  * "return" address and register values that prepare for launching the
@@ -77,12 +68,13 @@ extern void cmi_coroutine_trampoline(void);
  */
 
 /* Bit pattern for last 64 bits of valid stack. */
-#define CMI_STACK_LIMIT_UNTOUCHED 0xFA151F1AB1Eull
+#define CMI_STACK_LIMIT_UNTOUCHED UINT64_C(0xFA151F1AB1E)
 
 #ifndef NASSERT
- /* Stack sanity check, Win64-specific */
+ /* Stack sanity check, Linux SysV-specific, see
+  *   https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf  */
  bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
-{
+ {
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
     cmb_assert_debug(cp->stack_limit != NULL);
@@ -94,7 +86,7 @@ extern void cmi_coroutine_trampoline(void);
         if (cp->stack_pointer != NULL) {
             cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
             cmb_assert_debug((uintptr_t *)cp->stack_pointer < (uintptr_t *)cp->stack_base);
-            cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
+            cmb_assert_debug((((uintptr_t)cp->stack_pointer + 8u) % 16u) == 0u);
         }
     }
     else {
@@ -102,7 +94,7 @@ extern void cmi_coroutine_trampoline(void);
         cmb_assert_debug(cp->stack_pointer != NULL);
         cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
         cmb_assert_debug((uintptr_t *)cp->stack_pointer < (uintptr_t *)cp->stack_base);
-        cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
+        cmb_assert_debug((((uintptr_t)cp->stack_pointer + 8u) % 16u) == 0u);
         cmb_assert_debug(*((uint64_t *)cp->stack_limit) == CMI_STACK_LIMIT_UNTOUCHED);
     }
 
@@ -136,18 +128,9 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     unsigned char *stkptr = cp->stack_base;
     cmb_assert_debug(((uintptr_t)stkptr % 16) == 0);
 
-    /* Due to Win64 calling convention, leave 4x8 bytes for storing arguments */
-    stkptr -= 32u;
-
     /* "Push" the "return" address */
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_trampoline;
-
-    /* "Push" the stack base and stack limit (to TIB via GS register) */
-    stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)(cp->stack_base);
-    stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)(cp->stack_limit);
 
     /* Clear the flags register */
     stkptr -= 8u;
@@ -159,19 +142,11 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     *(uint64_t *)(stkptr + 4) = 0x1d00u;
     *(uint32_t *)stkptr = 0u;
 
-    /* Clear RBX */
-    stkptr -= 8u;
-    *(uint64_t *)stkptr = 0x0ull;
-
     /* Point RBP to start of stack frame */
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)(cp->stack_base - 40u);
 
-    /* Clear RDI */
-    stkptr -= 8u;
-    *(uint64_t *)stkptr = 0x0ull;
-
-    /* Clear RSI */
+    /* Clear RBX */
     stkptr -= 8u;
     *(uint64_t *)stkptr = 0x0ull;
 
@@ -195,10 +170,6 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     else {
          *(uint64_t *)stkptr = (uintptr_t)(cp->cr_exit);
     }
-
-    /* Add space for 10 XMM registers * 16 bytes + 8 bytes for alignment */
-    stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
-    (void)cmi_memset(stkptr, 0, 168);
 
     /* Store stack pointer RSP in the coroutine struct to resume from here */
     cp->stack_pointer = stkptr;

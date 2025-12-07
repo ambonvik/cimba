@@ -27,10 +27,12 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <time.h>
 
 #include "cimba.h"
@@ -124,6 +126,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
                     cmb_buffer_get_name(bp));
     const double mean_interarr = 1.0 / ctx->trl->utilization;
 
+    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         cmb_logger_user(stdout, USERFLAG1, "Holding");
         (void)cmb_process_hold(cmb_random_exponential(mean_interarr));
@@ -152,6 +155,7 @@ void *service_proc(struct cmb_process *me, void *vctx)
     const double shape = 1.0 / (cv * cv);
     const double scale = cv * cv;
 
+    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         cmb_logger_user(stdout,
                         USERFLAG1,
@@ -177,7 +181,7 @@ void run_mg1_trial(void *vtrl)
         trl->seed = seed;
     }
 
-    cmb_logger_user(stdout, USERFLAG2, "Trial seed: 0x%016llx", trl->seed);
+    cmb_logger_user(stdout, USERFLAG2, "Trial seed: 0x%016" PRIx64, trl->seed);
 
     struct context *ctx = malloc(sizeof(*ctx));
     ctx->trl = trl;
@@ -242,7 +246,9 @@ void write_gnuplot_commands(unsigned ncvs, const double *cvs);
 int main(void)
 {
     printf("Cimba version %s\n", cimba_version());
-    const clock_t start_time = clock();
+    struct timespec start_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
+
 
     /* Experiment design parameters */
     const unsigned nreps = 10;
@@ -297,9 +303,11 @@ int main(void)
     fclose(datafp);
     free(experiment);
 
-    const clock_t end_time = clock();
-    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-    printf("It took %g sec\n", elapsed_time);
+    struct timespec end_time;
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
+    elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
+    printf("It took %g sec\n", elapsed);
 
     /* ...and pop up the graphics window before exiting */
     write_gnuplot_commands(ncvs, cvs);

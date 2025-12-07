@@ -480,7 +480,6 @@ static void stop_waiting(struct cmb_process *tgt)
 
     if (tgt->waitsfor.type == CMI_WAITABLE_CLOCK) {
         cmb_event_cancel(tgt->waitsfor.handle);
-        cmi_process_drop_all(tgt, &(tgt->resources_listhead));
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_EVENT) {
         struct cmi_list_tag **loc = cmi_event_tag_loc(tgt->waitsfor.handle);

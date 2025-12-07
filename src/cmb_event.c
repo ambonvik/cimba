@@ -131,6 +131,14 @@ extern uint64_t cmb_event_queue_count(void)
 }
 
 /*
+ * cmb_event_queue_total_count : Returns number of events ever scheduled.
+ */
+uint64_t cmb_event_queue_total_count(void)
+{
+    return cmi_hashheap_last_handle(event_queue);
+}
+
+/*
  * cmb_event_schedule : Insert event in event queue as indicated by activation
  * time t and priority p, return unique event handle.
  * Resizes hashheap if necessary.

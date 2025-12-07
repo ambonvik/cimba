@@ -16,10 +16,7 @@
  * limitations under the License.
  */
 
-/* Make sure we get the clock_gettime feature, and avoid Clang-Tidy complaint */
-#define _POSIX_C_SOURCE 199309L // NOLINT(bugprone-reserved-identifier)
-
-#include "pthread.h"
+#include <pthread.h>
 #include <time.h>
 #include <stdint.h>
 #include <unistd.h>

@@ -15,6 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/* Make sure we get pthread_getattr_np, and avoid Clang-Tidy complaints */
+#define _GNU_SOURCE // NOLINT(bugprone-reserved-identifier)
+#include <pthread.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -38,10 +43,8 @@ static CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_main = NULL;
  */
 static CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_current = NULL;
 
-/* Assembly functions, see src/arch/cmi_coroutine_context_*.asm */
+/* Assembly function, see src/port/x86-64/Linux/cmi_coroutine_context_*.asm */
 extern void *cmi_coroutine_context_switch(void **old, void **new, void *ret);
-extern void *cmi_coroutine_get_stackbase(void);
-extern void *cmi_coroutine_get_stacklimit(void);
 
 /* OS specific C code, see src/arch/cmi_coroutine_context_*.c */
 extern bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp);
@@ -72,7 +75,6 @@ void *cmi_coroutine_get_context(const struct cmi_coroutine *cp)
     return cp->context;
 }
 
-
 void cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context)
 {
     cmb_assert_release(cp != NULL);
@@ -87,10 +89,32 @@ void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp)
     return cp->exit_value;
 }
 
+static void get_stacklimits(unsigned char **top, unsigned char **bottom)
+{
+    cmb_assert_debug(top != NULL);
+    cmb_assert_debug(bottom != NULL);
+
+    pthread_attr_t attrs;
+    pthread_attr_init(&attrs);
+    int r = pthread_getattr_np(pthread_self(), &attrs);
+    cmb_assert_debug(r == 0);
+
+    void *stack_end;
+    size_t stack_size;
+    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
+    cmb_assert_debug(r == 0);
+
+    pthread_attr_destroy(&attrs);
+
+    *bottom = stack_end;
+    *top = (unsigned char *)stack_end + stack_size;
+    cmb_assert_debug(*top > *bottom);
+}
+
 /*
- * coroutine_create_main : Helper function to set up the dummy main coroutine
+ * create_main : Helper function to set up the dummy main coroutine
  */
-static void coroutine_create_main(void)
+static void create_main(void)
 {
     cmb_assert_debug(coroutine_main == NULL);
 
@@ -102,9 +126,8 @@ static void coroutine_create_main(void)
     /* Using system stack, no separate allocation */
     coroutine_main->stack = NULL;
 
-    /* Get stack top and bottom from assembly. */
-    coroutine_main->stack_base = cmi_coroutine_get_stackbase();
-    coroutine_main->stack_limit = cmi_coroutine_get_stacklimit();
+    /* Get current extent of main thread stack */
+    get_stacklimits(&(coroutine_main->stack_base), &(coroutine_main->stack_limit));
 
     /* Sttack pointer will be set first time we transfer out of it */
     coroutine_main->stack_pointer = NULL;
@@ -134,7 +157,7 @@ void cmi_coroutine_initialize(struct cmi_coroutine *cp,
 {
     /* Create a dummy main coroutine if not already existing */
     if (coroutine_main == NULL) {
-        coroutine_create_main();
+        create_main();
         cmb_assert_debug(coroutine_main != NULL);
         cmb_assert_debug(coroutine_current == coroutine_main);
     }

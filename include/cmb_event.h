@@ -63,6 +63,7 @@
 #ifndef CIMBA_CMB_EVENT_H
 #define CIMBA_CMB_EVENT_H
 
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -134,10 +135,17 @@ extern bool cmb_event_queue_is_empty(void);
  */
 extern uint64_t cmb_event_queue_count(void);
 
+
 /**
- * @brief Insert an event in event queue as indicated by the activation
- * time and priority. An event cannot be scheduled at a time before the current
- * simulation time.
+ * @brief Returns total number of events ever scheduled until now.
+ * @return The number of events ever scheduled since initialization.
+ */
+extern uint64_t cmb_event_queue_total_count(void);
+
+/**
+ * @brief Insert an event in event queue as indicated by the activation time
+ *        and priority. An event cannot be scheduled at a time before the
+ *        current simulation time.
  *
  * @param action  Pointer to the event function to execute.
  * @param subject Pointer to something user-defined, intended as a self
@@ -236,17 +244,17 @@ extern void cmb_event_reprioritize(uint64_t handle, int64_t priority);
  * @brief Wildcard pattern, matches any `cmb_event_func` (action) when searching
  *        event list.
  */
-#define CMB_ANY_ACTION ((cmb_event_func *)0xFFFFFFFFFFFFFFFFull)
+#define CMB_ANY_ACTION ((cmb_event_func *)UINT64_C(0xFFFFFFFFFFFFFFFF))
 
 /**
  * @brief Wildcard pattern, matches any subject when searching event list.
  */
-#define CMB_ANY_SUBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
+#define CMB_ANY_SUBJECT ((void *)UINT64_C(0xFFFFFFFFFFFFFFFF))
 
 /**
  * @brief Wildcard pattern, matches any object when searching event list.
  */
-#define CMB_ANY_OBJECT ((void *)0xFFFFFFFFFFFFFFFFull)
+#define CMB_ANY_OBJECT ((void *)UINT64_C(0xFFFFFFFFFFFFFFFF))
 
 /**
  * @brief Search in event list for an event matching the given pattern

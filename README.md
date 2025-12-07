@@ -13,14 +13,12 @@ Written in an object-oriented style of C with certain sections in assembly.
 See test/test_cimba.c for an integrated example simulating 
 a M/G/1 queue. The experiment consists of 200 trials, each 1e6 time units, 
 average service time 1.0 time units in every trial, 10 replications of each 
-parameter combination. This entire simulation runs in about 25 seconds on an 
-old Xeon E5 2640 v4 running Windows 10, producing the data in the chart below.
+parameter combination. This entire simulation runs in about 4.8 seconds on an 
+AMD Threadripper 3970X with Arch Linux, producing the data in the chart below.
+The simulation processed about 75 million events per second.
 
 ![M/G/1 queue](images/MG1%20example.png)
 
-Current status: Code complete for gcc build chain on
-Windows using CMake. Next step to add Linux support (expected to
-give significantly faster execution due to simpler
-context switching between coroutines), then improved documentation, before returning
-to Windows to add a MVSC build chain. 64-bit AMD64/x86-64 
-architecture only, no plans to add support for 32-bit CPU's.
+Current status: Code complete for gcc/gwmin build chain on Linux and Windows.
+Now updating documentation, before returning to Windows to add MVSC build chain. 
+64-bit AMD64/x86-64 architecture only, no plans to add support for 32-bit CPU's.
