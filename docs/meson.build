@@ -8,6 +8,8 @@ if doxygen.found() and sphinx.found()
     cdata.set('PROJECT_NAME', meson.project_name())
     cdata.set('VERSION', meson.project_version())
     cdata.set('OUTPUT_DIR', join_paths(meson.project_build_root(), 'docs'))
+    cdata.set('PROJECT_SOURCE_DIR', meson.project_source_root())
+    cdata.set('PROJECT_BUILD_DIR', meson.project_build_root())
 
     doxyfile = configure_file(
         input : 'Doxyfile.in',
@@ -32,7 +34,8 @@ if doxygen.found() and sphinx.found()
         input : ['index.rst', conf_py],
         output : 'html',
         command : [sphinx, '-b', 'html',
-                    '-Dbreathe_projects.cimba=' + join_paths(meson.project_build_root(), 'docs', 'xml'),
+                    '-c', meson.current_build_dir(),
+                    '-Dbreathe_projects.Cimba=' + join_paths(meson.project_build_root(), 'docs', 'xml'),
                     meson.current_source_dir(),
                     join_paths(meson.project_build_root(), 'docs', 'html')],
         depends : doxy_target,

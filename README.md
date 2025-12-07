@@ -13,9 +13,9 @@ Written in an object-oriented style of C with certain sections in assembly.
 See test/test_cimba.c for an integrated example simulating 
 a M/G/1 queue. The experiment consists of 200 trials, each 1e6 time units, 
 average service time 1.0 time units in every trial, 10 replications of each 
-parameter combination. This entire simulation runs in about 4.8 seconds on an 
+parameter combination. This entire simulation runs in about 2.7 seconds on an 
 AMD Threadripper 3970X with Arch Linux, producing the data in the chart below.
-The simulation processed about 75 million events per second.
+The simulation processed about 135 million events per second.
 
 ![M/G/1 queue](images/MG1%20example.png)
 

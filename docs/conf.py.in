@@ -11,3 +11,11 @@ breathe_projects = {
 }
 
 breathe_default_project = "@PROJECT_NAME@"
+
+breathe_default_members = ('members', 'undoc-members')
+breathe_domain_by_extension = {
+    "h": "c",
+}
+
+breathe_implementation_filename_extensions = ['.c']
+
