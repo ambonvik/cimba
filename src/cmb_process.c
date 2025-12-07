@@ -191,7 +191,7 @@ void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
     /* Is this process holding any resources that need to update records? */
     struct cmi_list_tag32 *rtag = pp->resources_listhead;
     while (rtag != NULL) {
-        struct cmb_holdable *hrp = rtag->ptr;
+        struct cmi_holdable *hrp = (struct cmi_holdable *)rtag->ptr;
         cmb_assert_debug(hrp != NULL);
         const uint64_t handle = rtag->uint;
         if (handle != 0ull) {
@@ -454,7 +454,7 @@ void cmi_process_drop_all(struct cmb_process *pp, struct cmi_list_tag32 **rtloc)
 
     /* Process it, calling drop() for each resource */
     while (rtag != NULL) {
-        struct cmb_holdable *hrp = rtag->ptr;
+        struct cmi_holdable *hrp = (struct cmi_holdable *)rtag->ptr;
         const uint64_t handle = rtag->uint;
         (*(hrp->drop))(hrp, pp, handle);
 

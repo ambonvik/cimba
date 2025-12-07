@@ -43,7 +43,7 @@
  */
 struct cmb_resourceguard {
     struct cmi_hashheap priority_queue;         /**< The base hashheap class */
-    struct cmb_resourcebase *guarded_resource;  /**< The resource it guards */
+    struct cmi_resourcebase *guarded_resource;  /**< The resource it guards */
     struct cmi_list_tag *observers;           /**< Any other resource guards observing this one */
 };
 
@@ -57,7 +57,7 @@ struct cmb_resourceguard {
  * @return `true` if the demand is considered satisfied (e.g., a resource is
  *         available, `false` if not.
  */
-typedef bool (cmb_resourceguard_demand_func)(const struct cmb_resourcebase *rbp,
+typedef bool (cmb_resourceguard_demand_func)(const struct cmi_resourcebase *rbp,
                                              const struct cmb_process *pp,
                                              const void *ctx);
 
@@ -68,7 +68,7 @@ typedef bool (cmb_resourceguard_demand_func)(const struct cmb_resourcebase *rbp,
  * @param rbp Pointer to the thing it will be guarding.
  */
 extern void cmb_resourceguard_initialize(struct cmb_resourceguard *rgp,
-                                         struct cmb_resourcebase *rbp);
+                                         struct cmi_resourcebase *rbp);
 
 /**
  * @brief  Un-initializes a resource guard.

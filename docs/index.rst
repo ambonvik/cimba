@@ -1,4 +1,4 @@
-Welcome to Cimba documentation
+Cimba documentation
 ==============================
 
 .. toctree::
@@ -6,11 +6,5 @@ Welcome to Cimba documentation
     :caption: Contents:
 
     self
-
-API Reference
--------------
-
-Here is the documentation generated from the public API header files:
-
-.. doxygenindex::
-    :project: Cimba
+    tutorial
+    API_reference

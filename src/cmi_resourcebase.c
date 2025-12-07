@@ -1,5 +1,5 @@
 /*
- * cmb_resourcebase.c - the virtual base class for resources a process can wait
+ * cmi_resourcebase.c - the virtual base class for resources a process can wait
  * for, providing polymorphic functions to be called for members of any derived
  * class and allowing lists of miscellaneous resource types together.
  *
@@ -18,25 +18,25 @@
  * limitations under the License.
  */
 
-#include "cmb_resourcebase.h"
+#include "cmi_resourcebase.h"
 
 /*
- * cmb_resourcebase_initialize : Make an already allocated resource core
+ * cmi_resourcebase_initialize : Make an already allocated resource core
  * object ready for use with a given capacity.
  */
-void cmb_resourcebase_initialize(struct cmb_resourcebase *rbp,
+void cmi_resourcebase_initialize(struct cmi_resourcebase *rbp,
                                  const char *name)
 {
     cmb_assert_release(rbp != NULL);
 
     rbp->cookie = CMI_INITIALIZED;
-    cmb_resourcebase_set_name(rbp, name);
+    cmi_resourcebase_set_name(rbp, name);
 }
 
 /*
- * cmb_resourcebase_terminate : Un-initializes a resource base object.
+ * cmi_resourcebase_terminate : Un-initializes a resource base object.
  */
-void cmb_resourcebase_terminate(struct cmb_resourcebase *rbp)
+void cmi_resourcebase_terminate(struct cmi_resourcebase *rbp)
 {
     cmb_assert_release(rbp != NULL);
 
@@ -49,13 +49,13 @@ void cmb_resourcebase_terminate(struct cmb_resourcebase *rbp)
  * The name is contained in a fixed size buffer and will be truncated if it is
  * too long to fit into the buffer, leaving one char for the \0 at the end.
  */
-void cmb_resourcebase_set_name(struct cmb_resourcebase *rbp, const char *name)
+void cmi_resourcebase_set_name(struct cmi_resourcebase *rbp, const char *name)
 {
     cmb_assert_release(rbp != NULL);
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_assert_release(name != NULL);
 
-    const int r = snprintf(rbp->name, CMB_RESOURCEBASE_NAMEBUF_SZ, "%s", name);
+    const int r = snprintf(rbp->name, CMI_RESOURCEBASE_NAMEBUF_SZ, "%s", name);
     cmb_assert_release(r >= 0);
 }
 

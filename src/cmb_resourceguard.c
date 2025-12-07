@@ -35,10 +35,10 @@
  * limitations under the License.
  */
 
+#include "cmb_resourceguard.h"
 #include "cmb_event.h"
 #include "cmb_logger.h"
-#include "cmb_resourceguard.h"
-#include "cmb_resourcebase.h"
+#include "cmi_resourcebase.h"
 
 /*
  * guard_queue_check : Test if heap_tag *a should go before *b. If so, return true.
@@ -67,7 +67,7 @@ static bool guard_queue_check(const struct cmi_heap_tag *a,
 #define GUARD_INIT_EXP 3u
 
 void cmb_resourceguard_initialize(struct cmb_resourceguard *rgp,
-                                  struct cmb_resourcebase *rbp)
+                                  struct cmi_resourcebase *rbp)
 {
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(rbp != NULL);
@@ -191,7 +191,7 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
 
     /* Evaluate its demand predicate */
     bool ret = false;
-    const struct cmb_resourcebase *rbp = rgp->guarded_resource;
+    const struct cmi_resourcebase *rbp = rgp->guarded_resource;
     if ((*demand)(rbp, pp, ctx)) {
         /* Yes, pull the process off the queue and schedule a wakeup event */
         (void)cmi_hashheap_dequeue(hp);

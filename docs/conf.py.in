@@ -6,6 +6,8 @@ version = '@VERSION@'
 
 extensions = ['breathe']
 
+html_theme = 'sphinx_rtd_theme'
+
 breathe_projects = {
     "@PROJECT_NAME@": "@OUTPUT_DIR@/xml"
 }

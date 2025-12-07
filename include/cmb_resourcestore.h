@@ -47,8 +47,9 @@
 
 #include <stdint.h>
 
-#include "cmb_holdable.h"
 #include "cmb_resourceguard.h"
+
+#include "cmi_holdable.h"
 
 /**
  * @brief The resourcestore struct, inherits all properties from `cmi_holdable`
@@ -56,7 +57,7 @@
  * some amount of the resource, and a timeseries for logging its history.
  */
 struct cmb_resourcestore {
-    struct cmb_holdable core;           /**< The virtual base class */
+    struct cmi_holdable core;           /**< The virtual base class */
     struct cmb_resourceguard guard;     /**< The gatekeeper maintaining an orderly queue of waiting processes */
     struct cmi_hashheap holders;        /**< The processes currently holding some, if any */
     uint64_t capacity;                  /**< The maximum amount that can be assigned to processes */
@@ -177,7 +178,7 @@ static inline const char *cmb_resourcestore_get_name(struct cmb_resourcestore *r
 {
     cmb_assert_debug(rsp != NULL);
 
-    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rsp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return rbp->name;
@@ -192,7 +193,7 @@ static inline const char *cmb_resourcestore_get_name(struct cmb_resourcestore *r
 static inline uint64_t cmb_resourcestore_in_use(struct cmb_resourcestore *rsp)
 {
     cmb_assert_release(rsp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
     cmb_assert_debug(rsp->in_use <= rsp->capacity);
 
     return rsp->in_use;
@@ -207,7 +208,7 @@ static inline uint64_t cmb_resourcestore_in_use(struct cmb_resourcestore *rsp)
 static inline uint64_t cmb_resourcestore_available(struct cmb_resourcestore *rsp)
 {
     cmb_assert_release(rsp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
     cmb_assert_debug(rsp->in_use <= rsp->capacity);
 
     return (rsp->capacity - rsp->in_use);

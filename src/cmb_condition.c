@@ -39,8 +39,8 @@ void cmb_condition_initialize(struct cmb_condition *cvp,
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(name != NULL);
 
-    cmb_resourcebase_initialize((struct cmb_resourcebase *)cvp, name);
-    cmb_resourceguard_initialize(&(cvp->guard), (struct cmb_resourcebase *)cvp);
+    cmi_resourcebase_initialize((struct cmi_resourcebase *)cvp, name);
+    cmb_resourceguard_initialize(&(cvp->guard), (struct cmi_resourcebase *)cvp);
 }
 
 void cmb_condition_terminate(struct cmb_condition *cvp)
@@ -48,7 +48,7 @@ void cmb_condition_terminate(struct cmb_condition *cvp)
     cmb_assert_release(cvp != NULL);
 
     cmb_resourceguard_terminate(&(cvp->guard));
-    cmb_resourcebase_terminate((struct cmb_resourcebase *)cvp);
+    cmi_resourcebase_terminate((struct cmi_resourcebase *)cvp);
 }
 
 void cmb_condition_destroy(struct cmb_condition *cvp)
@@ -66,7 +66,7 @@ int64_t cmb_condition_wait(struct cmb_condition *cvp,
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(dmnd != NULL);
 
-    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)cvp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)cvp;
     cmb_logger_info(stdout, "Waiting for condition %s", rbp->name);
     int64_t sig =  cmb_resourceguard_wait(&(cvp->guard),
                                           (cmb_resourceguard_demand_func *)dmnd,
@@ -110,7 +110,7 @@ bool cmb_condition_signal(struct cmb_condition *cvp)
 {
     cmb_assert_release(cvp != NULL);
 
-    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)cvp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)cvp;
     cmb_logger_info(stdout, "Signalling condition %s", rbp->name);
 
     uint64_t cnt = 0u;
@@ -162,7 +162,7 @@ bool cmi_condition_cancel(struct cmb_condition *cvp,
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(pp != NULL);
 
-    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)cvp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)cvp;
     cmb_logger_info(stdout, "Cancelling condition %s for process %s",
                     rbp->name, pp->name);
 
@@ -175,7 +175,7 @@ bool cmi_condition_remove(struct cmb_condition *cvp,
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(pp != NULL);
 
-    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)cvp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)cvp;
     cmb_logger_info(stdout, "Removing process %s from condition %s",
                     pp->name, rbp->name);
 

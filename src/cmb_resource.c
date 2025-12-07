@@ -32,7 +32,7 @@ struct cmb_resource *cmb_resource_create(void)
 {
     struct cmb_resource *rp = cmi_malloc(sizeof(*rp));
     cmi_memset(rp, 0, sizeof(*rp));
-    ((struct cmb_resourcebase *)rp)->cookie = CMI_UNINITIALIZED;
+    ((struct cmi_resourcebase *)rp)->cookie = CMI_UNINITIALIZED;
 
     return rp;
 }
@@ -42,12 +42,12 @@ static void record_sample(struct cmb_resource *rp);
 /*
  * resource_drop_holder : force a holder process to drop the resource
  */
-static void resource_drop_holder(struct cmb_holdable *hrp,
+static void resource_drop_holder(struct cmi_holdable *hrp,
                  const struct cmb_process *pp,
                  const uint64_t handle)
 {
     cmb_assert_release(hrp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)hrp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)hrp)->cookie == CMI_INITIALIZED);
     cmb_assert_release(pp != NULL);
     cmb_unused(handle);
 
@@ -68,7 +68,7 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
     cmb_assert_release(rp != NULL);
     cmb_assert_release(name != NULL);
 
-    cmb_holdable_initialize(&(rp->core), name);
+    cmi_holdable_initialize(&(rp->core), name);
     cmb_resourceguard_initialize(&(rp->guard), &(rp->core.base));
 
     rp->core.drop = resource_drop_holder;
@@ -91,7 +91,7 @@ void cmb_resource_terminate(struct cmb_resource *rp)
 
     cmb_timeseries_terminate(&(rp->history));
     cmb_resourceguard_terminate(&(rp->guard));
-    cmb_holdable_terminate(&(rp->core));
+    cmi_holdable_terminate(&(rp->core));
 }
 
 /*
@@ -106,7 +106,7 @@ void cmb_resource_destroy(struct cmb_resource *rp)
 static void record_sample(struct cmb_resource *rp) {
     cmb_assert_release(rp != NULL);
 
-    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     if (rp->is_recording) {
         struct cmb_timeseries *ts = &(rp->history);
@@ -120,7 +120,7 @@ void cmb_resource_start_recording(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
 
-    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     rp->is_recording = true;
     record_sample(rp);
@@ -130,7 +130,7 @@ void cmb_resource_stop_recording(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
 
-    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     record_sample(rp);
     rp->is_recording = false;
@@ -140,7 +140,7 @@ struct cmb_timeseries *cmb_resource_get_history(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
 
-    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return &(rp->history);
@@ -149,7 +149,7 @@ struct cmb_timeseries *cmb_resource_get_history(struct cmb_resource *rp)
 void cmb_resource_print_report(struct cmb_resource *rp, FILE *fp) {
     cmb_assert_release(rp != NULL);
 
-    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     fprintf(fp, "Resource utilization for %s:\n", rbp->name);
     const struct cmb_timeseries *ts = &(rp->history);
@@ -164,7 +164,7 @@ void cmb_resource_print_report(struct cmb_resource *rp, FILE *fp) {
 /*
  * is_available : pre-packaged demand function for a cmb_resource
  */
-static bool is_available(const struct cmb_resourcebase *rbp,
+static bool is_available(const struct cmi_resourcebase *rbp,
                          const struct cmb_process *pp,
                          const void *ctx)
 {
@@ -189,7 +189,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
 
-    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
     cmb_logger_info(stdout, "Acquiring resource %s", rbp->name);
 
     struct cmb_process *pp = cmb_process_get_current();
@@ -228,9 +228,9 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
  */
 void cmb_resource_release(struct cmb_resource *rp) {
     cmb_assert_release(rp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
 
-    struct cmb_holdable *hrp = (struct cmb_holdable *)rp;
+    struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
     struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_debug(pp != NULL);
     cmi_list_remove32(&(pp->resources_listhead), hrp);
@@ -262,12 +262,12 @@ static void resgrd_waitwu_evt(void *vp, void *arg)
 int64_t cmb_resource_preempt(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
 
     int64_t ret;
     struct cmb_process *pp = cmb_process_get_current();
     const int64_t myprio = pp->priority;
-    struct cmb_holdable *hrp = (struct cmb_holdable *)rp;
+    struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
     cmb_logger_info(stdout, "Preempting resource %s", hrp->base.name);
 
     struct cmb_process *victim = rp->holder;

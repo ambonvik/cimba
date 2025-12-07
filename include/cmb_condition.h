@@ -49,14 +49,14 @@
 #ifndef CIMBA_CMB_CONDITION_H
 #define CIMBA_CMB_CONDITION_H
 
-#include "cmb_resourcebase.h"
+#include "../src/cmi_resourcebase.h"
 #include "cmb_resourceguard.h"
 
 /**
  * @brief The condition struct, basically a named resource guard.
  */
 struct cmb_condition {
-    struct cmb_resourcebase base;           /**< The parent class, providing name and initialization */
+    struct cmi_resourcebase base;           /**< The parent class, providing name and initialization */
     struct cmb_resourceguard guard;         /**< Providing the queueing mechanics */
 };
 
@@ -142,7 +142,7 @@ extern bool cmb_condition_signal(struct cmb_condition *cvp);
  *
  * @return `true` if the found, `false` if not.
  */
-extern bool cmi_condition_cancel(struct cmb_condition *cvp,
+extern bool cmb_condition_cancel(struct cmb_condition *cvp,
                                  struct cmb_process *pp);
 
 /**
@@ -154,7 +154,7 @@ extern bool cmi_condition_cancel(struct cmb_condition *cvp,
  *
  * @return `true` if the found, `false` if not.
  */
-extern bool cmi_condition_remove(struct cmb_condition *cvp,
+extern bool cmb_condition_remove(struct cmb_condition *cvp,
                                  const struct cmb_process *pp);
 
 /**
@@ -164,7 +164,7 @@ extern bool cmi_condition_remove(struct cmb_condition *cvp,
  * @param cvp Pointer to a condition variable.
  * @param rgp Pointer to a resource guard.
  */
-static inline void cmi_condition_subscribe(struct cmb_condition *cvp,
+static inline void cmb_condition_subscribe(struct cmb_condition *cvp,
                                            struct cmb_resourceguard *rgp) {
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(rgp != NULL);
@@ -181,7 +181,7 @@ static inline void cmi_condition_subscribe(struct cmb_condition *cvp,
  *
  * @return `true` if the found, `false` if not.
  */
-static inline bool cmi_condition_unsubscribe(struct cmb_condition *cvp,
+static inline bool cmb_condition_unsubscribe(struct cmb_condition *cvp,
                                              struct cmb_resourceguard *rgp) {
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(rgp != NULL);

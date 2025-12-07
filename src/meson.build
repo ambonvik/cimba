@@ -8,20 +8,20 @@ sources = files('cimba.c',
                 'cmb_dataset.c',
                 'cmb_datasummary.c',
                 'cmb_event.c',
-                'cmb_holdable.c',
                 'cmb_logger.c',
                 'cmb_objectqueue.c',
                 'cmb_process.c',
                 'cmb_random.c',
                 'cmb_resource.c',
-                'cmb_resourcebase.c',
                 'cmb_resourceguard.c',
                 'cmb_resourcestore.c',
                 'cmb_timeseries.c',
                 'cmb_wtdsummary.c',
                 'cmi_coroutine.c',
                 'cmi_hashheap.c',
-                'cmi_mempool.c'
+                'cmi_holdable.c',
+                'cmi_mempool.c',
+                'cmi_resourcebase.c'
 )
 
 inc_int = include_directories('.')
@@ -35,7 +35,7 @@ cimba_lib = library('cimba',
                     c_args : ['-Wno-pedantic'],
                     link_args : ['-lm'],
                     dependencies : [project_deps, codegen_deps],
-                    install : false,
+                    install : true,
                     version : meson.project_version(),
                     soversion : '1',
                     native : true

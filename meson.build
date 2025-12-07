@@ -18,6 +18,14 @@ subdir('codegen')
 subdir('src')
 subdir('test')
 
+pkg = import('pkgconfig')
+pkg.generate(
+    cimba_lib,
+    name : 'cimba',
+    description : 'Multithreaded discrete event simulation',
+    url : 'https://github.com/ambonvik/cimba'
+)
+
 if get_option('enable_docs')
     subdir('docs')
 endif

@@ -35,7 +35,7 @@ struct cmb_buffer *cmb_buffer_create(void)
 {
     struct cmb_buffer *bp = cmi_malloc(sizeof *bp);
     cmi_memset(bp, 0, sizeof *bp);
-    ((struct cmb_resourcebase *)bp)->cookie = CMI_UNINITIALIZED;
+    ((struct cmi_resourcebase *)bp)->cookie = CMI_UNINITIALIZED;
 
     return bp;
 }
@@ -51,7 +51,7 @@ void cmb_buffer_initialize(struct cmb_buffer *bp,
     cmb_assert_release(name != NULL);
     cmb_assert_release(capacity > 0u);
 
-    cmb_resourcebase_initialize(&(bp->core), name);
+    cmi_resourcebase_initialize(&(bp->core), name);
 
     cmb_resourceguard_initialize(&(bp->front_guard), &(bp->core));
     cmb_resourceguard_initialize(&(bp->rear_guard), &(bp->core));
@@ -76,7 +76,7 @@ void cmb_buffer_terminate(struct cmb_buffer *bp)
     bp->is_recording = false;
     cmb_timeseries_terminate(&(bp->history));
 
-    cmb_resourcebase_terminate(&(bp->core));
+    cmi_resourcebase_terminate(&(bp->core));
 }
 
 /*
@@ -94,7 +94,7 @@ void cmb_buffer_destroy(struct cmb_buffer *bp)
  * buffer_has_content : pre-packaged demand function for a cmb_buffer, allowing
  * the getting process to grab some whenever there is something to grab,
  */
-static bool buffer_has_content(const struct cmb_resourcebase *rbp,
+static bool buffer_has_content(const struct cmi_resourcebase *rbp,
                                const struct cmb_process *pp,
                                const void *ctx)
 {
@@ -112,7 +112,7 @@ static bool buffer_has_content(const struct cmb_resourcebase *rbp,
  * buffer_has_space : pre-packaged demand function for a cmb_buffer, allowing
  * the putting process to stuff in some whenever there is space.
  */
-static bool buffer_has_space(const struct cmb_resourcebase *rbp,
+static bool buffer_has_space(const struct cmi_resourcebase *rbp,
                              const struct cmb_process *pp,
                              const void *ctx)
 {
@@ -128,7 +128,7 @@ static bool buffer_has_space(const struct cmb_resourcebase *rbp,
 
 static void record_sample(struct cmb_buffer *bp) {
     cmb_assert_release(bp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)bp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
     if (bp->is_recording) {
         struct cmb_timeseries *ts = &(bp->history);
@@ -139,7 +139,7 @@ static void record_sample(struct cmb_buffer *bp) {
 void cmb_buffer_start_recording(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)bp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
     bp->is_recording = true;
     record_sample(bp);
@@ -148,7 +148,7 @@ void cmb_buffer_start_recording(struct cmb_buffer *bp)
 void cmb_buffer_stop_recording(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)bp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
     record_sample(bp);
     bp->is_recording = false;
@@ -157,14 +157,14 @@ void cmb_buffer_stop_recording(struct cmb_buffer *bp)
 struct cmb_timeseries *cmb_buffer_get_history(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)bp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
     return &(bp->history);
 }
 
 void cmb_buffer_print_report(struct cmb_buffer *bp, FILE *fp) {
     cmb_assert_release(bp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)bp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
     const struct cmb_timeseries *ts = &(bp->history);
 
@@ -196,7 +196,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
     cmb_assert_release(bp != NULL);
     cmb_assert_release(amntp != NULL);
 
-    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)bp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     const uint64_t init_claim = *amntp;
@@ -292,7 +292,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
     cmb_assert_release(amntp != NULL);
     cmb_assert_release(*amntp > 0u);
 
-    struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)bp;
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     const uint64_t init_claim = *amntp;
     uint64_t rem_claim = *amntp;

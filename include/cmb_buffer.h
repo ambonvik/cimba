@@ -35,8 +35,8 @@
 
 #include <stdint.h>
 
+#include "../src/cmi_resourcebase.h"
 #include "cmb_assert.h"
-#include "cmb_resourcebase.h"
 #include "cmb_resourceguard.h"
 
 /**
@@ -64,7 +64,7 @@
  *        (putter) and one or more consumer (getter) processes.
  */
 struct cmb_buffer {
-    struct cmb_resourcebase core;           /**< The virtual base class */
+    struct cmi_resourcebase core;           /**< The virtual base class */
     struct cmb_resourceguard front_guard;   /**< Front waiting room for getters */
     struct cmb_resourceguard rear_guard;    /**< Rear waiting room for putters */
     uint64_t capacity;                      /**< The buffer size, possibly UINT64_MAX for unlimited */
@@ -152,7 +152,7 @@ static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
 {
     cmb_assert_debug(bp != NULL);
 
-    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)bp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
 
     return rbp->name;
 }
@@ -166,7 +166,7 @@ static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
 static inline uint64_t cmb_buffer_level(struct cmb_buffer *bp)
 {
     cmb_assert_debug(bp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)bp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
 
     return bp->level;
 }
@@ -180,7 +180,7 @@ static inline uint64_t cmb_buffer_level(struct cmb_buffer *bp)
 static inline uint64_t cmb_buffer_space(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)bp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
     cmb_assert_debug(bp->level <= bp->capacity);
 
     return (bp->capacity - bp->level);

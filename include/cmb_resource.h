@@ -26,8 +26,8 @@
 
 #include <stdint.h>
 
+#include "cmi_holdable.h"
 #include "cmb_process.h"
-#include "cmb_holdable.h"
 #include "cmb_resourceguard.h"
 
 
@@ -38,7 +38,7 @@
  * history.
  */
 struct cmb_resource {
-    struct cmb_holdable core;           /**< The virtual base class */
+    struct cmi_holdable core;           /**< The virtual base class */
     struct cmb_resourceguard guard;     /**< The gatekeeper maintaining an orderly queue of waiting processes */
     struct cmb_process *holder;         /**< The current holder, if any */
     bool is_recording;                  /**< Is it currently recording history? */
@@ -116,7 +116,7 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
 
-    const struct cmb_resourcebase *rbp = (struct cmb_resourcebase *)rp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return rbp->name;
@@ -131,7 +131,7 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
 static inline uint64_t cmb_resource_in_use(struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
 
     return (rp->holder != NULL) ? 1u : 0u;
 }
@@ -145,7 +145,7 @@ static inline uint64_t cmb_resource_in_use(struct cmb_resource *rp)
 static inline uint64_t cmb_resource_available(struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
-    cmb_assert_release(((struct cmb_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
 
     return (rp->holder == NULL) ? 1u : 0u;
 }
