@@ -26,10 +26,10 @@
 
 #include <stdint.h>
 
-#include "cmi_holdable.h"
 #include "cmb_process.h"
 #include "cmb_resourceguard.h"
 
+#include "cmi_holdable.h"
 
 /**
  * @brief The resource struct, inherits all properties from `cmi_holdable` by
