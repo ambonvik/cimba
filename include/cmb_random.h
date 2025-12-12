@@ -60,6 +60,7 @@
 
 #ifndef CIMBA_CMB_RANDOM_H
 #define CIMBA_CMB_RANDOM_H
+
 #include <inttypes.h>
 #include <math.h>
 #include <stdbool.h>
@@ -80,6 +81,12 @@
  * @param seed Initial seed value to be used, preferrably a random 64-bit value.
  */
 extern void cmb_random_initialize(uint64_t seed);
+
+/**
+ * @brief Resets the random number generator to the newly created, pre-initialized
+ *        state.
+ */
+extern void cmb_random_terminate(void);
 
 /**
  * @brief Get a suitable 64-bit seed from hardware entropy source.

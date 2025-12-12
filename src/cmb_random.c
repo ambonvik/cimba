@@ -105,6 +105,20 @@ void cmb_random_initialize(const uint64_t seed)
 }
 
 /*
+ * De-initializer, returns to the newly created state. Not very useful, mostly
+ * provided for symmetry with other initialize/terminate pairs. A dangling
+ * initialize with no terminate could cause imbalance in the simulated universe.
+ */
+void cmb_random_terminate(void) {
+    prng_state.a = DUMMY_SEED;
+    prng_state.b = DUMMY_SEED;
+    prng_state.c = DUMMY_SEED;
+    prng_state.d = DUMMY_SEED;
+
+    splitmix_state = DUMMY_SEED;
+}
+
+/*
  * Return The 64-bit seed that was used to initialize the generator.
  * If it returns ´0x0000DEAD5EED0000` the generator was never initialized.
  */
