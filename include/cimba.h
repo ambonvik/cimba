@@ -51,7 +51,6 @@ extern const char *cimba_version(void);
 /*
  * Declarations of the different "classes" and functions provided by Cimba
  */
-#include "../src/cmi_resourcebase.h"
 #include "cmb_assert.h"
 #include "cmb_buffer.h"
 #include "cmb_condition.h"
