@@ -312,6 +312,7 @@ static inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
  * argument.
  *
  * @param tsp Pointer to a time series object.
+ * @param fp A file pointer for the output, possibly `stdout`.
  * @param n The number of coefficents to calculate.
  * @param acf Array of (partial) autocorrelation coeffients, if already
  *            available.
