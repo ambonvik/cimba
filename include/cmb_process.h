@@ -222,8 +222,7 @@ extern int64_t cmb_process_wait_event(uint64_t ev_handle);
  *         the process.
  * @param retval The return value from the process, user defined meaning.
  *               Will be stored as the `cmb_coroutine` `exit_value`.
- * @return Does not return.
-*/
+ */
 extern void cmb_process_exit(void *retval);
 
 /**
