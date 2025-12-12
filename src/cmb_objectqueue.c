@@ -289,8 +289,17 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     while (true) {
         cmb_assert_debug(oqp->length <= oqp->capacity);
-        cmb_logger_info(stdout, "%s capacity %" PRIu64 " length now %" PRIu64,
-                        rbp->name, oqp->capacity, oqp->length);
+        if (oqp->capacity == CMB_OBJECTQUEUE_UNLIMITED) {
+            cmb_logger_info(stdout,
+                            "%s capacity unlimited, length now %" PRIu64,
+                            rbp->name, oqp->length);
+        }
+        else {
+            cmb_logger_info(stdout,
+                            "%s capacity %" PRIu64 ", length now %" PRIu64,
+                            rbp->name, oqp->capacity, oqp->length);
+        }
+
         cmb_logger_info(stdout, "Puts object %p into %s", *objectloc, rbp->name);
         if (oqp->length < oqp->capacity) {
             /* There is space */
@@ -329,9 +338,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
         else {
             cmb_logger_info(stdout,
                             "Interrupted by signal %" PRIi64 ", returns without putting object %p into %s",
-                            sig,
-                            *objectloc,
-                            rbp->name);
+                            sig, *objectloc, rbp->name);
             cmb_assert_debug(oqp->length <= oqp->capacity);
 
             return sig;
