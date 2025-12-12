@@ -2,6 +2,7 @@
 
 inc_api = include_directories('.')
 
+# Public API headers - installed to include/cimba/
 install_headers(
     'cimba.h',
     'cmb_assert.h',
