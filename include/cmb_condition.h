@@ -49,7 +49,7 @@
 #ifndef CIMBA_CMB_CONDITION_H
 #define CIMBA_CMB_CONDITION_H
 
-#include "../src/cmi_resourcebase.h"
+#include "cmi_resourcebase.h"
 #include "cmb_resourceguard.h"
 
 /**
