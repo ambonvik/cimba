@@ -35,9 +35,14 @@
 
 #include <stdint.h>
 
-#include "../src/cmi_resourcebase.h"
+#include "cmi_resourcebase.h"
 #include "cmb_assert.h"
 #include "cmb_resourceguard.h"
+
+/**
+ * @brief Unlimited buffer size
+ */
+#define CMB_BUFFER_UNLIMITED UINT64_MAX
 
 /**
  * A `cmb_buffer` has two resource guards, one for get (front) and one for put
