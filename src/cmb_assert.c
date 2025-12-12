@@ -33,7 +33,7 @@ void cmi_assert_failed(const char *sourcefile,
                        const char *condition)
 {
     cmi_logger_fatal(stderr, func, line,
-        "Assert \"%s\" failed, source file %s",
-              condition, sourcefile);
+                     "Assert \"%s\" failed, source file %s",
+                     condition, sourcefile);
 }
 #endif
