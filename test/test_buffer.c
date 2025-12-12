@@ -1,5 +1,5 @@
 /*
-* Test script for buffers
+ * Test script for buffers
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <time.h>
@@ -29,7 +30,7 @@
 #include "cmi_memutils.h"
 #include "test.h"
 
-#define USERFLAG 0x00000001
+#define USERFLAG1 0x00000001
 #define NUM_PUTTERS 3u
 #define NUM_GETTERS 3u
 
@@ -68,35 +69,32 @@ void *putterfunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(stdout, USERFLAG, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG1, "Holding ...");
         int64_t sig = cmb_process_hold(cmb_random_exponential(1.0));
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(stdout, USERFLAG, "Hold returned normally");
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned normally");
         }
         else {
-            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
         }
 
         const uint64_t n = cmb_random_dice(1, 15);
         uint64_t m = n;
         cmb_logger_user(stdout,
-                        USERFLAG,
-                        "Putting %llu into %s...",
-                        n,
-                        cmb_buffer_get_name(bp));
+                        USERFLAG1,
+                        "Putting %" PRIu64 " into %s...",
+                        n, cmb_buffer_get_name(bp));
 
         sig = cmb_buffer_put(bp, &m);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_assert_debug(m == 0u);
-            cmb_logger_user(stdout, USERFLAG, "Put %llu succeeded", n);
+            cmb_logger_user(stdout, USERFLAG1, "Put %" PRIu64 " succeeded", n);
         }
         else {
             cmb_logger_user(stdout,
-                            USERFLAG,
-                            "Put returned signal %lld, got %llu instead of %llu",
-                            sig,
-                            m,
-                            n);
+                            USERFLAG1,
+                            "Put returned signal %" PRIi64 ", got %" PRIu64 " instead of %" PRIu64,
+                            sig, m, n);
         }
     }
 }
@@ -110,35 +108,32 @@ void *getterfunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(stdout, USERFLAG, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG1, "Holding ...");
         int64_t sig = cmb_process_hold(cmb_random_exponential(1.0));
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(stdout, USERFLAG, "Hold returned normally");
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned normally");
         }
         else {
-            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %lld", sig);
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
         }
 
         const uint64_t n = cmb_random_dice(1, 15);
         cmb_logger_user(stdout,
-                        USERFLAG,
-                        "Getting %llu from %s...",
-                        n,
-                        cmb_buffer_get_name(bp));
+                        USERFLAG1,
+                        "Getting %" PRIu64 " from %s...",
+                        n, cmb_buffer_get_name(bp));
 
         uint64_t m = n;
         sig = cmb_buffer_get(bp, &m);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_assert_debug(m == n);
-            cmb_logger_user(stdout, USERFLAG, "Get %llu succeeded", n);
+            cmb_logger_user(stdout, USERFLAG1, "Get %" PRIu64 " succeeded", n);
         }
         else {
             cmb_logger_user(stdout,
-                            USERFLAG,
-                            "Get returned signal %lld, got %llu instead of %llu",
-                            sig,
-                            m,
-                            n);
+                            USERFLAG1,
+                            "Get returned signal %" PRIi64 ", got %" PRIi64 " instead of %" PRIu64,
+                            sig, m, n);
         }
     }
 }
@@ -154,12 +149,12 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(stdout, USERFLAG, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG1, "Holding ...");
         (void)cmb_process_hold(cmb_random_exponential(1.0));
         const uint16_t vic = cmb_random_dice(0, nproc - 1);
         const int64_t sig = cmb_random_dice(1, 10);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_logger_user(stdout, USERFLAG, "Interrupting %s with %lld", tgt[vic]->name, sig);
+        cmb_logger_user(stdout, USERFLAG1, "Interrupting %s with %" PRIi64, tgt[vic]->name, sig);
         cmb_process_interrupt(tgt[vic], sig, pri);
     }
 }
@@ -171,10 +166,10 @@ void test_queue(const double duration)
 
     const uint64_t seed = cmb_random_get_hwseed();
     cmb_random_initialize(seed);
-    printf("seed: %llx\n", seed);
+    printf("seed: %" PRIx64 "\n", seed);
 
     cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG);
+    cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
 
     printf("Create a buffer\n");

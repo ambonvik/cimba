@@ -30,7 +30,7 @@
 #include "cmi_memutils.h"
 #include "test.h"
 
-#define USERFLAG 0x00000001
+#define USERFLAG1 0x00000001
 #define NUM_PUTTERS 3u
 #define NUM_GETTERS 3u
 
@@ -71,27 +71,27 @@ void *putterfunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(stdout, USERFLAG, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG1, "Holding ...");
         int64_t sig = cmb_process_hold(cmb_random_exponential(1.0));
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(stdout, USERFLAG, "Hold returned normally");
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned normally");
         }
         else {
-            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %" PRIi64, sig);
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
         }
 
         cmb_logger_user(stdout,
-                        USERFLAG,
+                        USERFLAG1,
                         "Putting object %p into %s...",
                         object,
                         cmb_objectqueue_get_name(qp));
 
         sig = cmb_objectqueue_put(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(stdout, USERFLAG, "Put succeeded");
+            cmb_logger_user(stdout, USERFLAG1, "Put succeeded");
         }
         else {
-            cmb_logger_user(stdout, USERFLAG, "Put returned signal %" PRIi64, sig);
+            cmb_logger_user(stdout, USERFLAG1, "Put returned signal %" PRIi64, sig);
         }
     }
 }
@@ -107,26 +107,26 @@ void *getterfunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(stdout, USERFLAG, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG1, "Holding ...");
         int64_t sig = cmb_process_hold(cmb_random_exponential(1.0));
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(stdout, USERFLAG, "Hold returned normally");
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned normally");
         }
         else {
-            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %" PRIi64, sig);
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
         }
 
         cmb_logger_user(stdout,
-                        USERFLAG,
+                        USERFLAG1,
                         "Getting object from %s...",
                         cmb_objectqueue_get_name(qp));
 
         sig = cmb_objectqueue_get(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(stdout, USERFLAG, "Get succeeded");
+            cmb_logger_user(stdout, USERFLAG1, "Get succeeded");
         }
         else {
-            cmb_logger_user(stdout, USERFLAG, "Get returned signal %" PRIi64, sig);
+            cmb_logger_user(stdout, USERFLAG1, "Get returned signal %" PRIi64, sig);
         }
     }
 }
@@ -142,13 +142,13 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
-        cmb_logger_user(stdout, USERFLAG, "Holding ...");
+        cmb_logger_user(stdout, USERFLAG1, "Holding ...");
         (void)cmb_process_hold(cmb_random_exponential(1.0));
         const uint16_t vic = cmb_random_dice(0, (long)(nproc - 1u));
         const int64_t sig = cmb_random_dice(1, 10);
         const int64_t pri = cmb_random_dice(-5, 5);
         cmb_logger_user(stdout,
-                        USERFLAG,
+                        USERFLAG1,
                         "Interrupting %s with signal %" PRIi64,
                         tgt[vic]->name,
                         sig);
@@ -166,7 +166,7 @@ void test_queue(double duration)
     printf("seed: %" PRIx64 "\n", seed);
 
     cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG);
+    cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
 
     printf("Create a queue\n");

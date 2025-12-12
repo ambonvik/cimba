@@ -26,7 +26,7 @@
 
 #include "test.h"
 
-#define USERFLAG 0x00000001
+#define USERFLAG1 0x00000001
 
 uint64_t cuckoo_clock_handle = 0u;
 
@@ -35,7 +35,7 @@ void cuckooevtfunc(void *sub, void *obj)
     cmb_unused(sub);
     cmb_unused(obj);
 
-    cmb_logger_user(stdout,USERFLAG, "Cuckoo event occurred");
+    cmb_logger_user(stdout,USERFLAG1, "Cuckoo event occurred");
 }
 
 void cnclevtfunc(void *sub, void *obj)
@@ -45,11 +45,11 @@ void cnclevtfunc(void *sub, void *obj)
 
     cmb_assert_release(cuckoo_clock_handle != 0u);
      if (cmb_event_is_scheduled(cuckoo_clock_handle)) {
-        cmb_logger_user(stdout, USERFLAG, "Cancelling cuckoo event");
+        cmb_logger_user(stdout, USERFLAG1, "Cancelling cuckoo event");
         cmb_event_cancel(cuckoo_clock_handle);
      }
      else {
-        cmb_logger_user(stdout, USERFLAG, "Cuckoo event already cancelled");
+        cmb_logger_user(stdout, USERFLAG1, "Cuckoo event already cancelled");
      }
 }
 
@@ -58,20 +58,20 @@ void *procfunc1(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_unused(ctx);
 
-    cmb_logger_user(stdout, USERFLAG, "Running");
+    cmb_logger_user(stdout, USERFLAG1, "Running");
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         const double dur = cmb_random_exponential(5.0);
         const int64_t sig = cmb_process_hold(dur);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout,
-                            USERFLAG,
+                            USERFLAG1,
                             "Hold returned normal signal %" PRIi64,
                             sig);
         }
         else {
             cmb_logger_user(stdout,
-                            USERFLAG,
+                            USERFLAG1,
                             "Hold was interrupted signal %" PRIi64,
                             sig);
         }
@@ -82,7 +82,7 @@ void *procfunc2(struct cmb_process *me, void *ctx)
 {
     struct cmb_process *tgt = (struct cmb_process *)ctx;
     cmb_logger_user(stdout,
-                    USERFLAG,
+                    USERFLAG1,
                     "Running, tgt %s",
                     cmb_process_get_name(tgt));
     const int64_t pri = cmb_process_get_priority(me);
@@ -108,20 +108,20 @@ void *procfunc3(struct cmb_process *me, void *ctx)
 
     struct cmb_process *tgt = (struct cmb_process *)ctx;
     cmb_logger_user(stdout,
-                    USERFLAG,
+                    USERFLAG1,
                     "Running, tgt %s",
                     cmb_process_get_name(tgt));
     int64_t r = cmb_process_wait_event(cuckoo_clock_handle);
-    cmb_logger_user(stdout, USERFLAG, "Got cuckoo clock signal %" PRIi64, r);
+    cmb_logger_user(stdout, USERFLAG1, "Got cuckoo clock signal %" PRIi64, r);
 
     cmb_process_hold(cmb_random());
     cmb_logger_user(stdout,
-                    USERFLAG,
+                    USERFLAG1,
                     "Waiting for process %s",
                     cmb_process_get_name(tgt));
     r = cmb_process_wait_process(tgt);
     cmb_logger_user(stdout,
-                    USERFLAG,
+                    USERFLAG1,
                     "Tgt %s ended, we received signal %" PRIi64,
                     cmb_process_get_name(tgt), r);
 

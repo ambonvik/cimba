@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <time.h>
@@ -28,7 +29,7 @@
 
 #include "test.h"
 
-#define USERFLAG 0x00000001
+#define USERFLAG1 0x00000001
 
 static void end_sim_evt(void *subject, void *object)
 {
@@ -55,16 +56,13 @@ void *procfunc1(struct cmb_process *me, void *ctx)
                 cmb_resource_release(rp);
             }
             else if (sig == CMB_PROCESS_PREEMPTED){
-                cmb_logger_user(stdout,
-                                USERFLAG,
-                                "Someone stole %s from me, sig %lld!",
-                                cmb_resource_get_name(rp),
-                                sig);
+                cmb_logger_user(stdout, USERFLAG1,
+                                "Someone stole %s from me, signal %" PRIi64,
+                                cmb_resource_get_name(rp),  sig);
             }
             else {
-                cmb_logger_user(stdout,
-                                USERFLAG,
-                                "Interrupted by signal %lld!",
+                cmb_logger_user(stdout, USERFLAG1,
+                                "Interrupted by signal %" PRIi64,
                                 sig);
             }
         }
@@ -81,9 +79,8 @@ void *procfunc2(struct cmb_process *me, void *ctx)
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         const int64_t sig = cmb_resource_preempt(rp);
-        cmb_logger_user(stdout,
-                        USERFLAG,
-                        "Preempt %s returned signal %lld",
+        cmb_logger_user(stdout, USERFLAG1,
+                        "Preempt %s returned signal %" PRIi64,
                         cmb_resource_get_name(rp), sig);
         cmb_process_hold(cmb_random_exponential(1.0));
         cmb_resource_release(rp);
@@ -96,7 +93,7 @@ void test_resource(void)
     const uint64_t seed = cmb_random_get_hwseed();
     cmb_random_initialize(seed);
 
-    printf("seed: %llu\n", seed);
+    printf("seed: %" PRIu64 "\n", seed);
     cmb_event_queue_initialize(0.0);
 
     printf("Create a resource\n");
