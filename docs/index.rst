@@ -2,9 +2,9 @@ Cimba documentation
 ==============================
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :caption: Contents:
 
-    self
+    welcome
     tutorial
     API_reference

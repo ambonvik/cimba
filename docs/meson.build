@@ -31,7 +31,7 @@ if doxygen.found() and sphinx.found()
     )
 
     custom_target('sphinx',
-        input : ['index.rst', conf_py],
+        input : ['index.rst', 'welcome.rst', 'tutorial.rst', conf_py],
         output : 'html',
         command : [sphinx, '-b', 'html',
                     '-c', meson.current_build_dir(),

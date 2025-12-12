@@ -114,8 +114,8 @@ while turning off the release asserts only gives a small incremental improvement
 
 This is then combined with extensive unit testing of each module, ensuring that
 all lower level functionality works as expected before moving on to higher levels. 
-We are of course biased, by "well engineered", we mean something somewhere 
-between "industrial quality" and "mil spec" code.
+We are of course biased, by "well engineered", we mean somewhere 
+between "industrial strength" and "mil spec" code.
 
 ### Object oriented? In C17 and assembly? Why not just use C++?
 Long story made short: C++ exception handling is not very friendly to

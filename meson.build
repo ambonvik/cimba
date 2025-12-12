@@ -17,6 +17,7 @@ subdir('include')
 subdir('codegen')
 subdir('src')
 subdir('test')
+subdir('tutorial')
 
 pkg = import('pkgconfig')
 pkg.generate(

@@ -3,6 +3,7 @@ import sys
 
 project = '@PROJECT_NAME@'
 version = '@VERSION@'
+copyright = 'Asbjørn M. Bonvik 2025'
 
 extensions = ['breathe']
 
