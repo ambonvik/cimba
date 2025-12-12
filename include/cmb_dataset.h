@@ -92,7 +92,7 @@ extern uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
                                  const struct cmb_dataset *src);
 
 /**
- * @brief  Merge `datasets `s1` and `s2` into dataset `tgt`.
+ * @brief  Merge datasets `s1` and `s2` into dataset `tgt`.
  *         The target may or may not be one of the two sources, but not `NULL`.
  *
  * @param tgt Pointer to the target dataset object.
