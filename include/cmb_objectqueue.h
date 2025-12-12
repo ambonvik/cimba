@@ -40,9 +40,15 @@
 
 #include <stdint.h>
 
-#include "../src/cmi_resourcebase.h"
 #include "cmb_assert.h"
 #include "cmb_resourceguard.h"
+
+#include "cmi_resourcebase.h"
+
+/**
+ * @brief Unlimited queue size
+ */
+#define CMB_OBJECTQUEUE_UNLIMITED UINT64_MAX
 
 /**
  * @brief A fixed capacity queue for passing arbitrary objects from one or more
