@@ -64,6 +64,7 @@ void cmb_dataset_terminate(struct cmb_dataset *dsp)
         cmb_assert_debug(dsp->xa != NULL);
         cmi_free(dsp->xa);
         dsp->xa = NULL;
+        dsp->cursize = 0u;
     }
 }
 
