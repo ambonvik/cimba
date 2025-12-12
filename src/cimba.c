@@ -64,9 +64,7 @@ static void *worker_thread_func(void *arg)
 
     while (true) {
         /* stdatomic.h broken on Windows, using gcc/clang intrinsic instead for now */
-        const uint64_t idx = __atomic_fetch_add(&cmg_next_trial_idx,
-                                                1,
-                                                __ATOMIC_SEQ_CST);
+        const uint64_t idx = __atomic_fetch_add(&cmg_next_trial_idx, 1, __ATOMIC_SEQ_CST);
         if (idx >= cmg_total_trials) {
             break;
         }
