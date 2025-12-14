@@ -154,14 +154,14 @@ void run_MM1_trial(void *vtrl)
 
 }
 
-void load_params(struct trial *trl)
+void load_params(struct trial *trlp)
 {
-    cmb_assert_release(trl != NULL);
+    cmb_assert_release(trlp != NULL);
 
-    trl->arr_rate = 0.75;
-    trl->srv_rate = 1.0;
-    trl->warmup_time = 1000.0;
-    trl->duration = 1e6;
+    trlp->arr_rate = 0.75;
+    trlp->srv_rate = 1.0;
+    trlp->warmup_time = 1000.0;
+    trlp->duration = 1e6;
 }
 
 int main(void)

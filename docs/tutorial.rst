@@ -3,66 +3,11 @@
 Tutorial: Introducing Cimba
 ===========================
 
-Getting started
----------------
-
-You will need a a C compiler like gcc or clang, and a development toolchain of
-git, meson, and ninja. For some of the examples in this tutorial, you will need
-the free plotting program gnuplot, but this is not strictly necessary for using
-Cimba.
-
-We also recommend using a modern integrated development environment (IDE) like CLion,
-which has the advantage of being available both on Linux and Windows, integrated
-with a gcc toolchain (called MinGW under Windows), and free for open source
-work. Microsoft Visual Studio with MVSC should also work, but we have not tested
-it yet.
-
-Once the build chain is installed, you need to obtain Cimba itself.
-Cimba is distributed as fre open source code through the Github repository at
-https://github.com/ambonvik/cimba. You download, build, and install Cimba with
-a command sequence similar to the following. The details will depend on your
-operating system and preferred build chain; the below is for Linux:
-
-.. code-block:: bash
-
-    git clone https://github.com/ambonvik/cimba
-    cd cimba
-    meson setup build
-    meson compile -C build
-    meson install -C build
-
-You will probably need elevated privileges for the last step, since it installs
-the library and header files in system locations like /usr/local/include.
-
-After installation, you can write a C program like this (tutorial/hello.c):
-
-.. code-block:: c
-
-    #include <cimba.h>
-    #include <stdio.h>
-
-    int main(void) {
-        printf("Hello world, I am Cimba %s.\n", cimba_version());
-    }
-
-You can compile and run it as any other C program, linking to the Cimba library:
-
-.. code-block:: bash
-
-    gcc hello.c -lcimba -o hello
-    ./hello
-
-If all goes well, this should produce output similar to::
-
-    Hello world, I am Cimba 3.0.0 beta.
-
-You now have a working Cimba installation.
-
 Our first simulation - a M/M/1 queue
 ------------------------------------
 
 In this section, we will walk through the development of a simple model from
-the basic model entities and interactions to parallelizing it on all available
+connecting basic entities and interactions to parallelizing the model on all available
 CPU cores and producing presentation-ready output.
 
 Our first simulated system is a M/M/1 queue. In queuing theory (Kendall)
@@ -71,18 +16,18 @@ with exponentially distributed intervals, the service process is the same, there
 only one server, and the queue has unlimited capacity. This is a mathematically
 well understood system.
 
-Our simulation will verify if the formula for expected
+The simulation model will verify if the well-known formula for expected
 queue length is correct (or vice versa).
 
 Arrival, service, and the queue
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We model this in a straight-forward manner: We need an arrival process that puts
+We model this in a straightforward manner: We need an arrival process that puts
 customers into the queue at random intervals, a service process that gets
 customers from the queue and services them for a random duration, and the queue
 itself. We are not concerned with the characteristics of each customer, just how
 many there are in the queue, so we do not need a separate object for each customer.
-We will use a cmb_buffer for this. In this first iteration, we will hard-code
+We will use a `cmb_buffer` for this. In this first iteration, we will hard-code
 parameter values for simplicity, such as 75 % utilization, and then do it properly
 shortly.
 
@@ -124,7 +69,7 @@ arrive if there are none waiting), generates a random service time with mean 1.0
 holds for the service time, and does it all over again. An average arrival rate
 of 0.75 and service rate of 1.0 gives the 0.75 utilization we wanted.
 
-Note that the number of customers to put or get is given as a pointer to a variable
+Note that the number of customers to `put` or `get` is given as a pointer to a variable
 containing the number, not just a value. In more complex scenarios than this, the
 process may encounter a partially completed put or get, and we need a way to capture
 the actual state in these cases. For now, just note that the amount argument to
@@ -188,7 +133,7 @@ entropy source and initialize our pseudo-random number generators with it.
 It then initializes the simulation event queue, specifying at our clock will
 start from 0.0. (It could be any other value, but why not 0.0.)
 
-Next, it creates and initializes the cmb_buffer, naming it "Queue" and setting
+Next, it creates and initializes the `cmb_buffer`, naming it "Queue" and setting
 it to unlimited size.
 
 After that, it creates, initializes, and starts the arrival and service processes.
@@ -207,7 +152,7 @@ allocated memory on the stack. We still need to initialize it, since we are not
 in C++ with its "Resource Allocation Is Initialization" (RAII) paradigm. In C,
 resource allocation is *not* initialization (RAINI?), and we need to be very
 clear on each object's memory allocation and initialization status. We have tried
-to be as consistent as possible in Cimba in the create/initialize/terminate/destroy
+to be as consistent as possible in the Cimba create/initialize/terminate/destroy
 object lifecycle.
 
 Having made it this far, `main()` calls `cmb_event_queue_execute()` to run the
@@ -518,14 +463,14 @@ features. You will rarely interact directly with this function, but instead call
 wrapper functions (actually macros) like `cmb_logger_user()` or `cmb_logger_error()`.
 
 The key concept to understand here is the *logger flags*. Cimba uses a 32-bit
-unsigned integer (`int32_t`) as a bitmask to determine what log entries to print and which
+unsigned integer (`int32_t`) as a bit mask to determine what log entries to print and which
 to ignore. Cimba reserves the top four bits for its own use, identifying messages
 of various severities, leaving the 28 remaining bits for the user application.
 
-There is a central bit pattern, and a bit mask in each call. If a simple bitwise
-and (`&`) between the central bit pattern and the caller's bit mask gives a non-
+There is a central bit field and a bit mask in each call. If a simple bitwise
+and (`&`) between the central bit field and the caller's bit mask gives a non-
 zero result, that line is printed, otherwise not. Initally, all bits in the central
-bit pattern are on, `0xFFFFFFFF`. You can turn selected bits on and off with
+bit field are on, `0xFFFFFFFF`. You can turn selected bits on and off with
 `cmb_logger_flags_on()` and `cmb_logger_flags_off()`.
 
 Again, it may be easier to show this in code than to explain. We add a user-defined logging
@@ -1124,5 +1069,803 @@ may be correct. Nor can we reject the hypthesis that Cimba may be working correc
 This concludes our first tutorial. We have followed the development steps from a
 first minimal model to demonstrate process interactions to a complete parallellized
 experiment with graphical output. The files `tutorial/tut_1_*.c` include working
-code for each stage of development. There is also a complete version with inline
-explanatory comments in `tutorial/tut_1_x.c`.
+code for each stage of development. There is also a version `tutorial/tut_1_7.c`,
+functionally the same as `tutorial\tut_1_6.c` but with inline explanatory comments.
+
+
+Our second simulation - a LNG tanker harbor
+-------------------------------------------
+
+Once upon a time, a harbor simulation with tugs puttering about was the author's
+first exposure to Simula67, coroutines, and object-oriented programming. The
+essential *rightness* made a lasting impression. Building a 21st century version
+will be our second Cimba tutorial.
+
+In our first tutorial, the active processes interacted through a `cmb_buffer` with
+`put` and `get` methods. We will now introduce other process interactions through
+`cmb_resource` and `cmb_resourcestore` with their `acquire`, `hold`, and `release`
+semantics, and the extremely powerful `cmb_condition` that allows arbitrarily
+complex `wait` calls. We will also show how to create a derived "class" of ships
+from our `cmb_process` class, itself derived from the `cmi_coroutine` class.
+
+Since a simulation model only should be built in order to answer some specific
+quesion or set of questions, we will assume that our Simulated Port Authority
+needs to decide whether to spend next year's investment budget on buying more
+tugs, building another berth, or dredging a deeper harbor channel. The relevant
+performance metric is to minimize the average time spent in the harbor for the
+ships. The ships come in two sizes, large and small, with different requirements
+to wind, water depth, tugs, and berths. Our model will help the SPA decide. The
+time unit in our simulation will be hours.
+
+An empty simulation template
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Our starting point will be an empty shell from the first tutorial, giving the
+correct initial structure to the model. You will find it in `tutorial/tut_2_0.c`.
+It does not do anything, so there is no point in compiling it as it is, but you
+can use it as a starting template for your own models as well.
+
+The first functional version is in `tutorial/tut_2_1.c`. We will not repeat all
+the code here, just point out the highlights.
+
+Processes, resources, and conditions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The simulated world is described in `struct simulation`. Again, there is an
+arrival and a departure process generating and removing ships, but the ships
+themselves are now also active processes. We have two pools of resources, the
+tugs and the berths (of two different sizes), and one single resource, the
+communication channel used to announce that a ship is moving.
+
+There are also two condition variables. One, the harbormaster, ensures that all
+necessary conditions (including tides and wind) are met and resources are available
+before it permits a ship to start acquiring resources and proceed towards docking.
+The other one, Davy Jones, just watches for ships leaving harbor and triggers the
+departure process.
+
+There is no guarantee that ships will be leaving in first in first out order, so
+we use a `cmi_hashheap` as a fast data set for active ships. Departed ships can be
+handled by simpler means, so a simple linked list with LIFO (stack) ordering will
+be sufficient. These two classes are not considered part of the external CIMBA
+API, but happen to be available tools that fit the task.
+
+Our environment is next, describing the current wind and tide state for use by
+the harbormaster condition. Obviously, water depth will be different at different
+locations in a harbor, but we assume that the local topography is known and
+that a single tide gauge is sufficient. The ships' requirements are expressed
+against this tide gauge.
+
+Building our ships
+^^^^^^^^^^^^^^^^^^
+
+Our ships will come in two sizes, small and large. We define an `enum` for this,
+explicitly starting from zero to use it directly as an array index later. We then
+define a `struct ship` to be a derived class from `struct cmb_process` by placing
+a `struct cmb_process` as the first member of `struct ship`. (Not a pointer to a
+`cmb_process` - the ship *is a* process.) The rest of the ship struct contains the
+characteristics of a particular ship object to be instantiated in the simulation.
+
+.. code-block:: c
+
+    enum ship_size {
+        SMALL = 0,
+        LARGE
+    };
+
+    /* A ship is a derived class from cmb_process */
+    struct ship {
+        struct cmb_process core;       /* <= Note: The real thing, not a pointer */
+        enum ship_size size;
+        unsigned tugs_needed;
+        double max_wind;
+        double min_depth;
+    };
+
+.. note::
+
+    We do not use `typedef` for our object classes. It would only confuse matters
+    by hiding the nature of the object. We want that to be very clear from the
+    code. The only exception is for certain convoluted function prototypes like
+    `cmb_process_func` and `cmb_event_func`. These are `typedef` under those
+    names to avoid complex and error-prone declarations and argument lists.
+
+Weather and tides
+^^^^^^^^^^^^^^^^^
+
+Weather and tides are modelled as simple processes that update the
+environment state once per hour, using a suitable stochastic and/or periodic
+model of the physical world. The weather process can look like this, only
+concerned about wind magnitude and direction:
+
+.. code-block:: c
+
+    /* A process that updates the weather once per hour */
+    void *weather_proc(struct cmb_process *me, void *vctx)
+    {
+        cmb_unused(me);
+        cmb_assert_debug(vctx != NULL);
+
+        const struct context *ctxp = vctx;
+        struct environment *envp = ctxp->env;
+        const struct simulation *simp = ctxp->sim;
+
+        while (true) {
+            /* Wind magnitude in meters per second */
+            const double wmag = cmb_random_rayleigh(5.0);
+            const double wold = envp->wind_magnitude;
+            envp->wind_magnitude = 0.5 * wmag + 0.5 * wold;
+
+            /* Wind direction in compass degrees, dominant from the southwest */
+            const double wdir1 = cmb_random_PERT(0.0, 225.0, 360.0);
+            const double wdir2 = cmb_random_PERT(0.0,  45.0, 360.0);
+            envp->wind_direction = 0.75 * wdir1 + 0.25 * wdir2;
+
+            /* Requesting the harbormaster to read the new weather bulletin */
+            cmb_condition_signal(simp->harbormaster);
+
+            /* ... and wait until the next hour */
+            cmb_process_hold(1.0);
+        }
+    }
+
+Notice that just before looping back to the top, we `signal` the harbormaster
+condition, informing it that some state has changed, requiring it to re-evaluate
+its list of waiting ships.
+
+The tide process is similar, but combines the periodicity of astronomical tides
+with the randomness of weather-driven tide calculated from the environmental state
+left by the weather process. It also signals the harbormaster at the end of each
+iteration. You find it in the source code,
+`void *tide_proc(struct cmb_process *me, void *vctx)`.
+
+The details of the weather and tide models are not important for this tutorial,
+only that:
+
+1. We can calculate arbitrary state variables, such as the wind and tide here,
+   using relevant mathematical methods. We could embed an AI model or some custom
+   CUDA programming here if we needed to, as long as it is thread safe for our
+   concurrent execution. Our simulated world just stands still until the calculation
+   is done, possibly leaving the CPU to some other trial thread in the meantime
+   if this thread is waiting for a response from a GPU, I/O from disk, or another
+   blocking system call.
+
+2. We *signal* a `cmb_condition` that the state has changed and that
+   it needs to re-evaluate the requirements of any processes waiting for it. The
+   `cmb_condition` is not busy-polling the state, but depends on being signalled
+   by whatever process changes the state. In a discrete event simulation, state
+   only changes due to some event, and no polling is needed between events.
+
+Resources, resourcestores, and condition variables
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To understand the general `cmb_condition` class, it may be helpful to start
+with the `cmb_resource` as a special case.
+
+The `cmb_resource` is essentially a binary semaphore. Only one process can hold
+it at a time. If some process tries to acquire the resource while it is already
+in use, that process will have to wait in a priority queue.
+
+There is a `cmb_resourceguard` managing the priority queue. When adding itself
+to the queue, a process files its *demand* function with the guard. The demand
+function is a predicate returning a `bool`, either `true` or `false`, essentially
+saying to the guard "wake me up when this becomes true".
+
+(There may be a weak pun on the C++ coroutine `promise` here somewhere. Our
+processes do not *promise* anything, they *demand*.)
+
+For a `cmb_resource`, the demand function is internal and pre-defined, evaluating
+to `true` if the resource is available. When some other process releases the
+resource, the guard is signaled, the predicate evaluates to `true`, and the
+highest priority waiting process gets the resource, returning successfully from
+its `cmb_resource_acquire()` call as the new holder of the resource.
+
+Similarly, the `cmb_resourcestore` is a counting semaphore, where there is a
+certain number of resource items, and a process can acquire and release more
+than one unit at a time. Again, if not enough is available, the process files its
+demand with the guard and waits. This demand function is also internal and
+pre-defined.
+
+The `cmb_condition` exposes the resource guard and demand mechanism to the user
+application. It does not provide any particular resource object, but lets a
+process wait until an arbitrary condition is satisfied. The demand function may
+even be different for each waiting process. The condition will evaluate them in
+turn, and will schedule a wakeup event at the current time for every process
+whose demand function evaluates to `true`. What to do next is up to the user
+application.
+
+Making this mechanism even more powerful, the `cmb_resourceguard` class maintains
+a list of other resource guards observing this one. This is a signal forwarding
+mechanism. When signaled, a resource guard will evaluate its own priority queue,
+possibly schedule wakeup events for waiting processes, and then forward the signal
+to each observing resource guard for them to do the same. This makes it possible
+for the `cmb_condition` to provide complex combinations of "wait for all", "wait
+for any", and so forth by registering itself as an observer. If some observed
+resource guard gets signaled, the `cmb_condition` will also be signaled.
+
+The `cmb_condition` is still a passive object, not an active process. It only
+responds to calls from the active processes, such as `cmb_condition_wait()` and
+`cmb_condition_signal()`.
+
+Armed with this knowledge, we can now define the demand predicate function for
+a ship requesting permission from the harbormaster to dock:
+
+.. code-block:: c
+
+    /* The demand predicate function for a ship wanting to dock */
+    bool is_ready_to_dock(const struct cmb_condition *cvp,
+                          const struct cmb_process *pp,
+                          const void *vctx) {
+        cmb_unused(cvp);
+        cmb_assert_debug(pp != NULL);
+        cmb_assert_debug(vctx != NULL);
+
+        const struct ship *shpp = (struct ship *)pp;
+        const struct context *ctxp = vctx;
+        const struct environment *envp = ctxp->env;
+        const struct simulation *simp = ctxp->sim;
+
+        if (envp->water_depth < shpp->min_depth) {
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Water %f m too shallow for %s, needs %f",
+                            envp->water_depth, pp->name, shpp->min_depth);
+            return false;
+        }
+
+        if (envp->wind_magnitude > shpp->max_wind){
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Wind %f m/s too strong for %s, max %f",
+                            envp->wind_magnitude, pp->name, shpp->max_wind);
+            return false;
+        }
+
+        if (cmb_resourcestore_available(simp->tugs) < shpp->tugs_needed) {
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Not enough available tugs for %s",
+                            pp->name);
+            return false;
+        }
+
+        if (cmb_resourcestore_available(simp->berths[shpp->size]) < 1u) {
+            cmb_logger_user(stdout, USERFLAG1,
+                            "No available berth for %s",
+                            pp->name);
+            return false;
+        }
+
+        cmb_logger_user(stdout, USERFLAG1, "All good for %s", pp->name);
+        return true;
+    }
+
+The ship demands all this to hold true *before* it starts acquiring any tugs or
+other resources. This prevents ships from grabbing any tugs before their berth is
+available and the conditions permit docking. Cimba's observer pattern for signal
+forwarding ensures that this function is evaluated for each ship whenever the
+environmental state is updated or some resource has been released.
+
+The life of a ship
+^^^^^^^^^^^^^^^^^^
+
+Our ships are derived from the `cmb_process` class, inherit all properties from
+there, and adds some of its own. The function to execute in a ship process has
+the same signature as for the `cmb_process`. It can look like this:
+
+.. code-block:: c
+
+    /* The ship process function */
+    void *ship_proc(struct cmb_process *me, void *vctx)
+    {
+        cmb_assert_debug(me != NULL);
+        cmb_assert_debug(vctx != NULL);
+
+        /* Unpack some convenient shortcut names */
+        struct ship *shpp = (struct ship *)me;
+        const struct context *ctxp = vctx;
+        struct simulation *simp = ctxp->sim;
+        struct cmb_condition *hbmp = simp->harbormaster;
+        const struct trial *trlp = ctxp->trl;
+
+        /* Note ourselves as active */
+        cmb_logger_user(stdout, USERFLAG1, "%s arrives", me->name);
+        const double t_arr = cmb_time();
+        const uint64_t hndl = cmi_hashheap_enqueue(simp->active_ships, shpp,
+                                                   NULL, NULL, NULL, t_arr, 0u);
+
+        /* Wait for suitable conditions to dock */
+        while (!is_ready_to_dock(NULL, me, ctxp)) {
+            /* Loop to catch any spurious wakeups, such as several ships waiting for
+             * the tide and one of them grabbing the tugs before we can react. */
+            cmb_condition_wait(hbmp, is_ready_to_dock, ctxp);
+        }
+
+        /* Resources are ready, grab them for ourselves */
+        cmb_logger_user(stdout, USERFLAG1, "%s cleared to dock", me->name);
+        cmb_resourcestore_acquire(simp->berths[shpp->size], 1u);
+        cmb_resourcestore_acquire(simp->tugs, shpp->tugs_needed);
+
+        /* Announce our intention to move */
+        cmb_resource_acquire(simp->comms);
+        cmb_process_hold(cmb_random_gamma(5.0, 0.01));
+        cmb_resource_release(simp->comms);
+
+        const double docking_time = cmb_random_PERT(0.4, 0.5, 0.8);
+        cmb_process_hold(docking_time);
+
+        /* Safely at the quay to unload cargo, dismiss the tugs for now */
+        cmb_logger_user(stdout, USERFLAG1, "%s docked, unloading", me->name);
+        cmb_resourcestore_release(simp->tugs, shpp->tugs_needed);
+        const double tua = trlp->unloading_time_avg[shpp->size];
+        const double unloading_time = cmb_random_PERT(0.75 * tua, tua, 2 * tua);
+        cmb_process_hold(unloading_time);
+
+        /* Need the tugs again to get out of here */
+        cmb_logger_user(stdout, USERFLAG1, "%s ready to leave", me->name);
+        cmb_resourcestore_acquire(simp->tugs, shpp->tugs_needed);
+
+        /* Announce our intention to move */
+        cmb_resource_acquire(simp->comms);
+        cmb_process_hold(cmb_random_gamma(5.0, 0.01));
+        cmb_resource_release(simp->comms);
+
+        const double undocking_time = cmb_random_PERT(0.4, 0.5, 0.8);
+        cmb_process_hold(undocking_time);
+
+        /* Cleared berth, done with the tugs */
+        cmb_logger_user(stdout, USERFLAG1, "%s left harbor", me->name);
+        cmb_resourcestore_release(simp->berths[shpp->size], 1u);
+        cmb_resourcestore_release(simp->tugs, shpp->tugs_needed);
+
+        /* One pass process, remove ourselves from the active set */
+        cmi_hashheap_remove(simp->active_ships, hndl);
+        /* List ourselves as departed instead */
+        cmi_list_push(&(simp->departed_ships), shpp);
+        /* Inform Davy Jones that we are coming his way */
+        cmb_condition_signal(simp->davyjones);
+
+        /* Store the time we spent as an exit value in a separate heap object.
+         * The exit value is a void*, so we could store anything there, but for this
+         * demo, we keep it simple. */
+        const double t_dep = cmb_time();
+        double *t_sys_p = malloc(sizeof(double));
+        *t_sys_p = t_dep - t_arr;
+
+        cmb_logger_user(stdout, USERFLAG1, "%s arr %g dep %f time in system %f",
+            me->name, t_arr, t_dep, *t_sys_p);
+
+        /* Note that returning from a process function has the same effect as calling
+         * cmb_process_exit() with the return value as argument. */
+        return t_sys_p;
+    }
+
+
+Note the loop on `cmb_condition_wait()`. The condition will schedule a wakeup event
+for all waiting processes with a satisfied demand, but it is entirely possible
+that some other ship wakes first and grabs the resources before control passes here.
+Therefore, we test and wait again if it is no longer satisfied.
+
+For readers familiar with POSIX condition variables, there is a notable lack of
+a protecting mutex here. It is not needed in a coroutine-based concurrency model.
+Once control is back in this process, it will not be interrupted before we yield
+the execution through some call like `cmb_process_hold()`. In particular, this
+is safe:
+
+.. code-block:: c
+
+        /* Wait for suitable conditions to dock */
+        while (!is_ready_to_dock(NULL, me, ctxp)) {
+            /* Loop to catch any spurious wakeups, such as several ships waiting for
+             * the tide and one of them grabbing the tugs before we can react. */
+            cmb_condition_wait(hbmp, is_ready_to_dock, ctxp);
+        }
+
+        /* Resources are ready, grab them for ourselves */
+        cmb_logger_user(stdout, USERFLAG1, "%s cleared to dock", me->name);
+        cmb_resourcestore_acquire(simp->berths[shpp->size], 1u);
+        cmb_resourcestore_acquire(simp->tugs, shpp->tugs_needed);
+
+        /* Announce our intention to move */
+        cmb_resource_acquire(simp->comms);
+        cmb_process_hold(cmb_random_gamma(5.0, 0.01));
+        cmb_resource_release(simp->comms);
+
+We know that tugs and berths are available from the `cmb_condition_wait()`, so
+the `acquire()` calls will return immediately and successfully.
+
+On the other hand, this is not safe at all:
+
+.. code-block:: c
+
+        /* Wait for suitable conditions to dock */
+        while (!is_ready_to_dock(NULL, me, ctx)) {
+            /* Loop to catch any spurious wakeups, such as several ships waiting for
+             * the tide and one of them grabbing the tugs before we can react. */
+            cmb_condition_wait(hbm, is_ready_to_dock, ctx);
+        }
+
+        /* Do not do this: Announce our intention to move, yielding execution
+         * to other processes possibly both in the acquire and hold calls */
+        cmb_resource_acquire(simp->comms);
+        cmb_process_hold(cmb_random_gamma(5.0, 0.01));
+        cmb_resource_release(simp->comms);
+
+        /* Who knows what happened to the resources in the meantime? */
+        cmb_logger_user(stdout, USERFLAG1, "%s cleared to dock", me->name);
+        cmb_resourcestore_acquire(simp->berths[shpp->size], 1u);
+        cmb_resourcestore_acquire(simp->tugs, shpp->tugs_needed);
+
+The mutex is not needed, but only because a coroutine has atomic execution between
+explicit yield points. It is the application program's own responsibility to avoid
+doing something that could invalidate the condition before acting on it.
+
+We next write the arrival process generating ships:
+
+.. code-block:: c
+
+    /* The arrival process generating new ships */
+    void *arrival_proc(struct cmb_process *me, void *vctx)
+    {
+        cmb_unused(me);
+        cmb_assert_debug(vctx != NULL);
+
+        const struct context *ctxp = vctx;
+        const struct trial *trlp = ctxp->trl;
+        const double mean = 1.0 / trlp->arrival_rate;
+        const double p_large = trlp->percent_large;
+
+        uint64_t cnt = 0u;
+        while (true) {
+            cmb_process_hold(cmb_random_exponential(mean));
+
+            /* The ship class is a derived sub-class of cmb_process, we malloc it
+             * directly instead of calling cmb_process_create() */
+            struct ship *shpp = malloc(sizeof(struct ship));
+
+            /* Remember to zero-initialize it if malloc'ing on your own! */
+            memset(shpp, 0, sizeof(struct ship));
+
+            /* We started the ship size enum from 0 to match array indexes. If we
+             * had more size classes, we could use cmb_random_dice(0, n) instead. */
+            shpp->size = cmb_random_bernoulli(p_large);
+
+            /* We would probably not hard-code parameters except in a demo like this */
+            shpp->max_wind = 10.0 + 2.0 * (double)(shpp->size);
+            shpp->min_depth = 8.0 + 5.0 * (double)(shpp->size);
+            shpp->tugs_needed = 1u + 2u * shpp->size;
+
+            /* A ship needs a name */
+            char namebuf[20];
+            snprintf(namebuf, sizeof(namebuf),
+                     "Ship_%06" PRIu64 "%s",
+                     ++cnt, ((shpp->size == SMALL) ? "_small" : "_large"));
+            cmb_process_initialize((struct cmb_process *)shpp, namebuf, ship_proc, vctx, 0);
+
+            /* Start our brand new ship heading into the harbor */
+            cmb_process_start((struct cmb_process *)shpp);
+            cmb_logger_user(stdout, USERFLAG1, "%s started", namebuf);
+        }
+    }
+
+The important point to remember here is to zero-initialize the `struct ship`
+with `memset()` after allocating it with `malloc()`, or equivalently,
+allocating it with `calloc()` instead. The ship is a `cmb_process`, but
+we are bypassing the `cmb_process_create()` here and take the responsibility
+for the allocation step.
+
+The departure process is reasonably straightforward, capturing the exit value from
+the ship process and then recycling the entire ship. A `cmb_condition` is used
+to know that one or more ships have departed, triggering the departure process
+to do something.
+
+.. code-block:: c
+
+    void *departure_proc(struct cmb_process *me, void *vctx)
+    {
+        cmb_unused(me);
+        cmb_assert_debug(vctx != NULL);
+
+        const struct context *ctxp = vctx;
+        struct simulation *simp = ctxp->sim;
+        const struct trial *trlp = ctxp->trl;
+        struct cmi_list_tag **dep_head = &(simp->departed_ships);
+
+        while (true) {
+            /* We do not need to loop here, this is the only process waiting */
+            cmb_condition_wait(simp->davyjones, is_departed, vctx);
+
+            /* There is one, collect its exit value */
+            struct ship *shpp = cmi_list_pop(dep_head);
+            double *t_sys_p = cmb_process_get_exit_value((struct cmb_process *)shpp);
+            cmb_assert_debug(t_sys_p != NULL);
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Recycling %s, time in system %f",
+                            ((struct cmb_process *)shpp)->name,
+                            *t_sys_p);
+
+            if (cmb_time() > trlp->warmup_time) {
+                /* Add it to the statistics */
+                cmb_dataset_add(simp->time_in_system[shpp->size], *t_sys_p);
+            }
+
+            /* Frees internally allocated memory, but not the object itself */
+            cmb_process_terminate((struct cmb_process *)shpp);
+            /* We malloc'ed it, call free() directly instead of cmb_process_destroy() */
+            free(shpp);
+            /* The exit value was malloc'ed in the ship process, free it as well */
+            free(t_sys_p);
+        }
+    }
+
+Running a trial
+^^^^^^^^^^^^^^^
+
+Our simulation driver function `run_trial()` does in principle the same as in our
+first tutorial: Sets up the simulated world, runs the simulation, collects the
+results, and cleans up everything after itself. There are more objects involved
+this time, so we will not reproduce the entire function here, just call your
+attention to these two sections:
+
+.. code-block:: c
+
+        /* Create weather and tide processes, ensuring that weather goes first */
+        sim.weather = cmb_process_create();
+        cmb_process_initialize(sim.weather, "Wind", weather_proc, &ctx, 1);
+        cmb_process_start(sim.weather);
+        sim.tide = cmb_process_create();
+        cmb_process_initialize(sim.tide, "Depth", tide_proc, &ctx, 0);
+        cmb_process_start(sim.tide);
+
+Since the calculations of tide level depends on the weather state, we give the
+weather process a higher priority than the tide process. It will then always
+execute first, giving the tide process guaranteed updated information rather
+than possibly acting on the previous hour's data.
+
+As an efficiency optimization, we can now also remove the `cmb_condition_signal()`
+call from the weather process, since we know that the harbormaster will be
+signalled by the tide process immediately thereafter, saving one set of demand
+recalculations per simulated hour.
+
+.. code-block:: c
+
+        /* Create the harbormaster and Davy Jones himself */
+        sim.harbormaster = cmb_condition_create();
+        cmb_condition_initialize(sim.harbormaster, "Harbormaster");
+        cmb_resourceguard_register(&(sim.tugs->guard), &(sim.harbormaster->guard));
+        for (int i = 0; i < 2; i++) {
+            cmb_resourceguard_register(&(sim.berths[i]->guard), &(sim.harbormaster->guard));
+        }
+
+        sim.davyjones = cmb_condition_create();
+        cmb_condition_initialize(sim.davyjones, "Davy Jones");
+
+The harbormaster registers itself as an observer at the tugs and berths to receive
+a signal whenever one is released by some other process. Otherwise, it would need
+to wait until the top of the next hour when it is signaled by the weather and tide
+processes before it noticed.
+
+Building and running our new harbor simulation, we get output similar to this::
+
+    [ambonvik@Threadripper tutorial]$ ./tut_2_1 | more
+    1.5696	Arrivals	arrival_proc (335):  Ship_000001_large started
+    1.5696	Ship_000001_large	ship_proc (227):  Ship_000001_large arrives
+    1.5696	Ship_000001_large	is_ready_to_dock (209):  All good for Ship_000001_large
+    1.5696	Ship_000001_large	ship_proc (240):  Ship_000001_large cleared to dock, acquires berth and tugs
+    2.1582	Ship_000001_large	ship_proc (253):  Ship_000001_large docked, releases tugs, unloading
+    3.2860	Arrivals	arrival_proc (335):  Ship_000002_small started
+    3.2860	Ship_000002_small	ship_proc (227):  Ship_000002_small arrives
+    3.2860	Ship_000002_small	is_ready_to_dock (209):  All good for Ship_000002_small
+    3.2860	Ship_000002_small	ship_proc (240):  Ship_000002_small cleared to dock, acquires berth and tugs
+    3.9669	Ship_000002_small	ship_proc (253):  Ship_000002_small docked, releases tugs, unloading
+    4.7024	Arrivals	arrival_proc (335):  Ship_000003_small started
+    4.7024	Ship_000003_small	ship_proc (227):  Ship_000003_small arrives
+    4.7024	Ship_000003_small	is_ready_to_dock (209):  All good for Ship_000003_small
+    4.7024	Ship_000003_small	ship_proc (240):  Ship_000003_small cleared to dock, acquires berth and tugs
+    5.1600	Arrivals	arrival_proc (335):  Ship_000004_small started
+    5.1600	Ship_000004_small	ship_proc (227):  Ship_000004_small arrives
+    5.1600	Ship_000004_small	is_ready_to_dock (209):  All good for Ship_000004_small
+    5.1600	Ship_000004_small	ship_proc (240):  Ship_000004_small cleared to dock, acquires berth and tugs
+    5.2328	Ship_000003_small	ship_proc (253):  Ship_000003_small docked, releases tugs, unloading
+    5.7241	Arrivals	arrival_proc (335):  Ship_000005_small started
+    5.7241	Ship_000005_small	ship_proc (227):  Ship_000005_small arrives
+    5.7241	Ship_000005_small	is_ready_to_dock (209):  All good for Ship_000005_small
+    5.7241	Ship_000005_small	ship_proc (240):  Ship_000005_small cleared to dock, acquires berth and tugs
+    5.7273	Ship_000004_small	ship_proc (253):  Ship_000004_small docked, releases tugs, unloading
+    6.3406	Ship_000005_small	ship_proc (253):  Ship_000005_small docked, releases tugs, unloading
+    10.614	Ship_000002_small	ship_proc (260):  Ship_000002_small ready to leave, requests tugs
+
+    [...]
+
+    330.08	Ship_000145_small	ship_proc (227):  Ship_000145_small arrives
+    330.08	Ship_000145_small	is_ready_to_dock (189):  Wind 10.491782 m/s too strong for Ship_000145_small, max 10.000000
+    330.26	Arrivals	arrival_proc (335):  Ship_000146_small started
+    330.26	Ship_000146_small	ship_proc (227):  Ship_000146_small arrives
+    330.26	Ship_000146_small	is_ready_to_dock (189):  Wind 10.491782 m/s too strong for Ship_000146_small, max 10.000000
+    330.92	Ship_000140_small	ship_proc (260):  Ship_000140_small ready to leave, requests tugs
+    330.92	Ship_000140_small	is_ready_to_dock (189):  Wind 10.491782 m/s too strong for Ship_000145_small, max 10.000000
+    331.00	Depth	is_ready_to_dock (189):  Wind 10.258885 m/s too strong for Ship_000145_small, max 10.000000
+    331.00	Depth	is_ready_to_dock (189):  Wind 10.258885 m/s too strong for Ship_000146_small, max 10.000000
+    331.39	Ship_000140_small	ship_proc (272):  Ship_000140_small left harbor, releases berth and tugs
+    331.39	Ship_000140_small	is_ready_to_dock (189):  Wind 10.258885 m/s too strong for Ship_000145_small, max 10.000000
+    331.39	Ship_000140_small	is_ready_to_dock (189):  Wind 10.258885 m/s too strong for Ship_000145_small, max 10.000000
+    331.39	Departures	departure_proc (374):  Recycling Ship_000140_small, time in system 9.899306
+    331.48	Ship_000143_small	ship_proc (260):  Ship_000143_small ready to leave, requests tugs
+    331.48	Ship_000143_small	is_ready_to_dock (189):  Wind 10.258885 m/s too strong for Ship_000145_small, max 10.000000
+    332.00	Depth	is_ready_to_dock (209):  All good for Ship_000145_small
+    332.00	Depth	is_ready_to_dock (209):  All good for Ship_000146_small
+    332.00	Ship_000145_small	is_ready_to_dock (209):  All good for Ship_000145_small
+    332.00	Ship_000145_small	ship_proc (240):  Ship_000145_small cleared to dock, acquires berth and tugs
+
+    [...]
+
+    434.49	Ship_000189_large	is_ready_to_dock (203):  No available berth for Ship_000191_large
+    434.87	Ship_000198_small	ship_proc (253):  Ship_000198_small docked, releases tugs, unloading
+    434.87	Ship_000198_small	is_ready_to_dock (203):  No available berth for Ship_000191_large
+    435.00	Depth	is_ready_to_dock (203):  No available berth for Ship_000191_large
+    435.00	Depth	is_ready_to_dock (203):  No available berth for Ship_000193_large
+    435.07	Ship_000189_large	ship_proc (272):  Ship_000189_large left harbor, releases berth and tugs
+    435.07	Ship_000189_large	is_ready_to_dock (209):  All good for Ship_000191_large
+    435.07	Ship_000189_large	is_ready_to_dock (209):  All good for Ship_000193_large
+    435.07	Ship_000191_large	is_ready_to_dock (209):  All good for Ship_000191_large
+    435.07	Ship_000191_large	ship_proc (240):  Ship_000191_large cleared to dock, acquires berth and tugs
+    435.07	Ship_000193_large	is_ready_to_dock (203):  No available berth for Ship_000193_large
+    435.07	Departures	departure_proc (374):  Recycling Ship_000189_large, time in system 12.530678
+    435.16	Ship_000190_large	ship_proc (260):  Ship_000190_large ready to leave, requests tugs
+    435.16	Ship_000190_large	is_ready_to_dock (203):  No available berth for Ship_000193_large
+    435.59	Ship_000191_large	ship_proc (253):  Ship_000191_large docked, releases tugs, unloading
+    435.59	Ship_000191_large	is_ready_to_dock (203):  No available berth for Ship_000193_large
+    435.78	Ship_000190_large	ship_proc (272):  Ship_000190_large left harbor, releases berth and tugs
+    435.78	Ship_000190_large	is_ready_to_dock (209):  All good for Ship_000193_large
+    435.78	Ship_000193_large	is_ready_to_dock (209):  All good for Ship_000193_large
+    435.78	Ship_000193_large	ship_proc (240):  Ship_000193_large cleared to dock, acquires berth and tugs
+    435.78	Departures	departure_proc (374):  Recycling Ship_000190_large, time in system 12.268849
+    436.42	Ship_000193_large	ship_proc (253):  Ship_000193_large docked, releases tugs, unloading
+    436.68	Ship_000184_large	ship_proc (260):  Ship_000184_large ready to leave, requests tugs
+
+...and so on. It looks rather promising, so we turn off the logging and rerun. Output:
+
+.. code-block:: none
+
+    /home/ambonvik/github/cimba/build/tutorial/tut_2_1
+
+    System times for small ships:
+    N     3278  Mean    10.81  StdDev    2.408  Variance    5.798  Skewness    1.346  Kurtosis    3.049
+    --------------------------------------------------------------------------------
+    ( -Infinity,      7.051)   |
+    [     7.051,      7.989)   |###################=
+    [     7.989,      8.927)   |##############################################=
+    [     8.927,      9.865)   |##################################################
+    [     9.865,      10.80)   |################################################=
+    [     10.80,      11.74)   |########################################-
+    [     11.74,      12.68)   |############################-
+    [     12.68,      13.62)   |#####################-
+    [     13.62,      14.55)   |#############-
+    [     14.55,      15.49)   |#######-
+    [     15.49,      16.43)   |#####-
+    [     16.43,      17.37)   |#=
+    [     17.37,      18.31)   |#-
+    [     18.31,      19.24)   |#=
+    [     19.24,      20.18)   |=
+    [     20.18,      21.12)   |=
+    [     21.12,      22.06)   |=
+    [     22.06,      22.99)   |-
+    [     22.99,      23.93)   |-
+    [     23.93,      24.87)   |-
+    [     24.87,      25.81)   |
+    [     25.81,  Infinity )   |-
+    --------------------------------------------------------------------------------
+
+    System times for large ships:
+    N     1060  Mean    17.34  StdDev    5.548  Variance    30.78  Skewness    2.024  Kurtosis    7.243
+    --------------------------------------------------------------------------------
+    ( -Infinity,      10.38)   |
+    [     10.38,      12.67)   |###################################=
+    [     12.67,      14.96)   |##################################################
+    [     14.96,      17.25)   |#########################################-
+    [     17.25,      19.54)   |##############################=
+    [     19.54,      21.83)   |#################-
+    [     21.83,      24.12)   |##############-
+    [     24.12,      26.41)   |#####=
+    [     26.41,      28.70)   |#####=
+    [     28.70,      30.99)   |####-
+    [     30.99,      33.28)   |##=
+    [     33.28,      35.56)   |-
+    [     35.56,      37.85)   |-
+    [     37.85,      40.14)   |-
+    [     40.14,      42.43)   |-
+    [     42.43,      44.72)   |-
+    [     44.72,      47.01)   |
+    [     47.01,      49.30)   |
+    [     49.30,      51.59)   |-
+    [     51.59,      53.88)   |-
+    [     53.88,      56.17)   |
+    [     56.17,  Infinity )   |-
+    --------------------------------------------------------------------------------
+
+    Utilization of small berths:
+    N     5890  Mean    3.809  StdDev    2.069  Variance    4.280  Skewness  -0.2231  Kurtosis   -1.621
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |#####-
+    [     1.000,      2.000)   |#################-
+    [     2.000,      3.000)   |################################=
+    [     3.000,      4.000)   |#######################################-
+    [     4.000,      5.000)   |########################################-
+    [     5.000,      6.000)   |##################################=
+    [     6.000,  Infinity )   |##################################################
+    --------------------------------------------------------------------------------
+
+    Utilization of large berths:
+    N     1766  Mean    1.797  StdDev    2.347  Variance    5.509  Skewness  -0.1321  Kurtosis   -2.636
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |####################-
+    [     1.000,      2.000)   |#######################################-
+    [     2.000,      3.000)   |######################################=
+    [     3.000,  Infinity )   |##################################################
+    --------------------------------------------------------------------------------
+
+    Utilization of tugs:
+    N    16311  Mean   0.8651  StdDev   0.9467  Variance   0.8962  Skewness    2.449  Kurtosis    8.635
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |##################################################
+    [     1.000,      2.000)   |######################-
+    [     2.000,      3.000)   |####=
+    [     3.000,      4.000)   |#######=
+    [     4.000,      5.000)   |###-
+    [     5.000,      6.000)   |=
+    [     6.000,      7.000)   |=
+    [     7.000,      8.000)   |-
+    [     8.000,      9.000)   |-
+    [     9.000,      10.00)   |-
+    [     10.00,  Infinity )   |-
+    --------------------------------------------------------------------------------
+    Avg time in system, small ships: 10.812688
+    Avg time in system, large ships: 17.341350
+
+You can find the code for this stage in `tutorial/tut_2_1.c`.
+
+Turning up the power
+^^^^^^^^^^^^^^^^^^^^
+
+We still find it fascinating to see our simulated ships and tugs scurrying about, but our client,
+the Simulated Port Authority, reminds us that next year's budget is soon due and they would
+prefer getting answers to their questions soon. And, by the way, could we add scenarios where
+traffic increases by 10 % and 25 % above today's baseline levels?
+
+Time to fire up our computing power.
+
+Setting up our experiment, we believe that the factors depth, number of tugs, and number
+of small and large berths are largely independent. We can probably vary one at a time
+rather than setting up a factorial experiment (which may still be computationally more
+efficient to do). To ensure that the SPA also has numbers it can use beyond next
+year's budget, we try five levels of each parameter, dredging in steps of 0.5 meters
+and adding tugs and berths in steps of one. We again run ten replications of each
+parameter set. This gives us 4 * 5 * 3 = 60 parameter combinations and 60 * 10 = 600 trials.
+We will run each trial for 10 years of simulated time, i.e. 10 * 365 * 24 = 87360 time units,
+allowing 30 days' warmup time before we start collecting data.
+
+Writing the `main()` function is straightforward, albeit somewhat tedious. It does
+the same as in the previous tutorial: Sets up the experiment as an array of trials,
+executes it in parallel on the available CPU cores, assembles the output as a data
+file, and plots it in a separate gnuplot window.
+
+We compile and run, and 4.1 seconds later, this chart appears:
+
+.. image:: ./images//tut_2_2.png
+
+We see that we can tell our client, the SPA, that they have enough tugs and do
+not need to dredge, but that they really should consider building one more large
+berth, especially if traffic is expected to increase. However, building more than
+one does not make much sense even at the highest traffic scenario. The SPA should
+rather consider building another small berth next.
+
+We think expressing this entire model in 940 lines of general-purpose C code
+(comment and whitespace lines included) is quite expressive. We also think running
+600 trials of it on a desktop computer in 4.1 seconds of wall clock time is
+pretty fast.
+
+This concludes our second tutorial. We have introduced `cmb_resource`,
+`cmb_resourcestore`, and the very powerful `cmb_condition`, allowing processes
+to wait for arbitrary combinations of conditions. Along the way, we demonstrated
+that user applications can build derived classes from Cimba parent classes. For
+example, the `ship` class in this tutorial is also a `cmb_process` (which in turn
+is a `cmi_coroutine`).

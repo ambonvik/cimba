@@ -24,7 +24,7 @@
 #include <time.h>
 
 /*
- * Bitmaps to distinguish between two types of user-defined logging messages.
+ * Bit masks to distinguish between two types of user-defined logging messages.
  */
 #define USERFLAG1 0x00000001
 #define USERFLAG2 0x00000002

@@ -20,27 +20,34 @@ running them all at the same time, or at least running as many as you have CPU c
 available for. Which is what Cimba does.
 
 ### Why should I use it?
-* The speed and expressivity translates to high resolution in your simulation
-  modelling. You can run hundreds of replications and parameter variations in
-  a short time, generating tight confidence intervals in your experiments and
-  high density of data points along parameter variations.
+It is powerful, fast, reliable, and free.
 
-* Cimba includes a wide range of fast, high quality random number generators, both 
-  of academically important and more empirically oriented types. See 
- [cmb_random.h](include/cmb_random.h)
+* Cimba provides a comprehensive toolkit for discrete event simulation:
 
-* Cimba also provides pre-packaged process interaction mechanisms like resources, 
-  resource stores, buffers, object queues, and even condition variables where
-  your simulated process can wait for arbitrarily complex conditions - essentially for 
-  anything you can express as a function returning a binary true or false result.
+  * Support for both process- and event-based simulationworldviews, and combinations
+    of the two.
+  
+  * Pre-packaged process interaction mechanisms like resources,
+    resource stores, buffers, object queues, and even condition variables where
+    your simulated process can wait for arbitrarily complex conditions - essentially
+    for anything you can express as a function returning a binary true or false result.
+  
+  * A wide range of fast, high quality random number generators, both
+    of academically important and more empirically oriented types. See
+    [cmb_random.h](include/cmb_random.h)
+  
+  * Ppowerful logging and data collection features that makes it easy
+    to get a model running and understand what is happening inside it.
 
-* Cimba includes powerful logging and data collection features that makes it easy
-  to get a model running and understand what is happening inside it.
+* The speed from multithreaded parallel execution translates to high resolution 
+  in your simulation modelling. You can run hundreds of replications and parameter 
+  variations in just a few seconds, generating tight confidence intervals in your 
+  experiments and high density of data points along parameter variations.
 
 * Cimba is well engineered, self-contained open source. There is no mystery to the 
   results you get. Each simulated world sits inside its own thread.
 
-* Cimba is free and should as such fit well into the budget of most research groups.
+* Cimba is free and should fit well into the budget of most research groups.
 
 ### What can I use Cimba for?
 It is a general purpose discrete event library, in the general spirit of a
@@ -100,29 +107,30 @@ de-allocator functions for an orderly object lifecycle, and where derived classe
 behave as you would expect with respect to their parent classes.
 
 The code is liberally sprinkled with `assert` statements testing for preconditions,
-invariants, and postconditions wherever possible. Cimba contains about 1000 asserts 
-in about 10000 lines of code in total, for an assert density of 10 %. These are
-custom asserts that will report what trial, what process, the simulated time, the
-function and line number, and even the random number seed used, if anything should
-go wrong. The asserts come in two flavors, `cmb_assert_debug()` that vanish from 
-your code if you define `NDEBUG` in your build (like the standard `assert()`), 
-and `cmb_assert_release()` that remain unless `NASSERT` is defined. Most time-
-consuming invariants and postconditions are debug asserts, while the release
-asserts mostly check preconditions like function argument validity. Turning off
-the debug asserts doubles the speed of your model when you are ready for it,
-while turning off the release asserts only gives a small incremental improvement.
+invariants, and postconditions wherever possible, applying Design by Contracts 
+principles for reliability. Cimba contains about 1000 asserts in about 10000 lines of 
+code in total, for an assert density of 10 %. These are custom asserts that will report 
+what trial, what process, the simulated time, the function and line number, and even the 
+random number seed used, if anything should go wrong. All time-consuming invariants and 
+postconditions are debug asserts, while the release asserts mostly check preconditions 
+like function argument validity. Turning off the debug asserts doubles the speed of your
+model when you are ready for it, while turning off the release asserts as well only gives 
+a small incremental improvement.
 
 This is then combined with extensive unit testing of each module, ensuring that
 all lower level functionality works as expected before moving on to higher levels. 
-We are of course biased, by "well engineered", we mean somewhere 
+You will find the test files corresponding to each code module in the `test` directory.
+
+We are of course totally biased, by "well engineered", we mean somewhere 
 between "industrial strength" and "mil spec" code.
 
 ### Object oriented? In C17 and assembly? Why not just use C++?
-Long story made short: C++ exception handling is not very friendly to
-the stackful coroutines we need in Cimba. C++ coroutines are something 
-entirely different.
+Long story made short: C++ exception handling is not very friendly to the stackful 
+coroutines we need in Cimba. C++ coroutines are something entirely different.
+
 Also, C++ has become a very large and feature-rich language, where it will be
 hard to guarantee compatibility with every possible combination of features.
+
 Hence (like the Linux kernel), we chose the simpler platform for speed, clarity,
 and reliability.
 
@@ -138,8 +146,8 @@ C17 with POSIX pthreads is the third major rebuild, and the first public version
 
 ### You had me at "free". How do I get my hands on Cimba?
 It is right here. You simply clone the repository, build, and install it. You
-will need a C build chain and the Meson build manager. On Linux, you can use gcc 
-or Clang, while the recommended approach on Windows is MinGW with its gcc 
+will need a C compiler and the Meson build manager. On Linux, you can use GCC 
+or Clang, while the recommended approach on Windows is MinGW with its GCC 
 compiler. Visual Studio and MVSC should also work, but has not yet been fully 
-tested. For convenience, we use the CLion integrated development environment 
-with MinGW, gcc, and Meson built-in support on both Linux and Windows.
+tested. For convenience, we recommend the CLion integrated development environment 
+with MinGW, GCC, Meson, and Ninja built-in support on both Linux and Windows.

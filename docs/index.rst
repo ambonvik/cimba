@@ -6,5 +6,6 @@ Cimba documentation
     :caption: Contents:
 
     welcome
+    getting_started
     tutorial
     API_reference

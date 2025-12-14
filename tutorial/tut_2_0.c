@@ -1,29 +1,70 @@
+/*
+* tutorial/tut_2_0.c
+ *
+ * An empty shell for a single-threaded simulation model, as a starting point
+ * for development and debugging before parallelizing the production version.
+ *
+ * Copyright (c) Asbjørn M. Bonvik 2025.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <cimba.h>
 #include <stdio.h>
 
+/*
+ * Bit masks to distinguish between two types of user-defined logging messages.
+ */
 #define USERFLAG1 0x00000001
+#define USERFLAG2 0x00000002
 
+/*
+ * Our simulateed world consists of these entities.
+ */
 struct simulation {
-    struct cmb_process *arr;
-    struct cmb_buffer *que;
-    struct cmb_process *srv;
+    /* TODO: Pointers to entities in your simulated world go here */
 };
 
+/* Variables describing the state of the environment around our entities */
+struct environment {
+    /* TODO: Place your environment state variables here */
+};
+
+
+/*
+ * A single trial is defined by these parameters, and generates these results.
+ */
 struct trial {
-    /* Parameters */
-    double arr_rate;
-    double srv_rate;
+    /* TODO: Add your parameters here */
     double warmup_time;
     double duration;
-    /* Results */
-    double avg_queue_length;
+    /* TODO: Place your results here */
+    uint64_t seed_used;
 };
 
+/*
+ * The context for our simulation consists of the simulation entities, the
+ * trial parameters, and the requested trial results.
+ */
 struct context {
     struct simulation *sim;
+    struct environment *env;
     struct trial *trl;
 };
 
+/*
+ * Event to close down the simulation.
+ */
 void end_sim(void *subject, void *object)
 {
     cmb_unused(subject);
@@ -31,147 +72,113 @@ void end_sim(void *subject, void *object)
     const struct context *ctx = object;
     const struct simulation *sim = ctx->sim;
     cmb_logger_user(stdout, USERFLAG1, "--- Game Over ---");
-    cmb_process_stop(sim->arr, NULL);
-    cmb_process_stop(sim->srv, NULL);
+
+    /* TODO: Stop all your simulated processes here */
 }
 
+/*
+ * Event to turn on data recording
+ */
 static void start_rec(void *subject, void *object)
 {
     cmb_unused(subject);
 
     const struct context *ctx = object;
     const struct simulation *sim = ctx->sim;
-    cmb_buffer_start_recording(sim->que);
+
+    /* TODO: Turn on data recording for relevant entities here */
 }
 
+/*
+ * Event to turn off data recording
+ */
 static void stop_rec(void *subject, void *object)
 {
     cmb_unused(subject);
 
     const struct context *ctx = object;
     const struct simulation *sim = ctx->sim;
-    cmb_buffer_stop_recording(sim->que);
+
+    /* TODO: Turn off data recording for relevant entities here */
 }
 
 
-void *arrivals(struct cmb_process *me, void *vctx)
-{
-    cmb_unused(me);
+/*
+ * TODO: Define functions for your other events and processes here
+ */
 
-    const struct context *ctx = vctx;
-    const struct simulation *sim = ctx->sim;
-    const struct trial *trl = ctx->trl;
-    struct cmb_buffer *que = sim->que;
-
-    cmb_assert_debug(trl->arr_rate > 0.0);
-    const double t_ia_mean = 1.0 / trl->arr_rate;
-
-    while (true) {
-        const double t_ia = cmb_random_exponential(t_ia_mean);
-        cmb_logger_user(stdout, USERFLAG1, "Holds for %f time units", t_ia);
-        cmb_process_hold(t_ia);
-        uint64_t n = 1;
-        cmb_logger_user(stdout, USERFLAG1, "Puts one into the queue");
-        cmb_buffer_put(que, &n);
-    }
-}
-
-void *service(struct cmb_process *me, void *vctx)
-{
-    cmb_unused(me);
-
-    const struct context *ctx = vctx;
-    const struct simulation *sim = ctx->sim;
-    const struct trial *trl = ctx->trl;
-    struct cmb_buffer *que = sim->que;
-
-    cmb_assert_debug(trl->srv_rate > 0.0);
-    const double t_srv_mean = 1.0 / trl->srv_rate;
-
-    while (true) {
-        uint64_t m = 1;
-        cmb_logger_user(stdout, USERFLAG1, "Gets one from the queue");
-        cmb_buffer_get(que, &m);
-        const double t_srv = cmb_random_exponential(t_srv_mean);
-        cmb_logger_user(stdout, USERFLAG1, "Got one, services it for %f time units", t_srv);
-        cmb_process_hold(t_srv);
-    }
-}
-
-void run_MM1_trial(void *vtrl)
+/*
+ * The simulation driver function to execute one trial
+ */
+void run_trial(void *vtrl)
 {
     cmb_assert_release(vtrl != NULL);
     struct trial *trl = vtrl;
 
+    /* Using local variables, will only be used before this function exits */
     struct context ctx = {};
     struct simulation sim = {};
     ctx.sim = &sim;
     ctx.trl = trl;
 
-    const uint64_t seed = cmb_random_get_hwseed();
-    cmb_random_initialize(seed);
-
+    /* Set up our trial housekeeping */
     cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG1);
-
+    // cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
+    trl->seed_used = cmb_random_get_hwseed();
+    cmb_random_initialize(trl->seed_used);
 
-    ctx.sim->que = cmb_buffer_create();
-    cmb_buffer_initialize(ctx.sim->que, "Queue", CMB_BUFFER_UNLIMITED);
+    /*
+     * TODO: Create, initialize, and start your simulated entities here
+     */
 
-    ctx.sim->arr = cmb_process_create();
-    cmb_process_initialize(ctx.sim->arr, "Arrivals", arrivals, &ctx, 0);
-    cmb_process_start(ctx.sim->arr);
-
-    ctx.sim->srv = cmb_process_create();
-    cmb_process_initialize(ctx.sim->srv, "Service", service, &ctx, 0);
-    cmb_process_start(ctx.sim->srv);
-
+    /* Schedule the simulation control events */
     double t = trl->warmup_time;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
     t += trl->duration;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
+    /* Set a large negative priority for the stop event to ensure normal events go first */
     cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
 
+    /* Run this trial */
     cmb_event_queue_execute();
 
-    struct cmb_wtdsummary wtdsum;
-    const struct cmb_timeseries *ts = cmb_buffer_get_history(ctx.sim->que);
-    cmb_timeseries_summarize(ts, &wtdsum);
-    ctx.trl->avg_queue_length = cmb_wtdsummary_mean(&wtdsum);
+    /*
+     * TODO: Collect your statistics here
+     */
 
-    cmb_process_terminate(ctx.sim->srv);
-    cmb_process_destroy(ctx.sim->srv);
+    /*
+     * TODO: Terminate and destroy your simulated entities here,
+     * one _terminate for each _initialize, one _destroy for each _create
+     */
 
-    cmb_process_terminate(ctx.sim->arr);
-    cmb_process_destroy(ctx.sim->arr);
-
-    cmb_buffer_terminate(ctx.sim->que);
-    cmb_buffer_destroy(ctx.sim->que);
-
+    /* Final housekeeping to leave everything as we found it */
     cmb_event_queue_terminate();
     cmb_random_terminate();
 
 }
 
-void load_params(struct trial *trl)
+/*
+ * Temporary function to load trial test data for the single-threaded development version.
+ */
+void load_params(struct trial *trlp)
 {
-    cmb_assert_release(trl != NULL);
+    cmb_assert_release(trlp != NULL);
 
-    trl->arr_rate = 0.75;
-    trl->srv_rate = 1.0;
-    trl->warmup_time = 1000.0;
-    trl->duration = 1e6;
+    /*
+     * TODO: Fill in your trial test data here
+     */
 }
 
+/*
+ * The minimal single-threaded main function
+ */
 int main(void)
 {
     struct trial trl = {};
     load_params(&trl);
 
-    run_MM1_trial(&trl);
-
-    printf("Avg %f\n", trl.avg_queue_length);
+    run_trial(&trl);
 
     return 0;
 }

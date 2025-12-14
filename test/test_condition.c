@@ -173,7 +173,7 @@ bool is_ready_to_dock(const struct cmb_condition *cvp,
                       const struct cmb_process *pp,
                       const void *vctx) {
     cmb_unused(cvp);
-    cmb_unused(pp);
+    cmb_assert_debug(pp != NULL);
     cmb_assert_debug(vctx != NULL);
 
     const struct ship *shp = (struct ship *)pp;
@@ -247,8 +247,8 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     cmb_process_hold(docking_time);
 
     /* Safely at the quay to unload cargo, dismiss the tugs for now */
-     cmb_logger_user(stdout, USERFLAG1, "Ship %s docked, unloading", me->name);
-   cmb_resourcestore_release(sim->tugs, shp->tugs);
+    cmb_logger_user(stdout, USERFLAG1, "Ship %s docked, unloading", me->name);
+    cmb_resourcestore_release(sim->tugs, shp->tugs);
     const double tua = trl->unloading_time_avg[shp->size];
     const double unloading_time = cmb_random_PERT(0.75 * tua, tua, 2 * tua);
     cmb_process_hold(unloading_time);
