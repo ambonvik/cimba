@@ -179,30 +179,26 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
     cmb_assert_release(rgp != NULL);
 
     struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
-    if (cmi_hashheap_is_empty(hp)) {
-        return false;
-    }
-
-    /* Decode first entry in the hashheap */
-    void **item = cmi_hashheap_peek_item(hp);
-    struct cmb_process *pp = item[0];
-    cmb_resourceguard_demand_func *demand = item[1];
-    const void *ctx = item[2];
-
-    /* Evaluate its demand predicate */
     bool ret = false;
-    const struct cmi_resourcebase *rbp = rgp->guarded_resource;
-    if ((*demand)(rbp, pp, ctx)) {
-        /* Yes, pull the process off the queue and schedule a wakeup event */
-        (void)cmi_hashheap_dequeue(hp);
-        const double time = cmb_time();
-        const int64_t priority = cmb_process_get_priority(pp);
-        (void)cmb_event_schedule(resgrd_waitwu_evt,
-                                 pp,
-                                 (void *)CMB_PROCESS_SUCCESS,
-                                 time,
-                                 priority);
-        ret = true;
+    if (!cmi_hashheap_is_empty(hp)) {
+        /* Decode first entry in the hashheap */
+        void **item = cmi_hashheap_peek_item(hp);
+        struct cmb_process *pp = item[0];
+        cmb_resourceguard_demand_func *demand = item[1];
+        const void *ctx = item[2];
+
+        /* Evaluate its demand predicate */
+        const struct cmi_resourcebase *rbp = rgp->guarded_resource;
+        if ((*demand)(rbp, pp, ctx)) {
+            /* Yes, pull the process off the queue and schedule a wakeup event */
+            (void)cmi_hashheap_dequeue(hp);
+            const double time = cmb_time();
+            const int64_t priority = cmb_process_get_priority(pp);
+            (void)cmb_event_schedule(resgrd_waitwu_evt, pp,
+                                    (void *)CMB_PROCESS_SUCCESS,
+                                    time, priority);
+            ret = true;
+        }
     }
 
     /* Forward the signal to any observers */
@@ -234,11 +230,9 @@ bool cmb_resourceguard_cancel(struct cmb_resourceguard *rgp,
         (void)cmi_hashheap_cancel(hp, handle);
         const double time = cmb_time();
         const int64_t priority = cmb_process_get_priority(pp);
-        (void)cmb_event_schedule(resgrd_waitwu_evt,
-                                 pp,
+        (void)cmb_event_schedule(resgrd_waitwu_evt, pp,
                                  (void *)CMB_PROCESS_CANCELLED,
-                                 time,
-                                 priority);
+                                 time, priority);
         ret = true;
     }
 
