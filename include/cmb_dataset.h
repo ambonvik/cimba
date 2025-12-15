@@ -247,7 +247,7 @@ extern void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp);
  *
  * @param dsp Pointer to a dataset object.
  * @param max_lag The highest lag value to calculate.
- * @param acf The array where the acf's will be stored.
+ * @param acf The array where the acf's will be stored, needs to be ``max_lag + 1`` large
  */
 extern void cmb_dataset_ACF(const struct cmb_dataset *dsp,
                             unsigned max_lag,
