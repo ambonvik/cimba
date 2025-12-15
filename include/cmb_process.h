@@ -60,13 +60,13 @@
  * @brief Return code from various process context switching calls, indicating
  *        successful return from whatever it was calling.
  */
-#define CMB_PROCESS_SUCCESS (0LL)
+#define CMB_PROCESS_SUCCESS INT64_C(0)
 
 /**
  * @brief Return code from various process context switching calls, indicating
  *        that the process was preempted by a higher priority process.
  */
-#define CMB_PROCESS_PREEMPTED (1LL)
+#define CMB_PROCESS_PREEMPTED INT64_C(-1)
 
 /**
  * @brief Return code from various process context switching calls, indicating
@@ -74,20 +74,20 @@
  *        interrupted with some other application defined signal, any 64-bit
  *        signed integer value except these predefined values.)
  */
-#define CMB_PROCESS_INTERRUPTED (2LL)
+#define CMB_PROCESS_INTERRUPTED INT64_C(-2)
 /**
  * @brief Return code from various process context switching calls, indicating
  *        that the process it was waiting for was stopped (killed) by some other
  *        process.
  */
-#define CMB_PROCESS_STOPPED (3LL)
+#define CMB_PROCESS_STOPPED INT64_C(-3)
 
 /**
  * @brief Return code from various process context switching calls, indicating
  *        that the process request for some type of resource was cancelled.
  */
 
-#define CMB_PROCESS_CANCELLED (4LL)
+#define CMB_PROCESS_CANCELLED INT64_C(-4)
 
 /**
  * @brief The states a process can be in (direct from the underlying coroutine)
