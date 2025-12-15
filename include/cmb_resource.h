@@ -151,6 +151,24 @@ static inline uint64_t cmb_resource_available(struct cmb_resource *rp)
 }
 
 /**
+ * @brief Return the amount of this resource that is currently held by the given
+ *        process, i.e. either zero or one.
+ *
+ * @param rp Pointer to a resource.
+ * @param pp Pointer to a process.
+ *
+ * @return One if the process holds the resource, zero otherwise.
+ */
+static inline uint64_t cmb_resource_held_by_process(struct cmb_resource *rp,
+                                                    struct cmb_process *pp) {
+    cmb_assert_debug(rp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+
+    return (rp->holder == pp) ? 1u : 0u;
+}
+
+
+/**
  * @brief Turn on data recording.
  *
  * @param rp Pointer to an initialized resource object.
