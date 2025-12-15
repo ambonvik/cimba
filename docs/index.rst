@@ -8,4 +8,4 @@ Cimba documentation
     welcome
     getting_started
     tutorial
-    API_reference
+    api/library_root

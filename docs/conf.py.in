@@ -5,7 +5,7 @@ project = '@PROJECT_NAME@'
 version = '@VERSION@'
 copyright = 'Asbjørn M. Bonvik 2025'
 
-extensions = ['breathe']
+extensions = ['breathe', 'exhale']
 
 html_theme = 'sphinx_rtd_theme'
 
@@ -21,4 +21,20 @@ breathe_domain_by_extension = {
 }
 
 breathe_implementation_filename_extensions = ['.c']
+
+exhale_args = {
+    "containmentFolder":    "/home/ambonvik/github/cimba/docs/api",
+    "rootFileName":         "library_root.rst",
+    "doxygenStripFromPath": "..",
+    "rootFileTitle":        "Library API",
+    "createTreeView":       True,
+    "lexerMapping": {
+        r".*\.c": "c",
+        r".*\.h": "c"
+    },
+    "unabridgedOrphanKinds": [],
+}
+
+primary_domain = 'c'
+highlight_language = 'c'
 

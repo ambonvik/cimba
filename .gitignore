@@ -158,6 +158,7 @@ http-client.private.env.json
 # Doxygen generated output
 docs/latex/
 docs/html/
+docs/api/
 
 # Nuclear option
 .idea

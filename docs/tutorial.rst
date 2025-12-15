@@ -27,7 +27,7 @@ customers into the queue at random intervals, a service process that gets
 customers from the queue and services them for a random duration, and the queue
 itself. We are not concerned with the characteristics of each customer, just how
 many there are in the queue, so we do not need a separate object for each customer.
-We will use a `cmb_buffer` for this. In this first iteration, we will hard-code
+We will use a ``cmb_buffer`` for this. In this first iteration, we will hard-code
 parameter values for simplicity, such as 75 % utilization, and then do it properly
 shortly.
 
@@ -69,22 +69,22 @@ arrive if there are none waiting), generates a random service time with mean 1.0
 holds for the service time, and does it all over again. An average arrival rate
 of 0.75 and service rate of 1.0 gives the 0.75 utilization we wanted.
 
-Note that the number of customers to `put` or `get` is given as a pointer to a variable
+Note that the number of customers to ``put`` or ``get`` is given as a pointer to a variable
 containing the number, not just a value. In more complex scenarios than this, the
 process may encounter a partially completed put or get, and we need a way to capture
 the actual state in these cases. For now, just note that the amount argument to
-`cmb_buffer_put()` and `cmb_buffer_get()` is a pointer to an unsigned 64-bit integer
+``cmb_buffer_put()`` and ``cmb_buffer_get()`` is a pointer to an unsigned 64-bit integer
 variable.
 
 The process function signature is a function returning a pointer to void (i.e. a
 raw address to anything). It takes two arguments, the first one a pointer to a
 cmb_process (itself), the second a pointer to void that gives whatever context
 the process needs to execute. For now, we only use the context pointer as a
-pointer to the queue, and do not use the `me` pointer or the return value.
+pointer to the queue, and do not use the ``me`` pointer or the return value.
 
-Note also that all Cimba functions used here start with `cmb_`, indicating that they
+Note also that all Cimba functions used here start with ``cmb_``, indicating that they
 belong in the namespace of things in the simulated world. There are functions
-from three Cimba modules here, `cmb_process`, `cmb_buffer`, and `cmb_random`. We will
+from three Cimba modules here, ``cmb_process``, ``cmb_buffer``, and ``cmb_random``. We will
 encounter other namespaces and modules soon.
 
 We also need a main function to set it all up, run the simulation, and clean up
@@ -133,18 +133,18 @@ entropy source and initialize our pseudo-random number generators with it.
 It then initializes the simulation event queue, specifying at our clock will
 start from 0.0. (It could be any other value, but why not 0.0.)
 
-Next, it creates and initializes the `cmb_buffer`, naming it "Queue" and setting
+Next, it creates and initializes the ``cmb_buffer``, naming it "Queue" and setting
 it to unlimited size.
 
 After that, it creates, initializes, and starts the arrival and service processes.
-They get a pointer to the newly created `cmb_buffer` as their context argument, and
+They get a pointer to the newly created ``cmb_buffer`` as their context argument, and
 the event queue is ready, so they can just start immediately.
 
 Notice the pattern here: Objects are first *created*, then *initialized* in a
 separate call. The create method allocates heap memory for the object, the initialize
 method makes it ready for use. Some objects, such as the event queue, already
 exist in pre-allocated memory and cannot be created. There are no
-`cmb_event_queue_create()` or `cmb_event_queue_destroy()` functions.
+``cmb_event_queue_create()`` or ``cmb_event_queue_destroy()`` functions.
 
 In later examples, we will also
 see cases where some Cimba object is simply declared as a local variable and
@@ -155,15 +155,17 @@ clear on each object's memory allocation and initialization status. We have trie
 to be as consistent as possible in the Cimba create/initialize/terminate/destroy
 object lifecycle.
 
-Having made it this far, `main()` calls `cmb_event_queue_execute()` to run the
+Having made it this far, ``main()`` calls ``cmb_event_queue_execute()`` to run the
 simulation before cleaning up.
 
-Note that there are matching `_terminate()` calls for each `_initialize()` and
-matching `_destroy()` for each `_create()`. These functions un-initialize and
+Note that there are matching ``_terminate()`` calls for each ``_initialize()`` and
+matching ``_destroy()`` for each ``_create()``. These functions un-initialize and
 and de-allocate the objects that were created and initialized.
 
 We can now run our first simulation and see what happens. It will generate
-output like this::
+output like this:
+
+.. code-block:: none
 
     [ambonvik@Threadripper cimba]$ build/tutorial/tut_1_1 | more
         0.0000	dispatcher	cmb_process_start (121):  Start Arrivals 0x56016396e490
@@ -242,15 +244,15 @@ Stopping a simulation
 We will address stopping first. The processes are *coroutines*, executing
 concurrently on a separate stack for each process. Only one process can execute
 at a time. It continues executing until it voluntarily *yields* the CPU to some
-other coroutine. Calling `cmb_process_hold()` will do exactly that, transferring
+other coroutine. Calling ``cmb_process_hold()`` will do exactly that, transferring
 control to the hidden dispatcher process that determines what to do next.
 
 However, the
 dispatcher only knows about events, not coroutines or processes. To ensure that
-the process returns to the other end of its `cmb_process_hold()` call, it will
+the process returns to the other end of its ``cmb_process_hold()`` call, it will
 schedule a wakeup event at the expected time before it yields control to the
 dispatcher. When executed, this event will *resume* the coroutine where it left
-off, returning through the `cmb_process_hold()` call with a return value that
+off, returning through the ``cmb_process_hold()`` call with a return value that
 indicates normal or abormal return. (We have ignored the return values for now
 in the example above.) So, whenever there are more than one process running,
 there will be future events scheduled in the event queue.
@@ -271,7 +273,7 @@ exists. If some lasting effect is needed, the event function needs to do that
 through the content of its subject and object pointer arguments.
 
 This is perhaps easier to do in code than to describe in prose. We define a
-`struct simulation` that contains the entities of our simulated world and an
+``struct simulation`` that contains the entities of our simulated world and an
 end simulation event:
 
 .. code-block:: c
@@ -289,8 +291,8 @@ end simulation event:
         cmb_process_stop(sim->srv, NULL);
     }
 
-We then store pointers to the simulation entities in the `struct simulation`
-and schedule an `end_sim` event before executing the event queue:
+We then store pointers to the simulation entities in the ``struct simulation``
+and schedule an ``end_sim`` event before executing the event queue:
 
 .. code-block:: c
 
@@ -331,10 +333,10 @@ and schedule an `end_sim` event before executing the event queue:
         return 0;
     }
 
-The arguments to `cmb_event_schedule` are the event function, its subject and
+The arguments to ``cmb_event_schedule`` are the event function, its subject and
 object pointers, the simulated time when this event will happen, and an event
 priority. We have set end time 10.0 here. It could also be expressed as
-`cmb_time() + 10.0` for "in 100 time units from now".
+``cmb_time() + 10.0`` for "in 100 time units from now".
 
 In Cimba, it does not even have to be at a predetermined time. It would be
 equally valid for some process in the simulation to schedule an end simulation
@@ -343,19 +345,19 @@ number of customers having been serviced, a statistics collector having a
 certain number of samples, or something else.
 
 We gave the end simulation event a default priority of 0 as the last argument to
-`cmb_event_schedule()`. Priorities are signed 64-bit integers, `int64_t`. The
+``cmb_event_schedule()``. Priorities are signed 64-bit integers, ``int64_t``. The
 Cimba dispatcher will always execute the next scheduled event with the lowest
 scheduled time. The simulation clock then jumps to that time. If several events
 have the *same* scheduled time, the dispatcher will execute the one with the
 highest priority first. If several events have the same scheduled time *and*
 the same priority, it will execute them in first in first out order.
 
-Again, we roundly ignored the event handle returned by `cmb_event_schedule()`,
+Again, we roundly ignored the event handle returned by ``cmb_event_schedule()``,
 since we will not be using it in this example. If we wanted to keep it, it is an
-unsigned 64-bit integer (`uint64_t`).
+unsigned 64-bit integer (``uint64_t``).
 
 When initializing our arrivals and service processes, we quietly set the last
-argument to `cmb_process_initialize()` to 0. This was the inherent process
+argument to ``cmb_process_initialize()`` to 0. This was the inherent process
 priority for scheduling any events pertaining to this process, its
 priority when waiting for some resource, and so on. The processes can adjust
 their own (or each other's) priorities during the simulation, dynamically
@@ -363,7 +365,9 @@ moving themselves up or down in various queues. Cimba does not attempt to
 adjust any priorities by it self, it just acts on whatever the priorities are,
 and reshuffles any existing queues as needed if priorities are changed.
 
-We compile and run, and get something like this::
+We compile and run, and get something like this:
+
+.. code-block:: none
 
     [ambonvik@Threadripper cimba]$ build/tutorial/tut_1_2
         0.0000	dispatcher	cmb_process_start (121):  Start Arrivals 0x557d933e7490
@@ -457,24 +461,24 @@ Setting logging levels
 Next, the verbiage. As you would expect at this point in the tutorial, Cimba has
 powerful and flexible logging that gives you fine-grained control of what to log.
 
-The core logging function is called `cmb_vfprintf()`. As the name says, it is
-similar to the standard function `vfprintf()` but with some Cimba-specific added
+The core logging function is called ``cmb_vfprintf()``. As the name says, it is
+similar to the standard function ``vfprintf()`` but with some Cimba-specific added
 features. You will rarely interact directly with this function, but instead call
-wrapper functions (actually macros) like `cmb_logger_user()` or `cmb_logger_error()`.
+wrapper functions (actually macros) like ``cmb_logger_user()`` or ``cmb_logger_error()``.
 
 The key concept to understand here is the *logger flags*. Cimba uses a 32-bit
-unsigned integer (`int32_t`) as a bit mask to determine what log entries to print and which
+unsigned integer (``int32_t``) as a bit mask to determine what log entries to print and which
 to ignore. Cimba reserves the top four bits for its own use, identifying messages
 of various severities, leaving the 28 remaining bits for the user application.
 
 There is a central bit field and a bit mask in each call. If a simple bitwise
-and (`&`) between the central bit field and the caller's bit mask gives a non-
+and (``&``) between the central bit field and the caller's bit mask gives a non-
 zero result, that line is printed, otherwise not. Initally, all bits in the central
-bit field are on, `0xFFFFFFFF`. You can turn selected bits on and off with
-`cmb_logger_flags_on()` and `cmb_logger_flags_off()`.
+bit field are on, ``0xFFFFFFFF``. You can turn selected bits on and off with
+``cmb_logger_flags_on()`` and ``cmb_logger_flags_off()``.
 
 Again, it may be easier to show this in code than to explain. We add a user-defined logging
-message to the end event and the two processes. The messages take `printf`-style
+message to the end event and the two processes. The messages take ``printf``-style
 format strings and arguments:
 
 .. code-block:: c
@@ -530,7 +534,9 @@ We also suppress the Cimba informationals from the main function:
 
         cmb_logger_flags_off(CMB_LOGGER_INFO);
 
-We compile and run, and get something like this::
+We compile and run, and get something like this:
+
+.. code-block:: none
 
     /home/ambonvik/github/cimba/build/tutorial/tut_1_3
         0.0000	Arrivals	arrivals (25):  Holds for 3.350108 time units
@@ -567,7 +573,7 @@ start reporting some statistics on the queue lenght.
 
 It will be no surprise that Cimba contains flexible and powerful statistics
 collectors and reporting functions. There is actually one built into the
-`cmb_buffer` we have been using. We just need to turn it on:
+``cmb_buffer`` we have been using. We just need to turn it on:
 
 .. code-block::
 
@@ -584,7 +590,9 @@ After the simulation is finished, we can make it report its history like this:
     cmb_buffer_print_report(sim.que, stdout);
 
 We increase the running time from ten to one million time units, compile, and run.
-Very shortly thereafter, output appears::
+Very shortly thereafter, output appears:
+
+.. code-block:: none
 
     /home/ambonvik/github/cimba/build/tutorial/tut_1_4
     Buffer levels for Queue
@@ -614,12 +622,12 @@ Very shortly thereafter, output appears::
     [     41.00,  Infinity )   |-
     --------------------------------------------------------------------------------
 
-The text-mode histogram uses the character `#` to indicate a full pixel, `=` for
-one that is more than half full, and `-` for one that contains something but less
+The text-mode histogram uses the character ``#`` to indicate a full pixel, ``=`` for
+one that is more than half full, and ``-`` for one that contains something but less
 than half filled.
 
-We can also get a pointer to the `cmb_timeseries` object by
-calling `cmb_buffer_get_history()` and doing further analysis on that. As an
+We can also get a pointer to the ``cmb_timeseries`` object by
+calling ``cmb_buffer_get_history()`` and doing further analysis on that. As an
 example, let's do the first 20 partial autocorrelation coefficients of the queue
 length time series and print a correlogram of that as well:
 
@@ -630,7 +638,9 @@ length time series and print a correlogram of that as well:
     cmb_timeseries_PACF(ts, 20, pacf_arr, NULL);
     cmb_timeseries_print_correlogram(ts, stdout, 20, pacf_arr);
 
-Output::
+Output:
+
+.. code-block:: none
 
                -1.0                              0.0                              1.0
     --------------------------------------------------------------------------------
@@ -683,9 +693,9 @@ the compiler (and human readers of the code) that this is intentional.
     }
 
 Warnings gone. Next, we want to tidy up the hard-coded parameters to a proper
-data structure. We define a `struct trial` to contain parameters and output
-values, and bundle both our existing `struct simulation` and `struct trial` in
-a `struct context`, and pass that between the functions.
+data structure. We define a ``struct trial`` to contain parameters and output
+values, and bundle both our existing ``struct simulation`` and ``struct trial`` in
+a ``struct context``, and pass that between the functions.
 
 .. code-block:: c
 
@@ -712,7 +722,7 @@ a `struct context`, and pass that between the functions.
 
 For now, we just declare these structs as local variables on the stack.
 
-We define a small helper function to load the parameters into the `trial`:
+We define a small helper function to load the parameters into the ``trial``:
 
 .. code-block:: c
 
@@ -728,17 +738,17 @@ We define a small helper function to load the parameters into the `trial`:
 
 .. admonition:: Asserts and debuggers
 
-    Notice the `cmb_assert_release` in this code
-    fragment. It is a custom version of the standard `assert()` macro, triggering
-    a hard stop if the condition evaluates to `false`. Our custom asserts come in
-    two flavors, `cmb_assert_debug()` and `cmb_assert_release()`. The `_debug` assert
-    behaves like the standard one and goes away if the preprosessor symbol `NDEBUG`
-    is `#defined`. The `_release` assert is still there, but also goes away if `NASSERT`
-    is `#defined`.
+    Notice the ``cmb_assert_release`` in this code
+    fragment. It is a custom version of the standard ``assert()`` macro, triggering
+    a hard stop if the condition evaluates to ``false``. Our custom asserts come in
+    two flavors, ``cmb_assert_debug()`` and ``cmb_assert_release()``. The ``_debug`` assert
+    behaves like the standard one and goes away if the preprosessor symbol ``NDEBUG``
+    is ``#defined``. The ``_release`` assert is still there, but also goes away if ``NASSERT``
+    is ``#defined``.
 
-    The usage pattern is typically that `cmb_assert_debug()` is used to test
+    The usage pattern is typically that ``cmb_assert_debug()`` is used to test
     time-consuming invariants and post-conditions in the code, while
-    `cmb_assert_release()` is used for simple input argument validity checks
+    ``cmb_assert_release()`` is used for simple input argument validity checks
     and similar pre-conditions that should be left in the production version
     of your model. Internally, you will find this pattern nearly everywhere in
     Cimba, as an example of programming by contract to ensure reliability and
@@ -766,9 +776,9 @@ We define a small helper function to load the parameters into the `trial`:
     to reproduce intermittent issues. It then lists the simulated time, the process,
     the function and the exact line of code, the condition that failed, and the source
     code file where it blew up. It looks a lot like the logger output, because it is
-    the logger output, called through a function called `cmi_assert_failed()`.
+    the logger output, called through a function called ``cmi_assert_failed()``.
 
-    If using a debugger, place a breakpoint  in `cmi_assert_failed()`.
+    If using a debugger, place a breakpoint  in ``cmi_assert_failed()``.
     If some assert trips, control will always
     go there. You can then page up the stack and see exactly what happened.
 
@@ -798,11 +808,11 @@ We also need a pair of events to turn data recording on and off at specified tim
     }
 
 As the last refactoring step before we parallelize, we move the simulation driver
-code from `main()` to a separate function, say `run_MM1_trial()`, and call it from
-`main()`. For reasons that soon will be evident, its argument is a single pointer
-to void, even if we immediately cast this to our `struct trial *` once inside the
-function. We remove the call to `cmb_buffer_report()`, calculate the average
-queue length, and store it in the `trial` results field:
+code from ``main()`` to a separate function, say ``run_MM1_trial()``, and call it from
+``main()``. For reasons that soon will be evident, its argument is a single pointer
+to void, even if we immediately cast this to our ``struct trial *`` once inside the
+function. We remove the call to ``cmb_buffer_report()``, calculate the average
+queue length, and store it in the ``trial`` results field:
 
 .. code-block:: c
 
@@ -811,7 +821,7 @@ queue length, and store it in the `trial` results field:
         cmb_timeseries_summarize(ts, &wtdsum);
         ctx.trl->avg_queue_length = cmb_wtdsummary_mean(&wtdsum);
 
-The `main()` function is now reduced to this:
+The ``main()`` function is now reduced to this:
 
 .. code-block:: c
 
@@ -828,7 +838,9 @@ The `main()` function is now reduced to this:
     }
 
 We will not repeat the rest of the code here. You can find it in tutorial/tut_1_5.c
-Instead, we compile and run it, receiving output similar to this::
+Instead, we compile and run it, receiving output similar to this:
+
+.. code-block:: none
 
     /home/ambonvik/github/cimba/build/tutorial/tut_1_5
     Avg 2.234060
@@ -863,7 +875,7 @@ by just running them at the same time and collecting the output.
 
 Cimba creates a pool of worker threads, one per (logical) CPU core on the system.
 You describe your experiment as an array of trials and the function to execute each
-trial, and pass these to `cimba_run_experiment()`.
+trial, and pass these to ``cimba_run_experiment()``.
 The worker threads will pull trials from the experiment array and run them,
 storing the results back in your trial struct, before moving to the next un-executed
 trial in the array. This gives an inherent load balancing with minimal overhead. When all
@@ -927,11 +939,11 @@ would probably be given as an input file or as interactive input in real usage.
    may have been a completely different thread. Diagnosing those bugs will not be
    easy either.
 
-   Regular local variables, function arguments, and heap memory (`malloc()` /
-   `free()`) is thread safe.
+   Regular local variables, function arguments, and heap memory (``malloc()`` /
+   ``free()``) is thread safe.
 
    If you absolutely *must* have a global or static variable, consider prefixing
-   it by `CMB_THREAD_LOCAL` to make it global or static within that thread only,
+   it by ``CMB_THREAD_LOCAL`` to make it global or static within that thread only,
    creating separate copies per thread.
 
 We can then run the experiment:
@@ -942,10 +954,10 @@ We can then run the experiment:
 
 The first argument is the experiment array, the last argument the simulation
 driver function we have developed earlier. It will take a pointer to a trial as
-its argument, but the internals of `cimba_run_experiment()` cannot know the
-detailed structure of your `struct trial`, so it will be passed as a `void *`.
+its argument, but the internals of ``cimba_run_experiment()`` cannot know the
+detailed structure of your ``struct trial``, so it will be passed as a ``void *``.
 We need to explain the number of trials and the size of each tiral struct as the
-second and third arguments to `cimba_run_experiment()` for it to do correct
+second and third arguments to ``cimba_run_experiment()`` for it to do correct
 pointer arithmetic internally.
 
 When done, we can collect the results like this:
@@ -981,7 +993,7 @@ When done, we can collect the results like this:
         write_gnuplot_commands();
         system("gnuplot -persistent tut_1_6.gp");
 
-We use a `cmb_datasummary` to simplify the calculation of confidence intervals,
+We use a ``cmb_datasummary`` to simplify the calculation of confidence intervals,
 knowing that it will calculate correct moments in a single pass of the data. We
 then write the results to an output file, write a gnuplot command file to plot
 the results, and spawn a gnuplot window to display the chart.
@@ -997,13 +1009,13 @@ separate level of logger messages like this:
 .. note::
 
     The logging flags are bitmasks, not consecutive numbers. The next three
-    values would be `0x00000004`, `0x00000008`, and `0x00000010`. You can
-    combine flag values bit-wise. For instance, a call to `cmb_logger_user()`
-    with flag level 63 (`0xFF`) will print a line if *any* of the lowest 8 bits
+    values would be ``0x00000004``, ``0x00000008``, and ``0x00000010``. You can
+    combine flag values bit-wise. For instance, a call to ``cmb_logger_user()``
+    with flag level 63 (``0xFF``) will print a line if *any* of the lowest 8 bits
     are set.
 
 
-We add a logging call to our `run_MM1_trial()`:
+We add a logging call to our ``run_MM1_trial()``:
 
 .. code-block:: c
 
@@ -1011,11 +1023,13 @@ We add a logging call to our `run_MM1_trial()`:
                     "seed: 0x%016" PRIx64 " rho: %f",
                     trl->seed_used, trl->arr_rate / trl->srv_rate);
 
-We use the macro `PRIx64` from `#include <inttypes.h>` for portable formatting
-of the `uint64_t` seed value.
+We use the macro ``PRIx64`` from ``#include <inttypes.h>`` for portable formatting
+of the ``uint64_t`` seed value.
 
-We add some code to measure run time and some extra `printf()` calls, compile
-and run, and get output similar to this::
+We add some code to measure run time and some extra ``printf()`` calls, compile
+and run, and get output similar to this:
+
+.. code-block:: none
 
     /home/ambonvik/github/cimba/build/tutorial/tut_1_6
     Cimba version 3.0.0-beta
@@ -1068,9 +1082,9 @@ may be correct. Nor can we reject the hypthesis that Cimba may be working correc
 
 This concludes our first tutorial. We have followed the development steps from a
 first minimal model to demonstrate process interactions to a complete parallellized
-experiment with graphical output. The files `tutorial/tut_1_*.c` include working
-code for each stage of development. There is also a version `tutorial/tut_1_7.c`,
-functionally the same as `tutorial\tut_1_6.c` but with inline explanatory comments.
+experiment with graphical output. The files ``tutorial/tut_1_*.c`` include working
+code for each stage of development. There is also a version ``tutorial/tut_1_7.c``,
+functionally the same as ``tutorial\tut_1_6.c`` but with inline explanatory comments.
 
 
 Our second simulation - a LNG tanker harbor
@@ -1081,12 +1095,12 @@ first exposure to Simula67, coroutines, and object-oriented programming. The
 essential *rightness* made a lasting impression. Building a 21st century version
 will be our second Cimba tutorial.
 
-In our first tutorial, the active processes interacted through a `cmb_buffer` with
-`put` and `get` methods. We will now introduce other process interactions through
-`cmb_resource` and `cmb_resourcestore` with their `acquire`, `hold`, and `release`
-semantics, and the extremely powerful `cmb_condition` that allows arbitrarily
-complex `wait` calls. We will also show how to create a derived "class" of ships
-from our `cmb_process` class, itself derived from the `cmi_coroutine` class.
+In our first tutorial, the active processes interacted through a ``cmb_buffer`` with
+``put`` and ``get`` methods. We will now introduce other process interactions through
+``cmb_resource`` and ``cmb_resourcestore`` with their ``acquire``, ``hold``, and ``release``
+semantics, and the extremely powerful ``cmb_condition`` that allows arbitrarily
+complex ``wait`` calls. We will also show how to create a derived "class" of ships
+from our ``cmb_process`` class, itself derived from the ``cmi_coroutine`` class.
 
 Since a simulation model only should be built in order to answer some specific
 quesion or set of questions, we will assume that our Simulated Port Authority
@@ -1101,17 +1115,17 @@ An empty simulation template
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Our starting point will be an empty shell from the first tutorial, giving the
-correct initial structure to the model. You will find it in `tutorial/tut_2_0.c`.
+correct initial structure to the model. You will find it in ``tutorial/tut_2_0.c``.
 It does not do anything, so there is no point in compiling it as it is, but you
 can use it as a starting template for your own models as well.
 
-The first functional version is in `tutorial/tut_2_1.c`. We will not repeat all
+The first functional version is in ``tutorial/tut_2_1.c``. We will not repeat all
 the code here, just point out the highlights.
 
 Processes, resources, and conditions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The simulated world is described in `struct simulation`. Again, there is an
+The simulated world is described in ``struct simulation``. Again, there is an
 arrival and a departure process generating and removing ships, but the ships
 themselves are now also active processes. We have two pools of resources, the
 tugs and the berths (of two different sizes), and one single resource, the
@@ -1124,7 +1138,7 @@ The other one, Davy Jones, just watches for ships leaving harbor and triggers th
 departure process.
 
 There is no guarantee that ships will be leaving in first in first out order, so
-we use a `cmi_hashheap` as a fast data set for active ships. Departed ships can be
+we use a ``cmi_hashheap`` as a fast data set for active ships. Departed ships can be
 handled by simpler means, so a simple linked list with LIFO (stack) ordering will
 be sufficient. These two classes are not considered part of the external CIMBA
 API, but happen to be available tools that fit the task.
@@ -1138,11 +1152,11 @@ against this tide gauge.
 Building our ships
 ^^^^^^^^^^^^^^^^^^
 
-Our ships will come in two sizes, small and large. We define an `enum` for this,
+Our ships will come in two sizes, small and large. We define an ``enum`` for this,
 explicitly starting from zero to use it directly as an array index later. We then
-define a `struct ship` to be a derived class from `struct cmb_process` by placing
-a `struct cmb_process` as the first member of `struct ship`. (Not a pointer to a
-`cmb_process` - the ship *is a* process.) The rest of the ship struct contains the
+define a ``struct ship`` to be a derived class from ``struct cmb_process`` by placing
+a ``struct cmb_process`` as the first member of ``struct ship``. (Not a pointer to a
+``cmb_process`` - the ship *is a* process.) The rest of the ship struct contains the
 characteristics of a particular ship object to be instantiated in the simulation.
 
 .. code-block:: c
@@ -1163,10 +1177,10 @@ characteristics of a particular ship object to be instantiated in the simulation
 
 .. note::
 
-    We do not use `typedef` for our object classes. It would only confuse matters
+    We do not use ``typedef`` for our object classes. It would only confuse matters
     by hiding the nature of the object. We want that to be very clear from the
     code. The only exception is for certain convoluted function prototypes like
-    `cmb_process_func` and `cmb_event_func`. These are `typedef` under those
+    ``cmb_process_func`` and ``cmb_event_func``. These are ``typedef`` under those
     names to avoid complex and error-prone declarations and argument lists.
 
 Weather and tides
@@ -1208,7 +1222,7 @@ concerned about wind magnitude and direction:
         }
     }
 
-Notice that just before looping back to the top, we `signal` the harbormaster
+Notice that just before looping back to the top, we ``signal`` the harbormaster
 condition, informing it that some state has changed, requiring it to re-evaluate
 its list of waiting ships.
 
@@ -1216,7 +1230,7 @@ The tide process is similar, but combines the periodicity of astronomical tides
 with the randomness of weather-driven tide calculated from the environmental state
 left by the weather process. It also signals the harbormaster at the end of each
 iteration. You find it in the source code,
-`void *tide_proc(struct cmb_process *me, void *vctx)`.
+``void *tide_proc(struct cmb_process *me, void *vctx)``.
 
 The details of the weather and tide models are not important for this tutorial,
 only that:
@@ -1229,62 +1243,62 @@ only that:
    if this thread is waiting for a response from a GPU, I/O from disk, or another
    blocking system call.
 
-2. We *signal* a `cmb_condition` that the state has changed and that
+2. We *signal* a ``cmb_condition`` that the state has changed and that
    it needs to re-evaluate the requirements of any processes waiting for it. The
-   `cmb_condition` is not busy-polling the state, but depends on being signalled
+   ``cmb_condition`` is not busy-polling the state, but depends on being signalled
    by whatever process changes the state. In a discrete event simulation, state
    only changes due to some event, and no polling is needed between events.
 
 Resources, resourcestores, and condition variables
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To understand the general `cmb_condition` class, it may be helpful to start
-with the `cmb_resource` as a special case.
+To understand the general ``cmb_condition`` class, it may be helpful to start
+with the ``cmb_resource`` as a special case.
 
-The `cmb_resource` is essentially a binary semaphore. Only one process can hold
+The ``cmb_resource`` is essentially a binary semaphore. Only one process can hold
 it at a time. If some process tries to acquire the resource while it is already
 in use, that process will have to wait in a priority queue.
 
-There is a `cmb_resourceguard` managing the priority queue. When adding itself
+There is a ``cmb_resourceguard`` managing the priority queue. When adding itself
 to the queue, a process files its *demand* function with the guard. The demand
-function is a predicate returning a `bool`, either `true` or `false`, essentially
+function is a predicate returning a ``bool``, either ``true`` or ``false``, essentially
 saying to the guard "wake me up when this becomes true".
 
-(There may be a weak pun on the C++ coroutine `promise` here somewhere. Our
+(There may be a weak pun on the C++ coroutine ``promise`` here somewhere. Our
 processes do not *promise* anything, they *demand*.)
 
-For a `cmb_resource`, the demand function is internal and pre-defined, evaluating
-to `true` if the resource is available. When some other process releases the
-resource, the guard is signaled, the predicate evaluates to `true`, and the
+For a ``cmb_resource``, the demand function is internal and pre-defined, evaluating
+to ``true`` if the resource is available. When some other process releases the
+resource, the guard is signaled, the predicate evaluates to ``true``, and the
 highest priority waiting process gets the resource, returning successfully from
-its `cmb_resource_acquire()` call as the new holder of the resource.
+its ``cmb_resource_acquire()`` call as the new holder of the resource.
 
-Similarly, the `cmb_resourcestore` is a counting semaphore, where there is a
+Similarly, the ``cmb_resourcestore`` is a counting semaphore, where there is a
 certain number of resource items, and a process can acquire and release more
 than one unit at a time. Again, if not enough is available, the process files its
 demand with the guard and waits. This demand function is also internal and
 pre-defined.
 
-The `cmb_condition` exposes the resource guard and demand mechanism to the user
+The ``cmb_condition`` exposes the resource guard and demand mechanism to the user
 application. It does not provide any particular resource object, but lets a
 process wait until an arbitrary condition is satisfied. The demand function may
 even be different for each waiting process. The condition will evaluate them in
 turn, and will schedule a wakeup event at the current time for every process
-whose demand function evaluates to `true`. What to do next is up to the user
+whose demand function evaluates to ``true``. What to do next is up to the user
 application.
 
-Making this mechanism even more powerful, the `cmb_resourceguard` class maintains
+Making this mechanism even more powerful, the ``cmb_resourceguard`` class maintains
 a list of other resource guards observing this one. This is a signal forwarding
 mechanism. When signaled, a resource guard will evaluate its own priority queue,
 possibly schedule wakeup events for waiting processes, and then forward the signal
 to each observing resource guard for them to do the same. This makes it possible
-for the `cmb_condition` to provide complex combinations of "wait for all", "wait
+for the ``cmb_condition`` to provide complex combinations of "wait for all", "wait
 for any", and so forth by registering itself as an observer. If some observed
-resource guard gets signaled, the `cmb_condition` will also be signaled.
+resource guard gets signaled, the ``cmb_condition`` will also be signaled.
 
-The `cmb_condition` is still a passive object, not an active process. It only
-responds to calls from the active processes, such as `cmb_condition_wait()` and
-`cmb_condition_signal()`.
+The ``cmb_condition`` is still a passive object, not an active process. It only
+responds to calls from the active processes, such as ``cmb_condition_wait()`` and
+``cmb_condition_signal()``.
 
 Armed with this knowledge, we can now define the demand predicate function for
 a ship requesting permission from the harbormaster to dock:
@@ -1345,9 +1359,9 @@ environmental state is updated or some resource has been released.
 The life of a ship
 ^^^^^^^^^^^^^^^^^^
 
-Our ships are derived from the `cmb_process` class, inherit all properties from
+Our ships are derived from the ``cmb_process`` class, inherit all properties from
 there, and adds some of its own. The function to execute in a ship process has
-the same signature as for the `cmb_process`. It can look like this:
+the same signature as for the ``cmb_process``. It can look like this:
 
 .. code-block:: c
 
@@ -1437,7 +1451,7 @@ the same signature as for the `cmb_process`. It can look like this:
     }
 
 
-Note the loop on `cmb_condition_wait()`. The condition will schedule a wakeup event
+Note the loop on ``cmb_condition_wait()``. The condition will schedule a wakeup event
 for all waiting processes with a satisfied demand, but it is entirely possible
 that some other ship wakes first and grabs the resources before control passes here.
 Therefore, we test and wait again if it is no longer satisfied.
@@ -1445,7 +1459,7 @@ Therefore, we test and wait again if it is no longer satisfied.
 For readers familiar with POSIX condition variables, there is a notable lack of
 a protecting mutex here. It is not needed in a coroutine-based concurrency model.
 Once control is back in this process, it will not be interrupted before we yield
-the execution through some call like `cmb_process_hold()`. In particular, this
+the execution through some call like ``cmb_process_hold()``. In particular, this
 is safe:
 
 .. code-block:: c
@@ -1467,8 +1481,8 @@ is safe:
         cmb_process_hold(cmb_random_gamma(5.0, 0.01));
         cmb_resource_release(simp->comms);
 
-We know that tugs and berths are available from the `cmb_condition_wait()`, so
-the `acquire()` calls will return immediately and successfully.
+We know that tugs and berths are available from the ``cmb_condition_wait()``, so
+the ``acquire()`` calls will return immediately and successfully.
 
 On the other hand, this is not safe at all:
 
@@ -1544,14 +1558,14 @@ We next write the arrival process generating ships:
         }
     }
 
-The important point to remember here is to zero-initialize the `struct ship`
-with `memset()` after allocating it with `malloc()`, or equivalently,
-allocating it with `calloc()` instead. The ship is a `cmb_process`, but
-we are bypassing the `cmb_process_create()` here and take the responsibility
+The important point to remember here is to zero-initialize the ``struct ship``
+with ``memset()`` after allocating it with ``malloc()``, or equivalently,
+allocating it with ``calloc()`` instead. The ship is a ``cmb_process``, but
+we are bypassing the ``cmb_process_create()`` here and take the responsibility
 for the allocation step.
 
 The departure process is reasonably straightforward, capturing the exit value from
-the ship process and then recycling the entire ship. A `cmb_condition` is used
+the ship process and then recycling the entire ship. A ``cmb_condition`` is used
 to know that one or more ships have departed, triggering the departure process
 to do something.
 
@@ -1597,7 +1611,7 @@ to do something.
 Running a trial
 ^^^^^^^^^^^^^^^
 
-Our simulation driver function `run_trial()` does in principle the same as in our
+Our simulation driver function ``run_trial()`` does in principle the same as in our
 first tutorial: Sets up the simulated world, runs the simulation, collects the
 results, and cleans up everything after itself. There are more objects involved
 this time, so we will not reproduce the entire function here, just call your
@@ -1618,7 +1632,7 @@ weather process a higher priority than the tide process. It will then always
 execute first, giving the tide process guaranteed updated information rather
 than possibly acting on the previous hour's data.
 
-As an efficiency optimization, we can now also remove the `cmb_condition_signal()`
+As an efficiency optimization, we can now also remove the ``cmb_condition_signal()``
 call from the weather process, since we know that the harbormaster will be
 signalled by the tide process immediately thereafter, saving one set of demand
 recalculations per simulated hour.
@@ -1641,7 +1655,9 @@ a signal whenever one is released by some other process. Otherwise, it would nee
 to wait until the top of the next hour when it is signaled by the weather and tide
 processes before it noticed.
 
-Building and running our new harbor simulation, we get output similar to this::
+Building and running our new harbor simulation, we get output similar to this:
+
+.. code-block:: none
 
     [ambonvik@Threadripper tutorial]$ ./tut_2_1 | more
     1.5696	Arrivals	arrival_proc (335):  Ship_000001_large started
@@ -1821,7 +1837,7 @@ Building and running our new harbor simulation, we get output similar to this::
     Avg time in system, small ships: 10.812688
     Avg time in system, large ships: 17.341350
 
-You can find the code for this stage in `tutorial/tut_2_1.c`.
+You can find the code for this stage in ``tutorial/tut_2_1.c``.
 
 Turning up the power
 ^^^^^^^^^^^^^^^^^^^^
@@ -1843,29 +1859,226 @@ parameter set. This gives us 4 * 5 * 3 = 60 parameter combinations and 60 * 10 =
 We will run each trial for 10 years of simulated time, i.e. 10 * 365 * 24 = 87360 time units,
 allowing 30 days' warmup time before we start collecting data.
 
-Writing the `main()` function is straightforward, albeit somewhat tedious. It does
+Writing the ``main()`` function is straightforward, albeit somewhat tedious. It does
 the same as in the previous tutorial: Sets up the experiment as an array of trials,
 executes it in parallel on the available CPU cores, assembles the output as a data
 file, and plots it in a separate gnuplot window.
 
-We compile and run, and 4.1 seconds later, this chart appears:
+We compile and run, and 4.1 seconds later, this chart appears, showing our 60
+parameter combinations, the average time in the system for small and large ships
+under each set of parameters, and tight 95 % confidence intervals based
+on our 10 replications of each parameter combination:
 
-.. image:: ./images//tut_2_2.png
+.. image:: ../images/tut_2_2.png
 
 We see that we can tell our client, the SPA, that they have enough tugs and do
 not need to dredge, but that they really should consider building one more large
 berth, especially if traffic is expected to increase. However, building more than
 one does not make much sense even at the highest traffic scenario. The SPA should
-rather consider building another small berth next.
+rather consider building another one or two small berths next.
 
-We think expressing this entire model in 940 lines of general-purpose C code
-(comment and whitespace lines included) is quite expressive. We also think running
-600 trials of it on a desktop computer in 4.1 seconds of wall clock time is
-pretty fast.
-
-This concludes our second tutorial. We have introduced `cmb_resource`,
-`cmb_resourcestore`, and the very powerful `cmb_condition`, allowing processes
+This concludes our second tutorial. We have introduced ``cmb_resource``,
+``cmb_resourcestore``, and the very powerful ``cmb_condition`` allowing processes
 to wait for arbitrary combinations of conditions. Along the way, we demonstrated
-that user applications can build derived classes from Cimba parent classes. For
-example, the `ship` class in this tutorial is also a `cmb_process` (which in turn
-is a `cmi_coroutine`).
+that user applications can build derived classes from Cimba parent classes using
+single inheritance. For example, the ``ship`` class in this tutorial is (derived
+from) a ``cmb_process`` (which in turn is a ``cmi_coroutine``).
+
+Our third simulation - When the Cat is Away...
+----------------------------------------------
+
+In our third tutorial, we will introduce additional process interactions where
+the active process is acting directly on some other process. We will
+demonstrate these through a somewhat cartoonish example. First, some necessary
+background.
+
+Interrupts, preempts, and return values
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We have already explained that Cimba processes (and the coroutines they are
+derived from) execute atomically until they explicitly yield control. These
+yield (and resume) points are hidden inside functions like ``cmb_process_hold()``
+or ``cmb_resource_acquire``. Inside the call, control may (or may not) be
+passed to some other process. The call will only return when control is transferred
+back to this process. To the calling process, it looks very simple, but a lot of
+things may be happening in the meantime.
+
+A yielded process does not have any guarantees for what may be happening to it
+before it resumes control. Other processes may act on this process, perhaps
+stopping it outright, waking it up early, or snatching a resource away from it.
+
+To be able to tell the difference, functions like ``cmb_process_hold()`` and
+``cmb_resource_acquire()`` have an integer return value, an ``int64_t``. We have
+quietly ignored the return values in our earlier examples, but they are an
+important signalling mechanism between Cimba processes.
+
+Cimba has reserved a few possible return values for itself. Most importantly,
+``CMB_PROCESS_SUCCESS`` (numeric value 0) means a normal and successful return.
+For example, if ``cmb_process_hold()`` returns ``CMB_PROCESS_SUCCESS``, the calling
+process knows that it was woken up at the scheduled time without any shenanigans.
+
+The second most important value is ``CMB_PROCESS_PREEMPTED``. That means that a
+higher priority process just forcibly took away some resource held by this
+process. There are also ``CMB_PROCESS_INTERRUPTED``, ``CMB_PROCESS_STOPPED``,
+and ``CMB_PROCESS_CANCELLED``. These are defined as small negative values,
+leaving an enormous number of available signal values to application-defined
+meanings. In particular, all positive integers are available to the application
+for coding various interrupt signals between processes.
+
+These signal values create a rich set of direct process interactions. As an
+example, suppose some process currently holds 10 units from some resource store.
+It then calls ``cmb_resourcestore_acquire()`` requesting 10 more units. At that
+moment, only 5 are available. The process takes these 5 and adds itself to the
+priority queue maintained by the resource guard, asking to be woken whenever some
+more is available, intending to return from its acquire call only when all 10
+units have been collected.
+
+There are now three different outcomes:
+
+1. All goes as expected, 5 more units eventually become available, the process
+   takes them, and returns ``CMB_PROCESS_SUCCESS``. It now holds 20 units.
+
+2. Some higher priority process calls ``cmb_resourcestore_preempt()`` and this
+   process is targeted. The higher priority process takes *all* units held by
+   the victim process. Its acquire call returns ``CMB_PROCESS_PREEMPTED``. It
+   now holds 0 units.
+
+3. Some other process calls ``cmb_process_interrupt()`` on this process. It
+   excuses itself from the resource guard priority queue and returns whatever
+   signal value was given to ``cmb_process_interrupt()``, perhaps
+   ``CMB_PROCESS_INTERRUPTED`` or some other value that has an
+   application-defined meaning. It unwinds the 5 units it collected during the
+   call and returns holding the same amount as it held  before calling
+    ``cmb_resourcestore_acquire()``, 10 units.
+
+Suppose a process holds more than one type of resource, for example:
+
+.. code-block:: c
+
+    cmb_resource_acquire(rp);
+    cmb_resourcestore_acquire(rsp1, 10);
+    cmb_resourcestore_acquire(rsp2, 15);
+
+    int64_t signal = cmb_process_hold(100,0);
+
+    if (signal == CMB_PROCESS_PREEMPTED) {
+        /* ??? */
+    }
+
+In cases like this, the functions ``cmb_resource_held_by_process`` and
+``cmb_resourcestore_held_by_process()`` with a pointer to itself as the second
+argument can be useful to figure out which resource was preempted. If the caller
+does not have a pointer to itself handy (it is always the first argument to the
+process function), it can get one by calling ``cmb_process_get_current()``,
+returning a pointer to the currently executing process, i.e. the caller.
+
+...the Mice will Play
+^^^^^^^^^^^^^^^^^^^^^
+
+It is again probably easier to demonstrate with code than explain in computer
+sciencey terms how all this works.
+
+On a table, we have some pieces of cheese in a pile. There are five mice trying to
+collect the cheese and hold it for a while. They tend to drop it again quite fast,
+inefficient hoarders as they are. Unfortunately, there are also three
+rats, bigger and stronger than the mice. The rats will preempt the cheese from
+the mice, but only if the rat has higher priority there and then. Otherwise, the
+rat will politely wait its turn. There is also one cat. It sleeps a lot, but
+when awake, it will select a random rodent and interrupt whatever it is doing.
+
+Since we do not plan to run any statistics here, we simplify the context struct
+to just contain the simulation struct. We can then write something like:
+
+.. code-blick;; c
+
+/* The busy life of a mouse */
+void *mousefunc(struct cmb_process *me, void *ctx)
+{
+    cmb_assert_release(me != NULL);
+    cmb_assert_release(ctx != NULL);
+
+    const struct simulation *simp = ctx;
+    struct cmb_resourcestore *sp = simp->cheese;
+    uint64_t amount_held = 0u;
+
+    while (true) {
+        /* Verify that the amount matches our own calculation */
+        cmb_assert_debug(amount_held == cmb_resourcestore_held_by_process(sp, me));
+
+        /* Decide on a random amount to get next time and set a random priority */
+        const uint64_t amount_req = cmb_random_dice(1, 5);
+        const int64_t pri = cmb_random_dice(-10, 10);
+        cmb_process_set_priority(me, pri);
+        cmb_logger_user(stdout, USERFLAG1, "Acquiring %" PRIu64, amount_req);
+        int64_t sig = cmb_resourcestore_acquire(sp, amount_req);
+        if (sig == CMB_PROCESS_SUCCESS) {
+            /* Acquire returned successfully */
+            amount_held += amount_req;
+            cmb_logger_user(stdout, USERFLAG1, "Success, new amount held: %" PRIu64, amount_held);
+        }
+        else if (sig == CMB_PROCESS_PREEMPTED) {
+            /* The acquire call did not end well */
+            cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
+                            cmb_resourcestore_get_name(sp));
+            amount_held = 0u;
+        }
+        else {
+            /* Interrupted, but we still have the same amount as before */
+            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
+        }
+
+        /* Hold on to it for a while */
+        sig = cmb_process_hold(cmb_random_exponential(1.0));
+        if (sig == CMB_PROCESS_SUCCESS) {
+            /* We still have it */
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned successfully");
+        }
+        else if (sig == CMB_PROCESS_PREEMPTED) {
+            /* Somebody snatched it all away from us */
+            cmb_logger_user(stdout, USERFLAG1, "Someone stole all my %s from me!",
+                            cmb_resourcestore_get_name(sp));
+            amount_held = 0u;
+        }
+        else {
+            /* Interrupted while holding. Still have the cheese, though */
+            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
+        }
+
+        /* Drop some amount */
+        if (amount_held > 1u) {
+            const uint64_t amount_rel = cmb_random_dice(1, (long)amount_held);
+            cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
+                            amount_held, amount_rel);
+            cmb_resourcestore_release(sp, amount_rel);
+            amount_held -= amount_rel;
+        }
+
+        /* Hang on a moment before trying again */
+        cmb_logger_user(stdout, USERFLAG1, "Holding, amount held: %" PRIu64, amount_held);
+        sig = cmb_process_hold(cmb_random_exponential(1.0));
+        if (sig == CMB_PROCESS_PREEMPTED) {
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Someone stole the rest of my %s, signal %" PRIi64,
+                            cmb_resourcestore_get_name(sp), sig);
+            amount_held = 0u;
+       }
+    }
+}
+
+The original purpose of this simulation was actually to ensure that the library
+tracking of how many units each process holds from the resource store matches the
+expected values calculated here. Hence the ``cmb_assert_debug(amount_held ==
+cmb_resourcestore_held_by_process(sp, me));`` statements.
+
+The rats are pretty much the same as the mice, just a bit hungrier and stronger
+(i.e. assigning themselves somewhat higher priorities), and using ``cmb_resourcestore_preempt()``
+instead of ``_acquire()``:
+
+.. code-block:: c
+
+            /* Decide on a random amount to get next time and set a random priority */
+            const uint64_t amount_req = cmb_random_dice(3, 10);
+            const int64_t pri = cmb_random_dice(-5, 15);
+            cmb_process_set_priority(me, pri);
+            cmb_logger_user(stdout, USERFLAG1, "Preempting %" PRIu64, amount_req);
+            int64_t sig = cmb_resourcestore_preempt(sp, amount_req);

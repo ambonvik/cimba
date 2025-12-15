@@ -31,9 +31,9 @@ Why should I use Cimba?
   high density of data points along parameter variations.
 
 * Cimba includes a wide range of fast, high quality random number generators, both
-  of academically important and more empirically oriented types.
+  academically important and more empirically oriented types.
 
-* Cimba also provides pre-packaged process interaction mechanisms like resources,
+* Cimba provides pre-packaged process interaction mechanisms like resources,
   resource stores, buffers, object queues, and even condition variables where
   your simulated process can wait for arbitrarily complex conditions -
   anything you can express as a function returning a binary true or false result.
@@ -44,7 +44,7 @@ Why should I use Cimba?
 * Cimba is well engineered, self-contained open source. There is no mystery to the
   results you get. Each simulated world sits inside its own thread.
 
-* Cimba is free and should as such fit well into the budget of most research groups.
+* Cimba is free and should fit well into the budget of most research groups.
 
 What can I use Cimba for?
 -------------------------
