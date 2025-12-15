@@ -77,8 +77,8 @@ tut_1_6 = executable('tut_1_6',
                      native : true
 )
 
-tut_1_x = executable('tut_1_x',
-                     files('tut_1_x.c'),
+tut_1_7 = executable('tut_1_7',
+                     files('tut_1_7.c'),
                      include_directories : [inc_api, inc_int],
                      c_args : ['-Wno-pedantic'],
                      link_with : cimba_lib,
@@ -102,6 +102,17 @@ tut_2_1 = executable('tut_2_1',
 
 tut_2_2 = executable('tut_2_2',
                      files('tut_2_2.c'),
+                     include_directories : [inc_api, inc_int],
+                     c_args : ['-Wno-pedantic'],
+                     link_with : cimba_lib,
+                     link_args : ['-lm'],
+                     dependencies : [project_deps],
+                     install : false,
+                     native : true
+)
+
+tut_3_1 = executable('tut_3_1',
+                     files('tut_3_1.c'),
                      include_directories : [inc_api, inc_int],
                      c_args : ['-Wno-pedantic'],
                      link_with : cimba_lib,

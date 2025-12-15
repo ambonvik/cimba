@@ -554,25 +554,6 @@ void run_trial(void *vtrl)
     cmb_random_terminate();
 }
 
-/* Temporary function to load trial test data for the single-threaded development version. */
-void load_params(struct trial *trlp)
-{
-    cmb_assert_release(trlp != NULL);
-
-    trlp->mean_wind = 5.0;
-    trlp->reference_depth = 15.0;
-    trlp->arrival_rate = 0.5;
-    trlp->percent_large = 0.25;
-    trlp->num_tugs = 10;
-    trlp->num_berths[SMALL] = 6;
-    trlp->num_berths[LARGE] = 3;
-    trlp->unloading_time_avg[SMALL] = 8.0;
-    trlp->unloading_time_avg[LARGE] = 12.0;
-
-    trlp->warmup_time = 24.0;
-    trlp->duration = 24.0 * 7 * 52;
-}
-
 void write_gnuplot_commands(void);
 
 /* Workaround for compilers disliking initialized "variable" length arrays */
