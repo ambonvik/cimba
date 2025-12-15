@@ -568,6 +568,9 @@ static void proc_stop_evt(void *vp, void *arg) {
     if (tgt->resources_listhead != NULL) {
         cmi_process_drop_all(tgt, &(tgt->resources_listhead));
     }
+
+    /* Cancel all future events pertaining to this process */
+    cmb_event_pattern_cancel(CMB_ANY_ACTION, tgt, CMB_ANY_OBJECT);
 }
 
 /*
