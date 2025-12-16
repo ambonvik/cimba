@@ -246,12 +246,12 @@ extern void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp);
  * @brief Calculate autocorrelation coefficients.
  *
  * @param dsp Pointer to a dataset object.
- * @param max_lag The highest lag value to calculate.
- * @param acf The array where the acf's will be stored, needs to be ``max_lag + 1`` large
+ * @param n The highest lag value to calculate
+ * @param acf The array where the acf's will be stored, needs to be ``n + 1`` large
  */
 extern void cmb_dataset_ACF(const struct cmb_dataset *dsp,
-                            unsigned max_lag,
-                            double acf[max_lag + 1u]);
+                            unsigned n,
+                            double acf[]);
 
 /**
  * @brief Calculate partial autocorrelation coefficients.
@@ -262,14 +262,15 @@ extern void cmb_dataset_ACF(const struct cmb_dataset *dsp,
  * directly from the dataset during the call.
  *
  * @param dsp Pointer to a dataset object.
- * @param max_lag The highest lag value to calculate.
- * @param pacf The array where the pacf's will be stored.
- * @param acf Array of ACF's if already calculated, otherwise `NULL`.
+ * @param n The highest lag value to calculate.
+ * @param pacf The array where the pacf's will be stored, size ``n + 1``
+ * @param acf Array of ACF's if already calculated, size ``n + 1``,
+ *            otherwise `NULL`.
  */
 extern void cmb_dataset_PACF(const struct cmb_dataset *dsp,
-                             unsigned max_lag,
-                             double pacf[max_lag + 1u],
-                             double acf[max_lag + 1u]);
+                             unsigned n,
+                             double pacf[],
+                             double acf[]);
 
 /**
  * @brief Print a simple correlogram of the autocorrelation coefficients
@@ -282,13 +283,13 @@ extern void cmb_dataset_PACF(const struct cmb_dataset *dsp,
  *
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly `stdout`
- * @param max_lag The highest lag value to calculate.
- * @param acf The array where the acf's will be stored.
+ * @param n The highest lag value to calculate.
+ * @param acf The array where the acf's will be stored size ``n + 1``
  */
 extern void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
                                           FILE *fp,
-                                          unsigned max_lag,
-                                          double acf[max_lag + 1u]);
+                                          unsigned n,
+                                          double acf[]);
 
 
 #endif /* CIMBA_CMB_DATASET_H */

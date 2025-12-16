@@ -577,17 +577,17 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
 }
 
 /*
- * Calculate the first max_lag autocorrelation coefficients.
+ * Calculate the first n autocorrelation coefficients.
  */
 void cmb_dataset_ACF(const struct cmb_dataset *dsp,
-                     const unsigned max_lag,
-                     double acf[max_lag + 1u])
+                     const unsigned n,
+                     double acf[])
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->count > 1);
-    cmb_assert_release((max_lag > 0u) && (max_lag < dsp->count));
+    cmb_assert_release((n > 0u) && (n < dsp->count));
 
     /* Calculate mean and variance in a single pass,
      * similar to cmb_datasummary() above
@@ -609,12 +609,12 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
         cmb_logger_warning(stderr,
                 "Dataset nearly constant (variance %g), ACFs rounded to zero",
                  var);
-        for (unsigned ui = 1; ui <= max_lag; ui++) {
+        for (unsigned ui = 1; ui <= n; ui++) {
             acf[ui] = 0.0;
         }
     }
     else {
-        for (unsigned ulag = 1; ulag <= max_lag; ulag++) {
+        for (unsigned ulag = 1; ulag <= n; ulag++) {
             double dk = 0.0;
             const uint64_t ustop = dsp->count - ulag;
             for (uint64_t ui = 0; ui < ustop; ui++) {
@@ -633,29 +633,29 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
  * to avoid repeating a computationally expensive step if already done once.
  */
 void cmb_dataset_PACF(const struct cmb_dataset *dsp,
-                      const unsigned max_lag,
-                      double pacf[max_lag + 1u],
-                      double acf[max_lag + 1u])
+                      const unsigned n,
+                      double pacf[],
+                      double acf[])
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->count > 1u);
-    cmb_assert_release((max_lag > 0u) && (max_lag < dsp->count - 1u));
+    cmb_assert_release((n > 0u) && (n < dsp->count - 1u));
     cmb_assert_release(pacf != NULL);
 
     bool free_acf = false;
     if (acf == NULL) {
-        acf = cmi_malloc((max_lag + 1u) * sizeof(double));
+        acf = cmi_malloc((n + 1u) * sizeof(double));
         free_acf = true;
-        cmb_dataset_ACF(dsp, max_lag, acf);
+        cmb_dataset_ACF(dsp, n, acf);
     }
 
     /* Create an intermediary un * un matrix */
-    double **phi = cmi_malloc((max_lag + 1u) * sizeof(double *));
-    phi[0] = cmi_calloc((max_lag + 1) * (max_lag + 1), sizeof(double));
-    for (unsigned ui = 1u; ui <= max_lag; ui++) {
-        phi[ui] = phi[0] + ui * max_lag;
+    double **phi = cmi_malloc((n + 1u) * sizeof(double *));
+    phi[0] = cmi_calloc((n + 1) * (n + 1), sizeof(double));
+    for (unsigned ui = 1u; ui <= n; ui++) {
+        phi[ui] = phi[0] + ui * n;
     }
 
     /* Per definition */
@@ -666,7 +666,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
     /* Calculate phi[k][j], the j-th coefficient for a k-th order
      * autoregression model
      */
-    for (unsigned uk = 2u; uk <= max_lag; ++uk) {
+    for (unsigned uk = 2u; uk <= n; ++uk) {
         double numsum = 0.0;
         for (unsigned uj = 1u; uj < uk; ++uj) {
             numsum += phi[uk - 1][uj] * acf[uk - uj];
@@ -754,20 +754,20 @@ static void data_print_bar(FILE *fp,
 
 void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
                                    FILE *fp,
-                                   const unsigned max_lag,
-                                   double acf[max_lag + 1u])
+                                   const unsigned n,
+                                   double acf[])
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->count > 1u);
-    cmb_assert_release((max_lag > 0u) && (max_lag <= dsp->count));
+    cmb_assert_release((n > 0u) && (n <= dsp->count));
 
     bool free_acf = false;
     if (acf == NULL) {
-        acf = cmi_malloc((max_lag + 1u) * sizeof(double));
+        acf = cmi_malloc((n + 1u) * sizeof(double));
         free_acf = true;
-        cmb_dataset_ACF(dsp, max_lag, acf);
+        cmb_dataset_ACF(dsp, n, acf);
     }
 
     /* Length of separator lines / axes */
@@ -787,7 +787,7 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
     cmb_assert_release(r > 0);
 
     data_print_line(fp, symbol_thin, line_length);
-    for (unsigned ui = 1u; ui <= max_lag; ui++) {
+    for (unsigned ui = 1u; ui <= n; ui++) {
         r = fprintf(fp, "%4u  %#6.3f ", ui, acf[ui]);
         cmb_assert_release(r > 0);
         data_print_bar(fp, acf[ui], max_bar_width);

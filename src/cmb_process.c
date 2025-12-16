@@ -58,7 +58,7 @@ void cmb_process_initialize(struct cmb_process *pp,
     pp->priority = priority;
     pp->waitsfor.type = CMI_WAITABLE_NONE;
     pp->waitsfor.ptr = NULL;
-    pp->waitsfor.handle = 0ull;
+    pp->waitsfor.handle = UINT64_C(0);
     pp->waiters_listhead = NULL;
     pp->resources_listhead = NULL;
 }
@@ -168,18 +168,18 @@ void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
 
     const int64_t oldpri = pp->priority;
     pp->priority = pri;
-    cmb_logger_info(stdout, "Changed priority from %" PRIi64 " to %" PRIu64,
+    cmb_logger_info(stdout, "Changed priority from %" PRIi64 " to %" PRIi64,
                     oldpri, pri);
 
     /* Any priority queues containing this process? */
     if (pp->waitsfor.type == CMI_WAITABLE_CLOCK) {
         const uint64_t handle = pp->waitsfor.handle;
-        cmb_assert_debug(handle != 0ull);
+        cmb_assert_debug(handle != UINT64_C(0));
         cmb_event_reprioritize(handle, pri);
     }
     else if (pp->waitsfor.type == CMI_WAITABLE_RESOURCE) {
         const uint64_t handle = pp->waitsfor.handle;
-        cmb_assert_debug(handle != 0ull);
+        cmb_assert_debug(handle != UINT64_C(0));
         struct cmb_resourceguard *rgp = pp->waitsfor.ptr;
         const struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
         const double dkey = cmi_hashheap_get_dkey(hp, handle);
@@ -189,12 +189,12 @@ void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
     }
 
     /* Is this process holding any resources that need to update records? */
-    struct cmi_list_tag32 *rtag = pp->resources_listhead;
+    const struct cmi_list_tag32 *rtag = pp->resources_listhead;
     while (rtag != NULL) {
         struct cmi_holdable *hrp = (struct cmi_holdable *)rtag->ptr;
         cmb_assert_debug(hrp != NULL);
         const uint64_t handle = rtag->uint;
-        if (handle != 0ull) {
+        if (handle != UINT64_C(0)) {
             (*(hrp->reprio))(hrp, handle, pri);
         }
 
@@ -252,9 +252,13 @@ static void proc_holdwu_evt(void *vp, void *arg)
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *pp = (struct cmb_process *)vp;
+    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64 " wait type %d",
+                    pp->name, (int64_t)arg, pp->waitsfor.type);
+    cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_CLOCK);
+
     pp->waitsfor.type = CMI_WAITABLE_NONE;
     pp->waitsfor.ptr = NULL;
-    pp->waitsfor.handle = 0ull;
+    pp->waitsfor.handle = UINT64_C(0);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
@@ -279,7 +283,7 @@ int64_t cmb_process_hold(const double dur)
     /* Not already holding, are we? */
     cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
     cmb_assert_debug(pp->waitsfor.ptr == NULL);
-    cmb_assert_debug(pp->waitsfor.handle == 0ull);
+    cmb_assert_debug(pp->waitsfor.handle == UINT64_C(0));
     cmb_logger_info(stdout, "Hold until time %f", t);
 
     /* Set an alarm clock */
@@ -295,33 +299,38 @@ int64_t cmb_process_hold(const double dur)
     if (sig != CMB_PROCESS_SUCCESS) {
         /* Whatever woke us up was not the scheduled wakeup call */
         cmb_logger_info(stdout, "Woken up, signal %" PRIi64, sig);
-        if (pp->waitsfor.handle != 0ull) {
+        if (pp->waitsfor.handle != UINT64_C(0)) {
             /* Should be handled already by wakeup event, but just in case */
             cmb_event_cancel(pp->waitsfor.handle);
         }
     }
 
     pp->waitsfor.type = CMI_WAITABLE_NONE;
-    pp->waitsfor.handle = 0ull;
+    pp->waitsfor.handle = UINT64_C(0);
 
     return sig;
 }
 
 /*
  * proc_waitwu_evt : The event that resumes the process after being scheduled by
- *           cmb_process_wait_*.
+ *           cmb_process_wait_process or cmb_process_wait_event
  */
 static void proc_waitwu_evt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
+
+    struct cmb_process *pp = (struct cmb_process *)vp;
+    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64 " wait type %d",
+                    pp->name, (int64_t)arg, pp->waitsfor.type);
+    cmb_assert_debug((pp->waitsfor.type == CMI_WAITABLE_PROCESS)
+                     || (pp->waitsfor.type == CMI_WAITABLE_EVENT));
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)vp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
         (void)cmi_coroutine_resume(cp, arg);
     }
     else {
-        const struct cmb_process *pp = (struct cmb_process *)vp;
-        cmb_logger_warning(stdout,
+         cmb_logger_warning(stdout,
                            "process wait wakeup call found process %s dead",
                            cmb_process_get_name(pp));
     }
@@ -339,7 +348,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
     cmb_assert_release(pp != NULL);
     cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
     cmb_assert_debug(pp->waitsfor.ptr == NULL);
-    cmb_assert_debug(pp->waitsfor.handle == 0ull);
+    cmb_assert_debug(pp->waitsfor.handle == UINT64_C(0));
     cmb_logger_info(stdout, "Wait for process %s", awaited->name);
 
     /* Is it already done? */
@@ -371,7 +380,7 @@ extern struct cmi_list_tag **cmi_event_tag_loc(uint64_t handle);
  */
 int64_t cmb_process_wait_event(const uint64_t ev_handle)
 {
-    cmb_assert_release(ev_handle != 0ull);
+    cmb_assert_release(ev_handle != UINT64_C(0));
     cmb_assert_release(cmb_event_is_scheduled(ev_handle));
 
     /* Cannot be called from main process, which will return NULL here */
@@ -379,7 +388,7 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     cmb_assert_release(pp != NULL);
     cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
     cmb_assert_debug(pp->waitsfor.ptr == NULL);
-    cmb_assert_debug(pp->waitsfor.handle == 0ull);
+    cmb_assert_debug(pp->waitsfor.handle == UINT64_C(0));
 
     /* Add the current process to the list of processes waiting for the event */
     struct cmi_list_tag **loc = cmi_event_tag_loc(ev_handle);
@@ -392,7 +401,7 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
 
     /* Possibly much later */
     pp->waitsfor.type = CMI_WAITABLE_NONE;
-    pp->waitsfor.handle = 0ull;
+    pp->waitsfor.handle = UINT64_C(0);
     return ret;
 }
 
@@ -472,33 +481,45 @@ static void stop_waiting(struct cmb_process *tgt)
 
     if (tgt->waitsfor.type == CMI_WAITABLE_NONE) {
         cmb_assert_debug(tgt->waitsfor.ptr == NULL);
-        cmb_assert_debug(tgt->waitsfor.handle == 0ull);
+        cmb_assert_debug(tgt->waitsfor.handle == UINT64_C(0));
 
         /* Nothing to do */
         return;
     }
 
     if (tgt->waitsfor.type == CMI_WAITABLE_CLOCK) {
+        cmb_assert_debug(tgt->waitsfor.ptr == NULL);
+        cmb_assert_debug(tgt->waitsfor.handle != UINT64_C(0));
         cmb_event_cancel(tgt->waitsfor.handle);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_EVENT) {
+        cmb_assert_debug(tgt->waitsfor.ptr == NULL);
+        cmb_assert_debug(tgt->waitsfor.handle != UINT64_C(0));
         struct cmi_list_tag **loc = cmi_event_tag_loc(tgt->waitsfor.handle);
         const bool found = cmi_list_remove(loc, tgt);
         cmb_assert_debug(found == true);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_PROCESS) {
+        cmb_assert_debug(tgt->waitsfor.handle == UINT64_C(0));
+        cmb_assert_debug(tgt->waitsfor.ptr != NULL);
         const bool found = cmi_list_remove(&(tgt->waiters_listhead), tgt);
         cmb_assert_debug(found == true);
     }
     else if (tgt->waitsfor.type == CMI_WAITABLE_RESOURCE) {
+        cmb_assert_debug(tgt->waitsfor.handle != UINT64_C(0));
+        cmb_assert_debug(tgt->waitsfor.ptr != NULL);
         struct cmb_resourceguard *rgp = tgt->waitsfor.ptr;
         const bool found = cmb_resourceguard_remove(rgp, tgt);
         cmb_assert_debug(found == true);
     }
 
+    /* Make sure any kind of already scheduled wakeup event does not happen */
+    cmb_event_pattern_cancel(CMB_ANY_ACTION, tgt, CMB_ANY_OBJECT);
+
+    /* Set to known state, essentially in limbo */
     tgt->waitsfor.type = CMI_WAITABLE_NONE;
     tgt->waitsfor.ptr = NULL;
-    tgt->waitsfor.handle = 0ull;
+    tgt->waitsfor.handle = UINT64_C(0);
 }
 
 /*
@@ -511,7 +532,8 @@ static void proc_intrpt_evt(void *vp, void *arg)
     cmb_assert_debug((int64_t)arg != CMB_PROCESS_SUCCESS);
 
     struct cmb_process *tgt = (struct cmb_process *)vp;
-    stop_waiting(tgt);
+    cmb_logger_info(stdout, "Interrupts %s signal %" PRIi64 " wait type %d",
+                    tgt->name, (int64_t)arg, tgt->waitsfor.type);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
     cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
@@ -532,6 +554,7 @@ void cmb_process_interrupt(struct cmb_process *pp,
     cmb_logger_info(stdout, "Interrupt %s signal %" PRIi64 " priority %" PRIi64,
                     pp->name, sig, pri);
 
+    stop_waiting(pp);
     const double t = cmb_time();
     (void)cmb_event_schedule(proc_intrpt_evt, pp, (void *)sig, t, pri);
 }
@@ -544,6 +567,8 @@ static void proc_stop_evt(void *vp, void *arg) {
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *tgt = (struct cmb_process *)vp;
+    cmb_logger_info(stdout, "Stops %s signal %" PRIi64 " wait type %d",
+                    tgt->name, (int64_t)arg, tgt->waitsfor.type);
 
     /* Stop the underlying coroutine */
     struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
@@ -551,13 +576,8 @@ static void proc_stop_evt(void *vp, void *arg) {
         cmi_coroutine_stop(cp, arg);
     }
     else {
-        cmb_logger_warning(stdout,
-                           "proc_stop_evt: tgt %s not running",
-                           tgt->name);
+        cmb_logger_warning(stdout, "proc_stop_evt: tgt %s not running", tgt->name);
     }
-
-    /* Cancel this process from any resources it may be waiting for */
-    stop_waiting(tgt);
 
     /* Wake up any processes waiting for this process to finish */
     if (tgt->waiters_listhead != NULL) {
@@ -568,9 +588,6 @@ static void proc_stop_evt(void *vp, void *arg) {
     if (tgt->resources_listhead != NULL) {
         cmi_process_drop_all(tgt, &(tgt->resources_listhead));
     }
-
-    /* Cancel all future events pertaining to this process */
-    cmb_event_pattern_cancel(CMB_ANY_ACTION, tgt, CMB_ANY_OBJECT);
 }
 
 /*
@@ -590,8 +607,8 @@ void cmb_process_stop(struct cmb_process *pp, void *retval)
     cmb_assert_debug(pp != NULL);
     cmb_logger_info(stdout, "Stop %s value %p", pp->name, retval);
 
-    /* Make sure all normal events happen first to ensure consistent state */
-    const int64_t pri = INT64_MIN;
+    stop_waiting(pp);
+    const int64_t pri = pp->priority;
     const double t = cmb_time();
     (void)cmb_event_schedule(proc_stop_evt, pp, retval, t, pri);
 }

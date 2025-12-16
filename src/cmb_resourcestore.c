@@ -615,7 +615,7 @@ void cmb_resourcestore_release(struct cmb_resourcestore *rsp, const uint64_t amo
     cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
     cmb_assert_release(amount > 0u);
     cmb_assert_release(rsp->in_use >= amount);
-    cmb_assert_release(amount < rsp->capacity);
+    cmb_assert_release(amount <= rsp->capacity);
 
     struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_debug(pp != NULL);

@@ -266,11 +266,11 @@ extern void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp);
  *
  * @param tsp Pointer to a time series object.
  * @param n The number of coefficents to calculate.
- * @param acf The array to store the autocorrelation coeffients.
+ * @param acf The array to store the autocorrelation coeffients, , size ``n + 1``
  */
 static inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp,
                                       const uint16_t n,
-                                      double acf[n + 1u])
+                                      double acf[])
 {
     cmb_assert_release(tsp != NULL);
 
@@ -288,13 +288,13 @@ static inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp,
  *
  * @param tsp Pointer to a time series object.
  * @param n The number of coefficents to calculate.
- * @param pacf The array to store the partial autocorrelation coeffients.
- * @param acf Array of autocorrelation coeffients, if already available.
+ * @param pacf The array to store the partial autocorrelation coeffients, size ``n + 1``.
+ * @param acf Array of autocorrelation coeffients, if already available, size ``n + 1``.
  */
 static inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
                                        const uint16_t n,
-                                       double pacf[n + 1u],
-                                       double acf[n + 1u])
+                                       double pacf[],
+                                       double acf[])
 {
     cmb_assert_release(tsp != NULL);
 
@@ -315,12 +315,12 @@ static inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
  * @param fp A file pointer for the output, possibly `stdout`.
  * @param n The number of coefficents to calculate.
  * @param acf Array of (partial) autocorrelation coeffients, if already
- *            available.
+ *            available, size ``n + 1``.
  */
 static inline void cmb_timeseries_print_correlogram(const struct cmb_timeseries *tsp,
                                              FILE *fp,
                                              const uint16_t n,
-                                             double acf[n + 1u])
+                                             double acf[])
 {
     cmb_assert_release(tsp != NULL);
 

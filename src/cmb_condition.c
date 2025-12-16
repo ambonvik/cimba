@@ -85,6 +85,10 @@ static void cond_waitwu_evt(void *vp, void *arg)
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *pp = (struct cmb_process *)vp;
+    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64 " wait type %d",
+            pp->name, (int64_t)arg, pp->waitsfor.type);
+    cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_RESOURCE);
+
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
         (void)cmi_coroutine_resume(cp, arg);
@@ -139,11 +143,9 @@ bool cmb_condition_signal(struct cmb_condition *cvp)
             tmp[cnt++] = htp->handle;
             const double time = cmb_time();
             const int64_t priority = cmb_process_get_priority(pp);
-            (void)cmb_event_schedule(cond_waitwu_evt,
-                                     pp,
+            (void)cmb_event_schedule(cond_waitwu_evt, pp,
                                      (void *)CMB_PROCESS_SUCCESS,
-                                     time,
-                                     priority);
+                                     time, priority);
         }
     }
 

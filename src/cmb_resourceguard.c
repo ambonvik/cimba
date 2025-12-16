@@ -108,7 +108,7 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
     cmb_assert_release(pp != NULL);
     cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
     cmb_assert_debug(pp->waitsfor.ptr == NULL);
-    cmb_assert_debug(pp->waitsfor.handle == 0ull);
+    cmb_assert_debug(pp->waitsfor.handle == UINT64_C(0));
 
     const double entry_time = cmb_time();
     const int64_t priority = cmb_process_get_priority(pp);
@@ -125,9 +125,7 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
     pp->waitsfor.ptr = rgp;
     pp->waitsfor.handle = handle;
 
-    cmb_logger_info(stdout,
-                    "Waits in line for %s",
-                    rgp->guarded_resource->name);
+    cmb_logger_info(stdout, "Waits for %s", rgp->guarded_resource->name);
 
     /* Yield to the scheduler, collect the return signal value when resumed */
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
@@ -135,7 +133,7 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
     /* Back here, possibly much later. Return the signal that resumed us. */
     pp->waitsfor.type = CMI_WAITABLE_NONE;
     pp->waitsfor.ptr = NULL;
-    pp->waitsfor.handle = 0ull;
+    pp->waitsfor.handle = UINT64_C(0);
 
     return sig;
 }
@@ -148,6 +146,10 @@ static void resgrd_waitwu_evt(void *vp, void *arg)
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *pp = (struct cmb_process *)vp;
+    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64 " wait type %d",
+                pp->name, (int64_t)arg, pp->waitsfor.type);
+    cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_RESOURCE);
+
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
         (void)cmi_coroutine_resume(cp, arg);
@@ -190,7 +192,8 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
         /* Evaluate its demand predicate */
         const struct cmi_resourcebase *rbp = rgp->guarded_resource;
         if ((*demand)(rbp, pp, ctx)) {
-            /* Yes, pull the process off the queue and schedule a wakeup event */
+            /* Yes, pull the process off the queue and schedule wakeup event */
+            cmb_logger_info(stdout, "Scheduling wakeup event for %s", pp->name);
             (void)cmi_hashheap_dequeue(hp);
             const double time = cmb_time();
             const int64_t priority = cmb_process_get_priority(pp);
@@ -218,7 +221,7 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
  * Returns true if found and successfully cancelled, false if not.
  */
 bool cmb_resourceguard_cancel(struct cmb_resourceguard *rgp,
-                               struct cmb_process *pp)
+                              struct cmb_process *pp)
 {
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(pp != NULL);

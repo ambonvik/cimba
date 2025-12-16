@@ -245,14 +245,18 @@ void cmb_resource_release(struct cmb_resource *rp) {
 }
 
 /*
- * resgrd_waitwu_evt : The event handler that actually resumes the process coroutine after
- * being scheduled by cmb_resource_preempt
+ * resrc_waitwu_evt : The event handler that actually resumes the process
+ * coroutine after being scheduled by cmb_resource_preempt
  */
-static void resgrd_waitwu_evt(void *vp, void *arg)
+static void resrc_waitwu_evt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *pp = (struct cmb_process *)vp;
+    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64 " wait type %d",
+                pp->name, (int64_t)arg, pp->waitsfor.type);
+    cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_RESOURCE);
+
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
         (void)cmi_coroutine_resume(cp, arg);
@@ -282,7 +286,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
         /* Kick it out. No record_sample needed, remains occupied. */
         cmi_list_remove32(&(victim->resources_listhead), hrp);
         rp->holder = NULL;
-        (void)cmb_event_schedule(resgrd_waitwu_evt,
+        (void)cmb_event_schedule(resrc_waitwu_evt,
                                 (void *)victim,
                                 (void *)CMB_PROCESS_PREEMPTED,
                                  cmb_time(),
