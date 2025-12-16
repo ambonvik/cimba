@@ -96,7 +96,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
         sig = cmb_process_hold(cmb_random_exponential(1.0));
         if (sig == CMB_PROCESS_SUCCESS) {
             /* We still have it */
-            cmb_logger_user(stdout, USERFLAG1, "Hold returned successfully");
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned normally");
         }
         else if (sig == CMB_PROCESS_PREEMPTED) {
             /* Somebody snatched it all away from us */
@@ -170,7 +170,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
         sig = cmb_process_hold(cmb_random_exponential(1.0));
         if (sig == CMB_PROCESS_SUCCESS) {
             /* We still have it */
-            cmb_logger_user(stdout, USERFLAG1, "Hold returned successfully");
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned normally");
         }
         else if (sig == CMB_PROCESS_PREEMPTED) {
             /* Somebody snatched it all away from us */
@@ -210,11 +210,11 @@ void *catfunc(struct cmb_process *me, void *ctx)
     cmb_assert_release(ctx != NULL);
 
     struct simulation *simp = ctx;
-    struct cmb_process **cpp = (struct cmb_process **) simp;
+    struct cmb_process **cpp = (struct cmb_process **)simp;
     const long num = NUM_MICE + NUM_RATS;
 
     while (true) {
-        /* Sleep, nobody interrupts a sleeping cat, disregard return value */
+        /* Nobody interrupts a sleeping cat, disregard return value */
         cmb_logger_user(stdout, USERFLAG1, "Zzzzz...");
         (void)cmb_process_hold(cmb_random_exponential(5.0));
         do {
@@ -228,6 +228,8 @@ void *catfunc(struct cmb_process *me, void *ctx)
                                  CMB_PROCESS_INTERRUPTED :
                                  cmb_random_dice(10, 100);
             cmb_process_interrupt(tgt, sig, 0);
+
+            /* Flip a coin to decide whether to go back to sleep */
         } while (cmb_random_flip());
     }
 }
@@ -244,52 +246,40 @@ void run_trial(void *vtrl)
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_event_queue_initialize(0.0);
 
-    printf("Create a pile of cheese\n");
+    printf("Create a pile of %d cheese cubes\n", CHEESE_AMOUNT);
     simp->cheese = cmb_resourcestore_create();
     cmb_resourcestore_initialize(simp->cheese, "Cheese", CHEESE_AMOUNT);
 
     char scratchpad[32];
-    printf("Create mice to compete for the cheese\n");
+    printf("Create %d mice to compete for the cheese\n", NUM_MICE);
     for (unsigned ui = 0; ui < NUM_MICE; ui++) {
         simp->mice[ui] = cmb_process_create();
         snprintf(scratchpad, sizeof(scratchpad), "Mouse_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(simp->mice[ui],
-                               scratchpad,
-                               mousefunc,
-                               simp,
-                               pri);
+        cmb_process_initialize(simp->mice[ui], scratchpad, mousefunc, simp, pri);
         cmb_process_start(simp->mice[ui]);
     }
 
-    printf("Create rats trying to preempt the cheese\n");
+    printf("Create %d rats trying to preempt the cheese\n", NUM_RATS);
     for (unsigned ui = 0; ui < NUM_RATS; ui++) {
         simp->rats[ui] = cmb_process_create();
         snprintf(scratchpad, sizeof(scratchpad), "Rat_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(simp->rats[ui],
-                               scratchpad,
-                               ratfunc,
-                               simp,
-                               pri);
+        cmb_process_initialize(simp->rats[ui], scratchpad, ratfunc, simp, pri);
         cmb_process_start(simp->rats[ui]);
     }
 
-    printf("Create cats chasing all the rodents\n");
+    printf("Create %d cats chasing all the rodents\n", NUM_CATS);
     for (unsigned ui = 0; ui < NUM_CATS; ui++) {
         simp->cats[ui] = cmb_process_create();
         snprintf(scratchpad, sizeof(scratchpad), "Cat_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(simp->cats[ui],
-                               scratchpad,
-                               catfunc,
-                               simp,
-                               pri);
+        cmb_process_initialize(simp->cats[ui], scratchpad, catfunc, simp, pri);
         cmb_process_start(simp->cats[ui]);
     }
 
     printf("Schedule end event\n");
-    (void)cmb_event_schedule(end_sim_evt, NULL, simp, 100.0, 0);
+    (void)cmb_event_schedule(end_sim_evt, NULL, simp, 1000.0, 0);
 
     printf("Execute simulation...\n");
     cmb_event_queue_execute();
@@ -301,8 +291,10 @@ void run_trial(void *vtrl)
         cmb_process_destroy(cpp[ui]);
     }
 
+    cmb_resourcestore_terminate(simp->cheese);
     cmb_resourcestore_destroy(simp->cheese);
     cmb_event_queue_terminate();
+    cmb_random_terminate();
 
     free(simp);
 }

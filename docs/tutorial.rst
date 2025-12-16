@@ -3,7 +3,7 @@
 Tutorial: Introducing Cimba
 ===========================
 
-Our first simulation - a M/M/1 queue
+Our first simulation - M/M/1 queue
 ------------------------------------
 
 In this section, we will walk through the development of a simple model from
@@ -1087,7 +1087,7 @@ code for each stage of development. There is also a version ``tutorial/tut_1_7.c
 functionally the same as ``tutorial\tut_1_6.c`` but with inline explanatory comments.
 
 
-Our second simulation - a LNG tanker harbor
+Our second simulation - LNG tanker harbor
 -------------------------------------------
 
 Once upon a time, a harbor simulation with tugs puttering about was the author's
@@ -1948,8 +1948,8 @@ There are now three different outcomes:
    signal value was given to ``cmb_process_interrupt()``, perhaps
    ``CMB_PROCESS_INTERRUPTED`` or some other value that has an
    application-defined meaning. It unwinds the 5 units it collected during the
-   call and returns holding the same amount as it held  before calling
-    ``cmb_resourcestore_acquire()``, 10 units.
+   call and returns holding the same amount as it held before
+   calling ``cmb_resourcestore_acquire()``, 10 units.
 
 Suppose a process holds more than one type of resource, for example:
 
@@ -1989,86 +1989,81 @@ when awake, it will select a random rodent and interrupt whatever it is doing.
 Since we do not plan to run any statistics here, we simplify the context struct
 to just contain the simulation struct. We can then write something like:
 
-.. code-blick;; c
+.. code-block:: c
 
-/* The busy life of a mouse */
-void *mousefunc(struct cmb_process *me, void *ctx)
-{
-    cmb_assert_release(me != NULL);
-    cmb_assert_release(ctx != NULL);
+    /* The busy life of a mouse */
+    void *mousefunc(struct cmb_process *me, void *ctx)
+    {
+        cmb_assert_release(me != NULL);
+        cmb_assert_release(ctx != NULL);
 
-    const struct simulation *simp = ctx;
-    struct cmb_resourcestore *sp = simp->cheese;
-    uint64_t amount_held = 0u;
+        const struct simulation *simp = ctx;
+        struct cmb_resourcestore *sp = simp->cheese;
+        uint64_t amount_held = 0u;
 
-    while (true) {
-        /* Verify that the amount matches our own calculation */
-        cmb_assert_debug(amount_held == cmb_resourcestore_held_by_process(sp, me));
+        while (true) {
+            /* Verify that the amount matches our own calculation */
+            cmb_assert_debug(amount_held == cmb_resourcestore_held_by_process(sp, me));
 
-        /* Decide on a random amount to get next time and set a random priority */
-        const uint64_t amount_req = cmb_random_dice(1, 5);
-        const int64_t pri = cmb_random_dice(-10, 10);
-        cmb_process_set_priority(me, pri);
-        cmb_logger_user(stdout, USERFLAG1, "Acquiring %" PRIu64, amount_req);
-        int64_t sig = cmb_resourcestore_acquire(sp, amount_req);
-        if (sig == CMB_PROCESS_SUCCESS) {
-            /* Acquire returned successfully */
-            amount_held += amount_req;
-            cmb_logger_user(stdout, USERFLAG1, "Success, new amount held: %" PRIu64, amount_held);
-        }
-        else if (sig == CMB_PROCESS_PREEMPTED) {
-            /* The acquire call did not end well */
-            cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
-                            cmb_resourcestore_get_name(sp));
-            amount_held = 0u;
-        }
-        else {
-            /* Interrupted, but we still have the same amount as before */
-            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
-        }
+            /* Decide on a random amount to get next time and set a random priority */
+            const uint64_t amount_req = cmb_random_dice(1, 5);
+            const int64_t pri = cmb_random_dice(-10, 10);
+            cmb_process_set_priority(me, pri);
+            cmb_logger_user(stdout, USERFLAG1, "Acquiring %" PRIu64, amount_req);
+            int64_t sig = cmb_resourcestore_acquire(sp, amount_req);
+            if (sig == CMB_PROCESS_SUCCESS) {
+                /* Acquire returned successfully */
+                amount_held += amount_req;
+                cmb_logger_user(stdout, USERFLAG1, "Success, new amount held: %" PRIu64, amount_held);
+            }
+            else if (sig == CMB_PROCESS_PREEMPTED) {
+                /* The acquire call did not end well */
+                cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
+                                cmb_resourcestore_get_name(sp));
+                amount_held = 0u;
+            }
+            else {
+                /* Interrupted, but we still have the same amount as before */
+                cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
+            }
 
-        /* Hold on to it for a while */
-        sig = cmb_process_hold(cmb_random_exponential(1.0));
-        if (sig == CMB_PROCESS_SUCCESS) {
-            /* We still have it */
-            cmb_logger_user(stdout, USERFLAG1, "Hold returned successfully");
-        }
-        else if (sig == CMB_PROCESS_PREEMPTED) {
-            /* Somebody snatched it all away from us */
-            cmb_logger_user(stdout, USERFLAG1, "Someone stole all my %s from me!",
-                            cmb_resourcestore_get_name(sp));
-            amount_held = 0u;
-        }
-        else {
-            /* Interrupted while holding. Still have the cheese, though */
-            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
-        }
+            /* Hold on to it for a while */
+            sig = cmb_process_hold(cmb_random_exponential(1.0));
+            if (sig == CMB_PROCESS_SUCCESS) {
+                /* We still have it */
+                cmb_logger_user(stdout, USERFLAG1, "Hold returned successfully");
+            }
+            else if (sig == CMB_PROCESS_PREEMPTED) {
+                /* Somebody snatched it all away from us */
+                cmb_logger_user(stdout, USERFLAG1, "Someone stole all my %s from me!",
+                                cmb_resourcestore_get_name(sp));
+                amount_held = 0u;
+            }
+            else {
+                /* Interrupted while holding. Still have the cheese, though */
+                cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
+            }
 
-        /* Drop some amount */
-        if (amount_held > 1u) {
-            const uint64_t amount_rel = cmb_random_dice(1, (long)amount_held);
-            cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
-                            amount_held, amount_rel);
-            cmb_resourcestore_release(sp, amount_rel);
-            amount_held -= amount_rel;
-        }
+            /* Drop some amount */
+            if (amount_held > 1u) {
+                const uint64_t amount_rel = cmb_random_dice(1, (long)amount_held);
+                cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
+                                amount_held, amount_rel);
+                cmb_resourcestore_release(sp, amount_rel);
+                amount_held -= amount_rel;
+            }
 
-        /* Hang on a moment before trying again */
-        cmb_logger_user(stdout, USERFLAG1, "Holding, amount held: %" PRIu64, amount_held);
-        sig = cmb_process_hold(cmb_random_exponential(1.0));
-        if (sig == CMB_PROCESS_PREEMPTED) {
-            cmb_logger_user(stdout, USERFLAG1,
-                            "Someone stole the rest of my %s, signal %" PRIi64,
-                            cmb_resourcestore_get_name(sp), sig);
-            amount_held = 0u;
-       }
+            /* Hang on a moment before trying again */
+            cmb_logger_user(stdout, USERFLAG1, "Holding, amount held: %" PRIu64, amount_held);
+            sig = cmb_process_hold(cmb_random_exponential(1.0));
+            if (sig == CMB_PROCESS_PREEMPTED) {
+                cmb_logger_user(stdout, USERFLAG1,
+                                "Someone stole the rest of my %s, signal %" PRIi64,
+                                cmb_resourcestore_get_name(sp), sig);
+                amount_held = 0u;
+           }
+        }
     }
-}
-
-The original purpose of this simulation was actually to ensure that the library
-tracking of how many units each process holds from the resource store matches the
-expected values calculated here. Hence the ``cmb_assert_debug(amount_held ==
-cmb_resourcestore_held_by_process(sp, me));`` statements.
 
 The rats are pretty much the same as the mice, just a bit hungrier and stronger
 (i.e. assigning themselves somewhat higher priorities), and using ``cmb_resourcestore_preempt()``
@@ -2076,9 +2071,163 @@ instead of ``_acquire()``:
 
 .. code-block:: c
 
-            /* Decide on a random amount to get next time and set a random priority */
-            const uint64_t amount_req = cmb_random_dice(3, 10);
-            const int64_t pri = cmb_random_dice(-5, 15);
-            cmb_process_set_priority(me, pri);
-            cmb_logger_user(stdout, USERFLAG1, "Preempting %" PRIu64, amount_req);
-            int64_t sig = cmb_resourcestore_preempt(sp, amount_req);
+    /* Decide on a random amount to get next time and set a random priority */
+    const uint64_t amount_req = cmb_random_dice(3, 10);
+    const int64_t pri = cmb_random_dice(-5, 15);
+    cmb_process_set_priority(me, pri);
+    cmb_logger_user(stdout, USERFLAG1, "Preempting %" PRIu64, amount_req);
+    int64_t sig = cmb_resourcestore_preempt(sp, amount_req);
+
+The cats, on the other hand, are never interrupted and just ignore return values:
+
+.. code-block:: c
+
+    void *catfunc(struct cmb_process *me, void *ctx)
+    {
+        cmb_unused(me);
+        cmb_assert_release(ctx != NULL);
+
+        struct simulation *simp = ctx;
+        struct cmb_process **cpp = (struct cmb_process **)simp;
+        const long num = NUM_MICE + NUM_RATS;
+
+        while (true) {
+            /* Nobody interrupts a sleeping cat, disregard return value */
+            cmb_logger_user(stdout, USERFLAG1, "Zzzzz...");
+            (void)cmb_process_hold(cmb_random_exponential(5.0));
+            do {
+                cmb_logger_user(stdout, USERFLAG1, "Awake, looking for rodents");
+                (void)cmb_process_hold(cmb_random_exponential(1.0));
+                struct cmb_process *tgt = cpp[cmb_random_dice(0, num - 1)];
+                cmb_logger_user(stdout, USERFLAG1, "Chasing %s", cmb_process_get_name(tgt));
+
+                /* Send it a random interrupt signal */
+                const int64_t sig = (cmb_random_flip()) ?
+                                     CMB_PROCESS_INTERRUPTED :
+                                     cmb_random_dice(10, 100);
+                cmb_process_interrupt(tgt, sig, 0);
+
+                /* Flip a coin to decide whether to go back to sleep */
+            } while (cmb_random_flip());
+        }
+    }
+
+We compile and run, and get output similar to this:
+
+.. code-block:: none
+
+    [ambonvik@Threadripper cimba]$ build/tutorial/tut_3_1 | more
+    Create a pile of 20 cheese cubes
+    Create 5 mice to compete for the cheese
+    Create 2 rats trying to preempt the cheese
+    Create 1 cats chasing all the rodents
+    Schedule end event
+    Execute simulation...
+        0.0000	Cat_1	catfunc (218):  Zzzzz...
+        0.0000	Rat_2	ratfunc (151):  Preempting 4
+        0.0000	Rat_2	ratfunc (156):  Success, new amount held: 4
+        0.0000	Mouse_4	mousefunc (77):  Acquiring 1
+        0.0000	Mouse_4	mousefunc (82):  Success, new amount held: 1
+        0.0000	Rat_1	ratfunc (151):  Preempting 8
+        0.0000	Rat_1	ratfunc (156):  Success, new amount held: 8
+        0.0000	Mouse_1	mousefunc (77):  Acquiring 5
+        0.0000	Mouse_1	mousefunc (82):  Success, new amount held: 5
+        0.0000	Mouse_3	mousefunc (77):  Acquiring 2
+        0.0000	Mouse_3	mousefunc (82):  Success, new amount held: 2
+        0.0000	Mouse_5	mousefunc (77):  Acquiring 1
+        0.0000	Mouse_2	mousefunc (77):  Acquiring 3
+       0.23852	Mouse_1	mousefunc (99):  Hold returned normally
+       0.23852	Mouse_1	mousefunc (115):  Holds 5, releasing 5
+       0.23852	Mouse_1	mousefunc (122):  Holding, amount held: 0
+       0.23852	Mouse_5	mousefunc (82):  Success, new amount held: 1
+       0.23852	Mouse_2	mousefunc (82):  Success, new amount held: 3
+       0.30029	Cat_1	catfunc (221):  Awake, looking for rodents
+       0.46399	Mouse_2	mousefunc (99):  Hold returned normally
+       0.46399	Mouse_2	mousefunc (115):  Holds 3, releasing 1
+       0.46399	Mouse_2	mousefunc (122):  Holding, amount held: 2
+       0.56088	Mouse_1	mousefunc (77):  Acquiring 1
+       0.56088	Mouse_1	mousefunc (82):  Success, new amount held: 1
+       0.58910	Mouse_4	mousefunc (99):  Hold returned normally
+       0.58910	Mouse_4	mousefunc (122):  Holding, amount held: 1
+       0.73649	Mouse_5	mousefunc (99):  Hold returned normally
+       0.73649	Mouse_5	mousefunc (122):  Holding, amount held: 1
+       0.74171	Mouse_3	mousefunc (99):  Hold returned normally
+       0.74171	Mouse_3	mousefunc (115):  Holds 2, releasing 2
+       0.74171	Mouse_3	mousefunc (122):  Holding, amount held: 0
+       0.83936	Mouse_3	mousefunc (77):  Acquiring 4
+       0.89350	Mouse_5	mousefunc (77):  Acquiring 5
+        1.3408	Rat_2	ratfunc (173):  Hold returned normally
+        1.3408	Rat_2	ratfunc (189):  Holds 4, releasing 1
+        1.3408	Rat_2	ratfunc (196):  Holding, amount held: 3
+        1.3408	Mouse_3	mousefunc (82):  Success, new amount held: 4
+        1.4394	Mouse_4	mousefunc (77):  Acquiring 5
+        1.8889	Mouse_2	mousefunc (77):  Acquiring 1
+        1.8992	Mouse_3	mousefunc (99):  Hold returned normally
+        1.8992	Mouse_3	mousefunc (115):  Holds 4, releasing 4
+        1.8992	Mouse_3	mousefunc (122):  Holding, amount held: 0
+        1.9260	Mouse_1	mousefunc (99):  Hold returned normally
+        1.9260	Mouse_1	mousefunc (122):  Holding, amount held: 1
+        2.5697	Mouse_3	mousefunc (77):  Acquiring 3
+        3.1025	Mouse_1	mousefunc (77):  Acquiring 4
+        3.7215	Rat_2	ratfunc (151):  Preempting 6
+        3.7215	Mouse_4	mousefunc (86):  Preempted during acquire, all my Cheese is gone
+        3.7215	Mouse_1	mousefunc (86):  Preempted during acquire, all my Cheese is gone
+        4.2186	Mouse_1	mousefunc (99):  Hold returned normally
+        4.2186	Mouse_1	mousefunc (122):  Holding, amount held: 0
+        4.7152	Mouse_1	mousefunc (77):  Acquiring 5
+        4.8393	Cat_1	catfunc (224):  Chasing Mouse_1
+        4.8393	Cat_1	catfunc (221):  Awake, looking for rodents
+        4.8393	Mouse_1	mousefunc (92):  Interrupted by signal -2
+        5.3060	Cat_1	catfunc (224):  Chasing Mouse_4
+        5.3060	Cat_1	catfunc (221):  Awake, looking for rodents
+        5.3060	Mouse_4	mousefunc (109):  Interrupted by signal 20
+        5.3060	Mouse_4	mousefunc (122):  Holding, amount held: 0
+        5.8149	Mouse_1	mousefunc (99):  Hold returned normally
+        5.8149	Mouse_1	mousefunc (122):  Holding, amount held: 0
+        6.0788	Mouse_1	mousefunc (77):  Acquiring 4
+        6.1803	Rat_1	ratfunc (173):  Hold returned normally
+        6.1803	Rat_1	ratfunc (189):  Holds 8, releasing 3
+        6.1803	Rat_1	ratfunc (196):  Holding, amount held: 5
+
+
+...and so on. The interactions can get rather intricate, but hopefully intuitive:
+A ``cmb_resourestore_preempt()`` call will start from the lowest priority victim
+process and take *all* of its resource, but only if the victim has strictly lower
+priority than the caller. If the requested amount is not satisfied from the first
+victim, it will continue to the next lowest priority victim. If some amount is
+left over after taking everything the victim held, the resource guard is signalled
+to evaluate what process gets the remainder. If no potential victims with strictly
+lower priority than the caller process exists, the caller will join the priority
+queue and wait in line for some amount to become available.
+
+Cimba does not try to be "fair" or "optimal" in its resource allocation, just
+efficient and predictable. If the application needs different allocation rules,
+it can either adjust process priorities dynamically or create a derived class
+with a custom demand function.
+
+Real world uses
+^^^^^^^^^^^^^^^
+
+The example above was originally written as part of the Cimba unit test suite,
+to ensure that the library tracking of how many units each process holds from
+the resource store alwayse matches the expected values calculated here. Hence all
+the ``cmb_assert_debug(amount_held == cmb_resourcestore_held_by_process(sp, me));``
+statements. We wanted to make very sure that this is correct in all possible
+sequences of events, hence this frantic stress test.
+
+The preempt and interrupt mechanisms will be important in a range of real-world
+applications, ranging from hospital emergency room triage operations to manufacturing
+job shops and machine breakdown processes. Together with hold, acquire/release,
+put/get, the condition variables, and the ability for processes to wait for
+specific events and for other processes to finish, Cimba provides a comprehensive
+set of process interactions.
+
+Building, validating, and parallelizing the simulation will follow the same
+pattern as in our two first tutorials, so we will not repeat that here.
+
+This completes our third tutorial, demonstrating how to use direct process
+interactions like ``cmb_process_interrupt()`` and ``cmb_resourcestore_preempt()``.
+We have mentioned, but not demonstrated ``cmb_process_wait_process()``
+and ``cmb_process_wait_event()``. We encourage you to look up these in the
+API reference documentation next. Any remaining question may best be answered by
+reading the relevant source code.
