@@ -127,8 +127,7 @@ This is then combined with extensive unit testing of each module, ensuring that
 all lower level functionality works as expected before moving on to higher levels. 
 You will find the test files corresponding to each code module in the `test` directory.
 
-We are of course totally biased, by "well engineered", we mean somewhere 
-between "industrial strength" and "mil spec" code.
+But do read the [LICENSE](LICENSE). We do not give any warranties here.
 
 ### Object oriented? In C17 and assembly? Why not just use C++?
 Long story made short: C++ exception handling is not very friendly to the stackful 
