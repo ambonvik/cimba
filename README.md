@@ -27,8 +27,8 @@ It is powerful, fast, reliable, and free.
 
 * *Powerful*: Cimba provides a comprehensive toolkit for discrete event simulation:
 
-  * Support for both process- and event-based simulationworldviews, and combinations
-    of the two.
+  * Support for both process- and event-based simulation world views, and 
+    combinations of the two.
   
   * Pre-packaged process interaction mechanisms like resources,
     resource stores, buffers, object queues, and even condition variables where
@@ -51,8 +51,7 @@ It is powerful, fast, reliable, and free.
 * *Reliable*: Cimba is well engineered, self-contained open source. There is no
   mystery to the results you get. Each simulated world sits inside its own thread.
 
-* *Free*: Cimba is free open source and should fit well into the budget of most 
-  research groups.
+* *Free*: Cimba should fit well into the budget of most research groups.
 
 ### What can I use Cimba for?
 It is a general purpose discrete event library, in the general spirit of a
@@ -65,8 +64,9 @@ It is a general purpose discrete event library, in the general spirit of a
 * as a wrapper for multi-threading concurrency on a modern multicore computer,
 * or as a mix of all of the above.
 
-See [test_condition.c](test/test_condition.c) for an illustration of the modeling
-expressiveness and [test_cimba.c](test/test_cimba.c) for the multithreading.
+See the tutorial examples at [tut_1_7.c](tutorial/tut_1_7.c), 
+[tut_2_2.c](tutorial/tut_2_2.c), and [tut_3_1.c](tutorial/tut_3_1.c) for 
+illustrations of both model expressiveness and multithreading.
 
 If you look under the hood, you will also find reuseable internal components
 like stackful coroutines doing their own thing on thread-safe cactus stacks,
@@ -74,8 +74,9 @@ fast memory pool allocators for generic small objects, and sophisticated data
 structures like hash-heaps combining a binary heap and an open adressing hash
 map with fibonacci hashing for fast access to various objects. These are not
 part of the public Cimba API, but are used internally and part of the codebase.
-See [test_condition.c](test/test_condition.c) for an example of how these can
-be used in your model code (but please read the relevant source code first).
+See [tut_2_2.c](tutorial/tut_2_2.c) for one example of how these can
+be used in your model code (but please read the relevant source code before
+using any Cimba internal functions in your own code).
 
 ### So, exactly how fast is it?
 The experiment in [test_cimba.c](test/test_cimba.c) simulates a M/G/1 queue at
