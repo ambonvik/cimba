@@ -364,7 +364,7 @@ static inline double cmb_random_erlang(const unsigned k, const double m)
  *
  * See also https://en.wikipedia.org/wiki/Hypoexponential_distribution
  */
-static inline double cmb_random_hypoexponential(const unsigned n, const double ma[n])
+static inline double cmb_random_hypoexponential(const unsigned n, const double *ma)
 {
     cmb_assert_release(n > 0);
     cmb_assert_release(ma != NULL);
@@ -394,8 +394,8 @@ static inline double cmb_random_hypoexponential(const unsigned n, const double m
  * See also https://en.wikipedia.org/wiki/Hyperexponential_distribution
  */
 extern double cmb_random_hyperexponential(unsigned n,
-                                          const double ma[n],
-                                          const double pa[n]);
+                                          const double *ma,
+                                          const double *pa);
 
 /**
  * @brief Gamma distribution on `[0, oo)` with shape parameter `shape`, where
@@ -799,7 +799,8 @@ static inline long cmb_random_dice(const long a, const long b)
 {
     cmb_assert (a < b);
 
-    return (long)(floor((double)(a + (b - a + 1) * cmb_random())));
+    const double x = (double)(b - a + 1) * cmb_random();
+    return (long)(floor((double)a + x));
 }
 
 /**
@@ -818,8 +819,11 @@ static inline long cmb_random_dice(const long a, const long b)
  * See the implementations of the normal and exponential distributions in
  * `cmb_random.c` for an example of alias sampling from a table of values.
  *
+ * @param n Number of entries
+ * @param pa The probabilties for each of the entries, array size ``n``
+ *
  */
-extern unsigned cmb_random_loaded_dice(unsigned n, const double pa[n]);
+extern unsigned cmb_random_loaded_dice(unsigned n, const double *pa);
 
 /**
  * @brief Alias table using integer encoding of the probabilities for fast
@@ -841,14 +845,14 @@ struct cmb_random_alias {
  * finished.
  *
  * @param n Number of entries
- * @param pa The probabilties for each of the entries
+ * @param pa The probabilties for each of the entries, array size ``n``
  *
  * @return Pointer to an allocated and initialized `cmb_random_alias` look-up
  *         table.
  */
 
 extern struct cmb_random_alias *cmb_random_alias_create(unsigned n,
-                                                        const double pa[n]);
+                                                        const double *pa);
 
 /**
  * @brief Perform  alias sampling, more efficient way of sampling a non-uniform

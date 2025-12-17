@@ -1,0 +1,17 @@
+.rst-content tt.literal, .rst-content code.literal {
+    color: #2c3e50 !important;
+    background: #f3f6f6 !important;
+    border: 1px solid #e1e4e5 !important;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 95%;
+    padding: 0px 3px;
+    border-radius: 3px;
+    vertical-align: -40%;
+    display: inline-block;
+    line-height: 1.0;
+}
+
+.rst-content code-literal .xref {
+    color: #2980b9 !important;
+    font-weight: bold;
+}

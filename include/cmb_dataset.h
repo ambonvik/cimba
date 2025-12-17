@@ -238,7 +238,7 @@ extern void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
  * @brief Print the raw data values in a single column.
  *
  * @param dsp Pointer to a dataset object.
- * @param fp A valid file pointer, possibly `stdout`
+ * @param fp A valid file pointer, possibly ``stdout``
  */
 extern void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp);
 
@@ -251,45 +251,45 @@ extern void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp);
  */
 extern void cmb_dataset_ACF(const struct cmb_dataset *dsp,
                             unsigned n,
-                            double acf[]);
+                            double *acf);
 
 /**
  * @brief Calculate partial autocorrelation coefficients.
  *
  * The first and most time-consuming step in the algorithm is to calculate the
  * ACFs. If these already have been calculated, they can be given as the last
- * argument `acf[]`. If this argument is `NULL`, they will be calculated
+ * argument ``acf[]``. If this argument is ``NULL``, they will be calculated
  * directly from the dataset during the call.
  *
  * @param dsp Pointer to a dataset object.
  * @param n The highest lag value to calculate.
  * @param pacf The array where the pacf's will be stored, size ``n + 1``
  * @param acf Array of ACF's if already calculated, size ``n + 1``,
- *            otherwise `NULL`.
+ *            otherwise ``NULL``
  */
 extern void cmb_dataset_PACF(const struct cmb_dataset *dsp,
                              unsigned n,
-                             double pacf[],
-                             double acf[]);
+                             double *pacf,
+                             double *acf);
 
 /**
  * @brief Print a simple correlogram of the autocorrelation coefficients
  * previously calculated, either ACFs or PACFs.
  *
- * If the data vector `acf[]` is `NULL`, ACFs will be calculated directly from
- * the dataset by calling `cmb_dataset_ACF.
+ * If the data vector ``acf[]`` is ``NULL``, ACFs will be calculated directly from
+ * the dataset by calling ``cmb_dataset_ACF``.
  *
- * To print PACFs, give a vector of PACFs as the `acf` argument.
+ * To print PACFs, give a vector of PACFs as the ``acf`` argument.
  *
  * @param dsp Pointer to a dataset object.
- * @param fp A valid file pointer, possibly `stdout`
+ * @param fp A valid file pointer, possibly ``stdout``
  * @param n The highest lag value to calculate.
  * @param acf The array where the acf's will be stored size ``n + 1``
  */
 extern void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
                                           FILE *fp,
                                           unsigned n,
-                                          double acf[]);
+                                          double *acf);
 
 
 #endif /* CIMBA_CMB_DATASET_H */

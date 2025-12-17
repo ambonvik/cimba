@@ -554,7 +554,9 @@ void cmb_process_interrupt(struct cmb_process *pp,
     cmb_logger_info(stdout, "Interrupt %s signal %" PRIi64 " priority %" PRIi64,
                     pp->name, sig, pri);
 
+    /* Take it to a known consistent state before scheduling event to resume */
     stop_waiting(pp);
+
     const double t = cmb_time();
     (void)cmb_event_schedule(proc_intrpt_evt, pp, (void *)sig, t, pri);
 }
@@ -607,7 +609,9 @@ void cmb_process_stop(struct cmb_process *pp, void *retval)
     cmb_assert_debug(pp != NULL);
     cmb_logger_info(stdout, "Stop %s value %p", pp->name, retval);
 
+    /* Take it to a known consistent state before scheduling event to stop */
     stop_waiting(pp);
+
     const int64_t pri = pp->priority;
     const double t = cmb_time();
     (void)cmb_event_schedule(proc_stop_evt, pp, retval, t, pri);

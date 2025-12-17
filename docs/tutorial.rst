@@ -7,14 +7,14 @@ Our first simulation - M/M/1 queue
 ------------------------------------
 
 In this section, we will walk through the development of a simple model from
-connecting basic entities and interactions to parallelizing the model on all available
-CPU cores and producing presentation-ready output.
+connecting basic entities and interactions to parallelizing the model on all
+available CPU cores and producing presentation-ready output.
 
 Our first simulated system is a M/M/1 queue. In queuing theory (Kendall)
-notation, this abbreviation indicates a queuing system where the arrival process is memoryless
-with exponentially distributed intervals, the service process is the same, there is
-only one server, and the queue has unlimited capacity. This is a mathematically
-well understood system.
+notation, this abbreviation indicates a queuing system where the arrival process
+is memoryless with exponentially distributed intervals, the service process is
+the same, there is only one server, and the queue has unlimited capacity. This
+is a mathematically well understood system.
 
 The simulation model will verify if the well-known formula for expected
 queue length is correct (or vice versa).
@@ -69,12 +69,12 @@ arrive if there are none waiting), generates a random service time with mean 1.0
 holds for the service time, and does it all over again. An average arrival rate
 of 0.75 and service rate of 1.0 gives the 0.75 utilization we wanted.
 
-Note that the number of customers to ``put`` or ``get`` is given as a pointer to a variable
-containing the number, not just a value. In more complex scenarios than this, the
-process may encounter a partially completed put or get, and we need a way to capture
-the actual state in these cases. For now, just note that the amount argument to
-``cmb_buffer_put()`` and ``cmb_buffer_get()`` is a pointer to an unsigned 64-bit integer
-variable.
+Note that the number of customers to ``put`` or ``get`` is given as a pointer to
+a variable containing the number, not just a value. In more complex scenarios
+than this, the process may encounter a partially completed put or get, and we
+need a way to capture the actual state in these cases. For now, just note that
+the amount argument to ``cmb_buffer_put()`` and ``cmb_buffer_get()`` is a
+pointer to an unsigned 64-bit integer variable.
 
 The process function signature is a function returning a pointer to void (i.e. a
 raw address to anything). It takes two arguments, the first one a pointer to a
@@ -82,10 +82,10 @@ cmb_process (itself), the second a pointer to void that gives whatever context
 the process needs to execute. For now, we only use the context pointer as a
 pointer to the queue, and do not use the ``me`` pointer or the return value.
 
-Note also that all Cimba functions used here start with ``cmb_``, indicating that they
-belong in the namespace of things in the simulated world. There are functions
-from three Cimba modules here, ``cmb_process``, ``cmb_buffer``, and ``cmb_random``. We will
-encounter other namespaces and modules soon.
+Note also that all Cimba functions used here start with ``cmb_``, indicating
+that they belong in the namespace of things in the simulated world. There are
+functions from three Cimba modules here, ``cmb_process``, ``cmb_buffer``, and
+``cmb_random``. We will encounter other namespaces and modules soon.
 
 We also need a main function to set it all up, run the simulation, and clean up
 afterwards. Let us try this:
@@ -137,8 +137,8 @@ Next, it creates and initializes the ``cmb_buffer``, naming it "Queue" and setti
 it to unlimited size.
 
 After that, it creates, initializes, and starts the arrival and service processes.
-They get a pointer to the newly created ``cmb_buffer`` as their context argument, and
-the event queue is ready, so they can just start immediately.
+They get a pointer to the newly created ``cmb_buffer`` as their context argument,
+and the event queue is ready, so they can just start immediately.
 
 Notice the pattern here: Objects are first *created*, then *initialized* in a
 separate call. The create method allocates heap memory for the object, the initialize
@@ -1933,7 +1933,7 @@ priority queue maintained by the resource guard, asking to be woken whenever som
 more is available, intending to return from its acquire call only when all 10
 units have been collected.
 
-There are now three different outcomes:
+There are now three different outcomes for the acquire call:
 
 1. All goes as expected, 5 more units eventually become available, the process
    takes them, and returns ``CMB_PROCESS_SUCCESS``. It now holds 20 units.
@@ -1951,7 +1951,13 @@ There are now three different outcomes:
    call and returns holding the same amount as it held before
    calling ``cmb_resourcestore_acquire()``, 10 units.
 
-Suppose a process holds more than one type of resource, for example:
+Preempt calls can themselves be preempted by higher priority processes or
+interrupted in the same way as acquire calls if the preempt was not immediately
+fulfilled and the process had to wait at the resource guard. Once there, it is
+fair game for preempts and interrupts.
+
+Another potential complexity: Suppose a process holds more than one type of
+resource, for example:
 
 .. code-block:: c
 
@@ -1972,19 +1978,48 @@ does not have a pointer to itself handy (it is always the first argument to the
 process function), it can get one by calling ``cmb_process_get_current()``,
 returning a pointer to the currently executing process, i.e. the caller.
 
+Buffers and object queues, interrupted
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The semantics of buffers and object queues are different from the resources
+resource stores. A process can acquire and hold a resource, making it unavailable
+for other processes until it is released. Preempting it naturally means taking
+the resource away from the process because someone else needs it more, right now.
+
+Buffers and their cousins are not like that. Once something is put in, other
+processes can get it and consume it immediately. Preempting a put or get operation
+does not have any obvious meaning. If a buffer is empty, a process get call is waiting
+at the resource guard, and a higher priority process wants to get some first, it
+just calls ``cmb_buffer_get()`` and goes first in the priority queue.
+
+However, waiting puts and gets can still be interrupted. For the ``cmb_objectqueue``,
+it is very simple. If the ``cmb_objectqueue_put()`` (or ``_get()``) call
+returned ``CMB_PROCESS_SUCCESS`` the object was successfully added to the queue.
+If it returned anything else, it was not.
+
+The ``cmb_buffer`` is similarly intuitive. Recall from our first tutorial that
+the amount argument is given as a pointer to a variable, not as a value. As
+the put and get calls get underway, the value at this location gets updated to
+reflect the progress. If interrupted, this value indicates how much was placed
+or obtained. The call returns at this point with no attempt to roll back to the
+state at the beginning of the call. If successful, the put call will have a
+zero value in this location, the get call will have the requested amount. If not,
+there will be some other value between zero and the requested amount.
+
 ...the Mice will Play
 ^^^^^^^^^^^^^^^^^^^^^
 
 It is again probably easier to demonstrate with code than explain in computer
 sciencey terms how all this works.
 
-On a table, we have some pieces of cheese in a pile. There are five mice trying to
-collect the cheese and hold it for a while. They tend to drop it again quite fast,
-inefficient hoarders as they are. Unfortunately, there are also three
+On a table, we have some pieces of cheese in a pile. There are several mice
+trying to collect the cheese and hold it for a while. Each mouse can carry
+different numbers of cheese cubes. They tend to drop it again quite fast,
+inefficient hoarders as they are. Unfortunately, there are also some
 rats, bigger and stronger than the mice. The rats will preempt the cheese from
-the mice, but only if the rat has higher priority there and then. Otherwise, the
-rat will politely wait its turn. There is also one cat. It sleeps a lot, but
-when awake, it will select a random rodent and interrupt whatever it is doing.
+the mice, but only if the rat has higher priority. Otherwise, the rat will
+politely wait its turn. There is also a cat. It sleeps a lot, but when awake,
+it will select random rodents and interrupt whatever it is doing.
 
 Since we do not plan to run any statistics here, we simplify the context struct
 to just contain the simulation struct. We can then write something like:

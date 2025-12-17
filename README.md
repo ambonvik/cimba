@@ -5,24 +5,27 @@
 ### What is it?
 A very fast discrete event simulation library written in C and assembly for
 both Linux and Windows on x86-64 architectures, providing process- and 
-event-oriented simulated worldviews combined with multithreaded coarse-trained 
+event-oriented simulated world views combined with multithreaded coarse-trained 
 parallelism for high performance on modern CPUs.
 
-Parallelizing discrete event simulation is both a very hard and a trivially simple
-problem, depending on the way you look at it. Parallelizing a single simulation
-run is near impossible, since all events and processes inside the simulated 
-world depend on a shared time variable and cannot race ahead. 
-Luckily, we never run only a single simulation
-run, but a possibly large experiment consisting of many trials (replications and
-parameter combinations) to generate statistical results. These trials are _intended_
+Parallelizing discrete event simulation is both a very hard and a trivially 
+simple problem, depending on the way you look at it. Parallelizing a single 
+simulation run is near impossible, since all events and processes inside the 
+simulated world depend on a shared time variable and cannot race ahead.
+
+Luckily, we almost never run only a _single_ simulation run, but a possibly 
+large experiment consisting of many trials (replications and parameter 
+combinations) to generate statistical results. These trials are _intended_
 to be independent trials, making them near-trivial to parallellize by simply
-running them all at the same time, or at least running as many as you have CPU cores
-available for. Which is what Cimba does.
+running them all at the same time, or at least running as many as you have CPU 
+cores available for.
+
+Which is what Cimba does.
 
 ### Why should I use it?
 It is powerful, fast, reliable, and free.
 
-* Cimba provides a comprehensive toolkit for discrete event simulation:
+* *Powerful*: Cimba provides a comprehensive toolkit for discrete event simulation:
 
   * Support for both process- and event-based simulationworldviews, and combinations
     of the two.
@@ -36,18 +39,20 @@ It is powerful, fast, reliable, and free.
     of academically important and more empirically oriented types. See
     [cmb_random.h](include/cmb_random.h)
   
-  * Ppowerful logging and data collection features that makes it easy
+  * Integrated logging and data collection features that makes it easy
     to get a model running and understand what is happening inside it.
 
-* The speed from multithreaded parallel execution translates to high resolution 
-  in your simulation modelling. You can run hundreds of replications and parameter 
-  variations in just a few seconds, generating tight confidence intervals in your 
-  experiments and high density of data points along parameter variations.
+* *Fast*: The speed from multithreaded parallel execution translates to high 
+  resolution in your simulation modelling. You can run hundreds of replications 
+  and parameter variations in just a few seconds, generating tight confidence 
+  intervals in your experiments and high density of data points along parameter 
+  variations.
 
-* Cimba is well engineered, self-contained open source. There is no mystery to the 
-  results you get. Each simulated world sits inside its own thread.
+* *Reliable*: Cimba is well engineered, self-contained open source. There is no
+  mystery to the results you get. Each simulated world sits inside its own thread.
 
-* Cimba is free and should fit well into the budget of most research groups.
+* *Free*: Cimba is free open source and should fit well into the budget of most 
+  research groups.
 
 ### What can I use Cimba for?
 It is a general purpose discrete event library, in the general spirit of a

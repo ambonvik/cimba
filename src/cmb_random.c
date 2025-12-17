@@ -275,8 +275,8 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x)
  * select the distribution instead of using this function.
  */
 double cmb_random_hyperexponential(const unsigned n,
-                                   const double ma[n],
-                                   const double pa[n])
+                                   const double ma[],
+                                   const double pa[])
 {
     cmb_assert_release(n > 0u);
     cmb_assert_release(ma != NULL);
@@ -624,7 +624,7 @@ static bool sums_to_one(const unsigned n, const double p[n])
 }
 #endif /* ifndef NASSERT */
 
-unsigned cmb_random_loaded_dice(const unsigned n, const double pa[n])
+unsigned cmb_random_loaded_dice(const unsigned n, const double *pa)
 {
     cmb_assert_release(n > 0);
     cmb_assert_release(pa != NULL);
@@ -671,7 +671,7 @@ static inline uint64_t alias_secure(const double p)
 
 /* Create alias lookup table before sampling */
 struct cmb_random_alias *cmb_random_alias_create(const unsigned n,
-                                                 const double pa[n]) {
+                                                 const double *pa) {
     cmb_assert_release(n > 0);
     cmb_assert_release(sums_to_one(n, pa));
 

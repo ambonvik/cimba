@@ -8,8 +8,8 @@ if doxygen.found() and sphinx.found()
     cdata.set('PROJECT_NAME', meson.project_name())
     cdata.set('VERSION', meson.project_version())
     cdata.set('OUTPUT_DIR', join_paths(meson.project_build_root(), 'docs'))
-    cdata.set('PROJECT_SOURCE_DIR', meson.project_source_root())
-    cdata.set('PROJECT_BUILD_DIR', meson.project_build_root())
+    cdata.set('SOURCE_ROOT', meson.project_source_root())
+    cdata.set('BUILD_ROOT', meson.project_build_root())
 
     doxyfile = configure_file(
         input : 'Doxyfile.in',
@@ -35,6 +35,7 @@ if doxygen.found() and sphinx.found()
                  'getting_started.rst',
                  'welcome.rst',
                  'tutorial.rst',
+                 'static/custom.css',
                  conf_py],
         output : 'html',
         command : [sphinx, '-b', 'html',

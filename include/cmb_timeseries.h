@@ -270,7 +270,7 @@ extern void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp);
  */
 static inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp,
                                       const uint16_t n,
-                                      double acf[])
+                                      double *acf)
 {
     cmb_assert_release(tsp != NULL);
 
@@ -293,8 +293,8 @@ static inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp,
  */
 static inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
                                        const uint16_t n,
-                                       double pacf[],
-                                       double acf[])
+                                       double *pacf,
+                                       double *acf)
 {
     cmb_assert_release(tsp != NULL);
 
@@ -320,7 +320,7 @@ static inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
 static inline void cmb_timeseries_print_correlogram(const struct cmb_timeseries *tsp,
                                              FILE *fp,
                                              const uint16_t n,
-                                             double acf[])
+                                             double *acf)
 {
     cmb_assert_release(tsp != NULL);
 
