@@ -26,6 +26,35 @@
 #define USERFLAG1 0x00000001
 #define USERFLAG2 0x00000002
 
+/* Sizes of arrays to be initialized */
+#define N_SCENARIOS 3u
+#define N_PARAMS    4u
+#define N_LEVELS    5u
+#define N_SIZES     2u
+#define N_REPS      10u
+
+/*
+ * Baseline parameters - can be global because const and because only used
+ * outside the multithreading when loading the experiment array with trials.
+ */
+const double mean_wind = 5.0;
+const double arrival_rate[N_SCENARIOS] = { 0.5, 0.55, 0.625 };
+const double percent_large = 0.25;
+const double ref_depth[N_LEVELS] = { 15.0, 15.5, 16.0, 16.5, 17.0 };
+const unsigned num_tugs[N_LEVELS] = { 10u, 11u, 12u, 13u, 14u };
+const unsigned num_berths[N_SIZES][N_LEVELS] = { { 6, 7, 8, 9, 10 },
+                                                 { 3, 4, 5, 6, 7 } };
+const double unloading_time_avg[N_SIZES] = { 8.0, 12.0 };
+
+const double warmup_time = 24.0 * 30;
+const double duration = 24.0 * 7 * 52 * 10;
+
+/* This implicitly assumes that N_SIZES == 2 */
+enum ship_size {
+    SMALL = 0,
+    LARGE
+};
+
 /* Our simulateed world consists of these entities. */
 struct simulation {
     /* Environmental processes */
@@ -88,11 +117,6 @@ struct context {
     struct simulation *sim;
     struct environment *env;
     struct trial *trl;
-};
-
-enum ship_size {
-    SMALL = 0,
-    LARGE
 };
 
 /* A ship is a derived class from cmb_process */
@@ -469,7 +493,7 @@ void run_trial(void *vtrl)
     cmb_logger_user(stdout, USERFLAG2, "seed: 0x%016" PRIx64, trlp->seed_used);
 
     /* Create and initialize the statistics collectors */
-    for (int i = 0; i < 2; i++) {
+    for (unsigned i = 0; i < N_SIZES; i++) {
         sim.time_in_system[i] = cmb_dataset_create();
         cmb_dataset_initialize(sim.time_in_system[i]);
         trlp->avg_time_in_system[i] = 0.0;
@@ -488,7 +512,7 @@ void run_trial(void *vtrl)
     cmb_resource_initialize(sim.comms, "Comms");
     sim.tugs = cmb_resourcestore_create();
     cmb_resourcestore_initialize(sim.tugs, "Tugs", trlp->num_tugs);
-    for (int i = 0; i < 2; i++) {
+    for (unsigned i = 0; i < N_SIZES; i++) {
         sim.berths[i] = cmb_resourcestore_create();
         cmb_resourcestore_initialize(sim.berths[i],
             ((i == 0)? "Small berth" : "Large berth"),
@@ -499,7 +523,7 @@ void run_trial(void *vtrl)
     sim.harbormaster = cmb_condition_create();
     cmb_condition_initialize(sim.harbormaster, "Harbormaster");
     cmb_resourceguard_register(&(sim.tugs->guard), &(sim.harbormaster->guard));
-    for (int i = 0; i < 2; i++) {
+    for (unsigned i = 0; i < N_SIZES; i++) {
         cmb_resourceguard_register(&(sim.berths[i]->guard), &(sim.harbormaster->guard));
     }
 
@@ -531,14 +555,14 @@ void run_trial(void *vtrl)
     cmb_event_queue_execute();
 
     /* Report statistics, using built-in history statistics for the resources */
-    for (int i = 0; i < 2; i++) {
+    for (unsigned i = 0; i < N_SIZES; i++) {
         struct cmb_datasummary dsumm;
         cmb_dataset_summarize(sim.time_in_system[i], &dsumm);
         trlp->avg_time_in_system[i] = cmb_datasummary_mean(&dsumm);
     }
 
     /* Clean up */
-    for (int i = 0; i < 2; i++) {
+    for (unsigned i = 0; i < N_SIZES; i++) {
         cmb_dataset_destroy(sim.time_in_system[i]);
         cmb_resourcestore_destroy(sim.berths[i]);
     }
@@ -556,45 +580,26 @@ void run_trial(void *vtrl)
 
 void write_gnuplot_commands(void);
 
-/* Workaround for compilers disliking initialized "variable" length arrays */
-#define n_scenarios 3u
-#define n_params    4u
-#define n_levels    5u
-#define n_reps      10u
-
 int main(void)
 {
     printf("Cimba version %s\n", cimba_version());
     struct timespec start_time;
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
-    /* Baseline parameters */
-    const double mean_wind = 5.0;
-    const double arrival_rate[n_scenarios] = { 0.5, 0.55, 0.625 };
-    const double percent_large = 0.25;
-    const double ref_depth[n_levels] = { 15.0, 15.5, 16.0, 16.5, 17.0 };
-    const unsigned num_tugs[n_levels] = { 10u, 11u, 12u, 13u, 14u };
-    const unsigned num_berths[2][n_levels] = { { 6, 7, 8, 9, 10 },
-                                               { 3, 4, 5, 6, 7 } };
-    const double unloading_time_avg[2] = { 8.0, 12.0 };
-
-    const double warmup_time = 24.0 * 30;
-    const double duration = 24.0 * 7 * 52 * 10;
-
     printf("Setting up experiment\n");
-    const unsigned n_trials = n_scenarios * n_params * n_levels * n_reps;
+    const unsigned n_trials = N_SCENARIOS * N_PARAMS * N_LEVELS * N_REPS;
     struct trial *experiment = calloc(n_trials, sizeof(*experiment));
     cmb_assert_release(experiment != NULL);
 
     unsigned ui_trl = 0u;
-    for (unsigned ui_sc = 0u; ui_sc < n_scenarios; ui_sc++) {
+    for (unsigned ui_sc = 0u; ui_sc < N_SCENARIOS; ui_sc++) {
         const double sc_arr_rate = arrival_rate[ui_sc];
 
         /* Varying the dredging levels */
-        for (unsigned ui_dr = 0; ui_dr < n_levels; ui_dr++) {
+        for (unsigned ui_dr = 0; ui_dr < N_LEVELS; ui_dr++) {
             const double lvl_dr = ref_depth[ui_dr];
             /* The replications, everything else baseline */
-            for (unsigned ui_rp = 0u; ui_rp < n_reps; ui_rp++) {
+            for (unsigned ui_rp = 0u; ui_rp < N_REPS; ui_rp++) {
                 experiment[ui_trl].mean_wind = mean_wind;
                 experiment[ui_trl].reference_depth = lvl_dr;
                 experiment[ui_trl].arrival_rate = sc_arr_rate;
@@ -613,10 +618,10 @@ int main(void)
         }
 
         /* Varying the number of tugboats */
-        for (unsigned ui_nt = 0; ui_nt < n_levels; ui_nt++) {
+        for (unsigned ui_nt = 0; ui_nt < N_LEVELS; ui_nt++) {
             const unsigned lvl_ntugs = num_tugs[ui_nt];
             /* The replications, everything else baseline */
-            for (unsigned ui_rp = 0u; ui_rp < n_reps; ui_rp++) {
+            for (unsigned ui_rp = 0u; ui_rp < N_REPS; ui_rp++) {
                 experiment[ui_trl].mean_wind = mean_wind;
                 experiment[ui_trl].reference_depth = ref_depth[0];
                 experiment[ui_trl].arrival_rate = sc_arr_rate;
@@ -635,10 +640,10 @@ int main(void)
         }
 
         /* Varying the number of small berths */
-        for (unsigned ui_nsb = 0; ui_nsb < n_levels; ui_nsb++) {
+        for (unsigned ui_nsb = 0; ui_nsb < N_LEVELS; ui_nsb++) {
             const unsigned lvl_nsb = num_berths[SMALL][ui_nsb];
             /* The replications, everything else baseline */
-            for (unsigned ui_rp = 0u; ui_rp < n_reps; ui_rp++) {
+            for (unsigned ui_rp = 0u; ui_rp < N_REPS; ui_rp++) {
                 experiment[ui_trl].mean_wind = mean_wind;
                 experiment[ui_trl].reference_depth = ref_depth[0];
                 experiment[ui_trl].arrival_rate = sc_arr_rate;
@@ -657,10 +662,10 @@ int main(void)
         }
 
         /* Varying the number of large berths */
-        for (unsigned ui_nlb = 0; ui_nlb < n_levels; ui_nlb++) {
+        for (unsigned ui_nlb = 0; ui_nlb < N_LEVELS; ui_nlb++) {
             const unsigned lvl_nlb = num_berths[LARGE][ui_nlb];
             /* The replications, everything else baseline */
-            for (unsigned ui_rp = 0u; ui_rp < n_reps; ui_rp++) {
+            for (unsigned ui_rp = 0u; ui_rp < N_REPS; ui_rp++) {
                 experiment[ui_trl].mean_wind = mean_wind;
                 experiment[ui_trl].reference_depth = ref_depth[0];
                 experiment[ui_trl].arrival_rate = sc_arr_rate;
@@ -687,9 +692,9 @@ int main(void)
     ui_trl = 0u;
     FILE *datafp = fopen("tut_2_2.dat", "w");
     fprintf(datafp, "# arr_rate\tref_depth\tn_tg\tn_bts\tn_btl\tavg_t_small\tci_t_small\tavg_t_large\tci_t_small\n");
-    for (unsigned ui_sc = 0u; ui_sc < n_scenarios; ui_sc++) {
+    for (unsigned ui_sc = 0u; ui_sc < N_SCENARIOS; ui_sc++) {
         /* Dredging levels */
-        for (unsigned ui_dr = 0; ui_dr < n_levels; ui_dr++) {
+        for (unsigned ui_dr = 0; ui_dr < N_LEVELS; ui_dr++) {
             double smpl_arr = experiment[ui_trl].arrival_rate;
             double smpl_refdep = experiment[ui_trl].reference_depth;
             unsigned smpl_ntugs = experiment[ui_trl].num_tugs;
@@ -700,7 +705,7 @@ int main(void)
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-            for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
                 cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
                 cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 ui_trl++;
@@ -723,7 +728,7 @@ int main(void)
         fprintf(datafp, "\n\n");
 
         /* Number of tugs */
-        for (unsigned ui_nt = 0; ui_nt < n_levels; ui_nt++) {
+        for (unsigned ui_nt = 0; ui_nt < N_LEVELS; ui_nt++) {
             double smpl_arr = experiment[ui_trl].arrival_rate;
             double smpl_refdep = experiment[ui_trl].reference_depth;
             unsigned smpl_ntugs = experiment[ui_trl].num_tugs;
@@ -734,7 +739,7 @@ int main(void)
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-            for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
                 cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
                 cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 ui_trl++;
@@ -757,7 +762,7 @@ int main(void)
         fprintf(datafp, "\n\n");
 
         /* Number of small berths */
-        for (unsigned ui_nsb = 0; ui_nsb < n_levels; ui_nsb++) {
+        for (unsigned ui_nsb = 0; ui_nsb < N_LEVELS; ui_nsb++) {
             double smpl_arr = experiment[ui_trl].arrival_rate;
             double smpl_refdep = experiment[ui_trl].reference_depth;
             unsigned smpl_ntugs = experiment[ui_trl].num_tugs;
@@ -768,7 +773,7 @@ int main(void)
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-            for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
                 cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
                 cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 ui_trl++;
@@ -791,7 +796,7 @@ int main(void)
         fprintf(datafp, "\n\n");
 
         /* Number of large berths */
-        for (unsigned ui_nlb = 0; ui_nlb < n_levels; ui_nlb++) {
+        for (unsigned ui_nlb = 0; ui_nlb < N_LEVELS; ui_nlb++) {
             double smpl_arr = experiment[ui_trl].arrival_rate;
             double smpl_refdep = experiment[ui_trl].reference_depth;
             unsigned smpl_ntugs = experiment[ui_trl].num_tugs;
@@ -802,7 +807,7 @@ int main(void)
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-            for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
                 cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
                 cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 ui_trl++;
