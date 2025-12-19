@@ -106,7 +106,7 @@ derived subclass from a `cmi_coroutine`, inheriting all its methods and members.
 
 We distinguish between "is a" (inheritance) and "has a" (composition) relationships.
 For example, a `cmb_resource` _is a_ `cmi_holdable`, which _is a_ `cmi_resourcebase`
-(a virtual base class), while it _has a_ `cmi_resourceguard` maintaining an orderly
+(a virtual base class), while it _has a_ `cmb_resourceguard` maintaining an orderly
 priority queue of waiting processes, where the `cmi_resourceguard` itself _is a_ 
 `cmi_hashheap`. Each class of objects has allocator, constructor, destructor, and
 de-allocator functions for an orderly object lifecycle, and where derived classes
@@ -134,7 +134,7 @@ Long story made short: C++ exception handling is not very friendly to the stackf
 coroutines we need in Cimba. C++ coroutines are something entirely different.
 
 Also, C++ has become a very large and feature-rich language, where it will be
-hard to guarantee compatibility with every possible combination of features.
+hard to ensure compatibility with every possible combination of features.
 
 Hence (like the Linux kernel), we chose the simpler platform for speed, clarity,
 and reliability.
