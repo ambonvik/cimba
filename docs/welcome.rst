@@ -25,26 +25,34 @@ Which is what Cimba does.
 Why should I use Cimba?
 -----------------------
 
-* The speed and expressivity translates to high resolution in your simulation
+It is powerful, fast, reliable, and free.
+
+* *Powerful*: The speed and expressivity translates to high resolution in your simulation
   modelling. You can run hundreds of replications and parameter variations in
   a few seconds, generating tight confidence intervals in your experiments and
   high density of data points along parameter variations.
 
-* Cimba includes a wide range of fast, high quality random number generators, both
-  academically important and more empirically oriented types.
+    * Cimba includes a wide range of fast, high quality random number generators, both
+      academically important and more empirically oriented types.
 
-* Cimba provides pre-packaged process interaction mechanisms like resources,
-  resource stores, buffers, object queues, and even condition variables where
-  your simulated process can wait for arbitrarily complex conditions -
-  anything you can express as a function returning a binary true or false result.
+    * Cimba provides pre-packaged process interaction mechanisms like resources,
+      resource stores, buffers, object queues, and even condition variables where
+      your simulated process can wait for arbitrarily complex conditions -
+      anything you can express as a function returning a binary true or false result.
 
-* Cimba includes powerful logging and data collection features that makes it easy
-  to get a model running and understand what is happening inside it.
+    * Cimba includes powerful logging and data collection features that makes it easy
+      to get a model running and understand what is happening inside it.
 
-* Cimba is well engineered, self-contained open source. There is no mystery to the
-  results you get. Each simulated world sits inside its own thread.
+* *Fast*: The speed from multithreaded parallel execution translates to high
+  resolution in your simulation modelling. You can run hundreds of replications
+  and parameter variations in just a few seconds, generating tight confidence
+  intervals in your experiments and high density of data points along parameter
+  variations.
 
-* Cimba is free and should fit well into the budget of most research groups.
+* *Reliable*: Cimba is well engineered, self-contained open source. There is no mystery to
+  the results you get. Each simulated world sits inside its own thread.
+
+* *Free*: Cimba should fit well into the budget of most research groups.
 
 What can I use Cimba for?
 -------------------------
