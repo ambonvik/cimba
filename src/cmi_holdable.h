@@ -34,7 +34,7 @@
 
 #include <stdint.h>
 
-#include "../include/cmb_process.h"
+#include "cmb_process.h"
 #include "cmi_resourcebase.h"
 
 struct cmi_holdable;

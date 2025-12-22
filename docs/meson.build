@@ -32,7 +32,7 @@ if doxygen.found() and sphinx.found()
 
     custom_target('sphinx',
         input : ['index.rst',
-                 'getting_started.rst',
+                 'installation.rst',
                  'welcome.rst',
                  'tutorial.rst',
                  'static/custom.css',

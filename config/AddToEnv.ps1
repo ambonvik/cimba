@@ -1,4 +1,6 @@
-# scripts/setup_env.ps1
+# config/AddToEnv.ps1
+# Windows specific PowerShell script to set environment variables
+#
 param (
     [string]$InstallPrefix
 )
@@ -14,14 +16,15 @@ if (-not $InstallPrefix) {
 }
 
 $BinDir = Join-Path $InstallPrefix "bin"
-$IncDir = Join-Path $InstallPrefix "include"
+$IncDir = Join-Path $InstallPrefix "include\cimba"
+$IncIntDir = Join-Path $IncDir "internal"
 $LibDir = Join-Path $InstallPrefix "lib"
 
 function Add-To-Machine-Path {
     param ($VarName, $Value)
-    
+
     Write-Host "Checking $VarName..." -NoNewline
-    
+
     $Current = [Environment]::GetEnvironmentVariable($VarName, 'Machine')
     if ($null -eq $Current) { $Current = "" }
 
@@ -29,22 +32,18 @@ function Add-To-Machine-Path {
         Write-Host " Adding to System Environment." -ForegroundColor Green
         # Handle semi-colon logic
         if ($Current.Length -gt 0) { $NewVal = $Current + ";" + $Value } else { $NewVal = $Value }
-        
+
         [Environment]::SetEnvironmentVariable($VarName, $NewVal, 'Machine')
     } else {
         Write-Host " Already configured." -ForegroundColor Gray
     }
 }
 
-Write-Host "`n[Cimba Setup] Configuring Environment for: $InstallPrefix"
+Write-Host "`n[Cimba] Configuring Environment for: $InstallPrefix"
 
-# 1. Runtime Path (for DLLs)
 Add-To-Machine-Path "Path" $BinDir
-
-# 2. Compile Path (for headers)
 Add-To-Machine-Path "C_INCLUDE_PATH" $IncDir
-
-# 3. Link Path (for libs)
+Add-To-Machine-Path "C_INCLUDE_PATH" $IncIntDir
 Add-To-Machine-Path "LIBRARY_PATH" $LibDir
 
-Write-Host "`n[Done] You may need to restart your terminal.`n"
+Write-Host "`n[Done] You may need to restart your computer to make changes take effect.`n"

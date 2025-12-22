@@ -34,8 +34,8 @@
 
 #include <stdint.h>
 
-#include "../include/cmb_process.h"
-#include "../include/cmb_timeseries.h"
+#include "cmb_process.h"
+#include "cmb_timeseries.h"
 
 #include "cmi_memutils.h"
 
