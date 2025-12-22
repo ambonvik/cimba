@@ -89,27 +89,8 @@ void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp)
     return cp->exit_value;
 }
 
-static void get_stacklimits(unsigned char **top, unsigned char **bottom)
-{
-    cmb_assert_debug(top != NULL);
-    cmb_assert_debug(bottom != NULL);
-
-    pthread_attr_t attrs;
-    pthread_attr_init(&attrs);
-    int r = pthread_getattr_np(pthread_self(), &attrs);
-    cmb_assert_debug(r == 0);
-
-    void *stack_end;
-    size_t stack_size;
-    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
-    cmb_assert_debug(r == 0);
-
-    pthread_attr_destroy(&attrs);
-
-    *bottom = stack_end;
-    *top = (unsigned char *)stack_end + stack_size;
-    cmb_assert_debug(*top > *bottom);
-}
+/* System dependent, in port/x86-64/.../cmi_coroutine_context.c */
+extern void cmi_coroutine_get_stacklimits(unsigned char **top, unsigned char **bottom);
 
 /*
  * create_main : Helper function to set up the dummy main coroutine
@@ -127,9 +108,9 @@ static void create_main(void)
     coroutine_main->stack = NULL;
 
     /* Get current extent of main thread stack */
-    get_stacklimits(&(coroutine_main->stack_base), &(coroutine_main->stack_limit));
+    cmi_coroutine_get_stacklimits(&(coroutine_main->stack_base), &(coroutine_main->stack_limit));
 
-    /* Sttack pointer will be set first time we transfer out of it */
+    /* Stack pointer will be set the first time we transfer out of it */
     coroutine_main->stack_pointer = NULL;
 
     /* I am running, therefore I am */

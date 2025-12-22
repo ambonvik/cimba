@@ -25,11 +25,13 @@
 #include "cmi_coroutine.h"
 #include "cmi_memutils.h"
 
-/* Assembly function, see src/arc/cmi_coroutine_context_*.asm */
+/* Assembly functions, see src/port/x86-64/windows/cmi_coroutine_context_*.asm */
 extern void cmi_coroutine_trampoline(void);
+extern void *cmi_coroutine_get_stackbase(void);
+extern void *cmi_coroutine_get_stacklimit(void);
 
 /*
- * Windows-specific code to allocate and initializa stack for a new coroutine.
+ * Windows-specific code to allocate and initialize stack for a new coroutine.
  *
  * Populates the new stack with register values to be loaded when the
  * new coroutine gets activated for the first time. The context switch into
@@ -206,3 +208,20 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     /* That should be it, a valid stack frame ready to transfer into */
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 }
+
+/*
+ * Windows specific code to get top and bottom of current (main) stack,
+ * picking the addresses out of the Thread Information Block in assembly.
+ */
+void cmi_coroutine_get_stacklimits(unsigned char **top, unsigned char **bottom)
+{
+     cmb_assert_debug(top != NULL);
+     cmb_assert_debug(bottom != NULL);
+
+     *top = cmi_coroutine_get_stackbase();
+     *bottom = cmi_coroutine_get_stacklimit();
+
+     /* Stack grows downward in address space */
+     cmb_assert_debug(*top > *bottom);
+}
+
