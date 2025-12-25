@@ -23,6 +23,7 @@
 /*
  * Identify the processor architecture. So far, only AMD64/x86-64 supported.
  */
+#define AMD64 1
 #if (defined (__amd64__) || defined (__amd64) || defined (__x86_64__) || \
      defined (__x86_64) || defined (_M_X64) || defined (_M_AMD64))
   #define CMB_ARCH AMD64
@@ -33,6 +34,8 @@
 /*
  * Identify the operating system. So far, only Linux and Windows supported.
  */
+#define Linux 1
+#define Windows 2
 #if defined (__linux__) || defined (__linux) || defined (linux)
   #define CMB_OS Linux
 #elif defined (_WIN64) || defined (_WIN32) || defined (__WIN32__)
@@ -42,19 +45,17 @@
 #endif
 
 /*
- * Identify the compiler. So far, only gcc, Clang, and MSVC supported.
+ * Identify the compiler. So far, only GCC and Clang supported.
+ * Test for Clang first, in case it defines __GNUC__ for compatibility reasons.
  */
-
+#define GCC 1
+#define CLANG 2
 #if defined (__clang__)
   #define CMB_COMPILER CLANG
   #define CMB_THREAD_LOCAL _Thread_local
 #elif defined (__GNUC__)
   #define CMB_COMPILER GCC
   #define CMB_THREAD_LOCAL _Thread_local
-#elif defined (_MSC_VER)
-  #define CMB_COMPILER MSVC
-  #define CMB_THREAD_LOCAL __declspec(thread)
-  #define _USE_MATH_DEFINES
 #else
   #error "Compiler not yet supported."
 #endif

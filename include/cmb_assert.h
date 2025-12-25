@@ -26,6 +26,8 @@
 #ifndef CIMBA_CMB_ASSERT_H
 #define CIMBA_CMB_ASSERT_H
 
+#include "cmi_config.h"
+
 #ifndef NASSERT
     #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
         /**
