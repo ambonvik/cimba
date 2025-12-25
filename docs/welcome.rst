@@ -16,7 +16,7 @@ world depend on a shared time variable and cannot race ahead.
 Luckily, we almost never run only a single simulation
 run, but a possibly large experiment consisting of many trials (replications and
 parameter combinations) to generate statistical results. These trials are *intended*
-to be independent trials, making them near-trivial to parallellize by simply
+to be independent trials, making them near-trivial to parallelize by simply
 running them all at the same time, or at least running as many as you have CPU cores
 available for.
 
@@ -58,7 +58,7 @@ What can I use Cimba for?
 -------------------------
 
 It is a general purpose discrete event library, in the general spirit of a
-21st century decendant of Simula67. You can use it
+21st century descendant of Simula67. You can use it
 
 * as a collection of fast random number generators,
 
@@ -75,10 +75,10 @@ It is a general purpose discrete event library, in the general spirit of a
 See the tutorials for illustrations of both expressive power and multi-threaded
 computing power.
 
-If you look under the hood, you will also find reuseable internal components
+If you look under the hood, you will also find reusable internal components
 like stackful coroutines doing their own thing on thread-safe cactus stacks,
 fast memory pool allocators for generic small objects, and sophisticated data
-structures like hash-heaps combining a binary heap and an open adressing hash
+structures like hash-heaps combining a binary heap and an open addressing hash
 map with fibonacci hashing for fast access to various objects. These are not
 part of the public Cimba API, but are used internally and part of the codebase.
 See [test_condition.c](test/test_condition.c) for an example of how these can
@@ -91,6 +91,5 @@ It is right here. You simply clone the repository from https://github.com/ambonv
 build, and install it. You
 will need a C build chain and the Meson build manager. On Linux, you can use gcc
 or Clang, while the recommended approach on Windows is MinGW with its gcc
-compiler. Visual Studio and MVSC should also work, but has not yet been fully
-tested. For convenience, we use the CLion integrated development environment
+compiler. For convenience, we use the CLion integrated development environment
 with MinGW, gcc, and Meson built-in support on both Linux and Windows.

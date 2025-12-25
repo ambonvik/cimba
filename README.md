@@ -16,7 +16,7 @@ simulated world depend on a shared time variable and cannot race ahead.
 Luckily, we almost never run only a _single_ simulation run, but a possibly 
 large experiment consisting of many trials (replications and parameter 
 combinations) to generate statistical results. These trials are _intended_
-to be independent trials, making them near-trivial to parallellize by simply
+to be independent trials, making them near-trivial to parallelize by simply
 running them all at the same time, or at least running as many as you have CPU 
 cores available for.
 
@@ -32,30 +32,30 @@ It is powerful, fast, reliable, and free.
   
   * Pre-packaged process interaction mechanisms like resources,
     resource stores, buffers, object queues, and even condition variables where
-    your simulated process can wait for arbitrarily complex conditions - essentially
+    your simulated process can wait for arbitrarily complex conditions – essentially
     for anything you can express as a function returning a binary true or false result.
   
-  * A wide range of fast, high quality random number generators, both
+  * A wide range of fast, high-quality random number generators, both
     of academically important and more empirically oriented types. See
     [cmb_random.h](include/cmb_random.h)
   
-  * Integrated logging and data collection features that makes it easy
+  * Integrated logging and data collection features that make it easy
     to get a model running and understand what is happening inside it.
 
 * *Fast*: The speed from multithreaded parallel execution translates to high 
-  resolution in your simulation modelling. You can run hundreds of replications 
+  resolution in your simulation modeling. You can run hundreds of replications 
   and parameter variations in just a few seconds, generating tight confidence 
-  intervals in your experiments and high density of data points along parameter 
+  intervals in your experiments and a high density of data points along parameter 
   variations.
 
-* *Reliable*: Cimba is well engineered, self-contained open source. There is no
+* *Reliable*: Cimba is well-engineered open source. There is no
   mystery to the results you get. Each simulated world sits inside its own thread.
 
 * *Free*: Cimba should fit well into the budget of most research groups.
 
 ### What can I use Cimba for?
-It is a general purpose discrete event library, in the general spirit of a
-21st century decendant of Simula67. You can use it
+It is a general-purpose discrete event library, in the general spirit of a
+21st century descendant of Simula67. You can use it
 * as a collection of fast random number generators, 
 * as a purely event-oriented simulation world view, 
 * as a process-oriented simulation world view where your simulated entities take
@@ -68,24 +68,24 @@ See the tutorial examples at [tut_1_7.c](tutorial/tut_1_7.c),
 [tut_2_2.c](tutorial/tut_2_2.c), and [tut_3_1.c](tutorial/tut_3_1.c) for 
 illustrations of both model expressiveness and multithreading.
 
-If you look under the hood, you will also find reuseable internal components
+If you look under the hood, you will also find reusable internal components
 like stackful coroutines doing their own thing on thread-safe cactus stacks,
 fast memory pool allocators for generic small objects, and sophisticated data
-structures like hash-heaps combining a binary heap and an open adressing hash
+structures like hash-heaps combining a binary heap and an open addressing hash
 map with fibonacci hashing for fast access to various objects. These are not
-part of the public Cimba API, but are used internally and part of the codebase.
+part of the public Cimba API but are used internally and part of the codebase.
 See [tut_2_2.c](tutorial/tut_2_2.c) for one example of how these can
 be used in your model code (but please read the relevant source code before
 using any Cimba internal functions in your own code).
 
 ### So, exactly how fast is it?
-The experiment in [test_cimba.c](test/test_cimba.c) simulates a M/G/1 queue at
+The experiment in [test_cimba.c](test/test_cimba.c) simulates an M/G/1 queue at
 four different levels of service process variability. For each level, it tries 
 five system utilization levels. There are ten replications for each parameter 
 combination, in total 4 * 5 * 10 = 200 trials. Each trial lasts for one million 
-time units, where the average service time always is 1.0 time unit. This entire 
+time units, where the average service time always is 1.0 time units. This entire 
 simulation runs in about 2.7 seconds on an AMD Threadripper 3970X with Arch Linux,
-processing some 100-150 million events per second. and producing the chart below. 
+processing some 100–150 million events per second, producing the chart below. 
 
 ![M/G/1 queue](images/MG1%20example.png)
 
@@ -101,7 +101,7 @@ manage your experiments and trials), `cmb_`  (used by your simulated world insid
 each trial), and `cmi_` (internal stuff that your model does not need to interact 
 with). The different functions are then bundled in modules (effectively classes) 
 like `cmb_process.h`, containing the API for that part of the library. These
-modules form logical inheritance hierarchies, where e.g. a `cmb_process` is a
+modules form logical inheritance hierarchies, where e.g., a `cmb_process` is a
 derived subclass from a `cmi_coroutine`, inheriting all its methods and members.
 
 We distinguish between "is a" (inheritance) and "has a" (composition) relationships.
@@ -114,7 +114,7 @@ behave as you would expect with respect to their parent classes.
 
 The code is liberally sprinkled with `assert` statements testing for preconditions,
 invariants, and postconditions wherever possible, applying Design by Contracts 
-principles for reliability. Cimba contains about 1000 asserts in about 10000 lines of 
+principles for reliability. Cimba contains about 1000 asserts in about 10 000 lines of 
 code in total, for an assert density of 10 %. These are custom asserts that will report 
 what trial, what process, the simulated time, the function and line number, and even the 
 random number seed used, if anything should go wrong. All time-consuming invariants and 
@@ -129,15 +129,16 @@ You will find the test files corresponding to each code module in the `test` dir
 
 But do read the [LICENSE](LICENSE). We do not give any warranties here.
 
-### Object oriented? In C17 and assembly? Why not just use C++?
+### Object-oriented? In C17 and assembly? Why not just use C++?
 Long story made short: C++ exception handling is not very friendly to the stackful 
 coroutines we need in Cimba. C++ coroutines are something entirely different.
 
-Also, C++ has become a very large and feature-rich language, where it will be
+C++ has also become a very large and feature-rich language, where it will be
 hard to ensure compatibility with every possible combination of features.
 
 Hence (like the Linux kernel), we chose the simpler platform for speed, clarity,
-and reliability.
+and reliability. If you need to call Cimba from some other language, the C calling
+convention is well-known and well-documented.
 
 ### Version 3.0.0, you say. Why haven't I heard about Cimba before?
 Because we did not make it public before. The first ideas that eventually became 
@@ -146,13 +147,12 @@ coroutine is a single machine instruction. Porting it to other platforms like a
 Windows PC was decidedly non-trivial. There is no code remaining from that
 predecessor in the current Cimba. What retrospectively can be called Cimba 1.0
 was implemented in K&R C at MIT in the early 1990's, followed by a parallelized
-version 2.0 in ANSI C and Perl around 1995-96. The present version written in 
+version 2.0 in ANSI C and Perl around 1995–96. The present version written in 
 C17 with POSIX pthreads is the third major rebuild, and the first public version.
 
-### You had me at "free". How do I get my hands on Cimba?
-It is right here. You simply clone the repository, build, and install it. You
+### You had me at "free." How do I get my hands on Cimba?
+It is right here. You clone the repository, build, and install it. You
 will need a C compiler and the Meson build manager. On Linux, you can use GCC 
 or Clang, while the recommended approach on Windows is MinGW with its GCC 
-compiler. Visual Studio and MVSC should also work, but has not yet been fully 
-tested. For convenience, we recommend the CLion integrated development environment 
+compiler. For convenience, we recommend the CLion integrated development environment 
 with MinGW, GCC, Meson, and Ninja built-in support on both Linux and Windows.

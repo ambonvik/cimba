@@ -11,8 +11,7 @@ using Cimba.
 We also recommend using a modern integrated development environment (IDE) like CLion,
 which has the advantage of being available both on Linux and Windows, integrated
 with a gcc toolchain (called MinGW under Windows), and free for open source
-work. Microsoft Visual Studio with MVSC should also work, but we have not tested
-it yet.
+work.
 
 Once the build chain is installed, you need to obtain Cimba itself.
 Cimba is distributed as free open source code through the Github repository at
@@ -39,13 +38,8 @@ and `/usr/local/bin/cimba`.
 Windows
 -------
 
-As always, things are more complicated on Windows. There are two main cases, either
-using a MinGW-W64 build chain with the `gcc` compiler or using the native Microsoft
-Visual Studio build chain and its MVSC compiler (`cl`). We address these cases
-separately.
-
-MinGW-W64
-^^^^^^^^^
+As always, things are more complicated on Windows. So far, Cimba only supports a MinGW-W64
+build chain with the `gcc` or `clang` compiler. MSVC is not yet supported.
 
 To use the MinGW-W64 build chain, first make sure you have `gcc` installed and
 in your PATH by typing `gcc --version` in a command shell. If it does not respond,
@@ -79,9 +73,6 @@ which may be older and incompatible with newly compiled source code.
 This may be solved by reordering the items in your PATH or updating the other
 applications to the latest version. If all else fails, copy `libwinpthread-1.dll`
 from the mingw64\\bin directory to the same directory as your executable files.
-
-Microsoft Visual Studio C (MVSC)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Verifying your installation
 ---------------------------
