@@ -6,6 +6,7 @@ Cimba documentation
     :caption: Contents:
 
     welcome
-    getting_started
+    installation
     tutorial
+    background
     api/library_root

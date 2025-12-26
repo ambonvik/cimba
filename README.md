@@ -142,10 +142,7 @@ convention is well-known and well-documented.
 
 ### Version 3.0.0, you say. Why haven't I heard about Cimba before?
 Because we did not make it public before. The first ideas that eventually became 
-Cimba were built in C++ around 1990. That code ran on VAXstations, where launching a 
-coroutine is a single machine instruction. Porting it to other platforms like a
-Windows PC was decidedly non-trivial. There is no code remaining from that
-predecessor in the current Cimba. What retrospectively can be called Cimba 1.0
+Cimba were built in C++ around 1990. What retrospectively can be called Cimba 1.0
 was implemented in K&R C at MIT in the early 1990's, followed by a parallelized
 version 2.0 in ANSI C and Perl around 1995–96. The present version written in 
 C17 with POSIX pthreads is the third major rebuild, and the first public version.
