@@ -106,7 +106,9 @@ For a more comprehensive test, type:
 
     meson test -C build
 
-This will run the full suite of unit tests from the `test` directory. Please be
-aware that the `test_random` unit test may take a while to run.
+This will run the full suite of unit tests from the `test` directory. It will
+take a while. The output will look similar to this:
+
+.. image:: ../images/test_suite.png
 
 

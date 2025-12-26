@@ -29,29 +29,19 @@
 #include "cmi_config.h"
 
 #ifndef NASSERT
-    #if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
-        /**
-         * @brief The function that reports and aborts when a `cmb_assert_*`is
-         * triggered.
-         *
-         * Important advice: Place a debugger breakpoint in this
-         * function, and you will be able to see the call stack and variable
-         * values at that point.
-         */
-        extern void cmi_assert_failed(const char *sourcefile,
-                                      const char *func,
-                                      int line,
-                                      const char *condition)
-                                              __attribute__((noreturn));
-
-    #elif CMB_COMPILER == MSVC
-        extern __declspec(noreturn) void cmi_assert_failed(const char *sourcefile,
-                                      const char *func, int line,
-                                      const char *condition);
-    #else
-        extern void cmi_assert_failed(const char *sourcefile, const char *func,
-                              int line, const char *condition);
-    #endif
+    /**
+     * @brief The function that reports and aborts when a `cmb_assert_*`is
+     * triggered.
+     *
+     * Important advice: Place a debugger breakpoint in this
+     * function, and you will be able to see the call stack and variable
+     * values at that point.
+     */
+    extern void cmi_assert_failed(const char *sourcefile,
+                                  const char *func,
+                                  int line,
+                                  const char *condition)
+                                          __attribute__((noreturn));
 
     #ifndef NDEBUG
         /**

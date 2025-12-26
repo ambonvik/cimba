@@ -10,6 +10,7 @@ setlocal
 
 set "INSTALL_PREFIX=C:\Program Files\Cimba"
 set "BUILD_DIR=build"
+set "BUILD_TYPE=release"
 
 echo [Cimba] Checking for MinGW gcc...
 where gcc >nul 2>nul
@@ -24,7 +25,9 @@ if %errorlevel% neq 0 (
 echo [Cimba] gcc found. Configuring Meson...
 meson setup %BUILD_DIR% ^
     --native-file config/mingw.ini ^
-    --prefix="%INSTALL_PREFIX%"
+    --prefix="%INSTALL_PREFIX%" ^
+    --buildtype=%BUILD_TYPE% ^
+    --reconfigure
 
     if %errorlevel% neq 0 (
         echo [ERROR] Meson setup failed.

@@ -17,16 +17,16 @@
  * limitations under the License.
  */
 
-#ifndef CIMBA_CMB_CONFIG_H
-#define CIMBA_CMB_CONFIG_H
+#ifndef CIMBA_CMI_CONFIG_H
+#define CIMBA_CMI_CONFIG_H
 
 /*
  * Identify the processor architecture. So far, only AMD64/x86-64 supported.
  */
-#define AMD64 1
+#define CMI_AMD64 1
 #if (defined (__amd64__) || defined (__amd64) || defined (__x86_64__) || \
      defined (__x86_64) || defined (_M_X64) || defined (_M_AMD64))
-  #define CMB_ARCH AMD64
+  #define CMI_ARCH CMI_AMD64
 #else
   #error "Platform architecture not yet supported."
 #endif
@@ -34,12 +34,12 @@
 /*
  * Identify the operating system. So far, only Linux and Windows supported.
  */
-#define Linux 1
-#define Windows 2
+#define CMI_LINUX 1
+#define CMI_WINDOWS 2
 #if defined (__linux__) || defined (__linux) || defined (linux)
-  #define CMB_OS Linux
+  #define CMI_OS CMI_LINUX
 #elif defined (_WIN64) || defined (_WIN32) || defined (__WIN32__)
-  #define CMB_OS Windows
+  #define CMI_OS CMI_WINDOWS
 #else
   #error "Platform operating system not yet supported."
 #endif
@@ -48,16 +48,16 @@
  * Identify the compiler. So far, only GCC and Clang supported.
  * Test for Clang first, in case it defines __GNUC__ for compatibility reasons.
  */
-#define GCC 1
-#define CLANG 2
+#define CMI_GCC 1
+#define CMI_CLANG 2
 #if defined (__clang__)
-  #define CMB_COMPILER CLANG
+  #define CMI_COMPILER CMI_CLANG
   #define CMB_THREAD_LOCAL _Thread_local
 #elif defined (__GNUC__)
-  #define CMB_COMPILER GCC
+  #define CMI_COMPILER CMI_GCC
   #define CMB_THREAD_LOCAL _Thread_local
 #else
   #error "Compiler not yet supported."
 #endif
 
-#endif /* CIMBA_CMB_CONFIG_H */
+#endif /* CIMBA_CMI_CONFIG_H */

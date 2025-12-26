@@ -9,19 +9,18 @@ project('cimba', 'c',
         ]
 )
 
+# We also need the portable Netwide Assembler for assembly code
+add_languages('nasm', required : true, native : true)
+
 # Ensure system dependent argument format
 cc = meson.get_compiler('c')
-host_system = host_machine.system()
-
 desired_flags = ['-Wno-pedantic', '-D_POSIX_C_SOURCE=200809L']
-
 supported_flags = cc.get_supported_arguments(desired_flags)
 add_project_arguments(supported_flags, language : 'c', native : true)
 
-# We also need the portable Netwide Assembler
-add_languages('nasm', required : true, native : true)
-
-project_deps = []
+# Need to link with the math library, linker flag -lm
+math_dep = cc.find_library('m', required : true)
+project_deps = [math_dep]
 
 # Build Cimba
 subdir('include')

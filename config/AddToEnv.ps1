@@ -23,7 +23,7 @@ $LibDir = Join-Path $InstallPrefix "lib"
 function Add-To-Machine-Path {
     param ($VarName, $Value)
 
-    Write-Host "Checking $VarName..." -NoNewline
+    Write-Host " Checking $VarName..." -NoNewline
 
     $Current = [Environment]::GetEnvironmentVariable($VarName, 'Machine')
     if ($null -eq $Current) { $Current = "" }
@@ -39,11 +39,11 @@ function Add-To-Machine-Path {
     }
 }
 
-Write-Host "`n[Cimba] Configuring Environment for: $InstallPrefix"
+Write-Host "`n Configuring Environment for $InstallPrefix"
 
 Add-To-Machine-Path "Path" $BinDir
 Add-To-Machine-Path "C_INCLUDE_PATH" $IncDir
 Add-To-Machine-Path "C_INCLUDE_PATH" $IncIntDir
 Add-To-Machine-Path "LIBRARY_PATH" $LibDir
 
-Write-Host "`n[Done] You may need to restart your computer to make changes take effect.`n"
+Write-Host "`n Done. You may need to restart your computer to make changes take effect.`n"

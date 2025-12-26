@@ -106,50 +106,27 @@ typedef const char *(cmb_timeformatter_func)(double t);
  */
 extern void cmb_set_timeformatter(cmb_timeformatter_func *tf);
 
-#if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
-    /**
-    * @brief The core logging function, like vfprintf but with logging flags in
-    *        front of argument list. Will usually be called from one of the
-    *        wrapper functions, e.g., `cmb_logger_info`, not directly.
-    *
-    * @param fp File pointer, possibly `stdout` or `stderr`
-    * @param flags Bitmask for this logging call, to be matched against the
-    *              current logging bitmask. If bitwise `and` is non-zero, this
-    *              logging message will be printed.
-    * @param func  The function name where it is called from.
-    * @param line  The line number it is called from.
-    * @param fmtstr A printf-like format string.
-    * @param args  The arguments to the format string.
-    */
-    extern int cmb_vfprintf(FILE *fp,
-                            uint32_t flags,
-                            const char *func,
-                            int line,
-                            const char *fmtstr,
-                            va_list args)
-                            __attribute__((format(printf, 3, 0)));
-#else
-    /**
-    * @brief The core logging function, like vfprintf but with logging flags in
-    *        front of argument list. Will usually be called from one of the
-    *        wrapper functions, e.g., `cmb_logger_info`, not directly.
-    *
-    * @param fp File pointer, possibly `stdout` or `stderr`
-    * @param flags Bitmask for this logging call, to be matched against the
-    *              current logging bitmask. If bitwise and is non-zero, this
-    *              will be printed.
-    * @param func  The function name where it is called from.
-    * @param line  The line number it is called from.
-    * @param fmtstr A printf-like format string.
-    * @param args  The arguments to the format string.
-    */
-    extern int cmb_vfprintf(FILE *fp,
-                            uint32_t flags,
-                            const char *func,
-                            int line,
-                            const char *fmtstr,
-                            va_list args);
-#endif
+/**
+* @brief The core logging function, like vfprintf but with logging flags in
+*        front of argument list. Will usually be called from one of the
+*        wrapper functions, e.g., `cmb_logger_info`, not directly.
+*
+* @param fp File pointer, possibly `stdout` or `stderr`
+* @param flags Bitmask for this logging call, to be matched against the
+*              current logging bitmask. If bitwise `and` is non-zero, this
+*              logging message will be printed.
+* @param func  The function name where it is called from.
+* @param line  The line number it is called from.
+* @param fmtstr A printf-like format string.
+* @param args  The arguments to the format string.
+*/
+extern int cmb_vfprintf(FILE *fp,
+                        uint32_t flags,
+                        const char *func,
+                        int line,
+                        const char *fmtstr,
+                        va_list args)
+                        __attribute__((format(printf, 3, 0)));
 
 /*
  * Wrapper functions for predefined message levels.
@@ -199,7 +176,6 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func *tf);
  * @param fmtstr printf-like format string
  * @param ... Arguments to the format string.
  */
-
 #define cmb_logger_info(fp, fmtstr, ...) \
     cmi_logger_info(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
 
@@ -213,37 +189,24 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func *tf);
  * @param fmtstr printf-like format string
  * @param ... Arguments to the format string.
  */
-
 #define cmb_logger_user(fp, flags, fmtstr, ...) \
     cmi_logger_user(fp, flags, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
 
 /** @cond */
+/* The trial index is maintained by the worker threads in cimba.c, we use it in logging messages */
 extern CMB_THREAD_LOCAL uint64_t cmi_logger_trial_idx;
 
-#if CMB_COMPILER == GCC || CMB_COMPILER == CLANG
-    extern void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...)
-                          __attribute__((noreturn, format(printf,4,5)));
-    extern void cmi_logger_error(FILE *fp, const char *func, int line, char *fmtstr, ...)
-                          __attribute__((noreturn, format(printf,4,5)));
-    extern void cmi_logger_warning(FILE *fp, const char *func, int line, char *fmtstr, ...)
-                          __attribute__((format(printf,4,5)));
-    extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...)
-                          __attribute__((format(printf,4,5)));
-    extern void cmi_logger_user(FILE *fp, uint32_t flags, const char *func, int line, char *fmtstr, ...)
-                          __attribute__((format(printf,5,6)));
-#elif CMB_COMPILER == MSVC
-    extern __declspec(noreturn) void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...);
-    extern __declspec(noreturn) void cmi_logger_error(FILE *fp, const char *func, int line, char *fmtstr, ...);
-    extern void cmi_logger_warning(FILE *fp, const char *func, int line, char *fmtstr, ...);
-    extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...);
-    extern void cmi_logger_user(FILE *fp, uint32_t flags, const char *func, int line, char *fmtstr, ...)
-#else
-    #warning "CMB_COMPILER does not match any predefined values"
-    extern void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...);
-    extern void cmi_logger_warning(FILE *fp, const char *func, int line, char *fmtstr, ...);
-    extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...);
-    extern void cmi_logger_user(FILE *fp, uint32_t flags, const char *func, int line, char *fmtstr, ...);
-#endif
+/* Actual functions wrapped by the macros above */
+extern void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...)
+                      __attribute__((noreturn, format(printf,4,5)));
+extern void cmi_logger_error(FILE *fp, const char *func, int line, char *fmtstr, ...)
+                      __attribute__((noreturn, format(printf,4,5)));
+extern void cmi_logger_warning(FILE *fp, const char *func, int line, char *fmtstr, ...)
+                      __attribute__((format(printf,4,5)));
+extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...)
+                      __attribute__((format(printf,4,5)));
+extern void cmi_logger_user(FILE *fp, uint32_t flags, const char *func, int line, char *fmtstr, ...)
+                      __attribute__((format(printf,5,6)));
 /** @endcond */
 
 #endif /* CIMBA_CMB_LOGGER_H */
