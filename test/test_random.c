@@ -924,6 +924,9 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
 
 int main(void)
 {
+    struct timespec start_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
+
     cmi_test_print_line("*");
     printf("************** Testing random number generators and distributions **************\n");
     cmi_test_print_line("*");
@@ -990,5 +993,12 @@ int main(void)
     test_speed_vose_alias(5, 50, 5);
 
     cmi_test_print_line("*");
+
+    struct timespec end_time;
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
+    elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
+    printf("It took %g sec\n", elapsed);
+
     return 0;
 }

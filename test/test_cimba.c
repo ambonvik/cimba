@@ -32,7 +32,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include <time.h>
 
 #include "cimba.h"
@@ -248,7 +247,6 @@ int main(void)
     printf("Cimba version %s\n", cimba_version());
     struct timespec start_time;
     clock_gettime(CLOCK_MONOTONIC, &start_time);
-
 
     /* Experiment design parameters */
     const unsigned nreps = 10;

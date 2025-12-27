@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "cmb_dataset.h"
 #include "cmb_datasummary.h"
@@ -388,6 +389,9 @@ void test_timeseries(void)
 
 int main(void)
 {
+    struct timespec start_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
+
     cmi_test_print_line("*");
     printf("**********************      Testing data collectors       **********************\n");
     cmi_test_print_line("*");
@@ -397,6 +401,14 @@ int main(void)
     test_wsummary();
     test_dataset();
     test_timeseries();
+
+    cmi_test_print_line("*");
+
+    struct timespec end_time;
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
+    elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
+    printf("It took %g sec\n", elapsed);
 
     return 0;
 }
