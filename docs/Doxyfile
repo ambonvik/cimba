@@ -1,6 +1,5 @@
 PROJECT_NAME    = "cimba"
 PROJECT_NUMBER  = "3.0.0"
-OUTPUT_DIRECTORY = .
 INPUT           = ../include
 EXCLUDE         = ../build
 EXCLUDE_PATTERNS = */build/*
