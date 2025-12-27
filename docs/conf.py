@@ -44,6 +44,8 @@ exhale_args = {
         r".*\.h": "c"
     },
     "unabridgedOrphanKinds": [],
+    "exhaleExecutesDoxygen": True,
+    "exhaleDoxygenStdin": open("Doxyfile", "r").read(),
 }
 
 primary_domain = 'c'
