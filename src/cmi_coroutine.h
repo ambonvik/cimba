@@ -68,7 +68,7 @@
  * enum cmi_coroutine_state : Possible states of a coroutine
  * Running means that it has been started and has not yet ended, not necessarily
  * that it is the coroutine currently executing instructions. Control can only
- * be passed to coroutines in the running env_state.
+ * be passed to coroutines in the running state.
  */
 enum cmi_coroutine_state {
     CMI_COROUTINE_CREATED = 0,
@@ -94,7 +94,7 @@ typedef void (cmi_coroutine_exit_func)(void *retval);
 
 /*
  * struct cmi_coroutine : Contains pointers to the coroutine's own stack, its
- * current env_state and exit value (if finished), and where to return from here.
+ * current state and exit value (if finished), and where to return from here.
  *
  * Execution context (such as registers) are pushed to and popped from the
  * coroutine's stack, pointed to from here. The *stack is the raw address of the
@@ -159,7 +159,7 @@ extern void cmi_coroutine_initialize(struct cmi_coroutine *cp,
                                      size_t stack_size);
 
 /*
- * cmi_coroutine_reset : Returns coroutine to a newly initialized env_state.
+ * cmi_coroutine_reset : Returns coroutine to a newly initialized state.
  */
 extern void cmi_coroutine_reset(struct cmi_coroutine *cp);
 
@@ -223,7 +223,7 @@ extern void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *msg);
 extern void cmi_coroutine_exit(void *retval);
 
 /*
- * cmi_coroutine_get_status : Return the current env_state of the given coroutine.
+ * cmi_coroutine_get_status : Return the current state of the given coroutine.
  */
 extern enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp);
 

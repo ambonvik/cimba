@@ -31,7 +31,7 @@
 #include "cmi_memutils.h"
 
 /*
- * Thread-local pseudo-random generator state, i.e. each thread has its own
+ * Thread-local pseudo-random generator state, i.e., each thread has its own
  * instance, but all coroutines within the thread share from the same stream
  * of numbers. Hence, multiple replications can run as separate threads in
  * the same program for coarse-grained parallelism on a multicore CPU.
@@ -187,7 +187,11 @@ static inline double zig_exp_convert_y(const double *dpy, const uint64_t u)
     return ldexp(*(dpy - 1), 64) + (*dpy - *(dpy - 1)) * (double)u;
 }
 
-/* #include the lookup tables to avoid cluttering up this code */
+/*
+ * We #include the lookup tables to avoid cluttering up this code.
+ * The file is built on the fly in the build script by executing programs
+ * found in src/codegen
+ */
 #include "cmi_random_exp_zig.inc"
 
 /* Fallback sampling function, called in about 1,5 % of cases */

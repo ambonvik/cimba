@@ -9,13 +9,13 @@
  * consisting of pointers to the event function and its two arguments.
  * It will be called as `*action(subject, object)` when it is its turn.
  *
- * Afterwards, control will return to the event dispatcher, which does not know
+ * Afterward, control will return to the event dispatcher, which does not know
  * much about the event specifics. Hence, no need to return indications of
  * success or failure (or anything else) from the event function.
  *
  * The first argument `void *subject` can be understood as the implicit
  * self or this pointer in an object-oriented language. It can be used as
- * an identificator, e.g. what object or process the event belongs to.
+ * an identificator, e.g., what object or process the event belongs to.
  * Understood that way, the meaning becomes `subject.action(object)`, i.e.,
  * a method of the subject class, acting on some other object.
  *
@@ -84,7 +84,7 @@ typedef void (cmb_event_func)(void *subject, void *object);
  * @brief Initialize the event queue itself. Must be called before any events
  * can be scheduled or executed. Expects to find an empty event queue.
  *
- * Call at the beginning of your simulation trial to start from a fresh env_state.
+ * Call at the beginning of your simulation trial to start from a fresh state.
  * Also make sure to call `cmb_event_queue_terminate` at the end of your trial
  * to free up space.
  *
