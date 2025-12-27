@@ -35,6 +35,7 @@ if doxygen.found() and sphinx.found()
                  'installation.rst',
                  'welcome.rst',
                  'tutorial.rst',
+                 'background.rst',
                  'static/custom.css',
                  conf_py],
         output : 'html',

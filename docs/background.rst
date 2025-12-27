@@ -1,7 +1,13 @@
-t.. _background:
+.. _background:
 
 The Whys and Hows of Cimba
 ==========================
+
+In this section, we will explain a bit more about the background for Cimba and some of
+the key design choices that are made in it. We start with a brief history that is
+necessary background for the project goals.
+
+<This section is still work in progress, please check back later to read the rest.>
 
 Project History and Goals
 -------------------------
@@ -70,20 +76,120 @@ CPU's. The goals for Cimba v 3.0 are similar to those for earlier versions:
   ensure that it works as expected (but do read the Licence, we are not making any
   warranties here).
 
-I believe that Cimba 3.0 meets these goals and hope you will agree. In the remainder
-of this section, we will describe some of the modules and design choices in more detail.
+I believe that Cimba 3.0 meets these goals and hope you will agree.
+
+Coroutines and Processes
+------------------------
+
+It is well known that Simula introduced object-oriented programming with its `CLASS`
+concept, see https://en.wikipedia.org/wiki/Simula for the story. For those of us that
+were lucky enough (or just old enough) to actually have programmed in Simula67, the
+object-orientation was only part of the experience, and perhaps not the most important
+one.
+
+Especially for simulation work, the most powerful concept was the *coroutine*. This
+generalizes the concept of a subroutine to several parallel threads of execution that
+are non-preemptively scheduled. Combined with object-orientation, this means that one
+can describe a class of objects as independent threads of execution, often infinite
+loops, where the object's code just does its own thing. The complexity in the simulated
+world then arises from the interactions between the active processes and various other
+passive objects.
+
+Coroutines received significant academic interest in the early years, but were then
+overshadowed by the object-oriented inheritance mechanisms. It seems that current
+trends are turning away from the more complex inheritance mechanisms, in many cases
+using composition instead of multiple inheritance, and also reviving the interest in
+coroutines. One important article is https://www.cs.tufts.edu/~nr/cs257/archive/roberto-ierusalimschy/revisiting-coroutines.pdf
+
+Unfortunately, when C++ finally got "coroutines" as a part of the language in 2020,
+these turned out both to be less powerful and less efficient than expected. (See
+https://probablydance.com/2021/10/31/c-coroutines-do-not-spark-joy/ for the details.)
+For our purposes here, it is sufficient to say that these coroutines are not the
+coroutines we are looking for.
+
+We have some additional requirements to the coroutines beyond being full coroutines,
+i.e., stackful first class objects. We will combine these with multithreading at the next
+higher level of concurrency, so our coroutines need to be thread-safe, living in parallel
+universes within each thread.
+
+We want our coroutines to share information both through arguments to the
+context-switching primitives ``yield()``, ``resume()``, and ``transfer()``, and by the
+values returned by these functions. Control is passed out of a coroutine by calling one
+of these functions. Control is also passed back to the coroutine by what appears to be a
+normal return from this function call. The two ways of communicating between coroutines
+are then sharing a pointer to some context data structure as an argument, and returning
+a signal value that can be used to determine if soemthing unexpected happened during
+the call.
+
+Moreover, we want our coroutines to return an exit value, and we want the flexibility
+of either just returning this exit value from the coroutine function or by calling a
+special ``exit()`` function with an argument. These should be equivalent, and the exit
+value should be persistent after the coroutine execution ends.
+
+Cimba coroutines
+^^^^^^^^^^^^^^^^
+
+We are not aware of any open source coroutine implementation that exactly meets these
+requirements, so Cimba contains its own, built from the ground up. There are several
+parts to the Cimba coroutine implementation; the *context switch*, the *trampoline*,
+the *data structure* with the stack and stack pointer, and the *setup code*.
+
+The *context switch* is straightforward but system dependent assembly code. It stores
+the active registers from the current execution context, including the stack pointer,
+loads the target stack pointer and registers, puts the apparent return value into the
+correct register, and "returns" to wherever the target context came from. See the
+function ``cmi_coroutine_context_switch`` in
+src/port/x86-64/linux/cmi_coroutine_context.asm and
+src/port/x86-64/windows/cmi_coroutine_context.asm for Linux and Windows, respectively.
+
+The *trampoline* is a function that gets pre-loaded onto a new coroutine's stack before
+it starts executing. It is never called directly. Once started, the trampoline will
+call the actual coroutine function and then silently wait for it to return. If it ever
+does, the trampoline will catch it and call the coroutine ``exit()`` function with the
+return value as argument, giving exactly the same effect of a ``return ptr;`` as a
+``exit(ptr);``, because it becomes the same thing. The code is in the same assembly
+files as above, function ``cmi_coroutine_trampoline``.
+
+The *data structure* ``struct cmi_coroutine`` is defined in src/cmi_coroutine.h. It
+contains pointers to the coroutine stack, its parent and latest caller coroutines, the
+coroutine function, its context argument, and the coroutine's status and exit value.
+
+Finally, the *setup code* initializes a new coroutine stack and makes it ready to start
+execution. This is system-dependent C code, function ``cmi_coroutine_context_init`` in
+src/port/x86-64/linux/cmi_coroutine_context.c and
+src/port/x86-64/windows/cmi_coroutine_context.c. Basically, it fakes the stack frames
+that a function would see when executing normally on the new stack, with the
+trampoline at its return address, and then transfers control into the new coroutine.
+This starts executing the trampoline function, which in turn starts the actual
+coroutine function as described above.
+
+This machinery is hidden from the user application, which only needs to provide a
+coroutine function using the ``yield()``, ``resume()``, and ``transfer()`` primitives
+to run this as either asymmetric or symmetric coroutines. The coroutine function
+prototype is ``void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *context)``,
+i.e., a function that takes a pointer to a coroutine (itself) and a ``void *`` to some
+user application-defined context as arguments and returns a ``void *``.
+
+For even more flexibility, we also allow the user application to define what ``exit()``
+function to be called if/when the coroutine function returns. This may seem like an
+intricate way of calling that exit function indirectly by returning from the coroutine
+function instead of just calling it directly, but as we will see, we will use that
+feature at the next higher level.
+
+
+
+
 
 Object-Oriented Programming. In C and Assembly.
 -----------------------------------------------
 
-The Hash-Heap - A Binary Heap meets a Hash Map
-----------------------------------------------
 
 Events and the Event Queue
 --------------------------
 
-Coroutines and Processes
-------------------------
+The Hash-Heap - A Binary Heap meets a Hash Map
+----------------------------------------------
+
 
 Guarded Resources and Conditions
 --------------------------------
