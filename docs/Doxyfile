@@ -1,8 +1,8 @@
 PROJECT_NAME    = "cimba"
 PROJECT_NUMBER  = "3.0.0"
-OUTPUT_DIRECTORY = "/home/ambonvik/github/cimba/build/docs"
+OUTPUT_DIRECTORY = .
 INPUT           = ../include
-EXCLUDE         = /home/ambonvik/github/cimba/build
+EXCLUDE         = ../build
 EXCLUDE_PATTERNS = */build/*
 RECURSIVE       = YES
 GENERATE_XML    = YES
