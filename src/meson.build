@@ -44,11 +44,16 @@ install_headers(
 # Platform and operating system dependent source code
 subdir('port')
 
+cimba_link_args = []
+if host_machine.system() == 'windows'
+    # Bundle static GCC libraries to avoid DLL confusion
+    cimba_link_args += ['-static-libgcc', '-static']
+endif
+
 cimba_lib = library('cimba',
                     sources,
                     include_directories : [inc_api, inc_int],
-                    c_args : ['-Wno-pedantic'],
-                    link_args : ['-lm', '-static-libgcc', '-static', '-pthread'],
+                    link_args : cimba_link_args,
                     dependencies : [project_deps, codegen_deps],
                     install : true,
                     version : meson.project_version(),
