@@ -67,7 +67,7 @@
 #define CMB_LOGGER_INFO     UINT32_C(0x10000000)
 
 /**
- * @brief Turn on logging flags according to the bitmask, for example
+ * @brief Turn on logging flags according to the bitmask, for example,
  * `cmb_logger_flags_on(CMB_LOGGER_INFO)`, or some user-defined mask.
  *
  * The initial value is `0xFFFFFFFF`, printing everything.
@@ -78,7 +78,7 @@
  extern void cmb_logger_flags_on(uint32_t flags);
 
 /**
- * @brief Turn off logging flags according to the bitmask, for example
+ * @brief Turn off logging flags according to the bitmask, for example,
  * `cmb_logger_flags_off(CMB_LOGGER_INFO)`, or some user-defined mask.
  *
  * The initial value is `0xFFFFFFFF`, printing everything. Use this function to
@@ -91,7 +91,7 @@ extern void cmb_logger_flags_off(uint32_t flags);
 
 /**
  * @brief Prototype function to format simulation times into strings for output,
- * taking a `double`as argument and returning a `const char *`. It must also
+ * taking a `double` as an argument and returning a `const char *`. It must also
  * be reentrant and threadsafe to avoid overwriting by other threads
  * potentially calling the same function at the same time.
  */
@@ -101,14 +101,14 @@ typedef const char *(cmb_timeformatter_func)(double t);
  * @brief Set function to format simulation times into strings for output.
  *
  * @param tf A reentrant and threadsafe formatting function taking a `double` as
- * argument and returning a `const char *`. See `cmb_logger.c` for one way to
+ * an argument and returning a `const char *`. See `cmb_logger.c` for one way to
  * do this.
  */
 extern void cmb_set_timeformatter(cmb_timeformatter_func *tf);
 
 /**
 * @brief The core logging function, like vfprintf but with logging flags in
-*        front of argument list. Will usually be called from one of the
+*        front of the argument list. Will usually be called from one of the
 *        wrapper functions, e.g., `cmb_logger_info`, not directly.
 *
 * @param fp File pointer, possibly `stdout` or `stderr`

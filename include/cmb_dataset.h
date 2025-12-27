@@ -42,8 +42,8 @@
  */
 struct cmb_dataset {
     uint64_t cookie;    /**< A "magic cookie" to catch uninitialized objects */
-    uint64_t cursize;   /**< The currently allocated space as number of samples */
-    uint64_t count;     /**< The current number of samples in array */
+    uint64_t cursize;   /**< The currently allocated space as a number of samples */
+    uint64_t count;     /**< The current number of samples in the array */
     double min;         /**< Smallest sample, initially `DBL_MAX` */
     double max;         /**< Largest sample, initially `-DBL_MAX` */
     double *xa;         /**< Pointer to the actual data array, initially `NULL` */
@@ -67,14 +67,14 @@ extern struct cmb_dataset *cmb_dataset_create(void);
 extern void cmb_dataset_initialize(struct cmb_dataset *dsp);
 
 /**
- * @brief Re-initialize it, returning it to newly initialized state.
+ * @brief Re-initialize it, returning it to a newly initialized state.
  *
  * @param dsp Pointer to an already allocated dataset object.
  */
 extern void cmb_dataset_reset(struct cmb_dataset *dsp);
 
 /**
- * @brief Un-initialize it, returning it to newly created state.
+ * @brief Un-initialize it, returning it to a newly created state.
  *
  * @param dsp Pointer to an already allocated dataset object.
  */
@@ -110,10 +110,10 @@ extern uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
  *        arrays.
  *
  * Do not call unless the dataset was created on the heap by
- * `cmb_dataset_create`. Otherwise only use `cmb_dataset_terminate` instead to
+ * `cmb_dataset_create`. Otherwise, only use `cmb_dataset_terminate` to
  * free the internal data array.
  *
- * @param dsp Pointer to previously allocated dataset object.
+ * @param dsp Pointer to a previously allocated dataset object.
  */
 extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
 
@@ -217,7 +217,7 @@ extern void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
  * @brief Print a simple character-based histogram. Will autoscale to the
  * dataset range if `LowerLimit == UpperLimit`.
  *
- *  Will print symbol '#' for a full bar "pixel", '=' for one that is more
+ *  Will print the symbol '#' for a full bar "pixel", '=' for one that is more
  *  than half full, and '-' for one that is less than half full.
 *
  *  Adds overflow bins to the ends of the range to catch anything outside.
@@ -247,7 +247,7 @@ extern void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp);
  *
  * @param dsp Pointer to a dataset object.
  * @param n The highest lag value to calculate
- * @param acf The array where the acf's will be stored, needs to be ``n + 1`` large
+ * @param acf The array where the acf's will be stored, size ``n + 1``
  */
 extern void cmb_dataset_ACF(const struct cmb_dataset *dsp,
                             unsigned n,

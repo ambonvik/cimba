@@ -7,10 +7,10 @@
  * consumers wait.
  *
  * The buffer will go through level changes that may not be visible outside
- * its own code, e.g., when some process is trying to put or get more amount
+ * its own code, e.g., when some process is trying to put or get more content
  * than currently possible. The buffer level will then hit full or empty before
- * the get or put call returns. Trying to track the level from user code will
- * be inaccurate. Use the built-in history recording instead, and retrieve the
+ * the get or put call returns. Trying to track the level from the user code will
+ * be inaccurate. Use the built-in history recording instead and retrieve the
  * buffer level history as a timeseries once the trial is complete.
  */
 
@@ -49,7 +49,7 @@
  * (rear) operations. It has a fixed capacity, of which some amount may be in
  * use, leaving some free space (the difference between `capacity` and `level`).
  *
- * Note the object oriented structure here: The `cmb_buffer` class inherits the
+ * Note the object-oriented structure here: The `cmb_buffer` class inherits the
  * methods and properties from its (virtual) base class `cmb_resourcebase`.
  * In incorporates (by composition) its two `cmb_resourceguard` members. These
  * are full members of the buffer object, not pointers to some other objects.
@@ -75,7 +75,7 @@ struct cmb_buffer {
     uint64_t capacity;                      /**< The buffer size, possibly UINT64_MAX for unlimited */
     uint64_t level;                         /**< The current level in the buffer */
     bool is_recording;                      /**< Is the buffer recording its history? */
-    struct cmb_timeseries history;         /**< The bufer level history */
+    struct cmb_timeseries history;         /**< The buffer level history */
 };
 
 /**
@@ -107,7 +107,7 @@ extern void cmb_buffer_terminate(struct cmb_buffer *bp);
 extern void cmb_buffer_destroy(struct cmb_buffer *bp);
 
 /**
- * @brief Request and if necessary wait for an amount of the
+ * @brief Request and if necessary, wait for an amount of the
  * buffer resource. The requested amount can be larger than the buffer space.
  * If so, the calling process will accumulate until satisfied.
  *
@@ -128,8 +128,8 @@ extern void cmb_buffer_destroy(struct cmb_buffer *bp);
 extern int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp);
 
 /**
- * @brief Put an amount of the resource into the buffer, if necessary
- * waiting for free space. The amount can be larger than the buffer space.
+ * @brief Put an amount of the resource into the buffer. Wait for free space
+ * if necessary. The amount can be larger than the buffer space.
  *
  * Note that the argument is a pointer to where the amount is stored.
  * The return value `CMB_PROCESS_SUCCESS` (0) indicates that all went well and
@@ -177,7 +177,7 @@ static inline uint64_t cmb_buffer_level(struct cmb_buffer *bp)
 }
 
 /**
- * @brief Returns current free space in buffer
+ * @brief Returns current free space in the buffer
  *
  * @param bp Pointer to a buffer
  * @return The available space in the buffer

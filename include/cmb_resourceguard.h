@@ -55,7 +55,7 @@ struct cmb_resourceguard {
  * @param ctx Pointer to whatever context is needed to determine the outcome.
  *
  * @return `true` if the demand is considered satisfied (e.g., a resource is
- *         available, `false` if not.
+ *         available), `false` if not.
  */
 typedef bool (cmb_resourceguard_demand_func)(const struct cmi_resourcebase *rbp,
                                              const struct cmb_process *pp,
@@ -103,7 +103,7 @@ extern int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
  *         `true`.
  *
  * Resumes zero or one waiting processes. Call it again if there is a chance
- * that more than one process could be ready, e.g. if some process just returned
+ * that more than one process could be ready, e.g., if some process just returned
  * five units of a resource and there are several processes waiting for one
  * unit each.
  *
@@ -113,7 +113,7 @@ extern int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
  * By default, Cimba does not allow potential priority inversion where a
  * sequence of lower-priority processes could starve a higher-priority process
  * indefinitely. In cases where some waiting process needs to bypass another,
- * e.g. if there are three available units of the resource, the first process in
+ * e.g., if there are three available units of the resource, the first process in
  * the queue demands five, and there are three more behind it that demands one
  * each, it is up to the application to dynamically change process priorities to
  * bring the correct process to the front of the queue and make it eligible to
@@ -158,7 +158,7 @@ extern void cmb_resourceguard_register(struct cmb_resourceguard *rgp,
                                        struct cmb_resourceguard *obs);
 
 /**
- * @brief Un-register another resource guard as an observer of this one.
+ * @brief Unregister another resource guard as an observer of this one.
  *
  * @param rgp Pointer to the subject resource guard.
  * @param obs Pointer to an observer resource guard.

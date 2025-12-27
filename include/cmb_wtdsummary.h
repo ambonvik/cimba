@@ -61,7 +61,7 @@ extern struct cmb_wtdsummary *cmb_wtdsummary_create(void);
 extern void cmb_wtdsummary_initialize(struct cmb_wtdsummary *wsp);
 
 /**
- * @brief Reset a previously used weighted data summary to newly initialized
+ * @brief Reset a previously used weighted data summary to a newly initialized
  *        state.
  *
 *  @param wsp Pointer to a weighted data summary.
@@ -69,8 +69,8 @@ extern void cmb_wtdsummary_initialize(struct cmb_wtdsummary *wsp);
 extern void cmb_wtdsummary_reset(struct cmb_wtdsummary *wsp);
 
 /**
- * @brief Un-initialize the weighted data summary, returning it to newly created
- *        state.
+ * @brief Un-initialize the weighted data summary, returning it to a newly
+ *        created state.
  *
  * @param wsp Pointer to a weighted data summary.
  */
@@ -85,7 +85,7 @@ extern void cmb_wtdsummary_terminate(struct cmb_wtdsummary *wsp);
 extern void cmb_wtdsummary_destroy(struct cmb_wtdsummary *wsp);
 
 /**
- * @brief Add a sample `(x, w)` to the weighted summary. Zero weight samples
+ * @brief Add a sample `(x, w)` to the weighted summary. Any zero-weight samples
  *        are ignored, not even counted.
  *
  * @param wsp Pointer to a weighted data summary.
@@ -99,15 +99,15 @@ extern uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
                                    double w);
 
 /**
- * @brief Merge two weighted data summaries. Tha target may be one of the
+ * @brief Merge two weighted data summaries. The target may be one of the
  *        sources.
  *
  * See: Pébay & al, "Numerically stable, scalable formulas for parallel and
  *      online computation of higher-order multivariate central moments with
  *      arbitrary weights", Computational Statistics (2016) 31:1305–1325
  *
- * @param tgt Pointer to a weighted weighted summary to receive the
- *            merge. Any previous content will be overwritten. Possibly equal to
+ * @param tgt Pointer to a weighted summary to receive the merge.
+ *            Any previous content will be overwritten. Possibly equal to
  *            `ws1`or `ws2`, or a separate third weighted data summary.
  * @param ws1 Pointer to a weighted data summary to be merged.
  * @param ws2 Pointer to a weighted data summary to be merged.
@@ -179,7 +179,7 @@ static inline double cmb_wtdsummary_mean(const struct cmb_wtdsummary *wsp)
  * @brief The weighted sample variance of the samples in the weighted data
  *        summary.
  *
- * @param wsp Pointer to a weightred data summary.
+ * @param wsp Pointer to a weighted data summary.
  *
  * @return The weighted sample variance of the samples in the weighted data
  * summary.

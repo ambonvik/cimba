@@ -15,7 +15,7 @@
  * It assigns amounts to processes in a greedy fashion, where the acquiring
  * process will first grab whatever amount is available, then wait for some more
  * to become available, and repeat until the requested amount is acquired and
- * it returns from the call.
+ * it eventually returns from the call.
  *
  * Preempt is similar to acquire, except that the prempting process also will
  * grab resources from any lower-priority processes holding some.
@@ -23,7 +23,7 @@
  * The holders list is now a hashheap, since we may need to handle many separate
  * processes acquiring, holding, releasing, and preempting various amounts of
  * the resource capacity. The hashheap is sorted to keep the holder most likely
- * to be preempted at the front, i.e. lowest priority and last in.
+ * to be preempted at the front, i.e., lowest priority and last in.
  */
 
 /*
@@ -52,8 +52,8 @@
 #include "cmi_holdable.h"
 
 /**
- * @brief The resourcestore struct, inherits all properties from `cmi_holdable`
- * by composition and adds the resource guard, a hashheap of processes holding
+ * @brief The resource store struct inherits all properties from `cmi_holdable`
+ * and adds the resource guard, a hashheap of processes holding
  * some amount of the resource, and a timeseries for logging its history.
  */
 struct cmb_resourcestore {
@@ -111,7 +111,7 @@ extern uint64_t cmb_resourcestore_held_by_process(struct cmb_resourcestore *rsp,
                                                   struct cmb_process *pp);
 
 /**
- * @brief Request and if necessary wait for an amount of the resource store.
+ * @brief Request and, if necessary, wait for an amount of the resource store.
  *        The calling process may already hold some and try to increase its
  *        holding with this call, or to obtain its first helping.
  *
@@ -144,9 +144,8 @@ extern int64_t cmb_resourcestore_acquire(struct cmb_resourcestore *rsp,
  *        acts like `cmb_resourcestore_acquire()`.
  *
  * As for `cmb_resourcestore_acquire()`, it can either return with the requested
- * amount, an unchanged amount (interrupted), or nothing at all (preempted). The
- * amount received or held is not returned by this function, only the signal
- * value.
+ * amount, an unchanged amount (interrupted), or nothing at all (preempted). This
+ * function does not return the amount received or held, only the signal value.
  *
  * @param rsp Pointer to a resource store.
  * @param amount The requested amount.
@@ -185,7 +184,7 @@ static inline const char *cmb_resourcestore_get_name(struct cmb_resourcestore *r
 }
 
 /**
- * @brief Returns number of resources currently in use
+ * @brief Returns the number of resources currently in use
  *
  * @param rsp Pointer to a resource store
  * @return The number of units in use
@@ -200,7 +199,7 @@ static inline uint64_t cmb_resourcestore_in_use(struct cmb_resourcestore *rsp)
 }
 
 /**
- * @brief Returns number of currently available resources
+ * @brief Returns the number of currently available resources
  *
  * @param rsp Pointer to a resource store
  * @return The number of units not in use

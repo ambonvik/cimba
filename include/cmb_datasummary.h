@@ -72,13 +72,13 @@ extern void cmb_datasummary_destroy(struct cmb_datasummary *dsp);
 extern void cmb_datasummary_initialize(struct cmb_datasummary *dsp);
 
 /**
- * @brief Reset a previously used data summary to newly initialized state.
+ * @brief Reset a previously used data summary to a newly initialized state.
 *  @param dsp Pointer to a data summary.
  */
 extern void cmb_datasummary_reset(struct cmb_datasummary *dsp);
 
 /**
- * @brief Un-initialize the data summary, returning it to newly created state.
+ * @brief Un-initialize the data summary, returning it to a newly created state.
  * @param dsp Pointer to a data summary.
  */
 extern void cmb_datasummary_terminate(struct cmb_datasummary *dsp);

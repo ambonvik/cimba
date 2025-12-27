@@ -27,8 +27,8 @@
 
 /*
  * Test if heap_tag *a should go before *b. If so, return true.
- * Default heap compare function, corresponds to event queue order, where
- * dkey = reactivation time, ikey = priority, ukey = not used, use handle FIFO.
+ * Default heap compare function, corresponds to the event queue order, where
+ * dkey = reactivation time, ikey = priority, ukey = not used, uses handle FIFO.
  */
 static bool heap_order_check(const struct cmi_heap_tag *a,
                              const struct cmi_heap_tag *b)

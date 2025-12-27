@@ -84,12 +84,12 @@ static void timeseries_expand(struct cmb_timeseries *tsp)
     cmb_assert_release(tsp != NULL);
     cmb_assert_release(((struct cmb_dataset *)tsp)->cookie == CMI_INITIALIZED);
 
-    /* First expand x-vector and increment cursize */
+    /* First, expand x-vector and increment cursize */
     struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     cmi_dataset_expand(dsp);
 
     if (tsp->ta == NULL) {
-        /* Just allocated the first chunk of xa array, do same for ta and wa */
+        /* Just allocated the first chunk of xa array, do the same for ta and wa */
         cmb_assert_debug(dsp->cursize == CMI_DATASET_INIT_SZ);
         cmb_assert_debug(tsp->wa == NULL);
         tsp->ta = cmi_malloc(CMI_DATASET_INIT_SZ * sizeof(*(tsp->ta)));
@@ -124,7 +124,7 @@ uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp,
 
     cmb_assert_debug(tsp->ta != NULL);
     tsp->ta[ui_new] = t;
-    /* Duration still unknown, weight at zero for now */
+    /* Duration still unknown, set weight at zero for now */
     tsp->wa[ui_new] = 0.0;
 
     if (ui_new > 0u) {
@@ -209,7 +209,7 @@ void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp)
 
 /*
  * Calculate a histogram with time-weighed values, each x-value counted with
- * the t-value interval to the next x-value, i.e. the holding time.
+ * the t-value interval to the next x-value, i.e., the holding time.
  */
 static void timeseries_fill_histogram(struct cmi_dataset_histogram *hp,
                                       const uint64_t n,
@@ -319,7 +319,7 @@ uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
  * Uses keya as the sorting key, da1 and da2 just follow along for the ride.
  * Normally called with the timeseries xa, ta, and wa as arguments.
  * Caution: Changes the sequence of data points in the time series.
- * To restablish time sequence, resort with ta as the key array.
+ * To reestablish the time sequence, resort with ta as the key array.
  */
 static void timeseries_heapify(const uint64_t un,
                                double keya[un],

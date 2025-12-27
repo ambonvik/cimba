@@ -9,25 +9,25 @@
  * consisting of pointers to the event function and its two arguments.
  * It will be called as `*action(subject, object)` when it is its turn.
  *
- * Afterward, control will return to the event dispatcher, which does not know
- * much about the event specifics. Hence, no need to return indications of
+ * Afterward, control will return to the event dispatcher, which does not
+ * know the event specifics. Hence, no need to return indications of
  * success or failure (or anything else) from the event function.
  *
  * The first argument `void *subject` can be understood as the implicit
  * self or this pointer in an object-oriented language. It can be used as
- * an identificator, e.g., what object or process the event belongs to.
+ * an identification, e.g., what object or process the event belongs to.
  * Understood that way, the meaning becomes `subject.action(object)`, i.e.,
  * a method of the subject class, acting on some other object.
  *
  * The event has an associated activation time and a priority. Just before
  * the event is executed, the simulation time will jump to this time as the
  * event is removed from the queue. The priority is a signed 16-bit integer,
- * where higher numeric value means higher priority. If two events have equal
+ * where a higher numeric value means a higher priority. If two events have equal
  * activation time, the one with higher priority will execute first. If
- * you need to ensura that some event executes after all other events at
+ * you need to ensure that some event executes after all other events at
  * a particular time, use a large negative priority. If two events have the
- * same activation time and the same priority, they will be executed in
- * first in first out (FIFO) order.
+ * same activation time and the same priority, they will be executed according
+ * to first in first out (FIFO) order.
  *
  * When scheduled, an event handle will be assigned and returned. This is
  * a unique event identifier and can be used as a reference for later
@@ -38,7 +38,7 @@
  * the entire heap to find a future event. The details of the data structure
  * are not exposed in this header file, see `cmb_event.c` for implementation.
  *
- * As always, the error handling is draconian. Functions for e.g. rescheduling
+ * As always, the error handling is draconian. Functions for e.g., rescheduling
  * an event will trip an assertion if the given event is not currently in the
  * event queue. This is a deliberate design choice to ensure that bugs get fixed
  * rather than "handled".
@@ -85,13 +85,13 @@ typedef void (cmb_event_func)(void *subject, void *object);
  * can be scheduled or executed. Expects to find an empty event queue.
  *
  * Call at the beginning of your simulation trial to start from a fresh state.
- * Also make sure to call `cmb_event_queue_terminate` at the end of your trial
+ * Make sure to call `cmb_event_queue_terminate` at the end of your trial
  * to free up space.
  *
  * Note that there is no `cmb_event_queue_create`, `_reset`, or `_destroy`.
  * There ìs only one (thread local) event queue per thread, no need to create
- * another. Hence, no need for the usual self pointer as first argument to this
- * function either, it acts on the one and only event queue in this thread.
+ * another. Hence, no need for the usual self-pointer as the first argument to
+ * this function either, it acts on the one and only event queue in this thread.
  *
  * Calling `cmb_event_queue_initialize` again on the next trial in the same
  * worker thread without calling `cmb_event_queue_terminate` at the end of the
@@ -124,33 +124,32 @@ extern void cmb_event_queue_terminate(void);
 extern void cmb_event_queue_clear(void);
 
 /**
- * @brief Is the event queue empty?'
+ * @brief Is the event queue empty?
  * @returns `true` if empty, `false` if not.
  */
 extern bool cmb_event_queue_is_empty(void);
 
 /**
- * @brief Returns current number of events in the queue.
+ * @brief Returns the current number of events in the queue.
  * @return The number of events in the event queue.
  */
 extern uint64_t cmb_event_queue_count(void);
 
 
 /**
- * @brief Returns total number of events ever scheduled until now.
+ * @brief Returns the total number of events ever scheduled until now.
  * @return The number of events ever scheduled since initialization.
  */
 extern uint64_t cmb_event_queue_total_count(void);
 
 /**
- * @brief Insert an event in event queue as indicated by the activation time
+ * @brief Insert an event in the event queue as indicated by the activation time
  *        and priority. An event cannot be scheduled at a time before the
  *        current simulation time.
  *
  * @param action  Pointer to the event function to execute.
- * @param subject Pointer to something user-defined, intended as a self
- *                pointer for whatever entity (e.g., a `cmb_process`) that is
- *                acting here.
+ * @param subject Pointer to something user-defined, intended as a self-pointer
+ *                for whatever entity (e.g., a `cmb_process`) is acting here.
  * @param object  Pointer to something user-defined, intended as a pointer to
  *                whatever object the `subject` is acting on.
  * @param time    The simulation time when this event will occur. The `time`
@@ -161,7 +160,7 @@ extern uint64_t cmb_event_queue_total_count(void);
  *                higher priority will happen before events with lower if
  *                scheduled at the same time. If both are equal, they will occur
  *                in FIFO sequence.
- * @return        The unique handle of the scheduled event, to be used as
+ * @return        The unique handle of the scheduled event, to be used as a
  *                reference for any rescheduling or cancellation of this event.
  */
 extern uint64_t cmb_event_schedule(cmb_event_func *action,
@@ -185,7 +184,7 @@ extern bool cmb_event_execute_next(void);
  * queue and stop the simulation. This can either be pre-scheduled for some
  * particular time or triggered by some other condition such as reaching a
  * certain number of samples in some data collector, a confidence interval being
- * sufficiently narrow, or anything else.
+ * narrow enough, or anything else.
  */
 extern void cmb_event_queue_execute(void);
 
@@ -241,25 +240,25 @@ extern void cmb_event_reschedule(uint64_t handle, double time);
 extern void cmb_event_reprioritize(uint64_t handle, int64_t priority);
 
 /**
- * @brief Wildcard pattern, matches any `cmb_event_func` (action) when searching
- *        event list.
+ * @brief Wildcard pattern that matches any `cmb_event_func` (action) when searching
+ *        the event list.
  */
 #define CMB_ANY_ACTION ((cmb_event_func *)UINT64_C(0xFFFFFFFFFFFFFFFF))
 
 /**
- * @brief Wildcard pattern, matches any subject when searching event list.
+ * @brief Wildcard pattern that matches any subject when searching the event list.
  */
 #define CMB_ANY_SUBJECT ((void *)UINT64_C(0xFFFFFFFFFFFFFFFF))
 
 /**
- * @brief Wildcard pattern, matches any object when searching event list.
+ * @brief Wildcard pattern that matches any object when searching the event list.
  */
 #define CMB_ANY_OBJECT ((void *)UINT64_C(0xFFFFFFFFFFFFFFFF))
 
 /**
- * @brief Search in event list for an event matching the given pattern
+ * @brief Search in the event list for an event matching the given pattern
  *        and return its handle if one exists in the queue. Return zero if no
- *        match. `CMB_ANY_*` are wildcarda, matching any value in its position.
+ *        match. `CMB_ANY_*` are wildcards, matching any value in its position.
  *
  * Will start the search from the beginning of the event queue each time,
  * since the queue may have changed in the meantime. There is no guarantee
@@ -292,16 +291,16 @@ extern uint64_t cmb_event_pattern_count(cmb_event_func *action,
 
 /**
  * @brief Cancel all matching events, returns the number
- * of events that were cancelled, possibly zero.
+ * of events that were canceled, possibly zero.
  *
- * Use e.g. for cancelling all events related to some subject or object if that
+ * Use e.g., for cancelling all events related to some subject or object if that
  * thing no longer is alive in the simulation.
  *
  * @param action  Pointer to the event function to find, or `CMB_ANY_ACTION`
  * @param subject Pointer to the subject to find, or `CMB_ANY_SUBJECT`
  * @param object  Pointer to the object to find, or `CMB_ANY_OBJECT`
  *
- * @return The number of events that matched and were cancelled, possibly zero.
+ * @return The number of events that matched and were canceled, possibly zero.
 
  */
 extern uint64_t cmb_event_pattern_cancel(cmb_event_func *action,

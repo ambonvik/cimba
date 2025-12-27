@@ -39,7 +39,7 @@ struct simulation {
 };
 
 /*
- * A single trial is defined by these parameters, and generates these results.
+ * A single trial is defined by these parameters and generates these results.
  */
 struct trial {
     /* Parameters */
@@ -157,7 +157,7 @@ void run_MM1_trial(void *vtrl)
     cmb_assert_release(vtrl != NULL);
     struct trial *trl = vtrl;
 
-    /* Using local variables, will only be used before this function exits */
+    /* Using local variables, since it will only be used before this function exits */
     struct context ctx = {};
     struct simulation sim = {};
     ctx.sim = &sim;

@@ -37,8 +37,8 @@ struct cmb_process *cmb_process_create(void)
 }
 
 /*
- * cmb_process_initialize : Set up process object and allocate coroutine stack.
- * Does not start the process yet.
+ * cmb_process_initialize : Set up a process object and allocate its
+ * coroutine stack. Does not start the process yet.
  */
 void cmb_process_initialize(struct cmb_process *pp,
                                        const char *name,
@@ -224,7 +224,7 @@ void *cmb_process_get_exit_value(const struct cmb_process *pp)
 
 /*
  * cmb_process_get_current : Returns a pointer to the currently executing
- * process, i.e. the calling process itself. Returns NULL if called from outside
+ * process, i.e., the calling process itself. Returns NULL if called from outside
  * a named process, such as the main process that executes the event scheduler.
  */
 struct cmb_process *cmb_process_get_current(void)
@@ -266,7 +266,8 @@ static void proc_holdwu_evt(void *vp, void *arg)
 }
 
 /*
- * cmb_process_hold : Suspend process for specified duration of simulated time.
+ * cmb_process_hold : Suspend a process for a specified duration of
+ * simulated time.
  *
  * Returns 0 (CMB_PROCESS_SUCCESS) when returning normally after the
  * specified duration, something else if not.
@@ -372,7 +373,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
     }
 }
 
-/* A friendly function in cmi_event.c, not part of public interface */
+/* A friendly function in cmi_event.c, not part of the public interface */
 extern struct cmi_list_tag **cmi_event_tag_loc(uint64_t handle);
 
 /*
@@ -383,7 +384,7 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     cmb_assert_release(ev_handle != UINT64_C(0));
     cmb_assert_release(cmb_event_is_scheduled(ev_handle));
 
-    /* Cannot be called from main process, which will return NULL here */
+    /* Cannot be called from the main process, which will return NULL here */
     struct cmb_process *pp = cmb_process_get_current();
     cmb_assert_release(pp != NULL);
     cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
@@ -516,7 +517,7 @@ static void stop_waiting(struct cmb_process *tgt)
     /* Make sure any kind of already scheduled wakeup event does not happen */
     cmb_event_pattern_cancel(CMB_ANY_ACTION, tgt, CMB_ANY_OBJECT);
 
-    /* Set to known state, essentially in limbo */
+    /* Set to a known state, essentially in limbo */
     tgt->waitsfor.type = CMI_WAITABLE_NONE;
     tgt->waitsfor.ptr = NULL;
     tgt->waitsfor.handle = UINT64_C(0);
@@ -542,8 +543,8 @@ static void proc_intrpt_evt(void *vp, void *arg)
 
 /*
  * cmb_process_interrupt : Schedule an interrupt event for the target process
- * at the current time with priority pri. Non-blocking call, returns to the
- * calling process immediately.
+ * at the current time with priority pri. Non-blocking call, it will return to
+ * the calling process immediately.
  */
 void cmb_process_interrupt(struct cmb_process *pp,
                            const int64_t sig,

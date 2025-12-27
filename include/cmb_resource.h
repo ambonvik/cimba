@@ -32,7 +32,7 @@
 #include "cmi_holdable.h"
 
 /**
- * @brief The resource struct, inherits all properties from `cmi_holdable` by
+ * @brief The resource struct inherits all properties from `cmi_holdable` by
  * composition and adds the resource guard, a single pointer to the process
  * holding the resource (if currently held), and a timeseries for logging its
  * history.
@@ -76,7 +76,7 @@ extern void cmb_resource_terminate(struct cmb_resource *rp);
 extern void cmb_resource_destroy(struct cmb_resource *rp);
 
 /**
- * @brief  Request and if necessary make the current process wait for the
+ * @brief  Request and, if necessary, make the current process wait for the
  *         resource. Returns immediately if available.
  *
  * @param rp Pointer to an initialized resource object.
@@ -123,7 +123,7 @@ static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
 }
 
 /**
- * @brief Returns number of resources currently in use
+ * @brief Returns the number of resources currently in use
  *
  * @param rp Pointer to resource
  * @return The number of units in use, 0 or 1
@@ -137,7 +137,7 @@ static inline uint64_t cmb_resource_in_use(struct cmb_resource *rp)
 }
 
 /**
- * @brief Returns number of currently available resources
+ * @brief Returns the number of currently available resources
  *
  * @param rp Pointer to resource
  * @return The number of units not in use, 0 or 1
@@ -152,7 +152,7 @@ static inline uint64_t cmb_resource_available(struct cmb_resource *rp)
 
 /**
  * @brief Return the amount of this resource that is currently held by the given
- *        process, i.e. either zero or one.
+ *        process, i.e., either zero or one.
  *
  * @param rp Pointer to a resource.
  * @param pp Pointer to a process.
@@ -191,7 +191,7 @@ extern void cmb_resource_stop_recording(struct cmb_resource *rp);
 extern struct cmb_timeseries *cmb_resource_get_history(struct cmb_resource *rp);
 
 /**
- * @brief Print a simple text mode report of the resource usage, ncluding key
+ * @brief Print a simple text mode report of the resource usage, including key
  *        statistical metrics and a histogram. Mostly intended for debugging
  *        purposes, not presentation graphics.
  *

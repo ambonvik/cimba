@@ -75,7 +75,7 @@ extern const char *cimba_version(void);
  * by Cimba. The argument points to a user-defined trial struct containing the
  * parameters to and the results from the trial. It is defined as a `void*` here
  * since we do not know what your struct will contain. The trial function does
- * not return a value, but stores the results in the same struct as the
+ * not return a value but stores the results in the same struct as the
  * parameters.
  *
  * This function will be executed in parallel with other instances of itself in
@@ -91,7 +91,7 @@ extern const char *cimba_version(void);
  * function calls, declare it `CMB_THREAD_LOCAL` to keep it local to that
  * simulation thread (but it may still be shared across successive trials that
  * happen to share the same worker thread, with possibly unexpected results
- * unless you are very careful in initialziing and clearing the variable in each
+ * unless you are careful in initializing and clearing the variable in each
  * trial). Alternatively, put a `mutex` on it, or other methods to make it
  * thread safe.
  */
@@ -111,7 +111,7 @@ typedef void (cimba_trial_func)(void *trial_struct);
  * of your trial struct to do the necessary pointer calculations.
  *
  * Your trial function is responsible for setting up the simulation from
- * parameters given in the trial struct, start it (typically by calling
+ * parameters given in the trial struct, starting it (typically by calling
  * `cmb_event_queue_execute()`, collecting the results, and storing them back to
  * the trial struct. Note that no end time is given as an argument here. You
  * need to determine the appropriate closing time and schedule an event for that

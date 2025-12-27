@@ -21,7 +21,7 @@
 #define CIMBA_CMI_CONFIG_H
 
 /*
- * Identify the processor architecture. So far, only AMD64/x86-64 supported.
+ * Identify the processor architecture. So far, only AMD64/x86-64 is supported.
  */
 #define CMI_AMD64 1
 #if (defined (__amd64__) || defined (__amd64) || defined (__x86_64__) || \
@@ -32,7 +32,7 @@
 #endif
 
 /*
- * Identify the operating system. So far, only Linux and Windows supported.
+ * Identify the operating system. So far, only Linux and Windows are supported.
  */
 #define CMI_LINUX 1
 #define CMI_WINDOWS 2
@@ -45,7 +45,7 @@
 #endif
 
 /*
- * Identify the compiler. So far, only GCC and Clang supported.
+ * Identify the compiler. So far, only GCC and Clang are supported.
  * Test for Clang first, in case it defines __GNUC__ for compatibility reasons.
  */
 #define CMI_GCC 1

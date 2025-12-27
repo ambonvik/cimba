@@ -65,13 +65,13 @@ extern struct cmb_timeseries *cmb_timeseries_create(void);
 extern void cmb_timeseries_initialize(struct cmb_timeseries *tsp);
 
 /**
- * @brief Re-initialize it, returning it to newly initialized state.
+ * @brief Re-initialize it, returning it to a newly initialized state.
  * @param tsp Pointer to an already allocated time series object.
  */
 extern void cmb_timeseries_reset(struct cmb_timeseries *tsp);
 
 /**
- * @brief Un-initialize it, returning it to newly created state.
+ * @brief Un-initialize it, returning it to a newly created state.
  * @param tsp Pointer to an already allocated time series object.
  */
 extern void cmb_timeseries_terminate(struct cmb_timeseries *tsp);
@@ -81,10 +81,10 @@ extern void cmb_timeseries_terminate(struct cmb_timeseries *tsp);
  *         and its arrays.
  *
  * Do not call unless the time series was created on the heap by
- * `cmb_timeseries_create`. Otherwise use `cmb_timeseries_terminate` to free the
- * data array only.
+ * `cmb_timeseries_create`. Otherwise, use `cmb_timeseries_terminate` to free
+ * the data array only.
  *
- * @param tsp Pointer to previously allocated time series object.
+ * @param tsp Pointer to a previously allocated time series object.
  */
 extern void cmb_timeseries_destroy(struct cmb_timeseries *tsp);
 
@@ -142,7 +142,7 @@ extern void cmb_timeseries_sort_x(struct cmb_timeseries *tsp);
 
 /**
  * @brief  An "undo" function for `cmb_timeseries_sort_x()`, sorting the time
- *         series back to ascending time sequence.
+ *         series back to an ascending time sequence.
  *
  * @param tsp Pointer to a time series object.
  */
@@ -232,8 +232,8 @@ extern void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp,
 
 /**
  * @brief Print a simple character-based histogram. Like
- *        `cmb_dataset_print_histogram()` but weighted by the interval until
- *        next sample.
+ *        `cmb_dataset_print_histogram()` but weighted by the time interval
+ *        until the next sample.
  *
  *  Call `cmb_dataset_histogram((struct cmb_dataset *)tsp, ...)` for unweighted.
  *
@@ -265,8 +265,8 @@ extern void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp);
  *        time duration between samples.
  *
  * @param tsp Pointer to a time series object.
- * @param n The number of coefficents to calculate.
- * @param acf The array to store the autocorrelation coeffients, , size ``n + 1``
+ * @param n The number of coefficients to calculate.
+ * @param acf The array to store the autocorrelation coefficients, size ``n + 1``
  */
 static inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp,
                                       const uint16_t n,
@@ -287,9 +287,9 @@ static inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp,
  * directly from the dataset.
  *
  * @param tsp Pointer to a time series object.
- * @param n The number of coefficents to calculate.
- * @param pacf The array to store the partial autocorrelation coeffients, size ``n + 1``.
- * @param acf Array of autocorrelation coeffients, if already available, size ``n + 1``.
+ * @param n The number of coefficients to calculate.
+ * @param pacf The array to store the partial autocorrelation coefficients, size ``n + 1``.
+ * @param acf Array of autocorrelation coefficients, if already available, size ``n + 1``.
  */
 static inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
                                        const uint16_t n,
@@ -308,13 +308,13 @@ static inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
  * If the data vector `acf[]` is `NULL`, ACFs will be calculated directly from
  * the dataset by calling `cmb_dataset_ACF()`.
  *
- * To print PACFs, simply give a vector of already calculated PACFs as the `acf`
+ * To print PACFs, give a vector of already calculated PACFs as the `acf`
  * argument.
  *
  * @param tsp Pointer to a time series object.
  * @param fp A file pointer for the output, possibly `stdout`.
- * @param n The number of coefficents to calculate.
- * @param acf Array of (partial) autocorrelation coeffients, if already
+ * @param n The number of coefficients to calculate.
+ * @param acf Array of (partial) autocorrelation coefficients, if already
  *            available, size ``n + 1``.
  */
 static inline void cmb_timeseries_print_correlogram(const struct cmb_timeseries *tsp,

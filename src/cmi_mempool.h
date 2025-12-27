@@ -42,7 +42,7 @@
 #define CMI_MAGIC_COOKIE 0x123456789abcdef0u
 
 /*
- * A memory pool for reuseable objects of a particular size.
+ * A memory pool for reusable objects of a particular size.
  */
 struct cmi_mempool {
     uint64_t cookie;
@@ -55,7 +55,7 @@ struct cmi_mempool {
     void *next_obj;
 };
 
-/* Pre-defined memory pools for generig 16-, 32-, and 64-byte objects  */
+/* Pre-defined memory pools for generic 16-, 32-, and 64-byte objects  */
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_16b;
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_32b;
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_64b;
@@ -67,7 +67,7 @@ extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_64b;
 extern struct cmi_mempool *cmi_mempool_create(void);
 
 /*
- * Initialize a memory pool for reuseable objects of size `obj_sz` bytes.
+ * Initialize a memory pool for reusable objects of size `obj_sz` bytes.
  *
  * The initial memory allocation is obj_sz * obj_num bytes, later incrementing
  * by the same amount whenever needed. obj_sz must be a multiple of 8 bytes.
@@ -106,7 +106,7 @@ extern void cmi_mempool_expand(struct cmi_mempool *mp);
 static inline void *cmi_mempool_get(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp != NULL);
-    /* Allow for first call to the predefined memory pools to be initialized */
+    /* Allow for the first call to the predefined memory pools to be initialized */
     cmb_assert_release((mp->cookie == CMI_INITIALIZED)
                        || (mp->cookie == CMI_MAGIC_COOKIE));
 

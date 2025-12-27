@@ -47,8 +47,8 @@ static CMB_THREAD_LOCAL struct {
 static CMB_THREAD_LOCAL uint64_t initial_seed = DUMMY_SEED;
 
 /*
- * Main pseudo-random number generator - 64 bits output, 256 bits state.
- * An implementation of Chris Doty-Humphrey's sfc64. Fast and high quality.
+ * Main pseudo-random number generator - 64-bit output, 256-bit state.
+ * An implementation of Chris Doty-Humphrey's sfc64. Fast and high-quality.
  * Public domain, see https://pracrand.sourceforge.net
  */
 uint64_t cmb_random_sfc64(void)
@@ -62,7 +62,7 @@ uint64_t cmb_random_sfc64(void)
 }
 
 /*
- * Auxiliary pseudo-random number generator - 64 bits output, 64 bits state.
+ * Auxiliary pseudo-random number generator - 64-bit output, 64-bit state.
  * Only used internally to bootstrap the sfc64 generator state from a single
  * seed. It is an implementation of Sebastiano Vigna & Guy Steele's splitmix64.
  * Public domain, see
@@ -87,8 +87,9 @@ static uint64_t splitmix64(void)
 /*
  * Initializer for pseudo-random number state.
  * Bootstraps one 64-bit seed to 256 bits of state using cmb_random_splitmix()
- * Intentionally randomizes the counter (.d) to start at random place in cycle.
- * Pulls a few samples from the generator to get rid of any initial transient.
+ * Intentionally randomizes the counter (.d) to start at a random place in the
+ * cycle. Pulls a few samples from the generator to get rid of any initial
+ * transient.
  */
 void cmb_random_initialize(const uint64_t seed)
 {
@@ -105,9 +106,8 @@ void cmb_random_initialize(const uint64_t seed)
 }
 
 /*
- * De-initializer, returns to the newly created state. Not very useful, mostly
- * provided for symmetry with other initialize/terminate pairs. A dangling
- * initialize with no terminate could cause imbalance in the simulated universe.
+ * De-initializer, return to the newly created state. Not very useful, mostly
+ * provided for syntactical symmetry with other initialize/terminate pairs.
  */
 void cmb_random_terminate(void) {
     prng_state.a = DUMMY_SEED;
@@ -120,7 +120,7 @@ void cmb_random_terminate(void) {
 
 /*
  * Return The 64-bit seed that was used to initialize the generator.
- * If it returns ´0x0000DEAD5EED0000` the generator was never initialized.
+ * If it returns ´0x0000DEAD5EED0000`, the generator was never initialized.
  */
 uint64_t cmb_random_get_curseed(void)
 {
@@ -160,8 +160,8 @@ uint64_t cmb_random_get_curseed(void)
  * does not succeed.
  *
  * Overall, it is 2.5 - 3 times faster than the inversion method, taking the
- * direct path in about 98.5 % of the samples, on average consuming 1.03 64-bit
- * random numbers per sample. It only needs to calculate the exact pdf in about
+ * direct path in about 98.5 % of the samples, consuming 1.03 64-bit random
+ * numbers on average per sample. It only needs to calculate the exact pdf in
  * 0.04 % of the cases. It is the fastest known method, which is why it is here.
  *
  * See also:
@@ -235,7 +235,7 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x)
                     const double *dpy = &(cmi_random_exp_zig_pdf_y[jdx]);
                     const double y = zig_exp_convert_y(dpy, u_cand_y);
                     if (y <= exp(-x)) {
-                        /* Indeed inside */
+                        /* Safely inside */
                         return x + x_offset;
                     }
                 }
@@ -297,7 +297,7 @@ double cmb_random_hyperexponential(const unsigned n,
 /*
  * Normal distribution, fast Ziggurat method.
  *
- * Optimized algorithm from Chris McFarland, same source and method as
+ * Optimized algorithm from Chris McFarland, the same source and method as
  * described for cmb_random_exponential_zig() above, except that the normal pdf
  * is partly convex and partly concave, giving additional cases for rejection
  * sampling.
@@ -383,7 +383,7 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
                 i_cand_x = INT64_MAX - i_cand_x;
             }
 
-            /* Are we sufficiently far from the pdf to avoid calculating it? */
+            /* Are we far enough from the pdf to avoid calculating it? */
             const double *dpx = &(cmi_random_nor_zig_pdf_x[jdx]);
             const double x = zig_nor_convert_x(dpx, i_cand_x);
             const int64_t i_dist = (INT64_MAX - i_cand_x) - i_cand_y;
@@ -651,7 +651,7 @@ unsigned cmb_random_loaded_dice(const unsigned n, const double *pa)
 /*
  * Non-uniform discrete distribution, efficient Vose alias sampling method.
  * Three-stage process:
- * 1. Call cmb_random_alias_create once to create lookup table before sampling.
+ * 1. Call cmb_random_alias_create once to create a lookup table before sampling.
  * 2. Sample as needed with cmb_random_alias_sample from the created table.
  * 3. Call cmb_random_alias_destroy when done to deallocate lookup table.
  */
@@ -673,7 +673,7 @@ static inline uint64_t alias_secure(const double p)
     return ur;
 }
 
-/* Create alias lookup table before sampling */
+/* Create an alias lookup table before sampling */
 struct cmb_random_alias *cmb_random_alias_create(const unsigned n,
                                                  const double *pa) {
     cmb_assert_release(n > 0);

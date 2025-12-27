@@ -34,7 +34,7 @@ static void *corofunc(struct cmi_coroutine *myself, void *context)
 
 static void test_simple_event(void)
 {
-    /* First create a coroutine, which is straightforward memory allocation. */
+    /* First, create a coroutine, which is straightforward memory allocation. */
     printf("Test simple coroutine call\n");
     const size_t stksz = 24 * 1024;
     printf("Create a coroutine\n");

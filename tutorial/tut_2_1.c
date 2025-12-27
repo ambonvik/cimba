@@ -51,7 +51,7 @@ struct simulation {
     /* A list of departed ships  */
     struct cmi_list_tag *departed_ships;
 
-    /* Data collector for local use in this instane */
+    /* Data collector for local use in this instance */
     struct cmb_dataset *time_in_system[2];
 
 };
@@ -63,7 +63,7 @@ struct environment {
     double water_depth;
 };
 
-/* A single trial is defined by these parameters, and generates these results. */
+/* A single trial is defined by these parameters and generates these results. */
 struct trial {
     /* Model parameters */
     double mean_wind;
@@ -126,7 +126,7 @@ void *weather_proc(struct cmb_process *me, void *vctx)
 
         /* We could request the harbormaster to read the new weather bulletin:
          *       cmb_condition_signal(simp->harbormaster);
-         * but it will be signalled by the tide process in a moment anyway,
+         * but it will be signaled by the tide process in a moment anyway,
          * so we do not need to do it from here. */
 
         /* Wait until the top of the next hour */
@@ -154,7 +154,7 @@ void *tide_proc(struct cmb_process *me, void *vctx)
         const double da3 = 0.25 * sin(2.0 * M_PI * t / (0.5 * 29.5 * 24));
         const double da = da0 + da1 + da2 + da3;
 
-        /* Use wind speed as proxy for air pressure, assume on a west coast */
+        /* Use wind speed as a proxy for air pressure, assume on a west coast */
         const double dw1 = 0.5 * envp->wind_magnitude;
         const double dw2 = 0.5 * envp->wind_magnitude
                          * sin(envp->wind_direction * M_PI / 180.0);
@@ -293,7 +293,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     *t_sys_p = t_dep - t_arr;
 
     /* Note that returning from a process function has the same effect as calling
-     * cmb_process_exit() with the return value as argument. */
+     * cmb_process_exit() with the return value as the argument. */
     return t_sys_p;
 }
 
@@ -312,7 +312,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
     while (true) {
         cmb_process_hold(cmb_random_exponential(mean));
 
-        /* The ship class is a derived sub-class of cmb_process, we malloc it
+        /* The ship class is a derived subclass of cmb_process, we malloc it
          * directly instead of calling cmb_process_create() */
         struct ship *shpp = malloc(sizeof(struct ship));
 
@@ -335,7 +335,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
                  ++cnt, ((shpp->size == SMALL) ? "_small" : "_large"));
         cmb_process_initialize((struct cmb_process *)shpp, namebuf, ship_proc, vctx, 0);
 
-        /* Start our brand new ship heading into the harbor */
+        /* Start our new ship heading into the harbor */
         cmb_process_start((struct cmb_process *)shpp);
         cmb_logger_user(stdout, USERFLAG1, "%s started", namebuf);
     }
@@ -369,7 +369,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
     struct cmi_list_tag **dep_head = &(simp->departed_ships);
 
     while (true) {
-        /* We do not need to loop here, this is the only process waiting */
+        /* We do not need to loop here, since this is the only process waiting */
         cmb_condition_wait(simp->davyjones, is_departed, vctx);
 
         /* There is one, collect its exit value */
@@ -453,7 +453,7 @@ void run_trial(void *vtrl)
     cmb_assert_release(vtrl != NULL);
     struct trial *trlp = vtrl;
 
-    /* Using local variables, will only be used before this function exits */
+    /* Using local variables, since it will only be used before this function exits */
     struct environment env = {0};
     struct simulation sim = {0};
     struct context ctx = { &sim, &env, trlp };

@@ -84,7 +84,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
             cmb_assert_debug(amount_held == cmb_resourcestore_held_by_process(sp, me));
         }
         else if (sig == CMB_PROCESS_PREEMPTED) {
-            /* The acquire call did not end well */
+            /* The acquire() call did not end well */
             amount_held = 0u;
             cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
                             cmb_resourcestore_get_name(sp));
@@ -167,7 +167,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
             cmb_assert_debug(amount_held == cmb_resourcestore_held_by_process(sp, me));
         }
         else if (sig == CMB_PROCESS_PREEMPTED) {
-            /* The acquire call did not end well */
+            /* The acquire() call did not end well */
             amount_held = 0u;
             cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
                             cmb_resourcestore_get_name(sp));

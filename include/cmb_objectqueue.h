@@ -7,11 +7,11 @@
  * consumers wait.
  *
  * The difference from `cmb_buffer` is that it only represents amounts, while
- * `cmb_objectqueue` tracks the individual objects passing throug the queue.
+ * `cmb_objectqueue` tracks the individual objects passing through the queue.
  * An object can be anything, represented by `void*` here.
  *
  * First in first out queue order only. No method implemented to cancel random
- * objects from the queue. No record kept of object holders, since the
+ * objects from the queue. No record is kept of object holders, since the
  * `cmb_buffer` and `cmb_objectqueue` essentially deal with assigning the
  * available space in the resource to processes, not lending pieces of a
  * resource to processes. The objects holding a part of a `cmb_objectqueue` are
@@ -98,12 +98,13 @@ extern void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp);
 extern void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp);
 
 /**
- * @brief   Request and if necessary wait for an object from the queue.
+ * @brief   Request and, if necessary, wait for an object from the queue.
  *          Only one object can be requested at a time.
  *
  * Note that the object argument is a pointer to where the object is to be
  * stored. The return value `CMB_PROCESS_SUCCESS` (0) indicates that all went
- * well and the object pointer location now level a valid pointer to an object.
+ * well and that the object pointer location now contains a valid pointer to
+ * an object.
  *
  * If the call was interrupted for some reason, the return value is the
  * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
@@ -118,7 +119,7 @@ extern int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp,
                                    void **objectloc);
 
 /**
- * @brief Put an object into the queue, if necessary waiting for free
+ * @brief Put an object into the queue, if necessary, waiting for free
  * space.
  *
  * Note that the object argument is a pointer to where the object is stored.

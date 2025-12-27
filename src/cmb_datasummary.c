@@ -75,7 +75,7 @@ void cmb_datasummary_destroy(struct cmb_datasummary *dsp)
 
 /*
  * Merge two data summaries, updating the statistics.
- * Used e.g. for merging across pthreads.
+ * Used e.g., for merging across pthreads.
  *
  * See:
  * Philippe Pébay (2008), "Formulas for Robust, One-Pass Parallel Computation of
@@ -84,7 +84,7 @@ void cmb_datasummary_destroy(struct cmb_datasummary *dsp)
  *     (Sandia report SAND2008-6212, U.S. Government work, hence public domain.)
  *
  * Note that the target address may point to one of the sources, hence all
- * calculations are done  * in a temporary variable and the target overwritten
+ * calculations are done in a temporary variable and the target overwritten
  * only at the end.
  *
  * Returns tgt->count, the number of data points in the combined summary.

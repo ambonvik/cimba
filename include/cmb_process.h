@@ -9,9 +9,9 @@
  *
  * The `cmb_process` can hold (deactivate itself for a certain interval of
  * simulated time) and wait for resources to become available. In those states,
- * it can also be interrupted by other processes. The interrupt passes a non-
- * zero value that appears as the return value from hold, to be used for
- * distinguishing between normal return vs various (possibly user-defined)
+ * it can also be interrupted by other processes. The interrupt passes a nonzero
+ * value that appears as the return value from hold, to be used for
+ * distinguishing between normal return vs. various (possibly user-defined)
  * interrupt types.
  *
  * In the same way as the interrupt call, the functions for starting and
@@ -58,7 +58,7 @@
 
 /**
  * @brief Return code from various process context switching calls, indicating
- *        successful return from whatever it was calling.
+ *        a successful return from whatever it was calling.
  */
 #define CMB_PROCESS_SUCCESS INT64_C(0)
 
@@ -84,7 +84,7 @@
 
 /**
  * @brief Return code from various process context switching calls, indicating
- *        that the process request for some type of resource was cancelled.
+ *        that the process request for some type of resource was canceled.
  */
 
 #define CMB_PROCESS_CANCELLED INT64_C(-4)
@@ -103,7 +103,7 @@ enum cmb_process_state {
  * composition, adding the name, priority, and lists of resources it may be
  * holding and things it may be waiting for.
  *
- * The `waiters_listhead` contain any processes that are waiting for this
+ * The `waiters_listhead` contains any processes that are waiting for this
  * process to finish. The `resources_listhead` contains any resources held by
  * this process, to be released if the process is stopped by someone else.
 */
@@ -195,7 +195,7 @@ extern void cmb_process_start(struct cmb_process *pp);
 extern int64_t cmb_process_hold(double dur);
 
 /**
- * @brief  Wait for some other proceess to finish. Called from within a process.
+ * @brief  Wait for some other process to finish. Called from within a process.
  *
  * Returns immediately if the awaited process already is finished.
  *
@@ -212,7 +212,7 @@ extern int64_t cmb_process_wait_process(struct cmb_process *awaited);
  * @param ev_handle The handle of the event we will be waiting for. Note that
  *                  this is not a pointer, see `cmb_event.h`for details.
  * @return `CMB_PROCESS_SUCCESS` if the awaited event occurred,
- *         `CMB_PROCESS_CANCELLED` if the event was cancelled for some reason,
+ *         `CMB_PROCESS_CANCELLED` if the event was canceled for some reason,
  *         something else if we were interrupted with some other signal.
  */
 extern int64_t cmb_process_wait_event(uint64_t ev_handle);
@@ -240,7 +240,7 @@ extern void cmb_process_exit(void *retval);
  *
  * @param pp Pointer to the target process.
  * @param sig The signal to be passed to the victim process, e.g.,
- *            `CMB_PROCESS_INTERRUPTED`, or something user application defined.
+ *            `CMB_PROCESS_INTERRUPTED`, or something user-application defined.
  * @param pri The priority for the interrupt event that will be scheduled.
  */
 extern void cmb_process_interrupt(struct cmb_process *pp,
@@ -262,7 +262,7 @@ extern void cmb_process_interrupt(struct cmb_process *pp,
  *
  * @param pp Pointer to the target process.
  * @param retval The return value from the process, user defined meaning, often
- *               `NULL`for an externally killed process. Will be stored as the
+ *               `NULL` for an externally killed process. Will be stored as the
  *               `cmb_coroutine` `exit_value`.
  */
 extern void cmb_process_stop(struct cmb_process *pp, void *retval);
@@ -309,12 +309,12 @@ extern void *cmb_process_get_context(const struct cmb_process *pp);
  * @brief  Replace the process context with something else.
  *
  * The intended use is for cases where the context is not ready when the process
- * is initialized, e.g. because it will contain a pointer to some object that
+ * is initialized, e.g., because it will contain a pointer to some object that
  * has not been created yet.
  *
  * @param pp Pointer to a process.
  * @param context The second argument to the process function, after the pointer
- *                 to the process itself. The content and meaning is user
+ *                 to the process itself. The content and meaning are user
  *                 application defined.
  */
 extern void cmb_process_set_context(struct cmb_process *pp, void *context);
@@ -362,7 +362,7 @@ static inline enum cmb_process_state cmb_process_get_state(const struct cmb_proc
 extern void *cmb_process_get_exit_value(const struct cmb_process *pp);
 
 /**
- * @brief  Return a pointer to the currently executing process, i.e. the calling
+ * @brief  Return a pointer to the currently executing process, i.e., the calling
  * process itself.
  *
  * @return Pointer to the currently executing process, `NULL` if called from

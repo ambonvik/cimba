@@ -61,7 +61,7 @@ struct cmb_resourcestore *cmb_resourcestore_create(void)
 /*
  * holder_queue_check : Test if heap_tag *a should go before *b. If so, return
  * true. Ranking lower priority (dkey) before higher, then LIFO based on handle
- * value. Used to identify most likely victim for a resource preemption, hence
+ * value. Used to identify the most likely victim for resource preemption, hence
  * opposite order of the waiting room.
  */
 static bool holder_queue_check(const struct cmi_heap_tag *a,
@@ -388,7 +388,7 @@ static uint64_t update_record(struct cmb_resourcestore *store,
 
 
     if (caller_handle != 0u) {
-        /* Must hold some already, add to existing entry */
+        /* Must hold some already, add to the existing entry */
         add_to_holder(store_holders, caller_handle, amount);
     }
     else {
@@ -403,9 +403,9 @@ static uint64_t update_record(struct cmb_resourcestore *store,
 
 
 /*
- * cmb_store_acquire_inner : Acquire, perhaps preempt, and if necessary wait for
- * an claim_amount of the store resource. The calling process may already hold
- * some and try to increase its holding with this call, or obtain its first
+ * cmb_store_acquire_inner : Acquire, perhaps preempt, and, if necessary, wait for
+ * a claim_amount of the store resource. The calling process may already hold
+ * some and try to increase its holding with this call or obtain its first
  * helping.
  */
 int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
@@ -427,7 +427,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
 
     uint64_t caller_hdle = find_handle(caller_rtloc, hrp);
     if (caller_hdle != 0u) {
-        /* It does, note the amount in case we need to roll back to here */
+        /* It does. Note the amount in case we need to roll back to here */
         void **item = cmi_hashheap_get_item(hp, caller_hdle);
         initially_held = (uint64_t)item[1];
     }
@@ -444,7 +444,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
     while (true) {
         const uint64_t available = sp->capacity - sp->in_use;
 
-        /* First take anything that is available already */
+        /* First, take anything that is available already */
         if (available >= rem_claim) {
             /* Grab what we need */
             sp->in_use += rem_claim;
@@ -491,7 +491,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
                 cmb_assert_debug(loot > 0u);
                 cmb_assert_debug(loot <= sp->in_use);
 
-                /* Remove the resource from victim's resource list */
+                /* Remove the resource from the victim's resource list */
                 struct cmi_list_tag32 **victim_rtloc = &(victim->resources_listhead);
                 const bool found = cmi_list_remove32(victim_rtloc, hrp);
                 cmb_assert_debug(found == true);
@@ -552,7 +552,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
                             "Interrupted by signal %" PRId64 ", returning unchanged",
                             sig);
             if (initially_held > 0u) {
-                /* Put back difference. It had some, there should be a record */
+                /* Put back the difference. It had some, there should be a record */
                 cmb_assert_debug(caller_hdle != 0u);
                 const uint64_t surplus = reset_holder(hp, caller_hdle, initially_held);
                 sp->in_use -= surplus;

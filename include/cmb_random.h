@@ -1,11 +1,11 @@
 /**
  * @file cmb_random.h
- * @brief Fast, high quality pseudo-random number generators and distributions
+ * @brief Fast, high-quality pseudo-random number generators and distributions
  *        built from the ground up for multithreaded use.
  *
  * The main generator gives 64-bit pseudo-random numbers with 256 bits of state
  * and a cycle of at least 2^64 samples. It is seeded by a 64-bit value but
- * amplifies that to a 265-bit state by using an auxiliary generator with 64 bits
+ * amplifies that to a 265-bit state by using an auxiliary generator with a 64-bit
  * state to bootstrap the initial 256-bit state for the main generator. All
  * later pseudo-random numbers come from the same stream.
  *
@@ -29,7 +29,7 @@
  * safe. The internal generator state is often kept as static variables between
  * calls, making it non-reentrant. Some common distributions, such as the
  * typical Box-Muller method for normal variates, also depend on static
- * variables to maintain state between call. making it unsuitable for our
+ * variables to maintain state between calls, making it unsuitable for our
  * purpose. Luckily, the algorithms used here are not only thread-safe, but also
  * faster and statistically equally good or better.
  *
@@ -78,7 +78,7 @@
  * state is thread local, i.e., the call is only effective for the currently
  * executing thread.
  *
- * @param seed Initial seed value to be used, preferrably a random 64-bit value.
+ * @param seed Initial seed value to be used, preferably a random 64-bit value.
  */
 extern void cmb_random_initialize(uint64_t seed);
 
@@ -89,7 +89,7 @@ extern void cmb_random_initialize(uint64_t seed);
 extern void cmb_random_terminate(void);
 
 /**
- * @brief Get a suitable 64-bit seed from hardware entropy source.
+ * @brief Get a suitable 64-bit seed from a hardware entropy source.
  *
  * It will use the best available entropy source on the current hardware, such
  * as the `RDSEED` or `RDRAND` CPU instruction. If no suitable hardware
@@ -103,17 +103,17 @@ extern uint64_t cmb_random_get_hwseed(void);
 
 /**
  * @brief Get the seed that was used for the ongoing run in this thread. Used as
- *        debugging tool, e.g., to enable repeating whatever sequence of events
+ *        a debugging tool, e.g., to enable repeating whatever sequence of events
  *        led to some unexpected result, possibly in a debugger or with more
  *        `printf()` statements enabled next time.
  *
  * @return The 64-bit seed that was used to initialize the generator. If it
- *         returns `0x0000DEAD5EED0000` the generator was never initialized.
+ *         returns `0x0000DEAD5EED0000`, the generator was never initialized.
  */
 extern uint64_t cmb_random_get_curseed(void);
 
 /**
- * @brief The main pseudo-random number generator - 64 bits output, 256 bits
+ * @brief The main pseudo-random number generator - 64-bit output, 256-bit
  *        thread local state. An implementation of Chris Doty-Humphrey's sfc64.
  *
  * Public domain, see https://pracrand.sourceforge.net
@@ -125,7 +125,7 @@ extern uint64_t cmb_random_sfc64(void);
 /**
  * @brief Continuous uniform distribution on the interval [0, 1].
  *
- * A 64-bit double has 53 bits significand. We discard the bottom 11 bits and
+ * A 64-bit double has a 53-bit significand. We discard the bottom 11 bits and
  * scale the result by 2^(-53) to get a number in [0.0, 1.0].
  *
  * See also https://en.wikipedia.org/wiki/Continuous_uniform_distribution
@@ -254,13 +254,13 @@ static inline double cmb_random_logistic(const double m, const double s)
 /**
  * @brief Cauchy distribution - the canonical fat-tailed distribution.
  *
- * The mean, variance and all higher moments are undefined.
+ * The mean, variance, and all higher moments are undefined.
  *
- * Occurs e.g. as the incidence of rays from a point source onto a line.
+ * Occurs e.g., as the incidence of rays from a point source onto a line.
  * Substituting it for a normal distribution in some financial model gives
- * black swan events galore. Also known as the Lorentz distribution, or the
+ * black swan events galore. Also known as the Lorentz distribution or the
  * Witch of Agnesi. It is evil. Mostly useful as a practical joke, or as a
- * patological test case to break assumptions.
+ * pathological test case to break assumptions.
  *
  * See also https://en.wikipedia.org/wiki/Cauchy_distribution
  */
@@ -359,8 +359,8 @@ static inline double cmb_random_erlang(const unsigned k, const double m)
  * The mean equals the sum of `ma[i]`, the variance the sum of `ma[i]^2`.
  *
  * A slight generalization of the Erlang distribution by allowing each
- * summed item its own exponential parameter. This will give lower coefficent of
- * variation than a single exponential, hence the name.
+ * summed item its own exponential parameter. This will give a lower coefficient
+ * of variation than a single exponential, hence the name.
  *
  * See also https://en.wikipedia.org/wiki/Hypoexponential_distribution
  */
@@ -401,7 +401,7 @@ extern double cmb_random_hyperexponential(unsigned n,
  * @brief Gamma distribution on `[0, oo)` with shape parameter `shape`, where
  *        `shape > 0`. Equal to `cmb_random_std_gamma(shape, 1.0)`.
  *
- * Generalizes the Erlang distribution to non-integer `n` (shape).
+ * Generalizes the Erlang distribution to noninteger `n` (shape).
  * The mean and variance equal `shape`.
  *
  * See also https://en.wikipedia.org/wiki/Gamma_distribution
@@ -412,7 +412,7 @@ extern double cmb_random_std_gamma(double shape);
  * @brief Gamma distribution on `[0, oo)` with shape parameter `shape` and
  *        scale parameter `scale`, both `> 0`.
  *
- * Generalizes the Erlang distribution to non-integer `n` (here `shape`).
+ * Generalizes the Erlang distribution to noninteger `n` (here `shape`).
  * The mean is `shape * scale`, the variance `shape * scale^2`.
  *
  * Used for various servicing, waiting, and repair times in queuing systems,
@@ -462,8 +462,8 @@ static inline double cmb_random_std_beta(const double a, const double b)
  *        `[min, max]`  with real-valued shape parameters `a` and `b`,
  *        where `a > 0` and `b > 0`.
  *
- * Used to model task completion times within a certain interval, as alternative
- * to the triangular and PERT distributions.
+ * Used to model task completion times within a certain interval, as an
+ * alternative to the triangular and PERT distributions.
  *
  * See also https://en.wikipedia.org/wiki/Beta_distribution
  */
@@ -481,7 +481,7 @@ static inline double cmb_random_beta(const double a, const double b,
 }
 
 /**
- * @brief Modified PERT distribution, a scaled and shifted beta distributions
+ * @brief Modified PERT distribution, a scaled and shifted beta distribution
  *        to get the mean at `m`.
  *
  * Can be used as a heuristically determined distribution where the parameters
@@ -498,7 +498,7 @@ extern double cmb_random_PERT_mod(double min,
                                   double lambda);
 
 /**
- * @brief PERT distribution, a scaled and shifted beta distributions
+ * @brief PERT distribution, a scaled and shifted beta distribution
  *        to get the mean at `m`.
  *
  * Can be used as a heuristically determined distribution where the parameters
@@ -551,7 +551,7 @@ static inline double cmb_random_weibull(const double shape, const double scale)
  * @brief Pareto distribution (power law) on `[mode, oo)` with parameters
  * `shape > 0` and `mode > 0`.
  *
- * Used to model e.g. the size of human settlements (hamlets to cities),
+ * Used to model e.g., the size of human settlements (hamlets to cities),
  * size of (extreme) weather events, human income and wealth, etc.
  * Setting `shape = log4(5) = ln(5)/ln(4) = 1.16` gives the 80:20 rule.
  * Higher values of the `shape` parameter give steeper distributions.
@@ -622,7 +622,7 @@ static inline double cmb_random_F_dist(const double a, const double b)
  * undefined.
  *
  * Can be used as a generic fat-tailed alternative to the standard
- * normal distribution, where the degree of fat-tailedness depends on `v`,
+ * normal distribution, where the degree of fat-tailedness depends on `v`.
  * It is equal to a Cauchy distribution for `v = 1`, converging to a normal
  * distribution as `v -> oo`.
  *
@@ -686,7 +686,7 @@ static inline double cmb_random_rayleigh(const double s)
 
 /**
  * @brief A single flip of an unbiased coin. Returns 1 with `p = 0.5`, 0 with
- *        same probability.
+ *        the same probability.
  *
  * Equivalent to `cmb_random_bernoulli(0.5)`, but optimized for speed, only
  * consuming one bit of randomness for each trial by caching random bits
@@ -744,13 +744,13 @@ extern unsigned cmb_random_binomial(unsigned n, double p);
 
 /**
  * @brief Negative binomial distribution, the number of failures before the
- *        `m`'th success in independent Bernoulli trials each with probability
+ *        `m`th success in independent Bernoulli trials each with probability
  *        `p`, sampled with replacement (or equivalently from an infinite pool).
  *
  * Mean `m(1-p)/p`, variance `m(1-p)/p^2`. Equal to a geometric distribution
  * for `m = 1`.
  *
- * Used to model e.g. the number of bits (or packets) that need to be sent to
+ * Used to model e.g., the number of bits (or packets) that need to be sent to
  * successfully transmit an m-bit (or -packet) message. Also known as the Pascal
  * distribution.
  *
@@ -763,7 +763,7 @@ extern unsigned cmb_random_negative_binomial(unsigned m, double p);
 /**
  * @brief Pascal distribution an alias for the negative binomial distribution,
  *        `cmb_random_negative_binomial()`, the number of failures before the
- *        `m`'th success in independent Bernoulli trials each with probability
+ *        `m`th success in independent Bernoulli trials each with probability
  *        `p`, sampled with replacement (or equivalently from an infinite pool).
  *
  * See also https://en.wikipedia.org/wiki/Negative_binomial_distribution
@@ -781,7 +781,7 @@ static inline unsigned cmb_random_pascal(const unsigned m, const double p)
  * mean `1/r`.
  *
  * Models the number of shot noise pulses, customer arrivals, incoming calls,
- * Geiger counter clicks, etc, per unit of time.
+ * Geiger counter clicks, etc., per unit of time.
  *
  * Performs the calculation by simulating the experiment.
  *
@@ -805,7 +805,7 @@ static inline long cmb_random_dice(const long a, const long b)
 
 /**
  * @brief A non-uniform discrete distribution among `n` alternatives. It returns
- *        the selected array index `i` on `[0, n-1]` with probability `pa[i]`.
+ *        the selected array index `i` on `[0, n-1]` with a probability `pa[i]`.
  *
  * The probabilities in `pa[]` should sum to 1.0, i.e., mutually exclusive,
  * collectively exhaustive.
@@ -820,7 +820,7 @@ static inline long cmb_random_dice(const long a, const long b)
  * `cmb_random.c` for an example of alias sampling from a table of values.
  *
  * @param n Number of entries
- * @param pa The probabilties for each of the entries, array size ``n``
+ * @param pa The probabilities for each of the entries, array size ``n``
  *
  */
 extern unsigned cmb_random_loaded_dice(unsigned n, const double *pa);
@@ -836,7 +836,7 @@ struct cmb_random_alias {
 };
 
 /**
- * @brief Create look-up table for alias sampling, where `n` is the
+ * @brief Create a look-up table for alias sampling, where `n` is the
  *        number of entries.
  *
  * `cmb_random_alias_create()` allocates and returns a look-up table of
@@ -845,7 +845,7 @@ struct cmb_random_alias {
  * finished.
  *
  * @param n Number of entries
- * @param pa The probabilties for each of the entries, array size ``n``
+ * @param pa The probabilities for each of the entries, array size ``n``
  *
  * @return Pointer to an allocated and initialized `cmb_random_alias` look-up
  *         table.
@@ -855,7 +855,7 @@ extern struct cmb_random_alias *cmb_random_alias_create(unsigned n,
                                                         const double *pa);
 
 /**
- * @brief Perform  alias sampling, more efficient way of sampling a non-uniform
+ * @brief Perform  alias sampling, a more efficient way of sampling a non-uniform
 *        discrete distribution of `n` alternatives. Returns values on
 *        `[0, (pa->n) - 1]`, typically used for array indices and the like.
  *
@@ -872,7 +872,7 @@ extern struct cmb_random_alias *cmb_random_alias_create(unsigned n,
  *
  * @param ap Pointer to an allocated and initialized `cmb_random_alias` look-up
  *           table.
- * @return A randomly chosen index into the table, selected with probability
+ * @return A randomly chosen index into the table, selected with a probability
  *        `pa[i]`
 
  */

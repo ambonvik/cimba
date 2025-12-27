@@ -107,7 +107,7 @@ uint64_t cmb_dataset_add(struct cmb_dataset *dsp, const double x)
         cmi_dataset_expand(dsp);
     }
 
-    /* May have null data array on entry, but not by here */
+    /* May have a null data array on entry, but not by here */
     cmb_assert_release(dsp->xa != NULL);
     cmb_assert_release(dsp->count < dsp->cursize);
 
@@ -118,7 +118,7 @@ uint64_t cmb_dataset_add(struct cmb_dataset *dsp, const double x)
 }
 
 /*
- * Sorting function for data array, sorting from smallest to largest value.
+ * Sorting function for the data array, sorting from smallest to largest value.
  *
  * Since stack space might be at a premium in this coroutine-based simulation
  * library, we use a non-recursive heapsort even if the recursive quicksort
@@ -194,7 +194,7 @@ bool cmi_dataset_is_max_heap(const uint64_t un,
 
 #endif /* ifndef NASSERT */
 
-/* Establish max heap condition in dataset array starting from uroot */
+/* Establish max heap condition in the dataset array starting from uroot */
 static void dataset_heapify(const uint64_t un,
                             double arr[un],
                             uint64_t uroot)
@@ -629,7 +629,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
 
 /*
  * Calculate the first n partial autocorrelation coefficients using the
- * Durbin-Levinson  * algorithm, optionally using previously calculated ACFs
+ * Durbin-Levinson algorithm, optionally using previously calculated ACFs
  * to avoid repeating a computationally expensive step if already done once.
  */
 void cmb_dataset_PACF(const struct cmb_dataset *dsp,

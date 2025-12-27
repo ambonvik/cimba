@@ -109,12 +109,12 @@ static inline bool cmi_is_power_of_two(const size_t n)
 #define cmi_offset_of(type, member) ((size_t)&(((type *)0)->member))
 
 /*
- * cmi_container_of : Find pointer to struct object given address of a member
+ * cmi_container_of : Find the pointer to struct object given address of a member
  */
 #define cmi_container_of(ptr, type, member) \
                         ((type *)((char *)(ptr) - cmi_offset_of(type, member)))
 
-/* System dependent utility functions in src/arch/cmi_memutils_*.c */
+/* System-dependent utility functions in src/arch/cmi_memutils_*.c */
 extern size_t cmi_get_pagesize(void);
 extern void *cmi_aligned_alloc(size_t align, size_t sz);
 extern void cmi_aligned_free(void *p);

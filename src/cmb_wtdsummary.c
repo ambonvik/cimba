@@ -139,7 +139,7 @@ uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
 
 /*
  * Merge two weighted data summaries, updating the statistics.
- * Used e.g. for merging across pthreads.
+ * Used e.g., for merging across pthreads.
  * See: Pébay & al, "Numerically stable, scalable formulas for parallel and
  *      online computation of higher-order multivariate central moments with
  *      arbitrary weights", Computational Statistics (2016) 31:1305–1325

@@ -15,7 +15,7 @@
  * different for each waiting process. It will be evaluated for each waiting
  * process separately.
  *
- * When signalled, the condition variable evaluates the predicate function for
+ * When signaled, the condition variable evaluates the predicate function for
  * all waiting processes and reactivates all that evaluate to `true`. The
  * condition variable cannot know what happens next, so it is the calling
  * processes' own responsibility to recheck the condition and wait again if it
@@ -63,8 +63,8 @@ struct cmb_condition {
 /**
  * @brief Function prototype for the condition predicate function, taking a
  *        pointer to the condition (allowing usage by derived classes), a
- *        pointer to the process, and a `void *` to basically any context the
- *        predicate function needs to determine a `true` or `false` result.
+ *        pointer to the process, and a `void *` to any context the predicate
+ *        function needs to determine a `true` or `false` result.
  *
  * Same as the `cmb_resourceguard_demand_func`, except the first argument type,
  * which only needs a typecast to reach the base class.
@@ -147,7 +147,7 @@ extern bool cmb_condition_cancel(struct cmb_condition *cvp,
 
 /**
  * @brief Remove the process from the priority queue without resuming it. Used
- *        e.g. when stopping a process and cancelling its appointments.
+ *        e.g., when stopping a process and cancelling its appointments.
  *
  * @param cvp Pointer to a condition variable.
  * @param pp Pointer to a process, presumably waiting for the condition
@@ -173,7 +173,7 @@ static inline void cmb_condition_subscribe(struct cmb_condition *cvp,
 }
 
 /**
- * @brief Un-subscribe this condition variable to signals from the other
+ * @brief Unsubscribe this condition variable to signals from the other
  *        resource guard.
  *
  * @param cvp Pointer to a condition variable.

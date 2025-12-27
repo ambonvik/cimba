@@ -21,7 +21,6 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <time.h>
 
 #include "cmb_event.h"
 #include "cmb_random.h"
@@ -29,7 +28,7 @@
 
 #include "test.h"
 
-/* An event, prints a line of info and reschedules itself */
+/* An event: Prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object)
 {
     cmb_logger_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
@@ -38,7 +37,7 @@ static void test_action(void *subject, void *object)
                       (int16_t)cmb_random_dice(1, 5));
 }
 
-/* Another event, closes the bar for good */
+/* Another event: Closes the bar for good */
 static void end_sim(void *subject, void *object)
 {
     cmb_logger_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);

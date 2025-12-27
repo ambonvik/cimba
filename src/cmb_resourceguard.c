@@ -157,19 +157,19 @@ static void resgrd_waitwu_evt(void *vp, void *arg)
 }
 
 /*
- * cmb_resourceguard_signal : Plings the bell for a resource guard to check if
+ * cmb_resourceguard_signal : Rings the bell for a resource guard to check if
  * any of the waiting processes should be resumed. Will evaluate the demand
  * function for the first process in the queue, if any, and will resume it if
  * (and only if) its demand function (*demand)(pp, rp, ctx) returns true.
  *
  * Resumes zero or one waiting processes. Call it again if there is a chance
- * that more than one process could be ready, e.g. if some process just returned
+ * that more than one process could be ready, e.g., if some process just returned
  * five units of a resource and there are several processes waiting for one
  * unit each. This does not allow priority inversion where lower-priority
  * processes could monopolize the resource while a higher-priority process is
  * starved.
  *
- * In cases where some waiting process needs to bypass another, e.g. if there
+ * In cases where some waiting process needs to bypass another, e.g., if there
  * are three available units of the resource, the first process in the queue
  * demands five, and there are three more behind it that demand one each, it is
  * up to the application to dynamically change process priorities to bring the
@@ -218,7 +218,7 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
 /*
  * cmb_resourceguard_cancel : Remove this process from the priority queue and
  * schedule a wakeup event with a CMB_PROCESS_CANCELLED signal.
- * Returns true if found and successfully cancelled, false if not.
+ * Returns true if found and successfully canceled, false if not.
  */
 bool cmb_resourceguard_cancel(struct cmb_resourceguard *rgp,
                               struct cmb_process *pp)
@@ -268,8 +268,8 @@ bool cmb_resourceguard_remove(struct cmb_resourceguard *rgp,
  * of this one, forwarding signals and causing the observer to evaluate its
  * demand predicates as well.
  *
- * When registering observers, do not create any cycles where e.g. condition A
- * gets signalled from B, B gets signalled from C, and C gets signalled from A.
+ * When registering observers, do not create any cycles where e.g., condition A
+ * gets signaled from B, B gets signaled from C, and C gets signaled from A.
  * That will not end well.
  */
 void cmb_resourceguard_register(struct cmb_resourceguard *rgp,
@@ -282,9 +282,9 @@ void cmb_resourceguard_register(struct cmb_resourceguard *rgp,
 }
 
 /*
- * cmb_resourceguard_unregister : Un-register another resource guard as an observer
+ * cmb_resourceguard_unregister : Unregister another resource guard as an observer
  * of this one, forwarding signals and causing the observer to evaluate its
- * demand predicates as well. Returns true if the found, false if not.
+ * demand predicates as well. Returns true if found, false if not.
  */
 bool cmb_resourceguard_unregister(struct cmb_resourceguard *rgp,
                                   struct cmb_resourceguard *obs)

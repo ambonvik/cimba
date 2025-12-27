@@ -179,7 +179,7 @@ void cmb_buffer_print_report(struct cmb_buffer *bp, FILE *fp) {
 }
 
 /*
- * cmb_buffer_get : Request and if necessary wait for an amount of the
+ * cmb_buffer_get : Request and, if necessary, wait for an amount of the
  * buffer resource.
  *
  * Note that the amount argument is a pointer to where the amount is stored.

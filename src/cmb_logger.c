@@ -87,7 +87,7 @@ void cmb_logger_flags_on(const uint32_t flags)
 
 /*
  * cmb_logger_flags_off : turn off logging flags according to the bitmask, for
- * example cmb_logger_flags_off(CMB_LOGGER_INFO), or some user-defined mask.
+ * example, cmb_logger_flags_off(CMB_LOGGER_INFO), or some user-defined mask.
  */
 void cmb_logger_flags_off(uint32_t flags)
 {

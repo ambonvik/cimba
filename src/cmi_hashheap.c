@@ -71,7 +71,7 @@ uint64_t hash_find_handle(const struct cmi_hashheap *hp, const uint64_t handle)
             return hm[hash].heap_index;
         }
 
-        /* If we reached a never-used slot, the handle is not in hash map */
+        /* If we reached a never-used slot, the handle is not in the hash map */
         if (hm[hash].handle == 0u) {
             return 0u;
         }
@@ -110,7 +110,7 @@ uint64_t hash_find_slot(const struct cmi_hashheap *hp, const uint64_t handle)
 }
 
 /*
- * Rehash old hash entries to new (current) hash map, removing any tombstones.
+ * Rehash old hash entries to a new (current) hash map, removing any tombstones.
  */
 void hash_rehash(const struct cmi_hashheap *hp,
                  const struct cmi_hash_tag *old_hash_map,
@@ -219,7 +219,7 @@ static void heap_down(const struct cmi_hashheap *hp, uint64_t k)
  * index as before. The new hash map is initialized to all zeros, the old
  * hash map is memcpy'd together with the old heap into the area that now
  * belongs to the new heap. From there, valid hash entries are rehashed into
- * their new locations in the new hash map. This works, since there is no
+ * their new locations in the new hash map. This works since there is no
  * memory overlap between the copy of the old hash map and the new one.
  */
 static void hashheap_grow(struct cmi_hashheap *hp)
@@ -231,7 +231,7 @@ static void hashheap_grow(struct cmi_hashheap *hp)
     cmb_assert_debug(cmi_is_power_of_two(hp->heap_size));
     cmb_assert_debug(cmi_is_power_of_two(hp->hash_size));
 
-    /* Set the new heap size, i.e. the max number of events in the queue */
+    /* Set the new heap size, i.e., the max number of events in the queue */
     hp->heap_exp_cur++;
     const uint64_t old_heapsz = hp->heap_size;
     hp->heap_size = 1u << hp->heap_exp_cur;
@@ -343,7 +343,7 @@ void cmi_hashheap_clear(struct cmi_hashheap *hp)
     cmb_assert_release(hp != NULL);
 
     if (hp->heap != NULL) {
-        /* heap_size is allowed number of entries, calculate size in bytes */
+        /* heap_size is the allowed number of entries, calculate size in bytes */
         const size_t heapbts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
         const size_t hashbts = (hp->heap_size * 2u) * sizeof(struct cmi_hash_tag);
         const size_t initsz = heapbts + hashbts;
@@ -435,7 +435,7 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
     hash[idx].handle = handle;
     hash[idx].heap_index = hc;
 
-    /* Point the heaptag to the hashtag, and reshuffle heap */
+    /* Point the heaptag to the hashtag and reshuffle the heap */
     heap[hc].hash_index = idx;
     heap_up(hp, hc);
 
@@ -446,9 +446,9 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
 /*
  * cmi_hashheap_dequeue : Remove and return the next item.
  *
- * The next event is always in position 1, while position 0 is working space
- * for the heap. Temporarily saves the next item to workspace at the end of
- * list before returning it, to ensure a consistent heap and hash on return.
+ * The next event is always in position 1, while position 0 is a working space
+ * for the heap. Temporarily saves the next item to the workspace at the end of
+ * the list before returning it to ensure a consistent heap and hash on return.
  *
  * Note that this space will be overwritten by the next enqueue call, not a
  * valid pointer for very long.
@@ -463,7 +463,7 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
         return NULL;
     }
 
-    /* Copy the event to working space at the end of the heap. */
+    /* Copy the event to the working space at the end of the heap. */
     const uint64_t tmp = heapcnt + 1u;
     struct cmi_heap_tag *heap = hp->heap;
     struct cmi_hash_tag *hash = hp->hash_map;
@@ -492,7 +492,7 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_remove : Remove the given entry and reshuffle heap
+ * cmi_hashheap_remove : Remove the given entry and reshuffle the heap
  */
 bool cmi_hashheap_remove(struct cmi_hashheap *hp, const uint64_t handle)
 {
@@ -639,7 +639,7 @@ void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
         heap_down(hp, idx);
     }
     else {
-        /* Other way around, item should rise in the heap */
+        /* The other way around, item should rise in the heap */
         heap_up(hp, idx);
     }
 }
@@ -670,7 +670,7 @@ static bool item_match(const struct cmi_heap_tag *htp,
 /*
  * cmi_hashheap_find : Locate a specific event, using CMB_ANY_ITEM as a
  * wildcard in the respective positions. Returns the handle of the event, or
- * zero if none found. Simple linear search from the start of the heap.
+ * zero if none is found. Simple linear search from the start of the heap.
  */
 uint64_t cmi_hashheap_pattern_find(const struct cmi_hashheap *hp,
                                    const void *val1,
@@ -720,7 +720,7 @@ uint64_t cmi_hashheap_pattern_count(const struct cmi_hashheap *hp,
  * matching handles in the first pass, then cancel these in the
  * second pass. Avoids any possible issues caused by modification
  * (reshuffling) of the heap while iterating over it.
- * Returns the number of items cancelled, possibly zero.
+ * Returns the number of items canceled, possibly zero.
  */
 uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
                                      const void *val1,

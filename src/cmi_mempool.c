@@ -35,7 +35,7 @@
  * calculated with proper values by cmi_mempool_initialize() when and if needed.
  * The CMI_MAGIC_COOKIE informs other functions that the pool is not yet
  * properly initialized, enabling cmi_mempool_expand() to do that automagically
- * without an explicit initialiation call from the user code. But it needs to
+ * without an explicit initialization call from the user code. But it needs to
  * know what arguments it should feed to cmi_mempool_initialize(), and here
  * they are.
  */
@@ -70,15 +70,15 @@ struct cmi_mempool *cmi_mempool_create(void)
  * The chunk_list resizes as needed, starting from CHUNK_LIST_SIZE defined above.
  * next_obj points to the first available object in the pool, NULL if empty.
  *
- * We will be allocating memory aligned to page size. The allocator will reguire
- * the total amount of memory to be a multiple of the page size. We ccalculate
- * and store both the chunk size in bytes (smallest multiple of page sizes that
- * provide space for at least the requested number of objects) and the maximum
- * number of objects that fits in that memory size (allowing for leftovers if
- * the object size is not a divisor of page size).
+ * We will be allocating memory aligned to page size. The allocator will require
+ * the total amount of memory to be a multiple of the page size. We calculate
+ * and store both the chunk size in bytes (the smallest multiple of page sizes
+ * that provides space for at least the requested number of objects) and the
+ * maximum number of objects that fits in that memory size (allowing for l
+ * leftovers if the object size is not a divisor of page size).
  *
- * We'll allocate actual object memory on first call to cmi_mempool_get, hence
- * leaving the object list empty for now.
+ * We'll allocate actual object memory on the first call to cmi_mempool_get,
+ * hence leaving the object list empty for now.
  */
 void cmi_mempool_initialize(struct cmi_mempool *mp,
                             const size_t obj_sz,
@@ -181,7 +181,7 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
         vp = *vp;
     }
 
-    /* Set the next pointer in the last object to NULL, end of list */
+    /* Set the next pointer in the last object to NULL, end of the list */
     *vp = NULL;
 
     cmb_assert_debug(mp->next_obj != NULL);

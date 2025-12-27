@@ -41,7 +41,7 @@ static CMB_THREAD_LOCAL double sim_time = 0.0;
  */
 static CMB_THREAD_LOCAL struct cmi_hashheap *event_queue = NULL;
 
-/* Initial capacity of heap is 2^QUEUE_INIT_EXP items, resizing as needed */
+/* The initial capacity of the heap is 2^QUEUE_INIT_EXP items, resizing as needed */
 #define QUEUE_INIT_EXP 3
 
 /*
@@ -55,8 +55,8 @@ double cmb_time(void)
 /*
  * heap_order_check : Test if heap_tag *a should go before *b. If so, return true.
  * Prioritization corresponds to event queue order, where lower reactivation
- * time (dkey) go before higher, if equal then higher priority (ikey) before
- * lower, and if that also equal FIFO order based on handle value.
+ * times (dkey) go before higher, if equal, then higher priority (ikey) before
+ * lower, and if that also equal, FIFO order based on handle value.
  */
 static bool heap_order_check(const struct cmi_heap_tag *a,
                              const struct cmi_heap_tag *b)
@@ -131,7 +131,7 @@ extern uint64_t cmb_event_queue_count(void)
 }
 
 /*
- * cmb_event_queue_total_count : Returns number of events ever scheduled.
+ * cmb_event_queue_total_count : Returns the number of events ever scheduled.
  */
 uint64_t cmb_event_queue_total_count(void)
 {
@@ -139,8 +139,8 @@ uint64_t cmb_event_queue_total_count(void)
 }
 
 /*
- * cmb_event_schedule : Insert event in event queue as indicated by activation
- * time t and priority p, return unique event handle.
+ * cmb_event_schedule : Insert the event in the event queue as indicated by
+ * activation time t and priority p, return a unique event handle.
  * Resizes hashheap if necessary.
  */
 uint64_t cmb_event_schedule(cmb_event_func *action,
@@ -210,7 +210,7 @@ struct cmi_list_tag **cmi_event_tag_loc(const uint64_t handle)
 extern void cmi_process_wake_all(struct cmi_list_tag32 **ptloc, int64_t signal);
 
 /*
- * cmb_event_execute_next : Remove and execute the next event, update clock.
+ * cmb_event_execute_next : Remove and execute the next event, update the clock.
  * cmi_hashheap_dequeue returns a pointer to the location of the event.
  * Copy the values to local variables before executing the event.
  */
@@ -220,10 +220,10 @@ bool cmb_event_execute_next(void)
         return false;
     }
 
-    /* Advance clock to time of next event */
+    /* Advance clock to time of the next event */
     sim_time = cmi_hashheap_peek_dkey(event_queue);
 
-    /* Pull off next event and decode it */
+    /* Pull off the next event and decode it */
     void **tmp = cmi_hashheap_dequeue(event_queue);
     cmb_event_func *action = *(cmb_event_func **)(&tmp[0]);
     void *subject = tmp[1];
@@ -243,7 +243,7 @@ bool cmb_event_execute_next(void)
 /*
  * cmb_event_queue_execute : Executes event queue until empty.
  * Schedule an event containing cmb_event_queue_clear to terminate the
- * simulation at the corect time or other conditions.
+ * simulation at the correct time or other conditions.
  */
 void cmb_event_queue_execute(void)
 {
@@ -256,9 +256,9 @@ void cmb_event_queue_execute(void)
 }
 
 /*
- * cmb_event_cancel : Cancel the given event and reshuffle heap. Notifies any
- * processes waiting for the event that it is cancelled.
- * Precondition: Event must be in heap.
+ * cmb_event_cancel : Cancel the given event and reshuffle the heap.
+ * Notifies any processes waiting for the event that it is canceled.
+ * Precondition: Event must be in the heap.
  */
 void cmb_event_cancel(const uint64_t handle)
 {
@@ -315,7 +315,7 @@ void cmb_event_reprioritize(const uint64_t handle,
 /*
  * cmb_event_pattern_find : Locate a specific event, using the CMB_ANY_*
  * constants as wildcards in the respective positions. Returns the handle of
- * the event, or zero if none found.
+ * the event, or zero if none is found.
  */
 uint64_t cmb_event_pattern_find(cmb_event_func *action,
                         const void *subject,
@@ -353,9 +353,9 @@ uint64_t cmb_event_pattern_count(cmb_event_func *action,
  * cmb_event_cancel_all : Cancel all matching events.
  * Two-pass approach: Allocate temporary storage for the list of matching
  * handles in the first pass, then cancel these in the second pass.
- * Returns the number of events cancelled, possibly zero.
- * Duplicating code from cmi_hashheap in order to also cancel any processes
- * waiting for cancelled events.
+ * Returns the number of events canceled, possibly zero.
+ * Duplicates code from cmi_hashheap to also cancel any processes
+ * waiting for canceled events.
  */
 uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
                         const void *subject,

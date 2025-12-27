@@ -2,7 +2,7 @@
  * @file cmb_assert.h
  * @brief Custom replacement for assert.h
  *
- * Provides more detailed error messages then the standard `assert`, and
+ * Provides more detailed error messages than the standard `assert`, and
  * distinguishes between debug asserts (like `assert.h`) and release asserts
  * that remain if `NDEBUG` is defined but go away if `NASSERT` is defined.
  */
@@ -81,7 +81,7 @@
  * where some generic argument is intentionally unused in that instance.
  *
  * `__attribute__ ((unused))` could be used instead, but it is a GCC extension,
- * not portable. In C23 `[[maybe_unused]]` will do the trick, but again, MVSC.
+ * not portable. In C23 `[[maybe_unused]]` will also do the trick.
  * Cimba is written in C17 and avoids C23 innovations until more widely
  * supported by compilers.
  *

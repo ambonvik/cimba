@@ -149,7 +149,7 @@ void *tide_proc(struct cmb_process *me, void *vctx)
         const double da3 = 0.25 * sin(2.0 * M_PI * t / (0.5 * 29.5 * 24));
         const double da = da0 + da1 + da2 + da3;
 
-        /* Use wind speed as proxy for air pressure, assume on a west coast */
+        /* Use wind speed as a proxy for air pressure, assume on a west coast */
         const double dw1 = 0.5 * env->wind_magnitude;
         const double dw2 = 0.5 * env->wind_magnitude
                          * sin(env->wind_direction * M_PI / 180.0);
@@ -264,7 +264,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     cmb_resourcestore_release(sim->berths[shp->size], 1u);
     cmb_resourcestore_release(sim->tugs, shp->tugs);
 
-    /* One pass process, remove ourselves for the active set */
+    /* One pass process, remove ourselves from the active set */
     cmi_hashheap_remove(sim->active_ships, hndl);
     /* List ourselves as departed instead */
     cmi_list_push(&(sim->departed_ships), shp);
@@ -282,7 +282,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
         me->name, t_arr, t_dep, *t_sys_p);
 
     /* Note that returning from a process function has the same effect as calling
-     * cmb_process_exit() with the return value as argument. */
+     * cmb_process_exit() with the return value as the argument. */
     return t_sys_p;
 }
 
@@ -302,7 +302,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
     while (true) {
         cmb_process_hold(cmb_random_exponential(mean));
 
-        /* The ship class is a derived sub-class of cmb_process, we malloc it
+        /* The ship class is a derived subclass of cmb_process, we malloc it
          * directly instead of calling cmb_process_create() */
         struct ship *shp = malloc(sizeof(struct ship));
 
@@ -332,7 +332,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
                  ++cnt, ((shp->size == SMALL) ? "_small" : "_large"));
         cmb_process_initialize((struct cmb_process *)shp, namebuf, ship_proc, vctx, 0);
 
-        /* Start our brand new ship heading into the harbor */
+        /* Start our new ship heading into the harbor */
         cmb_process_start((struct cmb_process *)shp);
         cmb_logger_user(stdout, USERFLAG1, "Ship %s started", namebuf);
     }
@@ -367,7 +367,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
-        /* We do not need to loop here, this is the only process waiting */
+        /* We do not need to loop here, since this is the only process waiting */
         cmb_condition_wait(sim->davyjones, is_departed, vctx);
 
         /* Got one, collect its exit value */
@@ -381,7 +381,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
 
         /* Add it to the statistics and clean up */
         cmb_dataset_add(trl->system_time[shp->size], *t_sys_p);
-        /* Frees internally allocated mempry, but not the object itself */
+        /* Frees internally allocated memory, but not the object itself */
         cmb_process_terminate((struct cmb_process *)shp);
         /* We malloc'ed it, call free() directly instead of cmb_process_destroy() */
         free(shp);

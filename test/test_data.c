@@ -289,7 +289,7 @@ void test_timeseries(void)
         const double x = cmb_random();
         cmb_timeseries_add(tsp, x, t);
 
-        /* Make holding time until next sample correlated with this sample value */
+        /* Make holding time until the next sample correlated with this sample value */
         t += cmb_random_exponential(2.0 - x);
     }
 

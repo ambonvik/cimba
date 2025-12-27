@@ -89,7 +89,7 @@ static void end_sim_evt(void *subject, void *object)
 }
 
 /*
- * Define the event to start recording statistics after warm-up period (if any).
+ * Define the event to start recording statistics after the warm-up period (if any).
  */
 static void start_rec_evt(void *subject, void *object)
 {

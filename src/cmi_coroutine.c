@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-/* Make sure we get pthread_getattr_np, and avoid Clang-Tidy complaints */
+/* Make sure we get pthread_getattr_np and avoid Clang-Tidy complaints */
 #define _GNU_SOURCE // NOLINT(bugprone-reserved-identifier)
 #include <pthread.h>
 
@@ -46,7 +46,7 @@ static CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_current = NULL;
 /* Assembly function, see src/port/x86-64/Linux/cmi_coroutine_context_*.asm */
 extern void *cmi_coroutine_context_switch(void **old, void **new, void *ret);
 
-/* OS specific C code, see src/arch/cmi_coroutine_context_*.c */
+/* OS-specific C code, see src/arch/cmi_coroutine_context_*.c */
 extern bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp);
 extern void cmi_coroutine_context_init(struct cmi_coroutine *cp);
 
@@ -113,7 +113,7 @@ static void create_main(void)
     /* Stack pointer will be set the first time we transfer out of it */
     coroutine_main->stack_pointer = NULL;
 
-    /* I am running, therefore I am */
+    /* I am running, therefore, I am */
     coroutine_main->status = CMI_COROUTINE_RUNNING;
     coroutine_main->exit_value = NULL;
     coroutine_current = coroutine_main;
@@ -143,7 +143,7 @@ void cmi_coroutine_initialize(struct cmi_coroutine *cp,
         cmb_assert_debug(coroutine_current == coroutine_main);
     }
 
-    /* Initialize the coroutine struct and allocate stack */
+    /* Initialize the coroutine struct and allocate the stack */
     cp->parent = NULL;
     cp->caller = NULL;
     if (cp->stack == NULL) {
@@ -164,7 +164,7 @@ void cmi_coroutine_initialize(struct cmi_coroutine *cp,
 }
 
 /*
- * cmi_coroutine_reset : Reset the coroutine to initial state.
+ * cmi_coroutine_reset : Reset the coroutine to the initial state.
  * Can be restarted from the beginning by calling cmi_coroutine_start.
  */
 void cmi_coroutine_reset(struct cmi_coroutine *cp)
@@ -178,7 +178,7 @@ void cmi_coroutine_reset(struct cmi_coroutine *cp)
 }
 
 /*
- * cmi_coroutine_terminate : Reset the coroutine to newly created state.
+ * cmi_coroutine_terminate : Reset the coroutine to a newly created state.
  */
 void cmi_coroutine_terminate(struct cmi_coroutine *cp)
 {
@@ -193,8 +193,8 @@ void cmi_coroutine_terminate(struct cmi_coroutine *cp)
 }
 
 /*
- * cmi_coroutine_destroy : Free memory allocated for coroutine and its stack.
- * The given coroutine cannot be main or the currently executing.
+ * cmi_coroutine_destroy : Free memory allocated for a coroutine and its stack.
+ * The given coroutine cannot be main or the currently executing coroutine.
  */
 void cmi_coroutine_destroy(struct cmi_coroutine *cp)
 {
@@ -209,7 +209,7 @@ void cmi_coroutine_destroy(struct cmi_coroutine *cp)
 
 /*
  * cmi_coroutine_start : Load the given function and argument into the given
- * coroutine stack, and launch it by transferring control into it.
+ * coroutine stack and launch it by transferring control into it.
  * Note that restarting a finished coroutine with the original function and
  * context is allowed, but trying to restart a running coroutine is an error.
  * It will be faster to restart a finished coroutine than to create a new, in

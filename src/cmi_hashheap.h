@@ -64,16 +64,16 @@ struct cmi_heap_tag {
 /*
  * typedef cmi_heap_compare_func : Return true if a goes before b in the
  * priority queue order. Prototype only, actual compare function to be provided
- * by the applicating when initializing a hashheap.
+ * by the application when initializing a hashheap.
  */
 typedef bool (cmi_heap_compare_func)(const struct cmi_heap_tag *a,
                                      const struct cmi_heap_tag *b);
 
 /*
  * struct cmi_hash_tag : Hash mapping from event handle to heap position.
- * Heap index value zero indicates a tombstone, event is no longer in heap.
+ * Heap index value zero indicates a tombstone, event is no longer in the heap.
  *
- * Note that the hash tag is 2 * 8 = 16 bytes large.
+ * Note that the hashtag is 2 * 8 = 16 bytes large.
  */
 struct cmi_hash_tag {
     uint64_t handle;
@@ -87,10 +87,10 @@ struct cmi_hash_tag {
  *
  * The heap and hash map need to be sized as powers of two, the hash map with
  * twice as many entries as the heap. heap_exp_cur defines a heap size of 2^heap_exp_cur
- * and a hash map size of 2^(heap_exp_cur + 1). It is adviseable to start small and
- * fast, e.g., heap size 2^5 = 32 entries, total size of the heaphash structure
+ * and a hash map size of 2^(heap_exp_cur + 1). It is advisable to start small and
+ * fast, e.g., heap size 2^5 = 32 entries, total size of the hashheap structure
  * less than one page of memory and well inside the L1 cache size. The data
- * structure will grow as needed if more memory is required, but cannot shrink.
+ * structure will grow as needed if more memory is required but cannot shrink.
  *
  * The heap_count is the number of items currently in the heap, the heap_size
  * and hash_size are the allocated number of slots, where hash_size is twice the
@@ -122,13 +122,13 @@ extern struct cmi_hashheap *cmi_hashheap_create(void);
  * cmi_hashheap_initialize : Allocate and initiate the actual heap/hash array.
  * Separate from cmi_hashheap_create to allow for inheritance by composition.
  *
- * hexp is the initial heap_exp_cur, e.g. hexp = 5 gives an initial heap
+ * hexp is the initial heap_exp_cur, e.g., hexp = 5 gives an initial heap
  * size of 2^5 = 32 and a hash map size of 2^(5+1) = 64.
  *
  * cmp is the application-defined compare function for this hashheap, taking
  * pointers to two heap tags and returning true if the first should go before
- * the second, using whatever consideration is approprate for the usage. If
- * NULL, we will sort in increasing `dkey` order.
+ * the second, using whatever consideration is appropriate for the usage. If
+ * NULL, we will sort in an increasing `dkey` order.
  */
 extern void cmi_hashheap_initialize(struct cmi_hashheap *hp,
                                     uint16_t hexp,
@@ -176,7 +176,7 @@ extern uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
 
 /*
  * cmi_hashheap_dequeue : Removes the highest priority item from the queue
- * (according to the ordering given by the comparator function), and returns a
+ * (according to the ordering given by the comparator function) and returns a
  * pointer to its current location. Note that this is a temporary location that
  * will be overwritten in the next enqueue operation.
  */
@@ -231,7 +231,7 @@ static inline void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_peek_dkey/ikey : Returns the dkey/ikey of first item.
+ * cmi_hashheap_peek_dkey/ikey : Returns the dkey/ikey of the first item.
  *
  * These functions have no good way to return an out-of-band error value, will
  * fire an assert instead if called on an empty hashheap. Check first.
@@ -259,14 +259,14 @@ static inline int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_remove: Remove item from the priority queue. Returns true if
+ * cmi_hashheap_remove: Remove the item from the priority queue. Returns true if
  * found (and removed), false if not found (already removed). Either way,
  * the item will not be in the queue at the end of this call.
  */
 extern bool cmi_hashheap_remove(struct cmi_hashheap *hp, uint64_t handle);
 
 /*
- * cmi_hashehap_cancel : Syntactic sugar for cmi_hasheap_remove
+ * cmi_hashheap_cancel : Syntactic sugar for cmi_hashheap_remove
  */
 static inline bool cmi_hashheap_cancel(struct cmi_hashheap *hp, uint64_t handle)
 {
@@ -283,7 +283,7 @@ extern bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp, uint64_t han
  * associated with the given handle. Note that the location is volatile and will
  * be overwritten in the next enqueue/dequeue operation, but the item value will
  * continue to be associated with the handle also when moved to a different
- * location. This function can be used to manipulate the contents of an item but
+ * location. This function can be used to manipulate the contents of an item, but
  * this needs to be done atomically. Do not expect the item to be in the same
  * location later, retrieve it again before each use.
  */
@@ -291,7 +291,7 @@ extern void **cmi_hashheap_get_item(const struct cmi_hashheap *hp, uint64_t hand
 
 /*
  * cmi_hashheap_get_dkey/ikey : Get the dkey/ikey for the given item.
- * Precondition: The item is in the priority queue, otherwise error.
+ * Precondition: The item is in the priority queue, otherwise it is an error.
  * If in doubt, call cmi_hashheap_is_enqueued(handle) first to verify.
  */
 extern double cmi_hashheap_get_dkey(const struct cmi_hashheap *hp, uint64_t handle);
@@ -337,7 +337,7 @@ extern uint64_t cmi_hashheap_pattern_count(const struct cmi_hashheap *hp,
 
 /*
  * cmi_hashheap_pattern_cancel : Cancel all matching items, returns the number
- * of events that were cancelled, possibly zero.
+ * of events that were canceled, possibly zero.
  */
 extern uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
                                             const void *val1,

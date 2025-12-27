@@ -84,7 +84,7 @@ static void *worker_thread_func(void *arg)
         }
     }
 
-    /* Made it this far, execute the cleanup function before exiting thread */
+    /* Made it this far, execute the cleanup function before exiting */
     pthread_cleanup_pop(1);
 
     return NULL;
