@@ -59,7 +59,7 @@ the public.
 After that, not much happened to it, until I decided to dust it off and publish it as
 open source many years later. The world had evolved quite a bit in the meantime, so the
 code required another comprehensive re-write to exploit the computing power in modern
-CPU's.
+CPU's, this time coded in C17.
 
 The goals for Cimba v 3.0 are similar to those for earlier versions:
 
@@ -179,9 +179,31 @@ intricate way of calling that exit function indirectly by returning from the cor
 function instead of just calling it directly, but as we will see, we will use that
 feature at the next higher level.
 
+This gives us a very powerful set of coroutines, fulfilling all requirements to "full"
+coroutines, and in addition providing general mechanisms for communication between
+coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
+coroutines, or even as a mix of those paradigms by mixing asymmetric yield/resume pairs
+ with symmetric transfers. (Debugging your program may be another story, though.)
 
+ Cimba processes - named coroutines
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Our coroutines are a bit too general and powerful for simulation modeling. We use these
+as internal building blocks for the Cimba *processes*. These are essentially named
+coroutines, inheriting all properties and methods from the coroutine class, and adding
+a name, a priority for scheduling processes, and pointers to things it may be waiting
+for, resources it may be holding, and other processes that may be waiting for it.
 
+The processes also understand the simulation time, and may ``hold()`` for a certain
+amount of simulated time. Underneath this call are the coroutine primitives of ``yield
+()`` (to the simulation dispatcher) and ``resume()`` (when the simulation clock reaches
+this time). Processes can also ``acquire()`` and ``release()`` resources, wait for some
+other process to finish, interrupt or stop other processes, wait for some specific
+event, or even wait for some arbitrarily complex condition to become true.
+
+We will soon return to this, but if the reader has been paying attention, there is
+something else we need to address first: We just said *"inheriting all properties and
+methods from the coroutine class"*, but we also just said "C17" and "assembly".
 
 Object-Oriented Programming. In C and Assembly.
 -----------------------------------------------
