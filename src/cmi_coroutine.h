@@ -19,7 +19,7 @@
  *   control passes to the coroutine that last resumed the active coroutine,
  *   or that otherwise last transferred control into it.
  *   The msg argument passed through yield() appears as the return value of
- *   resume(), and vice versa, the msg gargument given to resume() appears as
+ *   resume(), and vice versa, the msg argument given to resume() appears as
  *   the return value from yield() on the other end of the implicit transfer.
  *
  * The cmb_coroutines can do both patterns, and can mix freely between them.
@@ -145,7 +145,7 @@ extern struct cmi_coroutine *cmi_coroutine_create(void);
  * The coroutine function given as the second argument will eventually be called
  * as crfoo(cp, context). The stack size should be large enough for the
  * functions running in the coroutine. For a simple case without deeply nested
- * function calls and many local variables, 10 kB could be sufficient, 24 kB
+ * function calls and many local variables, 10 kB could be enough, 24 kB
  * probably on the safe side. The program will either trigger an assert or
  * segfault if the stack is too small.
  *

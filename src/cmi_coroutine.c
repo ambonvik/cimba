@@ -16,12 +16,7 @@
  * limitations under the License.
  */
 
-/* Make sure we get pthread_getattr_np and avoid Clang-Tidy complaints */
-#define _GNU_SOURCE // NOLINT(bugprone-reserved-identifier)
-#include <pthread.h>
-
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 
 #include "cmb_assert.h"
@@ -251,7 +246,6 @@ void *cmi_coroutine_start(struct cmi_coroutine *cp, void *msg)
  */
 void cmi_coroutine_exit(void *retval)
 {
-    /* TODO: For now, just assert that it is not main. Later figure out exit from pthread */
     cmb_assert_release(coroutine_current != NULL);
     cmb_assert_release(coroutine_current != coroutine_main);
     cmb_assert_release(coroutine_current->status == CMI_COROUTINE_RUNNING);
