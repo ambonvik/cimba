@@ -17,11 +17,11 @@ copyright = 'Asbjørn M. Bonvik 2025'
 extensions = ['breathe', 'exhale']
 
 html_theme = 'sphinx_rtd_theme'
-html_static_path = ['/home/ambonvik/github/cimba/docs/static']
+html_static_path = ['./static']
 html_css_files = ['custom.css']
 
 breathe_projects = {
-    "cimba": "/home/ambonvik/github/cimba/build/docs/xml"
+    "cimba": "./xml"
 }
 
 breathe_default_project = "cimba"
@@ -34,7 +34,7 @@ breathe_domain_by_extension = {
 breathe_implementation_filename_extensions = ['.c']
 
 exhale_args = {
-    "containmentFolder":    "/home/ambonvik/github/cimba/docs/api",
+    "containmentFolder":    "./api",
     "rootFileName":         "library_root.rst",
     "doxygenStripFromPath": "..",
     "rootFileTitle":        "Library API",
