@@ -16,8 +16,12 @@
  * limitations under the License.
  */
 
-#include <inttypes.h>
+
+/* Make sure we get pthread_getattr_np and avoid Clang-Tidy complaints */
+#define _GNU_SOURCE // NOLINT(bugprone-reserved-identifier)
 #include <pthread.h>
+
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -29,6 +33,32 @@
 
 /* Assembly function, see src/arc/cmi_coroutine_context_*.asm */
 extern void cmi_coroutine_trampoline(void);
+
+/*
+ * Linux-specific code to get the top and bottom of the current (main) stack
+ */
+void cmi_coroutine_get_stacklimits(unsigned char **top, unsigned char **bottom)
+{
+    cmb_assert_debug(top != NULL);
+    cmb_assert_debug(bottom != NULL);
+
+    pthread_attr_t attrs;
+    pthread_attr_init(&attrs);
+    int r = pthread_getattr_np(pthread_self(), &attrs);
+    cmb_assert_debug(r == 0);
+
+    void *stack_end;
+    size_t stack_size;
+    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
+    cmb_assert_debug(r == 0);
+
+    pthread_attr_destroy(&attrs);
+
+    *bottom = stack_end;
+    *top = (unsigned char *)stack_end + stack_size;
+    cmb_assert_debug(*top > *bottom);
+}
+
 
 /*
  * Linux-specific code to allocate and initialize stack for a new coroutine,
@@ -178,29 +208,3 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     /* That should be it, a valid stack frame ready to transfer into */
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 }
-
-
-/*
- * Linux-specific code to get the top and bottom of the curren (main) stack
- */
-void cmi_coroutine_get_stacklimits(unsigned char **top, unsigned char **bottom)
- {
-     cmb_assert_debug(top != NULL);
-     cmb_assert_debug(bottom != NULL);
-
-     pthread_attr_t attrs;
-     pthread_attr_init(&attrs);
-     int r = pthread_getattr_np(pthread_self(), &attrs);
-     cmb_assert_debug(r == 0);
-
-     void *stack_end;
-     size_t stack_size;
-     r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
-     cmb_assert_debug(r == 0);
-
-     pthread_attr_destroy(&attrs);
-
-     *bottom = stack_end;
-     *top = (unsigned char *)stack_end + stack_size;
-     cmb_assert_debug(*top > *bottom);
- }
