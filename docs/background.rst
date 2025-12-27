@@ -12,8 +12,8 @@ necessary background for the project goals.
 Project History and Goals
 -------------------------
 
-Cimba 3.0.0 is released on GitHub in late 2025, but as the version number indicates,
-there is some history before this first public release.
+Cimba 3.0.0 is released on GitHub as public beta in late 2025, but as the version number
+indicates, there is some history before this first public release.
 
 The earliest ideas that eventually became Cimba date to work done at the Norwegian Defence
 Research Establishment in the late 1980's. I built discrete event simulation models
@@ -25,13 +25,13 @@ time.
 Around 1990, we started building discrete event simulation models in C++ as early adopters
 of that language. The first C++ models ran on VAXstations, where spawning a coroutine is
 a single assembly instruction. Trying to port that code to a Windows PC was a somewhat
-painful experience (and an abject failure). I actually complained to Bjarne Stroustrup in
+painful experience (and a complete failure). I actually complained to Bjarne Stroustrup in
 person about the inconsistent to non-existent support for Simula-like coroutines in C++ at
 a conference in Helsingør, probably in 1991. He seemed to agree but I silently resolved
 to build my next simulation model in pure Kernighan & Richie C. Which I did.
 
 That opportunity arose at MIT around 1994, where I needed a discrete event simulation
-model for cross-checking analytical models of manufacturing systems. For fairly obvious
+model for cross-checking analytical models of manufacturing systems. For perhaps obvious
 reasons, this was a clean sheet design with no code carried forward from the earlier
 C++ work at NDRE. It had a collection of standard random number generators and
 distributions, and used a linked list for its main event queue. It did the job, running
@@ -59,7 +59,9 @@ the public.
 After that, not much happened to it, until I decided to dust it off and publish it as
 open source many years later. The world had evolved quite a bit in the meantime, so the
 code required another comprehensive re-write to exploit the computing power in modern
-CPU's. The goals for Cimba v 3.0 are similar to those for earlier versions:
+CPU's.
+
+The goals for Cimba v 3.0 are similar to those for earlier versions:
 
 * Speed and efficiency, where small size in memory translates to execution speed on
   modern CPUs with cached memory pipelines, and multithreading trials on CPU cores
@@ -81,11 +83,11 @@ I believe that Cimba 3.0 meets these goals and hope you will agree.
 Coroutines and Processes
 ------------------------
 
-It is well known that Simula introduced object-oriented programming with its `CLASS`
-concept, see https://en.wikipedia.org/wiki/Simula for the story. For those of us that
+It is well known that Simula introduced object-oriented programming, see
+https://en.wikipedia.org/wiki/Simula for the story. For those of us that
 were lucky enough (or just old enough) to actually have programmed in Simula67, the
-object-orientation was only part of the experience, and perhaps not the most important
-one.
+object-orientation with classes and inheritance was only part of the experience, and
+perhaps not the most important part.
 
 Especially for simulation work, the most powerful concept was the *coroutine*. This
 generalizes the concept of a subroutine to several parallel threads of execution that
@@ -93,13 +95,14 @@ are non-preemptively scheduled. Combined with object-orientation, this means tha
 can describe a class of objects as independent threads of execution, often infinite
 loops, where the object's code just does its own thing. The complexity in the simulated
 world then arises from the interactions between the active processes and various other
-passive objects.
+passive objects, while the description of each entity's actions is very natural.
 
 Coroutines received significant academic interest in the early years, but were then
 overshadowed by the object-oriented inheritance mechanisms. It seems that current
 trends are turning away from the more complex inheritance mechanisms, in many cases
 using composition instead of multiple inheritance, and also reviving the interest in
-coroutines. One important article is https://www.cs.tufts.edu/~nr/cs257/archive/roberto-ierusalimschy/revisiting-coroutines.pdf
+coroutines. One important article is
+https://www.cs.tufts.edu/~nr/cs257/archive/roberto-ierusalimschy/revisiting-coroutines.pdf
 
 Unfortunately, when C++ finally got "coroutines" as a part of the language in 2020,
 these turned out both to be less powerful and less efficient than expected. (See
@@ -107,10 +110,10 @@ https://probablydance.com/2021/10/31/c-coroutines-do-not-spark-joy/ for the deta
 For our purposes here, it is sufficient to say that these coroutines are not the
 coroutines we are looking for.
 
-We have some additional requirements to the coroutines beyond being full coroutines,
-i.e., stackful first class objects. We will combine these with multithreading at the next
-higher level of concurrency, so our coroutines need to be thread-safe, living in parallel
-universes within each thread.
+We have some additional requirements to the coroutines beyond being full-fledged
+coroutines, i.e., stackful first class objects. We will combine these with multithreading
+at the next higher level of concurrency, so our coroutines need to be thread-safe, living
+in parallel universes within each thread.
 
 We want our coroutines to share information both through arguments to the
 context-switching primitives ``yield()``, ``resume()``, and ``transfer()``, and by the
