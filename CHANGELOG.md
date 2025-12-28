@@ -8,10 +8,7 @@ changes, and bug fixes below. For complete details, see the git commit history.
 ### Not released: 3.0.0
 * Bug fixes and speed improvements only, no feature changes planned
 
-### Not released: 3.0.0 beta
+### 2025-12-27: 3.0.0 beta
 * Initial public release
 * Documentation on Read the Docs
 * Stable on both Linux and Windows x86-64
-
-### Ongoing: 3.0.0 alpha
-* Development version in private repository
