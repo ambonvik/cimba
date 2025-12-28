@@ -100,7 +100,7 @@ passive objects, while the description of each entity's actions is very natural.
 Coroutines received significant academic interest in the early years, but were then
 overshadowed by the object-oriented inheritance mechanisms. It seems that current
 trends are turning away from the more complex inheritance mechanisms, in many cases
-using composition instead of multiple inheritance, and also reviving the interest in
+using composition instead of (multiple) inheritance, and also reviving the interest in
 coroutines. One important article is
 https://www.cs.tufts.edu/~nr/cs257/archive/roberto-ierusalimschy/revisiting-coroutines.pdf
 
@@ -115,14 +115,14 @@ coroutines, i.e., stackful first class objects. Our coroutines need to be thread
 since we will combine these with multithreading at the next higher level of concurrency
 The Cimba coroutines will exist in parallel universes within each thread.
 
-We also want our coroutines to share information both through arguments to the
+We also want our coroutines to share information both through pointer arguments to the
 context-switching functions ``yield()``, ``resume()``, and ``transfer()``, and by the
 values returned by these functions. Control is passed out of a coroutine by calling one
 of these functions. Control is also passed back to the coroutine by what appears to be a
 normal return from this function call. The two ways of communicating between coroutines
 are then sharing a pointer to some mutable context data structure as an argument, and
-returning a signal value that can be used to determine if soemthing unexpected happened
-during the call.
+returning a signal value that can be used to determine if something unexpected happened
+during the call. We will use both, since these give very different semantics.
 
 Moreover, we want our coroutines to return an exit value if and when they terminate, and
 we want the flexibility of either just returning this exit value from the coroutine
@@ -155,18 +155,21 @@ return value as argument, giving exactly the same effect of a ``return ptr;`` as
 ``exit(ptr);``, because it becomes the same thing. The code is in the same assembly
 files as above, function ``cmi_coroutine_trampoline``.
 
-The *data structure* ``struct cmi_coroutine`` is defined in src/cmi_coroutine.h. It
+The *data structure* ``struct cmi_coroutine`` is defined in `src/cmi_coroutine.h
+<https://github.com/ambonvik/cimba/blob/main/src/cmi_coroutine.h>`_`. It
 contains pointers to the coroutine stack, its parent and latest caller coroutines, the
 coroutine function, its context argument, and the coroutine's status and exit value.
 
 Finally, the *setup code* initializes a new coroutine stack and makes it ready to start
 execution. This is system-dependent C code, function ``cmi_coroutine_context_init`` in
-src/port/x86-64/linux/cmi_coroutine_context.c and
-src/port/x86-64/windows/cmi_coroutine_context.c. Basically, it fakes the stack frames
-that a function would see when executing normally on the new stack, with the
-trampoline at its return address, and then transfers control into the new coroutine.
-This starts executing the trampoline function, which in turn starts the actual
-coroutine function as described above.
+`src/port/x86-64/linux/cmi_coroutine_context.c <https://github.com/ambonvik/cimba/blob/main/src/port/x86-64/linux/cmi_coroutine_context.c>`_
+and
+`src/port/x86-64/windows/cmi_coroutine_context.c <https://github
+.com/ambonvik/cimba/blob/main/src/port/x86-64/windows/cmi_coroutine_context.c>`_.
+Basically, it fakes the stack frame that a function would see when executing normally on
+the new stack, with the trampoline at its return address, and then transfers control into
+the new coroutine. This starts executing the trampoline function, which in turn starts the
+actual coroutine function as described above.
 
 This machinery is hidden from the user application, which only needs to provide a
 coroutine function using the ``yield()``, ``resume()``, and ``transfer()`` primitives
@@ -174,7 +177,6 @@ to run this as either asymmetric or symmetric coroutines. The coroutine function
 prototype is ``void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *context)``,
 i.e., a function that takes a pointer to a coroutine (itself) and a ``void *`` to some
 user application-defined context as arguments and returns a ``void *``.
-
 For even more flexibility, we also allow the user application to define what ``exit()``
 function to be called if/when the coroutine function returns. This may seem like an
 intricate way of calling that exit function indirectly by returning from the coroutine
@@ -185,10 +187,10 @@ This gives us a very powerful set of coroutines, fulfilling all requirements to 
 coroutines, and in addition providing general mechanisms for communication between
 coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
 coroutines, or even as a mix of those paradigms by mixing asymmetric yield/resume pairs
-with symmetric transfers. (Debugging your program may be another story, though.)
+with symmetric transfers. (Debugging your program may become rather confusing, though.)
 
- Cimba processes - named coroutines
- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Cimba processes - named coroutines
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Our coroutines are a bit too general and powerful for simulation modeling. We use these
 as internal building blocks for the Cimba *processes*. These are essentially named
@@ -209,6 +211,46 @@ methods from the coroutine class"*, but we also just said "C17" and "assembly".
 
 Object-Oriented Programming. In C and Assembly.
 -----------------------------------------------
+
+Object-oriented programming is a way of structuring program design, not necessarily a
+language feature. It uses concepts like *encapsulation*, *inheritance*, and
+*polymorphism* to create a natural descriptions of the objects in the program.
+
+* *Encapsulation* bundles the properties and methods of objects into a compact
+  description, usually called a *class*. The individual *instances*, objects that
+  belong to the same class, have the same structure but may have different data values.
+
+* *Inheritance* is the relationship between classes where a class is derived from
+  another *parent* class. Objects belonging to the child class also belong to the parent
+  class and inherit all properties and methods from there. The child class adds its own
+  methods and may *overload* (change) the meaining og parent class methods.
+
+* *Polymorphism* allows the program to deal with parent classes and have each child
+  class fill in the details of what should be done. The canonical example is a class
+  *shape* with a *draw()* method, where the different child classes *circle*,
+  *rectangle*, *triangle*, etc, all contain their own *draw()* method. The program can
+  then have a list of *shapes*, ask each one to *draw()* itself, and have the different
+  subtypes of shapes do the appropriate thing.
+
+This can easily be implemented in a language like C, without explicit support from
+programming language features. The key observation is that the first member of a C
+``struct`` is guaranteed to have the same address in memory as the struct itself. We
+can then use structs as classes, encapsulating the properties of our "class" as struct
+members, and implement inheritance by making the parent ``struct`` the first member of
+a derived "class". A pointer to a child class object is then also a pointer to a parent
+class object, exactly as we want.
+
+Polymorphism can be implemented by having pointers to functions as struct members, and
+then place the appropriate function there when initializing the object. If necessary,
+this can be extended by having a dedicated ``vtable`` object for the class to avoid
+multiple copies of the function pointers in each class member object, at the cost of
+one more redirection per function call.
+
+The encapsulation is then a matter of disciplined modularity in structuring the code,
+with the code and header files as a main building block. Careful use of ``static`` and
+``extern`` functions and variables provide the equivalents of ``private``, ``public``,
+and ``friend`` class properties and methods.
+
 
 
 Events and the Event Queue

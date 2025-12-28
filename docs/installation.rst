@@ -1,7 +1,7 @@
 .. _installation:
 
-Installation
-===============
+Installation guide
+==================
 
 You will need a C compiler like gcc or clang, the NASM assembler, and a development
 toolchain of git, meson, and ninja. For some of the examples in the tutorial, you

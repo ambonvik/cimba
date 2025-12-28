@@ -1,7 +1,7 @@
 .. _tutorial:
 
-Tutorial: Introducing Cimba
-===========================
+Tutorial: Modeling with Cimba
+=============================
 
 Our first simulation - M/M/1 queue
 ------------------------------------
@@ -69,8 +69,8 @@ arrive if there are none waiting), generates a random service time with mean 1.0
 holds for the service time, and does it all over again. An average arrival rate
 of 0.75 and service rate of 1.0 gives the 0.75 utilization we wanted.
 
-Note that the number of customers to ``put`` or ``get`` is given as a pointer to
-a variable containing the number, not just a value. In more complex scenarios
+Note that the number of customers to ``put`` or ``get`` is given as a *pointer to
+a variable* containing the number, not just a value. In more complex scenarios
 than this, the process may encounter a partially completed put or get, and we
 need a way to capture the actual state in these cases. For now, just note that
 the amount argument to ``cmb_buffer_put()`` and ``cmb_buffer_get()`` is a
@@ -78,7 +78,7 @@ pointer to an unsigned 64-bit integer variable.
 
 The process function signature is a function returning a pointer to void (i.e. a
 raw address to anything). It takes two arguments, the first one a pointer to a
-cmb_process (itself), the second a pointer to void that gives whatever context
+``cmb_process`` (itself), the second a pointer to void that gives whatever context
 the process needs to execute. For now, we only use the context pointer as a
 pointer to the queue, and do not use the ``me`` pointer or the return value.
 
