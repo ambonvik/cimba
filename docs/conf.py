@@ -37,7 +37,7 @@ exhale_args = {
     "containmentFolder":    "./api",
     "rootFileName":         "library_root.rst",
     "doxygenStripFromPath": "..",
-    "rootFileTitle":        "Library API",
+    "rootFileTitle":        "Cimba API Reference",
     "createTreeView":       True,
     "lexerMapping": {
         r".*\.c": "c",
