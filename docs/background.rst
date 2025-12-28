@@ -46,22 +46,22 @@ at runtime. One can just fork off as many replications in parallel as one has co
 resources for, and use one computing node to dole out the jobs and collect the
 statistics.
 
-This was lashed together at the process level using ``rsh`` and a Perl script to control
-the individual simulations on a cluster of workstations, and just to make a point, on
-at least one computer back at the Norwegian Defence Research Establishment for a
-trans-Atlantic distributed simulation model. At the same time, the core discrete event
-simulation was rewritten in ANSI C with a binary heap event queue. It needed to be very
-efficient and have a very small memory footprint to run at low priority in the background
-on occupied workstations without anyone noticing a performance drop. This was pretty good
-for 1995, and can safely be considered Cimba version 2.0, but it was never released to
-the public.
+This was lashed together at the operating system process level using ``rsh`` and a Perl
+script to control the individual simulations on a cluster of workstations, and just to
+make a point, on at least one computer back at the Norwegian Defence Research
+Establishment for a trans-Atlantic distributed simulation model. At the same time, the
+core discrete event simulation was rewritten in ANSI C with a binary heap event queue. It
+needed to be very efficient and have a very small memory footprint to run at low priority
+in the background on occupied workstations without anyone noticing a performance drop.
+This was pretty good for 1995, and can safely be considered Cimba version 2.0, but it was
+never released to the public.
 
 After that, not much happened to it, until I decided to dust it off and publish it as
 open source many years later. The world had evolved quite a bit in the meantime, so the
 code required another comprehensive re-write to exploit the computing power in modern
 CPU's, this time coded in C17. This is the present Cimba 3.0.
 
-The goals for Cimba 3.0 are similar to those for earlier versions:
+The goals for Cimba 3.0 are quite similar to those for earlier versions:
 
 * Speed and efficiency, where small size in memory translates to execution speed on
   modern CPUs with cached memory pipelines, and multithreading trials on CPU cores
@@ -89,13 +89,13 @@ were lucky enough (or just plain old enough) to actually have programmed in Simu
 object-orientation with classes and inheritance was only part of the experience, and
 perhaps not the most important part.
 
-The most powerful concept was the *coroutine*, in particular for simulation work. This
+The most powerful concept for simulation work was the *coroutine*. This
 generalizes the concept of a subroutine to several parallel threads of execution that
-are non-preemptively scheduled. Combined with object-orientation, this means that one
-can describe a class of objects as independent threads of execution, often infinite
-loops, where the object's code just does its own thing. The complexity in the simulated
-world then arises from the interactions between the active processes and various other
-passive objects, while the description of each entity's actions is very natural.
+co-exist and are non-preemptively scheduled. Combined with object-orientation, this
+means that one can describe a class of objects as independent threads of execution, often
+infinite loops, where the object's code just does its own thing. The complexity in the
+simulated world then arises from the interactions between the active processes and various
+other passive objects, while the description of each entity's actions is very natural.
 
 Coroutines received significant academic interest in the early years, but were then
 overshadowed by the object-oriented inheritance mechanisms. It seems that current
@@ -383,11 +383,15 @@ you now hae the resource", it schedules an event at the current time with the pr
 priority that actually resumes the process. This avoids long and complicated call
 stacks.
 
+This also happens to be the reason why our events need to be (at least) a triple: The
+event to reactivate some process needs to contain the reactivation function, a pointer to
+the process, and a pointer to the context argument for its ``resume()`` call.
+
 Note that the event is not an object. It is ephemeral; once it has occurred, it is gone.
 You cannot take a pointer to an event. You can schedule an event as a triple ``(action,
-subject, object)`` for a certain time with a certain priority, and as we soon will see,
-you can cancel a scheduled event, reschedule it, or change its priority, but it is
-still not an object. In computer sciency terms, it is a *closure*, a function with its
+subject, object)`` for a certain point in time with a certain priority, and as we soon
+will see, you can cancel a scheduled event, reschedule it, or change its priority, but it
+is still not an object. In computer sciency terms, it is a *closure*, a function with a
 context to be executed at a future time and place.
 
 The Hash-Heap - A Binary Heap meets a Hash Map
@@ -430,6 +434,14 @@ priority and the handle value as ordering keys. If no comparator function is pro
 the hashheap will use a default comparator that only uses the ``double`` key and
 retrieves the smallest value first.
 
+The hashheap also provides wildcard functions to search for, count, or cancel scheduled
+events that match some combination of (action, subject, object). For this purpose,
+special values ``CMB_ANY_ACTION``, ``CMB_ANY_SUBJECT``, and ``CMB_ANY_OBJECT`` are
+defined. As an example, suppose we are building a large-scale simulation model of an
+air war. When some plane in the simulation gets shot down, all its scheduled future
+events should be cancelled. In Cimba, this can be done by a simple call like
+``cmb_event_pattern_cancel(CMB_ANY_ACTION, my_airplane, CMB_ANY_OBJECT);``
+
 Guarded Resources and Conditions
 --------------------------------
 
@@ -442,15 +454,15 @@ amount of the resource. The other two resource types have put/get semantics, whe
 ``cmb_buffer`` only considers the number of units that goes in and out, while the
 ``cmb_objectqueue`` allows individual pointers to objects.
 
-The common theme for all these is that a process requests something, and may have to
+The common theme for all these is that a process requests something and may have to
 wait in an orderly priority queue for its turn if that something is not immediately
-available. Our hashheap is a good starting point. For this purpose, we derive a class
-``cmb_resourceguard`` from the ``cmi_hashheap``, adding a pointer to some resource (the
-abstract base class) to be guarded, and a list of observing resource guards.
+available. Our hashheap is a good starting point for building this. For this purpose, we
+derive a class ``cmb_resourceguard`` from the ``cmi_hashheap``, adding a pointer to some
+resource (the abstract base class) to be guarded, and a list of observing resource guards.
 
-When a process requests some resource and finds it busy, it is enqueued in the hashheap
-priority queue. It also registers its *demand function*, a predicate function that
-takes three arguments, a pointer to the guarded resource, a pointer to the process
+When a process requests some resource and finds it busy, it enqueues itself in the
+hashheap priority queue. It also registers its *demand function*, a predicate function
+that takes three arguments, a pointer to the guarded resource, a pointer to the process
 itself, and a ``void`` pointer to some application-defined context. Using some
 combination of this information, the demand function returns a boolean true or false
 answer to whether the demand is satisfied. The demand function is pre-packaged for the
@@ -470,7 +482,7 @@ themselves as observers of this one, causing these to do the same on their wait 
 The *condition variable* ``cmb_condition`` is essentially a named resource guard
 with a user application defined demand function. The condition demand function can be
 anything that is computable from the given arguments and other state of the model at
-that point in simulated time. It can be used for arbitrarily complex "wait for one of
+that point in simulated time. It can be used for arbitrarily complex "wait for any one of
 many" or "wait for all of many" scenarios where the ``cmb_condition`` will register
 itself as observer to the underlying resource guards, and, as shown in our second
 tutorial, it can include continuous-valued state variables.
