@@ -58,7 +58,7 @@ What can I use Cimba for?
 -------------------------
 
 It is a general purpose discrete event library, in the general spirit of a
-21st century descendant of Simula67. You can use it
+21st century descendant of Simula67. You can use it:
 
 * as a collection of fast random number generators,
 

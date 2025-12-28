@@ -75,16 +75,16 @@ The goals for Cimba 3.0 are quite similar to those for earlier versions:
   generators and distributions.
 
 * Robustness, using object-oriented design principles and comprehensive unit testing to
-  ensure that it works as expected (but do read the Licence, we are not making any
-  warranties here).
+  ensure that it works as expected (but do read the `Licence <https://github.com/ambonvik/cimba/blob/main/LICENSE>`_,
+  we are not making any warranties here).
 
 I believe that Cimba 3.0 meets these goals and hope you will agree.
 
 Coroutines and Processes
 ------------------------
 
-It is well known that Simula introduced object-oriented programming, see
-https://en.wikipedia.org/wiki/Simula for the story. For those of us that
+It is well known that the Simula programming language introduced object-oriented
+programming, see https://en.wikipedia.org/wiki/Simula for the story. For those of us that
 were lucky enough (or just plain old enough) to actually have programmed in Simula67, the
 object-orientation with classes and inheritance was only part of the experience, and
 perhaps not the most important part.
@@ -113,7 +113,8 @@ coroutines we are looking for.
 In Cimba, we have some additional requirements to the coroutines beyond being full-fledged
 coroutines, i.e., stackful first class objects. Our coroutines need to be thread-safe,
 since we will combine these with multithreading at the next higher level of concurrency.
-The Cimba coroutines will interact in parallel universes within each thread.
+The Cimba coroutines will interact in parallel universes within each thread, but not
+across threads.
 
 We also want our coroutines to share information both through pointer arguments to the
 context-switching functions ``yield()``, ``resume()``, and ``transfer()``, and by the
@@ -187,7 +188,7 @@ This gives us a very powerful set of coroutines, fulfilling all requirements to 
 coroutines, and in addition providing general mechanisms for communication between
 coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
 coroutines, or even as a mix of those paradigms by mixing asymmetric yield/resume pairs
-with symmetric transfers. (Debugging your program may become rather confusing, though.)
+with symmetric transfers. (Debugging such a program may become rather confusing, though.)
 
 Cimba processes - named coroutines
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -196,7 +197,9 @@ Our coroutines are a bit too general and powerful for simulation modeling. We us
 as internal building blocks for the Cimba *processes*. These are essentially named
 asymmetric coroutines, inheriting all properties and methods from the coroutine class,
 and adding a name, a priority for scheduling processes, and pointers to things it may be
-waiting for, resources it may be holding, and other processes that may be waiting for it.
+waiting for, resources it may be holding, and other processes that may be waiting for
+it. As asymmetric coroutines, the Cimba processes always transfer control to a single
+dispatcher process, and are always re-activated from the dispatcher process only.
 
 The processes also understand the simulation time, and may ``hold()`` for a certain
 amount of simulated time. Underneath this call are the coroutine primitives of ``yield()``
@@ -230,7 +233,7 @@ language feature. It uses concepts like *encapsulation*, *inheritance*, and
 * *Inheritance* is the relationship between classes where a class is derived from
   another *parent* class. Objects belonging to the child class also belong to the parent
   class and inherit all properties and methods from there. The child class adds its own
-  methods and may *overload* (change) the meaning of parent class methods.
+  properties and methods, and may *overload* (change) the meaning of parent class methods.
 
 * *Polymorphism* allows the program to deal with parent classes and have each child
   class fill in the details of what should be done. The canonical example is a class
