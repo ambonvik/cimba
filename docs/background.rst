@@ -333,8 +333,8 @@ derived from ``cmi_resourcebase``. If the process needs to drop the resource in 
 hurry, there is a polymorphic function (really just a pointer to the appropriate
 function) for how to do that for a particular kind of resource.
 
-We claim that object-oriented programming in C17 is not particularly difficult, and in
-may require *less* pro forma boilerplate code than a language supporting and
+We claim that object-oriented programming in C17 is not particularly difficult, and
+may require *less* pro forma boilerplate code than using a language supporting and
 enforcing the object-orientation as part of the formal language definition.
 
 Events and the Event Queue
