@@ -1,6 +1,6 @@
 #include <cimba.h>
 
-void *arrivals(struct cmb_process *me, void *ctx)
+void *arrival(struct cmb_process *me, void *ctx)
 {
     struct cmb_buffer *bp = ctx;
     while (true) {
@@ -33,7 +33,7 @@ int main(void)
     cmb_buffer_initialize(que, "Queue", CMB_BUFFER_UNLIMITED);
 
     struct cmb_process *arr_proc = cmb_process_create();
-    cmb_process_initialize(arr_proc, "Arrivals", arrivals, que, 0);
+    cmb_process_initialize(arr_proc, "Arrival", arrival, que, 0);
     cmb_process_start(arr_proc);
 
     struct cmb_process *serv_proc = cmb_process_create();

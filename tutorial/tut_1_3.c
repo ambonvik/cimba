@@ -17,7 +17,7 @@ void end_sim(void *subject, void *object)
     cmb_process_stop(sim->srv, NULL);
 }
 
-void *arrivals(struct cmb_process *me, void *ctx)
+void *arrival(struct cmb_process *me, void *ctx)
 {
     struct cmb_buffer *bp = ctx;
     while (true) {
@@ -58,7 +58,7 @@ int main(void)
     cmb_buffer_initialize(sim.que, "Queue", CMB_BUFFER_UNLIMITED);
 
     sim.arr = cmb_process_create();
-    cmb_process_initialize(sim.arr, "Arrivals", arrivals, sim.que, 0);
+    cmb_process_initialize(sim.arr, "Arrival", arrival, sim.que, 0);
     cmb_process_start(sim.arr);
 
     sim.srv = cmb_process_create();
