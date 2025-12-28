@@ -1,9 +1,9 @@
 .. _background:
 
-The Whys and Hows of Cimba
-==========================
+The Whys and Hows of Cimba, Explained
+=====================================
 
-In this section, we will explain a bit more about the background for Cimba and some of
+In this section, we will explain the background for Cimba and some of
 the key design choices that are made in it. We start with a brief history that is
 necessary background for the project goals.
 
@@ -156,7 +156,7 @@ return value as argument, giving exactly the same effect of a ``return ptr;`` as
 files as above, function ``cmi_coroutine_trampoline``.
 
 The *data structure* ``struct cmi_coroutine`` is defined in `src/cmi_coroutine.h
-<https://github.com/ambonvik/cimba/blob/main/src/cmi_coroutine.h>`_`. It
+<https://github.com/ambonvik/cimba/blob/main/src/cmi_coroutine.h>`_. It
 contains pointers to the coroutine stack, its parent and latest caller coroutines, the
 coroutine function, its context argument, and the coroutine's status and exit value.
 
@@ -164,22 +164,21 @@ Finally, the *setup code* initializes a new coroutine stack and makes it ready t
 execution. This is system-dependent C code, function ``cmi_coroutine_context_init`` in
 `src/port/x86-64/linux/cmi_coroutine_context.c <https://github.com/ambonvik/cimba/blob/main/src/port/x86-64/linux/cmi_coroutine_context.c>`_
 and
-`src/port/x86-64/windows/cmi_coroutine_context.c <https://github
-.com/ambonvik/cimba/blob/main/src/port/x86-64/windows/cmi_coroutine_context.c>`_.
+`src/port/x86-64/windows/cmi_coroutine_context.c <https://github.com/ambonvik/cimba/blob/main/src/port/x86-64/windows/cmi_coroutine_context.c>`_.
 Basically, it fakes the stack frame that a function would see when executing normally on
 the new stack, with the trampoline at its return address, and then transfers control into
 the new coroutine. This starts executing the trampoline function, which in turn starts the
 actual coroutine function as described above.
 
-This machinery is hidden from the user application, which only needs to provide a
-coroutine function using the ``yield()``, ``resume()``, and ``transfer()`` primitives
-to run this as either asymmetric or symmetric coroutines. The coroutine function
+This machinery is hidden from the user application which only needs to provide a
+coroutine function using the ``yield()``, ``resume()``, and/or ``transfer()`` primitives
+to run either asymmetric or symmetric coroutines. The coroutine function
 prototype is ``void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *context)``,
 i.e., a function that takes a pointer to a coroutine (itself) and a ``void *`` to some
 user application-defined context as arguments and returns a ``void *``.
 For even more flexibility, we also allow the user application to define what ``exit()``
 function to be called if/when the coroutine function returns. This may seem like an
-intricate way of calling that exit function indirectly by returning from the coroutine
+intricate way of calling the exit function indirectly by returning from the coroutine
 function instead of just calling it directly, but as we will see, we will use that
 feature at the next higher level.
 
@@ -251,7 +250,92 @@ with the code and header files as a main building block. Careful use of ``static
 ``extern`` functions and variables provide the equivalents of ``private``, ``public``,
 and ``friend`` class properties and methods.
 
+Even if this is the most natural way of describing the entities in our simulated world,
+there are other things there that might be less natural to describe as classes and
+objects. In particular, we do not consider the pseudo-random number generators objects
+in this sense. They just exist in the simulated world and be called without the
+complexities of creating an object-oriented framework around them. A clear, modular
+structure to encapsulate and protect internal complexities is still needed.
 
+Cimba functions and variables follow a naming convention of
+*<namespace>_<module>_<function>*. There are three namespaces:
+
+* *cimba* - functions and objects at the outer level, organizing and executing your
+  multithreaded simulation experiment as a series of trials. This is outside the simulated
+  world. Example: ``cimba_version()``
+
+* *cmb* - functions and objects in the simulated world. These are the building blocks of
+  your simulation. You will probably build a single-threaded version only using
+  functions from this namespace first, and parallelize it later when you need the
+  computing power. Example: ``cmb_random_uniform()``
+
+* *cmi* - internal functions and objects that for some reason need to be exposed
+  globally, but that your simulation model does not need to interact with. Example:
+  ``cmi_coroutine_create()``
+
+Static functions and variables internal to each module do not use the
+*<namespace>_<module>_* prefix since they do not have global scope.
+
+There is one notable exception to this naming convention: The function ``cmb_time()``,
+which returns the current simulation clock value. It is declared and defined in the
+``cmb_event`` module, and should perhaps be called ``cmb_event_time()`` according to
+our rule, but since it is a global state in the simulated world and not related to any
+particular event, it is more intuitive to make this one exception for it.
+
+One can (and wilL!) claim that this approach to object-oriented programming provides
+most of the benefits while minimizing the overhead and constraints from a typical
+object-oriented programming language. However, there are some features we cannot
+provide directly:
+
+* *Multiple inheritance*, where a class is derived from more than one parent class. Our
+  parent classes need to go first in each child class struct, and then there can only
+  be one parent. This is no big loss, since multiple inheritance quickly becomes very
+  confusing. We instead distinguish between *is a* relationships (single inheritance)
+  and *has a* relationships (composition). For example, our ``cmb_resource`` *is a*
+  ``cmi_holdable`` (an abstract parent class), but it *has a* ``cmb_resourceguard`` to
+  maintain an orderly priority queue of processes waiting for the resource, and the
+  ``cmb_resourceguard`` itself *is a* ``cmi_hashheap``.
+
+* *Automatic initialization and destruction* for objects that go in and out of scope.
+  In C++, Resource Allocation Is Initialization (RAII). In C, it is not. (RAINI?) This
+  requires us to distinguish clearly between allocating, initializing, terminating, and
+  destroying an object. The allocate/destroy pair handles raw memory allocation. For
+  objects declared as local variables or implicitly as parent class objects, these are
+  not called. The initialize/terminate pair makes the allocated memory space ready for
+  use as an actual object, and handles any necessary clean-up (such as deallocating
+  internal arrays allocated during the object's lifecycle). In some cases, there is
+  also a reset function, in effect a terminate followed by a new initialize, returning
+  the object to a newly initialized state.
+
+When defining your own classes derived from Cimba classes, such as the ``ship`` class in
+our second tutorial, your code has the responsibility to follow this pattern. Your
+allocator function (e.g., ``ship_create()``) allocates and zero-initializes raw memory,
+while the constructor function (``ship_initialize()``) fills it with meaningful values.
+The constructor does not get called by itself, so your code is also responsible for
+calling it, both for objects allocated on the heap, objects declared as local
+variables, and for objects that exist as a parent class to one of your objects. The
+last case is done by calling the parent class constructor, here
+``cmb_process_initialize()`` from within the child class constructor function.
+
+Similarly, your code needs to provide a destructor to free any memory allocated by the
+object (``ship_terminate()``, and a deallocator to free the object itself
+(``ship_destroy()``). Your destructor function should also call the parent class
+destructor (here ``cmb_process_terminate()``), but your de-allocator should NOT call
+the parent class de-allocator, since that would be free'ing the same memory twice and
+probably crash your application.
+
+By looking around in the Cimba code, you will find many examples of how we have used
+the object-orientation. For example, a ``cmb_resourceguard`` does not actually care or
+know what type of resource it guards, only that it is something derived from the
+``cmi_resourcebase`` abstract base class. A process may be holding some resource, but
+may not really care what kind, only that it is some kind of ``cmi_holdable``, itself
+derived from ``cmi_resourcebase``. If the process needs to drop the resource in a
+hurry, there is a polymorphic function (really just a pointer to the appropriate
+function) for how to do that for a particular kind of resource.
+
+We claim that object-oriented programming in C17 is not particularly difficult, and in
+may require *less* pro forma boilerplate code than a language supporting and
+enforcing the object-orientation as part of the formal language definition.
 
 Events and the Event Queue
 --------------------------

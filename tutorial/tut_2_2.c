@@ -128,6 +128,48 @@ struct ship {
     double min_depth;
 };
 
+/* We'll do the object lifecycle properly with constructors and destructors. */
+struct ship *ship_create(void)
+{
+    struct ship *shpp = malloc(sizeof(struct ship));
+    memset(shpp, 0, sizeof(struct ship));
+
+    return shpp;
+}
+
+/* Process function to be defined later, for now just declare that it exists */
+void *ship_proc(struct cmb_process *me, void *vctx);
+
+void ship_initialize(struct ship *shpp, const enum ship_size sz, uint64_t cnt, void *vctx)
+{
+    cmb_assert_release(shpp != NULL);
+    shpp->size = sz;
+
+    /* We would probably not hard-code parameters except in a demo like this */
+    shpp->max_wind = 10.0 + 2.0 * (double)(shpp->size);
+    shpp->min_depth = 8.0 + 5.0 * (double)(shpp->size);
+    shpp->tugs_needed = 1u + 2u * shpp->size;
+
+    char namebuf[20];
+    snprintf(namebuf, sizeof(namebuf),
+             "Ship_%06" PRIu64 "%s",
+             ++cnt, ((shpp->size == SMALL) ? "_small" : "_large"));
+
+    /* Done initializing the child class properties, pass it on to the parent class */
+    cmb_process_initialize((struct cmb_process *)shpp, namebuf, ship_proc, vctx, 0);
+}
+
+void ship_terminate(struct ship *shpp)
+{
+    /* Nothing needed for the ship itself, pass it on to parent class */
+    cmb_process_terminate((struct cmb_process *)shpp);
+}
+
+void ship_destroy(struct ship *shpp)
+{
+    free(shpp);
+}
+
 /* A process that updates the weather once per hour */
 void *weather_proc(struct cmb_process *me, void *vctx)
 {
@@ -337,32 +379,14 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
     while (true) {
         cmb_process_hold(cmb_random_exponential(mean));
 
-        /* The ship class is a derived subclass of cmb_process, we malloc it
-         * directly instead of calling cmb_process_create() */
-        struct ship *shpp = malloc(sizeof(struct ship));
-
-        /* Remember to zero-initialize it if malloc'ing on your own! */
-        memset(shpp, 0, sizeof(struct ship));
-
-        /* We started the ship size enum from 0 to match array indexes. If we
-         * had more size classes, we could use cmb_random_dice(0, n) instead. */
-        shpp->size = cmb_random_bernoulli(p_large);
-
-        /* We would probably not hard-code parameters except in a demo like this */
-        shpp->max_wind = 10.0 + 2.0 * (double)(shpp->size);
-        shpp->min_depth = 8.0 + 5.0 * (double)(shpp->size);
-        shpp->tugs_needed = 1u + 2u * shpp->size;
-
-        /* A ship needs a name */
-        char namebuf[20];
-        snprintf(namebuf, sizeof(namebuf),
-                 "Ship_%06" PRIu64 "%s",
-                 ++cnt, ((shpp->size == SMALL) ? "_small" : "_large"));
-        cmb_process_initialize((struct cmb_process *)shpp, namebuf, ship_proc, vctx, 0);
+        struct ship *shpp = ship_create();
+        const enum ship_size sz = cmb_random_bernoulli(p_large);
+        ship_initialize(shpp, sz, ++cnt, vctx);
 
         /* Start our new ship heading into the harbor */
         cmb_process_start((struct cmb_process *)shpp);
-        cmb_logger_user(stdout, USERFLAG1, "%s started", namebuf);
+        cmb_logger_user(stdout, USERFLAG1, "%s started",
+                        ((struct cmb_process *)shpp)->name);
     }
 }
 
@@ -411,10 +435,9 @@ void *departure_proc(struct cmb_process *me, void *vctx)
             cmb_dataset_add(simp->time_in_system[shpp->size], *t_sys_p);
         }
 
-        /* Frees internally allocated memory, but not the object itself */
-        cmb_process_terminate((struct cmb_process *)shpp);
-        /* We malloc'ed it, call free() directly instead of cmb_process_destroy() */
-        free(shpp);
+        ship_terminate(shpp);
+        ship_destroy(shpp);
+
         /* The exit value was malloc'ed in the ship process, free it as well */
         free(t_sys_p);
     }

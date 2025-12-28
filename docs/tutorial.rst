@@ -569,7 +569,7 @@ Collecting and reporting statistics
 
 Which brings us to getting some *useful* output. By now, we are suitably convinced
 that our simulated M/M/1 queuing system is behaving as we expect, so we want it to
-start reporting some statistics on the queue lenght.
+start reporting some statistics on the queue length.
 
 It will be no surprise that Cimba contains flexible and powerful statistics
 collectors and reporting functions. There is actually one built into the
@@ -869,7 +869,7 @@ to not just get an average, but also a sense of the variability of our results.
 
 When we do multiple replications of a simulation, these are by design intended to be
 independent, identically distributed trials. Multiple parameter combinations are
-no less independent. This is what is called an "embarassingly parallel" problem.
+no less independent. This is what is called an "embarrassingly parallel" problem.
 There is no interaction between the trials, and they can be trivially parallelized
 by just running them at the same time and collecting the output.
 
@@ -1078,7 +1078,7 @@ We also get this image in a separate window:
     .. image:: ../images/tut_1_6.png
 
 Evidently, we cannot reject the null hypothesis that conventional queuing theory
-may be correct. Nor can we reject the hypthesis that Cimba may be working correctly.
+may be correct. Nor can we reject the hypothesis that Cimba may be working correctly.
 
 This concludes our first tutorial. We have followed the development steps from a
 first minimal model to demonstrate process interactions to a complete parallellized
@@ -1103,7 +1103,7 @@ complex ``wait`` calls. We will also show how to create a derived "class" of shi
 from our ``cmb_process`` class, itself derived from the ``cmi_coroutine`` class.
 
 Since a simulation model only should be built in order to answer some specific
-quesion or set of questions, we will assume that our Simulated Port Authority
+question or set of questions, we will assume that our Simulated Port Authority
 needs to decide whether to spend next year's investment budget on buying more
 tugs, building another berth, or dredging a deeper harbor channel. The relevant
 performance metric is to minimize the average time spent in the harbor for the
@@ -1495,7 +1495,7 @@ On the other hand, this is not safe at all:
             cmb_condition_wait(hbm, is_ready_to_dock, ctx);
         }
 
-        /* Do not do this: Announce our intention to move, yielding execution
+        /* Do NOT do this: Announce our intention to move, yielding execution
          * to other processes possibly both in the acquire and hold calls */
         cmb_resource_acquire(simp->comms);
         cmb_process_hold(cmb_random_gamma(5.0, 0.01));
@@ -1563,6 +1563,13 @@ with ``memset()`` after allocating it with ``malloc()``, or equivalently,
 allocating it with ``calloc()`` instead. The ship is a ``cmb_process``, but
 we are bypassing the ``cmb_process_create()`` here and take the responsibility
 for the allocation step.
+
+In this example, we just did the ship allocation and initialization inline. If we were to
+create and/or initialize ships from more than one place in the
+code, we would wrap these in proper ``ship_create()`` and ``ship_initialize()``
+functions to avoid repeating ourselves, but there is nothing that forces us to write
+pro forma constructor and destructor functions. (For illustration and code style, we
+do this "properly" in the next iteration of the example, ``tutorial/tut_2_2.c``.)
 
 The departure process is reasonably straightforward, capturing the exit value from
 the ship process and then recycling the entire ship. A ``cmb_condition`` is used
@@ -2101,8 +2108,8 @@ to just contain the simulation struct. We can then write something like:
     }
 
 The rats are pretty much the same as the mice, just a bit hungrier and stronger
-(i.e. assigning themselves somewhat higher priorities), and using ``cmb_resourcestore_preempt()``
-instead of ``_acquire()``:
+(i.e. assigning themselves somewhat higher priorities), and using
+``cmb_resourcestore_preempt()`` instead of ``_acquire()``:
 
 .. code-block:: c
 
@@ -2245,17 +2252,18 @@ Real world uses
 
 The example above was originally written as part of the Cimba unit test suite,
 to ensure that the library tracking of how many units each process holds from
-the resource store alwayse matches the expected values calculated here. Hence all
+the resource store always matches the expected values calculated here. Hence all
 the ``cmb_assert_debug(amount_held == cmb_resourcestore_held_by_process(sp, me));``
 statements. We wanted to make very sure that this is correct in all possible
-sequences of events, hence this frantic stress test.
+sequences of events, hence this frantic stress test with preemptions and
+interruptions galore.
 
 The preempt and interrupt mechanisms will be important in a range of real-world
-applications, ranging from hospital emergency room triage operations to manufacturing
-job shops and machine breakdown processes. Together with hold, acquire/release,
-put/get, the condition variables, and the ability for processes to wait for
-specific events and for other processes to finish, Cimba provides a comprehensive
-set of process interactions.
+modeling applications, ranging from hospital emergency room triage operations to
+manufacturing job shops and machine breakdown processes. Together with hold,
+acquire/release, put/get, the condition variables, and the ability for processes
+to wait for specific events and for other processes to finish, Cimba provides a
+comprehensive set of process interactions.
 
 Building, validating, and parallelizing the simulation will follow the same
 pattern as in our two first tutorials, so we will not repeat that here.
@@ -2266,3 +2274,5 @@ We have mentioned, but not demonstrated ``cmb_process_wait_process()``
 and ``cmb_process_wait_event()``. We encourage you to look up these in the
 API reference documentation next. Any remaining question may best be answered by
 reading the relevant source code.
+
+We hope you will find Cimba useful for your own modeling needs.
