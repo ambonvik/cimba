@@ -89,7 +89,7 @@ were lucky enough (or just old enough) to actually have programmed in Simula67, 
 object-orientation with classes and inheritance was only part of the experience, and
 perhaps not the most important part.
 
-Especially for simulation work, the most powerful concept was the *coroutine*. This
+The most powerful concept was the *coroutine*, in particular for simulation work. This
 generalizes the concept of a subroutine to several parallel threads of execution that
 are non-preemptively scheduled. Combined with object-orientation, this means that one
 can describe a class of objects as independent threads of execution, often infinite
@@ -110,24 +110,24 @@ https://probablydance.com/2021/10/31/c-coroutines-do-not-spark-joy/ for the deta
 For our purposes here, it is sufficient to say that these coroutines are not the
 coroutines we are looking for.
 
-We have some additional requirements to the coroutines beyond being full-fledged
-coroutines, i.e., stackful first class objects. We will combine these with multithreading
-at the next higher level of concurrency, so our coroutines need to be thread-safe, living
-in parallel universes within each thread.
+In Cimba, we have some additional requirements to the coroutines beyond being full-fledged
+coroutines, i.e., stackful first class objects. Our coroutines need to be thread-safe,
+since we will combine these with multithreading at the next higher level of concurrency
+The Cimba coroutines will exist in parallel universes within each thread.
 
-We want our coroutines to share information both through arguments to the
-context-switching primitives ``yield()``, ``resume()``, and ``transfer()``, and by the
+We also want our coroutines to share information both through arguments to the
+context-switching functions ``yield()``, ``resume()``, and ``transfer()``, and by the
 values returned by these functions. Control is passed out of a coroutine by calling one
 of these functions. Control is also passed back to the coroutine by what appears to be a
 normal return from this function call. The two ways of communicating between coroutines
-are then sharing a pointer to some context data structure as an argument, and returning
-a signal value that can be used to determine if soemthing unexpected happened during
-the call.
+are then sharing a pointer to some mutable context data structure as an argument, and
+returning a signal value that can be used to determine if soemthing unexpected happened
+during the call.
 
-Moreover, we want our coroutines to return an exit value, and we want the flexibility
-of either just returning this exit value from the coroutine function or by calling a
-special ``exit()`` function with an argument. These should be equivalent, and the exit
-value should be persistent after the coroutine execution ends.
+Moreover, we want our coroutines to return an exit value if and when they terminate, and
+we want the flexibility of either just returning this exit value from the coroutine
+function or by calling a special ``exit()`` function with an argument. These should be
+equivalent, and the exit value should be persistent after the coroutine execution ends.
 
 Cimba coroutines
 ^^^^^^^^^^^^^^^^
@@ -142,8 +142,10 @@ the active registers from the current execution context, including the stack poi
 loads the target stack pointer and registers, puts the apparent return value into the
 correct register, and "returns" to wherever the target context came from. See the
 function ``cmi_coroutine_context_switch`` in
-src/port/x86-64/linux/cmi_coroutine_context.asm and
-src/port/x86-64/windows/cmi_coroutine_context.asm for Linux and Windows, respectively.
+`src/port/x86-64/linux/cmi_coroutine_context.asm <https://github.com/ambonvik/cimba/blob/main/src/port/x86-64/linux/cmi_coroutine_context.asm>`_
+and
+`src/port/x86-64/windows/cmi_coroutine_context.asm <https://github.com/ambonvik/cimba/blob/main/src/port/x86-64/windows/cmi_coroutine_context.asm>`_
+for Linux and Windows, respectively.
 
 The *trampoline* is a function that gets pre-loaded onto a new coroutine's stack before
 it starts executing. It is never called directly. Once started, the trampoline will
@@ -183,22 +185,22 @@ This gives us a very powerful set of coroutines, fulfilling all requirements to 
 coroutines, and in addition providing general mechanisms for communication between
 coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
 coroutines, or even as a mix of those paradigms by mixing asymmetric yield/resume pairs
- with symmetric transfers. (Debugging your program may be another story, though.)
+with symmetric transfers. (Debugging your program may be another story, though.)
 
  Cimba processes - named coroutines
  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Our coroutines are a bit too general and powerful for simulation modeling. We use these
 as internal building blocks for the Cimba *processes*. These are essentially named
-coroutines, inheriting all properties and methods from the coroutine class, and adding
-a name, a priority for scheduling processes, and pointers to things it may be waiting
-for, resources it may be holding, and other processes that may be waiting for it.
+asymmetric coroutines, inheriting all properties and methods from the coroutine class,
+and adding a name, a priority for scheduling processes, and pointers to things it may be
+waiting for, resources it may be holding, and other processes that may be waiting for it.
 
 The processes also understand the simulation time, and may ``hold()`` for a certain
-amount of simulated time. Underneath this call are the coroutine primitives of ``yield
-()`` (to the simulation dispatcher) and ``resume()`` (when the simulation clock reaches
-this time). Processes can also ``acquire()`` and ``release()`` resources, wait for some
-other process to finish, interrupt or stop other processes, wait for some specific
+amount of simulated time. Underneath this call are the coroutine primitives of ``yield()``
+(to the simulation dispatcher) and ``resume()`` (when the simulation clock has advanced
+by this amount). Processes can also ``acquire()`` and ``release()`` resources, wait for
+some other process to finish, interrupt or stop other processes, wait for some specific
 event, or even wait for some arbitrarily complex condition to become true.
 
 We will soon return to this, but if the reader has been paying attention, there is

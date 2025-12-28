@@ -3,10 +3,10 @@
     background: #f3f6f6 !important;
     border: 1px solid #e1e4e5 !important;
     font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    # font-size: 95%;
-    # padding: 0px 3px;
-    # border-radius: 3px;
-    vertical-align: -20%;
+    font-size: 80%;
+    padding: 0px 3px;
+    border-radius: 3px;
+    vertical-align: -30%;
     display: inline-block;
     line-height: 1.0;
 }
