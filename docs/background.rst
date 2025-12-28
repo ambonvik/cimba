@@ -16,7 +16,7 @@ Cimba 3.0.0 is released on GitHub as public beta in late 2025, but as the versio
 indicates, there is some history before this first public release.
 
 The earliest ideas that eventually became Cimba date to work done at the Norwegian Defence
-Research Establishment in the late 1980's. I built discrete event simulation models
+Research Establishment in the late 1980s. I built discrete event simulation models
 in languages like Simscript and Simula67. Encountering Simula67's coroutines and
 object-orientation was revelatory in its essential *rightness*. However, Simula67 was
 still severely limited in many other respects and not really a practical option at that
@@ -35,7 +35,7 @@ model for cross-checking analytical models of manufacturing systems. For perhaps
 reasons, this was a clean sheet design with no code carried forward from the earlier
 C++ work at NDRE. It had a collection of standard random number generators and
 distributions, and used a linked list for its main event queue. It did the job, running
-on a Linux PC, but could be better. In retrospect, we consider this Cimba version 1.0.
+on a Linux PC, but could be improved. In retrospect, we consider this Cimba version 1.0.
 
 For my PhD thesis research, I needed to run *many* simulations with various parameter
 combinations and replications. By then, I had realized that parallelizing a discrete
@@ -46,7 +46,7 @@ at runtime. One can just fork off as many replications in parallel as one has co
 resources for, and use one computing node to dole out the jobs and collect the
 statistics.
 
-This was lashed together at the process level using `rsh` and a Perl script to control
+This was lashed together at the process level using ``rsh`` and a Perl script to control
 the individual simulations on a cluster of workstations, and just to make a point, on
 at least one computer back at the Norwegian Defence Research Establishment for a
 trans-Atlantic distributed simulation model. At the same time, the core discrete event
@@ -59,16 +59,16 @@ the public.
 After that, not much happened to it, until I decided to dust it off and publish it as
 open source many years later. The world had evolved quite a bit in the meantime, so the
 code required another comprehensive re-write to exploit the computing power in modern
-CPU's, this time coded in C17.
+CPU's, this time coded in C17. This is the present Cimba 3.0.
 
-The goals for Cimba v 3.0 are similar to those for earlier versions:
+The goals for Cimba 3.0 are similar to those for earlier versions:
 
 * Speed and efficiency, where small size in memory translates to execution speed on
   modern CPUs with cached memory pipelines, and multithreading trials on CPU cores
   provides the parallelism.
 
 * Portability, running both on Linux and Windows, initially limited to the AMD64 /
-  x86-64 architecture.
+  x86-64 architecture and GCC-like compilers.
 
 * Expressive power, combining process-oriented and event-oriented simulation
   worldviews with a comprehensive collection of state-of-the-art pseudo-random number
@@ -85,7 +85,7 @@ Coroutines and Processes
 
 It is well known that Simula introduced object-oriented programming, see
 https://en.wikipedia.org/wiki/Simula for the story. For those of us that
-were lucky enough (or just old enough) to actually have programmed in Simula67, the
+were lucky enough (or just plain old enough) to actually have programmed in Simula67, the
 object-orientation with classes and inheritance was only part of the experience, and
 perhaps not the most important part.
 
@@ -112,8 +112,8 @@ coroutines we are looking for.
 
 In Cimba, we have some additional requirements to the coroutines beyond being full-fledged
 coroutines, i.e., stackful first class objects. Our coroutines need to be thread-safe,
-since we will combine these with multithreading at the next higher level of concurrency
-The Cimba coroutines will exist in parallel universes within each thread.
+since we will combine these with multithreading at the next higher level of concurrency.
+The Cimba coroutines will interact in parallel universes within each thread.
 
 We also want our coroutines to share information both through pointer arguments to the
 context-switching functions ``yield()``, ``resume()``, and ``transfer()``, and by the
@@ -150,7 +150,7 @@ for Linux and Windows, respectively.
 The *trampoline* is a function that gets pre-loaded onto a new coroutine's stack before
 it starts executing. It is never called directly. Once started, the trampoline will
 call the actual coroutine function and then silently wait for it to return. If it ever
-does, the trampoline will catch it and call the coroutine ``exit()`` function with the
+does, the trampoline will catch it and call the ``exit()`` function with the
 return value as argument, giving exactly the same effect of a ``return ptr;`` as a
 ``exit(ptr);``, because it becomes the same thing. The code is in the same assembly
 files as above, function ``cmi_coroutine_trampoline``.
@@ -176,6 +176,7 @@ to run either asymmetric or symmetric coroutines. The coroutine function
 prototype is ``void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *context)``,
 i.e., a function that takes a pointer to a coroutine (itself) and a ``void *`` to some
 user application-defined context as arguments and returns a ``void *``.
+
 For even more flexibility, we also allow the user application to define what ``exit()``
 function to be called if/when the coroutine function returns. This may seem like an
 intricate way of calling the exit function indirectly by returning from the coroutine
@@ -204,9 +205,16 @@ by this amount). Processes can also ``acquire()`` and ``release()`` resources, w
 some other process to finish, interrupt or stop other processes, wait for some specific
 event, or even wait for some arbitrarily complex condition to become true.
 
-We will soon return to this, but if the reader has been paying attention, there is
-something else we need to address first: We just said *"inheriting all properties and
-methods from the coroutine class"*, but we also just said "C17" and "assembly".
+When initializing a process, we provide the process ``exit()`` function to be called by
+the coroutine trampoline if the process should ever return. The reason is simple:
+The parent coroutine class should not have any privileged knowledge about the content
+of its child classes. Hence the coroutine module cannot just hard-code this function, but
+needs to be handed it as a callback function from the derived class at initialization.
+
+We will soon return to Cimba's processes and their interactions, but if the reader has
+been paying attention, there is something else we need to address first: We just said
+*"inheriting all properties and methods from the coroutine class"*, but we also just
+said "C17" and "assembly".
 
 Object-Oriented Programming. In C and Assembly.
 -----------------------------------------------
@@ -222,7 +230,7 @@ language feature. It uses concepts like *encapsulation*, *inheritance*, and
 * *Inheritance* is the relationship between classes where a class is derived from
   another *parent* class. Objects belonging to the child class also belong to the parent
   class and inherit all properties and methods from there. The child class adds its own
-  methods and may *overload* (change) the meaining og parent class methods.
+  methods and may *overload* (change) the meaning of parent class methods.
 
 * *Polymorphism* allows the program to deal with parent classes and have each child
   class fill in the details of what should be done. The canonical example is a class
@@ -282,6 +290,14 @@ which returns the current simulation clock value. It is declared and defined in 
 our rule, but since it is a global state in the simulated world and not related to any
 particular event, it is more intuitive to make this one exception for it.
 
+As part of our convention, the object methods will take a first argument that is a
+pointer to the object itself. Again, there are a few exceptions: Some functions that are
+called by the current process and act on itself do not have this argument. It is
+enough to say ``cmb_process_hold(5)``, not ``cmb_process_hold(me, 5)``. Similarly,
+calling ``cmb_process_exit(ptr)`` is enough, calling ``cmb_process_exit(me, ptr)``
+would be slightly strange. We believe this exception makes the code more intuitive,
+even if it is not entirely consistent.
+
 One can (and wilL!) claim that this approach to object-oriented programming provides
 most of the benefits while minimizing the overhead and constraints from a typical
 object-oriented programming language. However, there are some features we cannot
@@ -327,25 +343,142 @@ probably crash your application.
 By looking around in the Cimba code, you will find many examples of how we have used
 the object-orientation. For example, a ``cmb_resourceguard`` does not actually care or
 know what type of resource it guards, only that it is something derived from the
-``cmi_resourcebase`` abstract base class. A process may be holding some resource, but
+``cmi_resourcebase`` abstract base class. Or, a process may be holding some resource, but
 may not really care what kind, only that it is some kind of ``cmi_holdable``, itself
 derived from ``cmi_resourcebase``. If the process needs to drop the resource in a
 hurry, there is a polymorphic function (really just a pointer to the appropriate
-function) for how to do that for a particular kind of resource.
-
-We claim that object-oriented programming in C17 is not particularly difficult, and
-may require *less* pro forma boilerplate code than using a language supporting and
-enforcing the object-orientation as part of the formal language definition.
+function) for how to handle that for a particular kind of resource.
 
 Events and the Event Queue
 --------------------------
 
+The fundamental property of a discrete event simulation model is that state only can
+change at the event times. The basic algorithm is to maintain a priority queue of
+scheduled events, retrieve the first one, set the simulation clock to its reactivation
+time, execute the event, and repeat.
+
+An event may schedule, cancel, or re-prioritize other events, and in general change
+the state of the model in arbitrary and application-defined ways. This is why
+parallelizing a single model run is near impossible: The scheduler cannot know what
+event to execute next or what state the next event will encounter before the current event
+is finished executing.
+
+Cimba maintains a single, thread-local event queue and simulation clock. These are
+global to the simulated world, but local to each trial thread. Two simulations running
+in parallel on separate CPU cores exist in the same shared memory space, but do not
+interact or influence each other.
+
+We define an *event* as a triple consisting of a pointer to a function that takes two
+pointers to ``void`` as arguments and does not return any value, and the two pointers
+to ``void`` that will become its arguments. The function is an *action*, the two
+arguments its *subject* and *object*. The event is then executing the one-liner
+``(*action)(subject, object);``
+
+Our process interactions are also events. For example, a process calling
+``cmb_process_hold(5.0)`` actually schedules a wakeup event for itself at the current
+simulation time + 5.0 before it yields to the dispatcher. At some point, that event has
+bubbled up to the top of the priority queue and gets executed. Similarly, when a
+``cmb_resourceguard`` wakes up a waiting process to inform it that "congratulations,
+you now hae the resource", it schedules an event at the current time with the process'
+priority that actually resumes the process. This avoids long and complicated call
+stacks.
+
+Note that the event is not an object. It is ephemeral; once it has occurred, it is gone.
+You cannot take a pointer to an event. You can schedule an event as a triple ``(action,
+subject, object)`` for a certain time with a certain priority, and as we soon will see,
+you can cancel a scheduled event, reschedule it, or change its priority, but it is
+still not an object. In computer sciency terms, it is a *closure*, a function with its
+context to be executed at a future time and place.
+
 The Hash-Heap - A Binary Heap meets a Hash Map
 ----------------------------------------------
 
+Since the basic discrete event simulation algorithm is all about inserting and
+retrieving events in a priority queue, the efficiency of this data structure and the
+algorithms acting on it becomes e key determinant of the overall application efficiency.
+
+Cimba uses a hash-heap data structure for this. It consists of two interconnected parts:
+
+* The *heap* is a binary tree represented as a partially sorted array. The next event
+  to be executed is always in array position 1. Retrieving it will trigger a reshuffle
+  of the heap, making insertion and retrieval O(log n) operations. A scheduled event is
+  just a value in this array, which may be moved to another location in the array at any
+  time. However, cancelling a future event is a O(n) operation, since the array needs
+  to be searched from the beginning to find the event.
+
+* The *hash* complements the heap with an open addressing hash map. When an
+  event is first scheduled, it is assigned a unique identifier, a *handle*. The hash
+  map keeps track of where in the heap that event is at any time. Accessing the event
+  using its handle is then an O(1) operation, while canceling it and reshuffling the
+  heap is O(log n). For large models with many scheduled events, this may be a useful
+  speed improvement. We use Fibonacci hashing and open addressing for simplicity and
+  efficiency, see https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
+
+Once we have this module tightly packaged, it can be used elsewhere than just the main
+event queue. We use the same data structure for all priority queues of processes
+waiting for some resource, since our ``cmb_resourceguard`` is a derived class from
+``cmi_hashheap``. In our second tutorial, the LNG harbor simulation, we even used it at
+the modeling level to maintain the set of active ships in the model.
+
+Each entry in the hashheap array provides space for four 64-bit payload items, together
+with the handle, a ``double``, and a signed 64-bit integer for use as prioritization
+keys. The ``cmi_hashheap`` struct also has a pointer to an application-provided comparator
+function that determines the ordering between two entries. For the main event priority
+queue, this is based on reactivation time, priority, and handle value (i.e. FIFO
+ordering as tie-breaker), while the waiting list for a resource will use the process
+priority and the handle value as ordering keys. If no comparator function is provided,
+the hashheap will use a default comparator that only uses the ``double`` key and
+retrieves the smallest value first.
 
 Guarded Resources and Conditions
 --------------------------------
+
+Many simulations involve active processes competing for some scarce resource. Cimba
+provides four resource classes and one very general condition variable class. Two of
+the resource classes are holdable with acquire/release semantics, where ``cmb_resource``
+is a simple binary semaphore that only one process can hold at a time, while the
+``cmb_resourcestore`` is a counting semaphore where several processes can hold some
+amount of the resource. The other two resource types have put/get semantics, where the
+``cmb_buffer`` only considers the number of units that goes in and out, while the
+``cmb_objectqueue`` allows individual pointers to objects.
+
+The common theme for all these is that a process requests something, and may have to
+wait in an orderly priority queue for its turn if that something is not immediately
+available. Our hashheap is a good starting point. For this purpose, we derive a class
+``cmb_resourceguard`` from the ``cmi_hashheap``, adding a pointer to some resource (the
+abstract base class) to be guarded, and a list of observing resource guards.
+
+When a process requests some resource and finds it busy, it is enqueued in the hashheap
+priority queue. It also registers its *demand function*, a predicate function that
+takes three arguments, a pointer to the guarded resource, a pointer to the process
+itself, and a ``void`` pointer to some application-defined context. Using some
+combination of this information, the demand function returns a boolean true or false
+answer to whether the demand is satisfied. The demand function is pre-packaged for the
+four resource types. For example, a process requesting a simple ``cmb_resource`` demands
+that it is not already in use, while a process requesting to put some amount into a
+``cmb_buffer`` demands that there is free space in the buffer. After registering itself,
+the process yields control to the dispatcher. All of this happens inside the
+``acquire()``, ``get()``, or ``put()`` call, invisible to the calling process.
+
+When some other process is done with the resource and releases it, it will *signal* the
+``cmb_resourceguard``. This signal causes the resource guard to evaluate the demand
+function for its highest-priority waiting process. If satisfied, that process is
+removed from the wait list, gets reactivated, and can grab the resource. The resource
+guard then forwards the signal to any other resource guards that have registered
+themselves as observers of this one, causing these to do the same on their wait lists.
+
+The *condition variable* ``cmb_condition`` is essentially a named resource guard
+with a user application defined demand function. The condition demand function can be
+anything that is computable from the given arguments and other state of the model at
+that point in simulated time. It can be used for arbitrarily complex "wait for one of
+many" or "wait for all of many" scenarios where the ``cmb_condition`` will register
+itself as observer to the underlying resource guards, and, as shown in our second
+tutorial, it can include continuous-valued state variables.
+
+We believe that the open-ended flexibility of our demand predicate function,
+pre-packaged for the common resource types and exposed for the ``cmb_condition``, makes
+Cimba a very powerful and expressive simulation tool. There may also be a weak pun here
+on the C++ ``promise``: Cimba processes do not promise. They *demand*.
 
 Pseudo-Random Number Generators and Distributions
 -------------------------------------------------
