@@ -651,17 +651,18 @@ the sample as a ``double`` between zero and one, inclusive. The first unit test 
        14        0.066667     0.06668    0.021 %
        15          0.0625    0.062513    0.021 %
     --------------------------------------------------------------------------------
-    ================================================================================
 
 The various pseudo-random number distributions build on this generator, shaping its
-output to mach the required probability density functions. The algorithms used are
-selected for speed and accuracy. The exponential and normal distributions are
-implementations of Chris McFarland's Ziggurat algorithms, see https://github.com/cd-mcfarland/fast_prng
+output to match the required probability density functions. The algorithms used are
+selected for speed and accuracy.
+
+The exponential and normal distributions are implementations of Chris McFarland's
+improved Ziggurat algorithms, see https://github.com/cd-mcfarland/fast_prng
 or https://arxiv.org/pdf/1403.6870
 
-The gamma distribution uses an algorithm due to Marsaglia and Tsang, https://dl.acm.org/doi/10.1145/358407.358414
-It uses a similar rejection sampling approach as the Ziggurat algorithm, but with a
-continuous function instead of the stepped rectangles of the Ziggurat.
+The gamma distribution uses an algorithm due to Marsaglia and Tsang. It uses a similar
+rejection sampling approach as the Ziggurat algorithm, but with a continuous function
+instead of the stepped rectangles of the Ziggurat. See https://dl.acm.org/doi/10.1145/358407.358414
 
 Many other distributions are built on top of these, as sums, products, or ratios of
 samples. For example, the infamous Cauchy distribution is simply the ratio of two normal
