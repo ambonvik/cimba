@@ -78,8 +78,8 @@ The goals for Cimba 3.0 are quite similar to those for earlier versions:
 
 I believe that Cimba 3.0 meets these goals and hope you will agree.
 
-Coroutines and Processes
-------------------------
+Coroutines Revisited
+--------------------
 
 It is well known that the Simula programming language introduced object-oriented
 programming, see https://en.wikipedia.org/wiki/Simula for the story. For those of us that
@@ -127,9 +127,6 @@ Moreover, we want our coroutines to return an exit value if and when they termin
 we want the flexibility of either just returning this exit value from the coroutine
 function or by calling a special ``exit()`` function with an argument. These should be
 equivalent, and the exit value should be persistent after the coroutine execution ends.
-
-Cimba coroutines
-^^^^^^^^^^^^^^^^
 
 We are not aware of any open source coroutine implementation that exactly meets these
 requirements, so Cimba contains its own, built from the ground up. There are several
@@ -188,10 +185,10 @@ coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
 coroutines, or even as a mix of those paradigms by mixing asymmetric yield/resume pairs
 with symmetric transfers. (Debugging such a program may become rather confusing, though.)
 
-Cimba processes - named coroutines
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Cimba Processes
+---------------
 
-Our coroutines are a bit too general and powerful for simulation modeling. We use these
+Our coroutines are a bit *too* general and powerful for simulation modeling. We use these
 as internal building blocks for the Cimba *processes*. These are essentially named
 asymmetric coroutines, inheriting all properties and methods from the coroutine class,
 and adding a name, a priority for scheduling processes, and pointers to things it may be
@@ -456,8 +453,8 @@ doubling). This way, the entire structure will fit well inside a 2K CPU L1 cache
 it has to outgrow the cache. We do not want to penalize small simulation models for
 the ability to run very large ones.
 
-Guarded Resources and Conditions
---------------------------------
+Resources, Resource Guards, Demands and Conditions
+--------------------------------------------------
 
 Many simulations involve active processes competing for some scarce resource. Cimba
 provides four resource classes and one very general condition variable class. Two of
@@ -684,8 +681,8 @@ and destroyed with ``cmb_random_alias_destroy()``. (In this case, we have bundle
 allocation and initialization steps into a single ``_create()`` function, and the
 termination and deallocation steps into the ``_destroy()`` function.)
 
-Data Collector
----------------
+Data Sets and Summaries
+-----------------------
 
 As we saw in the previous section, Cimba provides a simple set of statistics utilities
 for debugging and simple reporting. The most basic class is the ``cmb_dataset``, simply
@@ -740,8 +737,8 @@ And, of course, if more statistical power is needed, use the ``cmb_dataset_print
 and ``cmb_timeseries_print()`` functions to write the raw data values to file, and use
 dedicated software such as *R* or *Gnuplot* to analyze and present the data.
 
-Experiments and Multi-Threaded Trials
--------------------------------------
+An Experiment Consists of Multi-Threaded Trials
+-----------------------------------------------
 
 Finally, we return to the primary objective for Cimba: To provide multi-threaded
 discrete event simulation that harnesses the power of modern multi-core CPUS. As
