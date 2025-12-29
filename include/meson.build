@@ -2,9 +2,11 @@
 
 inc_api = include_directories('.')
 
+# Main catchall header
+install_headers('cimba.h')
+
 # Public API headers - installed to include/cimba/
 install_headers(
-    'cimba.h',
     'cmb_assert.h',
     'cmb_buffer.h',
     'cmb_condition.h',

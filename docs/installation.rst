@@ -92,7 +92,7 @@ Compile it as any other C program, linking to the Cimba library:
 
 .. code-block:: bash
 
-    gcc hello.c -lcimba -o hello
+    gcc hello.c -I/usr/local/include/cimba -lcimba -o hello
 
 If all goes well, this program should produce output similar to::
 
