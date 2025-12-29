@@ -57,7 +57,7 @@ It is powerful, fast, reliable, and free.
 What can I use Cimba for?
 -------------------------
 
-It is a general purpose discrete event library, in the general spirit of a
+It is a general purpose discrete event library, in the spirit of a
 21st century descendant of Simula67. You can use it:
 
 * as a collection of fast random number generators,
@@ -88,8 +88,8 @@ You had me at "free". How do I get my hands on Cimba?
 -----------------------------------------------------
 
 It is right here. You simply clone the repository from https://github.com/ambonvik/cimba,
-build, and install it. You
-will need a C build chain and the Meson build manager. On Linux, you can use gcc
-or Clang, while the recommended approach on Windows is MinGW with its gcc
-compiler. For convenience, we use the CLion integrated development environment
-with MinGW, gcc, and Meson built-in support on both Linux and Windows.
+build, and install it. You will need a C build chain and the Meson build manager.
+On Linux, you can use gcc or Clang, while the recommended approach on Windows is
+MinGW with its gcc compiler. For convenience, we use the CLion integrated
+development environment with built-in support for our build chain on both
+Linux and Windows.
