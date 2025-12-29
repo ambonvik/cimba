@@ -849,14 +849,23 @@ Two less obvious features to be aware of, perhaps less useful, but still:
   construct a discrete event simulation engine that could be run in that wrapper like
   Cimba 2.0 did in its trans-Atlantic distributed simulation of 1995.
 
-As a final advice and request for now, please do read the source code if something
-seems unclear. It is written to be readable for humans, not just for the compiler. It
-is well commented and contains plentiful ``assert()`` statements that mercilessly
-enforce whatever condition they claim to be true at that point. You can consider the
-asserts trustworthy, self-enforcing documentation. The code is strongly influenced by
-the `Design by Contract <https://en.wikipedia.org/wiki/Design_by_contract>`_ paradigm,
+If in Doubt, Read the Source Code
+---------------------------------
+
+Please do read the source code if something seems unclear. It is written to be
+readable for humans, not just for the compiler. It is well commented and contains
+plentiful ``assert()`` statements that mercilessly enforce whatever condition they
+claim to be true at that point. You can consider the asserts trustworthy,
+self-enforcing documentation.
+
+The code is strongly influenced by the
+`Design by Contract <https://en.wikipedia.org/wiki/Design_by_contract>`_ paradigm,
 where asserts are used to document and enforce preconditions, invariants, and
 postconditions for every function. It should provide significant clarity on exactly
 what can be expected from any Cimba function.
+
+If something *still* seems mysterious, you may have uncovered a bug, and we consider
+unclear or incorrect documentation to constitute a bug. Please open an issue for it in
+the GitHub issue tracker at https://github.com/ambonvik/cimba/issues
 
 
