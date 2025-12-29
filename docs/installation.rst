@@ -21,7 +21,8 @@ terminal commands.
 Linux
 -----
 
-On Linux, it is straightforward:
+On Linux, open a terminal window, change directory to where you want to have the source
+code tree, and type these commands:
 
 .. code-block:: bash
 
@@ -31,7 +32,7 @@ On Linux, it is straightforward:
     meson compile -C build
     sudo meson install -C build
 
-You need elevated privileges (`sudo`) for the last step, since it installs
+You need elevated privileges (``sudo``) for the last step, since it installs
 the library and header files in system locations  ``/usr/local/lib``
 and ``/usr/local/include``.
 
@@ -68,11 +69,11 @@ Type ``echo %PATH%`` to verify that the Cimba directory now is in the ``PATH``.
 If you have Windows Security ransomware protection enabled, you may have to
 allow access for various build chain applications to your build folders. You may
 also encounter issues with incompatible DLL's already installed by other applications.
-Windows will load the one first encountered in your PATH environment variable,
+Windows will load the one first encountered in your ``PATH`` environment variable,
 which may be older and incompatible with newly compiled source code.
-This may be solved by reordering the items in your PATH or updating the other
+This may be solved by reordering the items in your ``PATH`` or updating the other
 applications to the latest version. If all else fails, copy ``libwinpthread-1.dll``
-from the mingw64\\bin directory to the same directory as your executable files.
+from the ``mingw64\bin`` directory to the same directory as your executable files.
 
 Verifying your installation
 ---------------------------
