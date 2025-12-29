@@ -17,7 +17,7 @@ copyright = 'Asbjørn M. Bonvik 2025'
 extensions = ['breathe', 'exhale']
 
 html_theme = 'sphinx_rtd_theme'
-html_logo = '../images/logo_small.png'
+html_logo = '../images/logo_large.png'
 html_theme_options = {
     'logo_only': True,
     'display_version': False,
