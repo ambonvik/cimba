@@ -1,4 +1,4 @@
-# Cimba
+![large logo](images/logo_large.png)
 
 ## A multithreaded discrete event simulation library in C
 
