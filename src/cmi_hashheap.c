@@ -13,7 +13,7 @@
  *   that the World Forgot (or: a Better Alternative to Integer Modulo)",
  *   https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
  *
-* Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,8 +40,6 @@
  *
  * The "magic number" is approx 2^64 / phi, the golden ratio.
  * The right shift maps to the hash map size, twice the heap size.
- * See also:
- * https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
  */
 uint64_t hash_handle(const struct cmi_hashheap *hp, const uint64_t handle)
 {

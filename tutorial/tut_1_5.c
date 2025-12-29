@@ -54,7 +54,7 @@ static void stop_rec(void *subject, void *object)
 }
 
 
-void *arrivals(struct cmb_process *me, void *vctx)
+void *arrival(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
 
@@ -120,7 +120,7 @@ void run_MM1_trial(void *vtrl)
     cmb_buffer_initialize(ctx.sim->que, "Queue", CMB_BUFFER_UNLIMITED);
 
     ctx.sim->arr = cmb_process_create();
-    cmb_process_initialize(ctx.sim->arr, "Arrivals", arrivals, &ctx, 0);
+    cmb_process_initialize(ctx.sim->arr, "Arrival", arrival, &ctx, 0);
     cmb_process_start(ctx.sim->arr);
 
     ctx.sim->srv = cmb_process_create();

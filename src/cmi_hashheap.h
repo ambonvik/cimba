@@ -309,8 +309,10 @@ extern void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
 /*
  * cmi_hashheap_pattern_find: Search the priority queue for an item with values
  * matching the given pattern and return its handle if one exists in the queue,
- * i.e. (item[0] == val1) && (item[1] == val2) && (item[2] == val3).
- * Return zero if no match (not a valid handle, starting from one).
+ * i.e. (item[0] == val1) && (item[1] == val2) && (item[2] == val3) && (item[3] == val4).
+ *
+ * Returns zero if no match. The value zero is not a valid handle, since handles
+ * start from one, hence an out-of-band-value here.
  * The item value arguments to be matched can be NULL.
  * CMI_ANY_ITEM is a wildcard, matching any item value.
  *
@@ -323,10 +325,10 @@ extern void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
 
 #define CMI_ANY_ITEM ((void *)0xFFFFFFFFFFFFFFFFull)
 extern uint64_t cmi_hashheap_pattern_find(const struct cmi_hashheap *hp,
-                                  const void *val1,
-                                  const void *val2,
-                                  const void *val3,
-                                  const void *val4);
+                                          const void *val1,
+                                          const void *val2,
+                                          const void *val3,
+                                          const void *val4);
 
 /* cmi_hashheap_pattern_count : Similarly, count the number of matching items. */
 extern uint64_t cmi_hashheap_pattern_count(const struct cmi_hashheap *hp,

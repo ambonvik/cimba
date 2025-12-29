@@ -187,9 +187,7 @@ void *weather_proc(struct cmb_process *me, void *vctx)
         envp->wind_magnitude = 0.5 * wmag + 0.5 * wold;
 
         /* Wind direction in compass degrees, dominant from the southwest */
-        const double wdir1 = cmb_random_PERT(0.0, 225.0, 360.0);
-        const double wdir2 = cmb_random_PERT(0.0,  45.0, 360.0);
-        envp->wind_direction = 0.75 * wdir1 + 0.25 * wdir2;
+        envp->wind_direction = cmb_random_PERT(0.0, 225.0, 360.0);
 
         /* We could request the harbormaster to read the new weather bulletin:
          *       cmb_condition_signal(simp->harbormaster);
