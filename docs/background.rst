@@ -7,8 +7,6 @@ In this section, we will explain the background for Cimba and some of
 the key design choices that are made in it. We start with a brief history that is
 necessary background for the project goals.
 
-<This section is still work in progress, please check back later to read the rest.>
-
 Project History and Goals
 -------------------------
 
