@@ -652,7 +652,7 @@ Another way to check the quality is to generate a million successive (x, y) pair
 and patterns, sometimes even where no pattern exists, so this is a quite sensitive (but
 informal) test:
 
-.. image:: images/crossplot_random.png
+.. image:: ../images/crossplot_random.png
 
 The various pseudo-random number distributions build on this generator, shaping its
 output to match the required probability density functions. The algorithms used are
