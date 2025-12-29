@@ -737,7 +737,7 @@ We define a small helper function to load the parameters into the ``trial``:
     clarity. See also https://en.wikipedia.org/wiki/Design_by_contract
 
     We will trip one and see how it looks. We temporarily replace the
-    exponentially distributed service time with a normally distributed, mean still
+    exponentially distributed service time with a normally distributed one, mean
     1.0 and sigma 0.25. This will almost surely generate a negative value
     sooner or later, which will cause the service process to try to hold for a
     negative time, resuming in its own past. That should not be possible:
@@ -819,7 +819,7 @@ The ``main()`` function is now reduced to this:
         return 0;
     }
 
-We will not repeat the rest of the code here. You can find it in tutorial/tut_1_5.c
+We will not repeat the rest of the code here. You can find it in tutorial/tut_1_5.c.
 Instead, we compile and run it, receiving output similar to this:
 
 .. code-block:: none
@@ -867,7 +867,7 @@ Returning to our M/M/1 queue, suppose that we want to test the commonly accepted
 queuing theory by testing utilization factors from 0.025 to 0.975 in steps of 0.025,
 and that we want to run 10 replications of each parameter combination. We then
 want to calculate and plot the mean and 95 % confidence bands for each parameter
-combination, and compare that to the analytically calculated value in publication-
+combination, and compare that to the analytically calculated value in publication
 ready graphics. (Not that any famous journal would accept an article purporting to confirm
 the queue length formula for the M/M/1 queue, but this is only a tutorial after all.)
 
@@ -909,24 +909,24 @@ We allocate the experiment array on the heap, since its size will depend on the
 parameters. Here, we have hard-coded them for the sake of the tutorial, but they
 would probably be given as an input file or as interactive input in real usage.
 
-.. note:
+.. note::
 
-   Do not use any writeable global variables. The entire parallelized experiment
-   exists in a shared memory space. Threads will be sharing CPU cores in unpredictable
-   ways. A global variable accessible to several threads can be read and written
-   by any thread, creating potential hard-to-diagnose bugs.
+    Do not use any writeable global variables in your model. The entire parallelized
+    experiment exists in a shared memory space. Threads will be sharing CPU cores
+    in unpredictable ways. A global variable accessible to several threads can be
+    read and written by any thread, creating potential hard-to-diagnose bugs.
 
-   Do not use any static local variables either. The functions are called by all
-   threads. A static local variable remembers its value from the last call, which
-   may have been a completely different thread. Diagnosing those bugs will not be
-   easy either.
+    Do not use any static local variables in your model either. Your model
+    functions will be called by all threads. A static local variable remembers its
+    value from the last call, which may have been a completely different thread.
+    Diagnosing those bugs will not be any easier.
 
-   Regular local variables, function arguments, and heap memory (``malloc()`` /
-   ``free()``) is thread safe.
+    Regular local variables, function arguments, and heap memory (``malloc()`` /
+    ``free()``) is thread safe.
 
-   If you absolutely *must* have a global or static variable, consider prefixing
-   it by ``CMB_THREAD_LOCAL`` to make it global or static within that thread only,
-   creating separate copies per thread.
+    If you absolutely *must* have a global or static variable, consider prefixing
+    it by ``CMB_THREAD_LOCAL`` to make it global or static *within that thread only*,
+    creating separate copies per thread.
 
 We can then run the experiment:
 
@@ -938,7 +938,7 @@ The first argument is the experiment array, the last argument the simulation
 driver function we have developed earlier. It will take a pointer to a trial as
 its argument, but the internals of ``cimba_run_experiment()`` cannot know the
 detailed structure of your ``struct trial``, so it will be passed as a ``void *``.
-We need to explain the number of trials and the size of each tiral struct as the
+We need to explain the number of trials and the size of each trial struct as the
 second and third arguments to ``cimba_run_experiment()`` for it to do correct
 pointer arithmetic internally.
 
@@ -1065,8 +1065,9 @@ may be correct. Nor can we reject the hypothesis that Cimba may be working corre
 This concludes our first tutorial. We have followed the development steps from a
 first minimal model to demonstrate process interactions to a complete parallelized
 experiment with graphical output. The files ``tutorial/tut_1_*.c`` include working
-code for each stage of development. There is also a version ``tutorial/tut_1_7.c``,
-functionally the same as ``tutorial\tut_1_6.c`` but with inline explanatory comments.
+code for each stage of development. The version ``tutorial/tut_1_7.c`` is
+functionally the same as our final ``tutorial\tut_1_6.c`` but with additional inline
+explanatory comments.
 
 
 Our second simulation - LNG tanker harbor
@@ -1122,7 +1123,7 @@ departure process.
 There is no guarantee that ships will be leaving in first in first out order, so
 we use a ``cmi_hashheap`` as a fast data set for active ships. Departed ships can be
 handled by simpler means, so a simple linked list with LIFO (stack) ordering will
-be sufficient. These two classes are not considered part of the external CIMBA
+be sufficient. These two classes are not considered part of the external Cimba
 API, but happen to be available tools that fit the task.
 
 Our environment is next, describing the current wind and tide state for use by
@@ -1192,9 +1193,7 @@ concerned about wind magnitude and direction:
             envp->wind_magnitude = 0.5 * wmag + 0.5 * wold;
 
             /* Wind direction in compass degrees, dominant from the southwest */
-            const double wdir1 = cmb_random_PERT(0.0, 225.0, 360.0);
-            const double wdir2 = cmb_random_PERT(0.0,  45.0, 360.0);
-            envp->wind_direction = 0.75 * wdir1 + 0.25 * wdir2;
+            envp->wind_direction = cmb_random_PERT(0.0, 225.0, 360.0);
 
             /* Requesting the harbormaster to read the new weather bulletin */
             cmb_condition_signal(simp->harbormaster);
@@ -1245,9 +1244,6 @@ There is a ``cmb_resourceguard`` managing the priority queue. When adding itself
 to the queue, a process files its *demand* function with the guard. The demand
 function is a predicate returning a ``bool``, either ``true`` or ``false``, essentially
 saying to the guard "wake me up when this becomes true".
-
-(There may be a weak pun on the C++ coroutine ``promise`` here somewhere. Our
-processes do not *promise* anything, they *demand*.)
 
 For a ``cmb_resource``, the demand function is internal and pre-defined, evaluating
 to ``true`` if the resource is available. When some other process releases the
@@ -1626,6 +1622,8 @@ call from the weather process, since we know that the harbormaster will be
 signalled by the tide process immediately thereafter, saving one set of demand
 recalculations per simulated hour.
 
+This is where the resource guard observer/signal forwarding becomes useful:
+
 .. code-block:: c
 
         /* Create the harbormaster and Davy Jones himself */
@@ -1870,8 +1868,8 @@ This concludes our second tutorial. We have introduced ``cmb_resource``,
 ``cmb_resourcestore``, and the very powerful ``cmb_condition`` allowing processes
 to wait for arbitrary combinations of conditions. Along the way, we demonstrated
 that user applications can build derived classes from Cimba parent classes using
-single inheritance. For example, the ``ship`` class in this tutorial is (derived
-from) a ``cmb_process`` (which in turn is a ``cmi_coroutine``).
+single inheritance. For example, the ``ship`` class in this tutorial was derived
+from a ``cmb_process`` which in turn is derived from a ``cmi_coroutine``.
 
 Our third simulation - When the Cat is Away...
 ----------------------------------------------
