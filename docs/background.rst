@@ -670,24 +670,73 @@ variates, suitably scaled and shifted.
 
 Cimba also provides a collection of discrete-valued distributions, starting from the
 simple unbiased coin flip in ``cmb_random_flip()``. It also provides Bernoulli trials
-(biased coin flips, if such a thing exists), fair and loaded dice, Poisson and Pascal
-distributions, and so forth.
+(biased coin flips, if such a thing exists), fair and loaded dice, geometric, Poisson and
+Pascal distributions, and so forth.
 
 In some cases, a model needs to sample based on some empirical, discrete-valued set of
 probabilities. The probabilities can be given as an array ``p[n]``, where ``p[i]`` is the
 probability of outcome ``i``, for ``0 <= i < n``. A clever algorithm for this is the
 Vose alias method, see https://www.keithschwarz.com/darts-dice-coins/
 
-The alias method requires an initial step of setting up an alias table, but provides
-O(1) sampling thereafter. This is worthwhile for ``n > 10``, and about three times
-faster than the basic O(n) method for ``n = 30``. In Cimba, the alias table is created
-by calling ``cmb_random_alias_create()``, sampled with ``cmb_random_alias_sample()``, and
-destroyed with cmb_random_alias_destroy()``. (In this case, we have bundled the
-allocation and initialization steps into the ``_create`` function, and the termination and
-deallocation steps into the ``_destroy()`` function.)
+The alias method requires an initial step of setting up an alias table, but provides fast
+O(1) sampling thereafter. This is worthwhile for ``n`` larger than 10 or so, and about
+three times faster than the basic O(n) method for ``n = 30``. In Cimba, the alias table
+is created by calling ``cmb_random_alias_create()``, sampled with ``cmb_random_alias_sample()``,
+and destroyed with ``cmb_random_alias_destroy()``. (In this case, we have bundled the
+allocation and initialization steps into a single ``_create()`` function, and the
+termination and deallocation steps into the ``_destroy()`` function.)
 
-Data Collectors
+Data Collector
 ---------------
+
+As we saw in the previous section, Cimba provides a simple set of statistics utilities
+for debugging and simple reporting. The most basic class is the ``cmb_dataset``, simply
+a conveniently resizing array of sample values. It provides methods that require the
+individual values, such as calculating the median, quartiles, autocorrelation factors,
+and printing a histogram. It does not directly support fundamental statistics like mean
+and variance, though.
+
+These are provided through a separate class, ``cmb_datasummary()``, that computes
+running tallies for the first four moments in a single-pass algorithm whenever new data
+points are added to the summary, using the methods described by Pébay (https://www.osti.gov/servlets/purl/1028931)
+and Meng (https://arxiv.org/pdf/1510.04923).
+
+The reason for this is that we do not always need to keep all individual sample values,
+so we do not want to take the memory penalty of storing them if a simple summary is
+enough. In those cases, just adding the successive samples to a ``cmb_datasummary`` is
+more efficient. If we need both, collect the samples in a ``cmb_dataset`` and use the
+function ``cmb_dataset_summarize()`` to calculate a data summary object from the
+complete data set.
+
+The basic dataset is extended to a time series by the ``cmb_timeseries`` class. It adds
+a second `double`` to make each sample a ``(x, t)`` pair. In addition, it calculates a
+third value ``w`` (for *weight*) that represents the time interval between one sample
+and the next.
+
+Recall that in a discrete event simulation, nothing happens except at the event times,
+which can have arbitrary time intervals between them. We may need to handle time
+series, e.g., the length of some queue, that may be zero for a long time and have short
+bursts of several non-zero values, but perhaps with zero or near zero durations. If we
+want to calculate sensible statistics from this time series, the sample values need to
+be weighted by the duration they had. The ``cmb_timeseries`` calculates these weights
+on the fly.
+
+Similarly to the simple data set and data summary, there is a related
+``cmb_wtdsummary`` class for calculating duration-weighted statistics from a time
+series, or, in cases where the complete time series data is not needed, directly in one
+pass by simply adding sample values to the ``cmb_wtdsummary`` along the way. The
+algorithm is described by Pébay and others in a separate publication, see
+https://link.springer.com/article/10.1007/s00180-015-0637-z
+
+If one for some reason needs to calculate *unweighted* statistics from a time series,
+simply use the ``cmb_dataset_summarize()`` function instead. As a derived class, the
+``cmb_timeseries`` is still also a ``cmb_dataset``, and ``cmb_dataset_summarize()``
+will treat it as such.
+
+The single pass calculations of variance and higher moments are non-trivial. The
+obvious implementation is numerically unstable. We strongly recommend using the Cimba
+``cmb_summary`` and ``cmb_wtdsummary`` to do this robustly whenever anything more than
+a simple sum and average is needed.
 
 Experiments and Multi-Threaded Trials
 -------------------------------------

@@ -13,12 +13,11 @@ problem, depending on the way you look at it. Parallelizing a single simulation
 run is near impossible, since all events and processes inside the simulated
 world depend on a shared time variable and cannot race ahead.
 
-Luckily, we almost never run only a single simulation
-run, but a possibly large experiment consisting of many trials (replications and
-parameter combinations) to generate statistical results. These trials are *intended*
-to be independent trials, making them near-trivial to parallelize by simply
-running them all at the same time, or at least running as many as you have CPU cores
-available for.
+Luckily, we almost never run only a single simulation run, but a possibly large
+experiment consisting of many trials (replications and parameter combinations) to
+generate statistical results. These trials are *intended* to be independent trials,
+making them near-trivial to parallelize by simply running them all at the same time,
+or at least running as many as you have CPU cores available for.
 
 Which is what Cimba does.
 
