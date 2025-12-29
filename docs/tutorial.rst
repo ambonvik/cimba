@@ -231,33 +231,23 @@ at a time. It continues executing until it voluntarily *yields* the CPU to some
 other coroutine. Calling ``cmb_process_hold()`` will do exactly that, transferring
 control to the hidden dispatcher process that determines what to do next.
 
-However, the dispatcher only knows about events, not coroutines or processes. To
-ensure that the process returns to the other end of its ``cmb_process_hold()``
-call, it will schedule a wakeup event at the expected time before it yields
-control to the dispatcher. When executed, this event will *resume* the coroutine
-where it left off, returning through the ``cmb_process_hold()`` call with a
+However, the dispatcher only knows about events, not coroutines or processes. It will
+run as long as there are scheduled events to execute. Our little simulation will always
+have scheduled events, and the dispatcher will not stop on its own. These events
+originate from our two processes: To ensure that a process returns to the other end of
+its ``cmb_process_hold()`` call, it will schedule a wakeup event at the expected time
+before it yields control to the dispatcher. When executed, this event will *resume*
+the coroutine where it left off, returning through the ``cmb_process_hold()`` call with a
 return value that indicates normal or abnormal return. (We have ignored the
 return values for now in the example above.) So, whenever there are more than
 one process running, there will be future events scheduled in the event queue.
 
 To stop the simulation, we simply schedule an "end simulation" event, which
-stops any running processes at that point.
+stops any running processes at that point. The dispatcher then ends the run.
 
-A Cimba *event* is something that happens at a single point in simulated time.
-It is expressed as a function with two pointer arguments and no return value.
-The idea is for the event function to be an *action* and its two arguments the
-*subject* and *object* for that action, making its own little
-verb-subject-object grammar (like in Gaelic).
-
-The event does not have a fixed location in memory. You cannot get a
-pointer to an event, only a *handle*, a reference number that makes it possible
-to cancel or reschedule a future event. Once executed, the event no longer
-exists. If some lasting effect is needed, the event function needs to do that
-through the content of its subject and object pointer arguments.
-
-This is perhaps easier to do in code than to describe in prose. We define a
-``struct simulation`` that contains the entities of our simulated world and an
-end simulation event:
+This is perhaps easier to do in code than to describe in text. We define a
+``struct simulation`` that contains pointers to the entities of our simulated world and
+the function for an end simulation event:
 
 .. code-block:: c
 
@@ -321,11 +311,11 @@ object pointers, the simulated time when this event will happen, and an event
 priority. We have set end time 10.0 here. It could also be expressed as
 ``cmb_time() + 10.0`` for "in 10.0 time units from now".
 
-In Cimba, simulation end does not even have to be at a predetermined time. It is
+In Cimba, the simulation end does not even have to be at a predetermined time. It is
 equally valid for some process in the simulation to schedule an end simulation
 event at the current time whenever some condition is met, such as a certain
 number of customers having been serviced, a statistics collector having a
-certain number of samples, or something else.
+certain number of samples, or something else. 
 
 We gave the end simulation event a default priority of 0 as the last argument to
 ``cmb_event_schedule()``. Priorities are signed 64-bit integers, ``int64_t``. The
