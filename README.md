@@ -149,3 +149,5 @@ will need a C compiler and the Meson build manager. On Linux, you can use GCC
 or Clang, while the recommended approach on Windows is MinGW with its GCC 
 compiler. For convenience, we recommend the CLion integrated development environment 
 with GCC, Meson, and Ninja built-in support on both Linux and Windows.
+
+You will find the installation guide here: https://cimba.readthedocs.io/en/latest/installation.html
