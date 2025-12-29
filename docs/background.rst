@@ -259,9 +259,9 @@ and ``friend`` class properties and methods.
 Even if this is the most natural way of describing the entities in our simulated world,
 there are other things there that might be less natural to describe as classes and
 objects. In particular, we do not consider the pseudo-random number generators objects
-in this sense. They just exist in the simulated world and be called without the
-complexities of creating an object-oriented framework around them. A clear, modular
-structure to encapsulate and protect internal complexities is still needed.
+in this sense. They just exist in the simulated world and are called as functions without
+the complexities of creating an object-oriented framework around them. A clear, modular
+structure to encapsulate and protect internal workings is still needed.
 
 Cimba functions and variables follow a naming convention of
 *<namespace>_<module>_<function>*. There are three namespaces:
