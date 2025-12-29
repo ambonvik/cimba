@@ -23,7 +23,6 @@
 
 #include <pthread.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <xmmintrin.h>
 
 #include "cimba.h"
