@@ -1,4 +1,4 @@
-![large logo](images/logo_large.png)
+![large logo](images/logo_large.JPG)
 
 ## A multithreaded discrete event simulation library in C
 
