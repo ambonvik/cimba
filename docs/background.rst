@@ -647,6 +647,13 @@ the sample as a ``double`` between zero and one, inclusive. The first unit test 
        15          0.0625    0.062513    0.021 %
     --------------------------------------------------------------------------------
 
+Another way to check the quality is to generate a million successive (x, y) pairs from
+``cmb_random()`` and plot them. The human eye is pretty good at detecting correlations
+and patterns, sometimes even where no pattern exists, so this is a quite sensitive (but
+informal) test:
+
+.. image:: images/crossplot_random.png
+
 The various pseudo-random number distributions build on this generator, shaping its
 output to match the required probability density functions. The algorithms used are
 selected for speed and accuracy.
