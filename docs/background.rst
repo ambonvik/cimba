@@ -532,7 +532,7 @@ We initialize the PRNG in a three-stage bootstrapping process:
   entropy by calling ``cmb_random_get_hwseed()``. It will query the CPU for its best
   source of randomness. On the x86-64 architecture, the preferred source is the
   ``RDSEED`` instruction that is available on Intel CPUs since 2014 and AMD CPUs since
-  2026. This instruction uses thermal noise from the CPU itself to create a 64-bit
+  2016. This instruction uses thermal noise from the CPU itself to create a 64-bit
   random value. If not available, we will negotiate alternatives with the CPU and
   return the best entropy that is available, if necessary by doing a mashup of the clock
   value, thread identifier, and CPU cycle counter.
