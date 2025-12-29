@@ -32,8 +32,8 @@ On Linux, it is straightforward:
     sudo meson install -C build
 
 You need elevated privileges (`sudo`) for the last step, since it installs
-the library and header files in system locations  `/usr/local/include/cimba`
-and `/usr/local/bin/cimba`.
+the library and header files in system locations  `/usr/local/lib`
+and `/usr/local/include`.
 
 Windows
 -------
@@ -92,11 +92,11 @@ Compile it as any other C program, linking to the Cimba library:
 
 .. code-block:: bash
 
-    gcc hello.c -I/usr/local/include/cimba -lcimba -o hello
+    gcc hello.c -lcimba -o hello
 
 If all goes well, this program should produce output similar to::
 
-    Hello world, I am Cimba 3.0.0 beta.
+    Hello world, I am Cimba 3.0.0-beta.
 
 You now have a working Cimba installation.
 

@@ -26,7 +26,7 @@ sources = files('cimba.c',
 
 inc_int = include_directories('.')
 
-# Internal headers - installed to include/cimba/internal/
+# Internal headers - installed to /usr/local/include
 install_headers(
     'cmi_config.h',
     'cmi_coroutine.h',
@@ -37,8 +37,7 @@ install_headers(
     'cmi_mempool.h',
     'cmi_memutils.h',
     'cmi_resourcebase.h',
-    'cmi_waitable.h',
-    subdir : 'cimba/internal'  # Install to a private subdirectory
+    'cmi_waitable.h'
 )
 
 # Platform and operating system dependent source code

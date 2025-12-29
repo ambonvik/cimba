@@ -2,11 +2,9 @@
 
 inc_api = include_directories('.')
 
-# Main catchall header
-install_headers('cimba.h')
-
-# Public API headers - installed to include/cimba/
+# Public API headers - installed to /usr/local/include
 install_headers(
+    'cimba.h',
     'cmb_assert.h',
     'cmb_buffer.h',
     'cmb_condition.h',
@@ -21,6 +19,5 @@ install_headers(
     'cmb_resourceguard.h',
     'cmb_resourcestore.h',
     'cmb_timeseries.h',
-    'cmb_wtdsummary.h',
-    subdir : 'cimba'  # headers will be installed to <prefix>/include/cimba/
+    'cmb_wtdsummary.h'
 )
