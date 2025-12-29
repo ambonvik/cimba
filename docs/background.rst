@@ -709,7 +709,7 @@ function ``cmb_dataset_summarize()`` to calculate a data summary object from the
 complete data set.
 
 The basic dataset is extended to a time series by the ``cmb_timeseries`` class. It adds
-a second `double`` to make each sample a ``(x, t)`` pair. In addition, it calculates a
+a second ``double`` to make each sample an ``(x, t)`` pair. In addition, it calculates a
 third value ``w`` (for *weight*) that represents the time interval between one sample
 and the next.
 
@@ -738,5 +738,125 @@ obvious implementation is numerically unstable. We strongly recommend using the 
 ``cmb_summary`` and ``cmb_wtdsummary`` to do this robustly whenever anything more than
 a simple sum and average is needed.
 
+And, of course, if more statistical power is needed, use the ``cmb_dataset_print()``
+and ``cmb_timeseries_print()`` functions to write the raw data values to file, and use
+dedicated software such as *R* or *Gnuplot* to analyze and present the data.
+
 Experiments and Multi-Threaded Trials
 -------------------------------------
+
+Finally, we return to the primary objective for Cimba: To provide multi-threaded
+discrete event simulation that harnesses the power of modern multi-core CPUS. As
+explained in the sections about coroutines and pseudo-random number generators above,
+Cimba is designed from the ground up to enable multithreaded execution. Once that is in
+place, the actual implementation is straightforward. For portability, we use POSIX
+pthreads as the concurrency model, see https://en.wikipedia.org/wiki/Pthreads
+
+The basic idea is to structure your *experiment* as an array of *trials*. Your
+simulated world is constant across trials, except for the trial parameters. Cimba
+creates a small army of worker threads, one per logical CPU core, and lets them help
+themselves to the experiment array. Each thread will pick the next available trial,
+execute the simulation trial function with the given parameters, store the results, and
+repeat. When there are no more trials to run, the worker processes stop and the main
+thread takes over again for final output and cleanup.
+
+This gives us near perfect load balancing for free, without the main thread having to
+do anything. The worker threads keep themselves busy. The alternative approach would be
+to launch each trial in its own thread and close it again before launching the next
+trial from the main scheduler. This would also work, but with some more overhead.
+
+The downside to our approach is that new trials will be launched into a thread memory
+space where an earlier trial used the event queue and the random generators. If the
+user application is not scrupulous in initializing and terminating objects, it may
+encounter garbage values with somewhat unpredictable results.
+
+We define the *trial function* as a function that takes a ``void *`` as argument and
+does not return any value, ``typedef void (cimba_trial_func)(void *trial_struct)``.
+Note that the ``trial_struct`` is just a variable name for a ``void *``, not a type
+name. Cimba cannot know in advance the structure of your trial struct, and makes
+no assumptions on it.
+
+Our `tutorial/tut_1_7.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_7.c>`_
+can serve as an example for how the experiment array can be structured:
+
+.. code-block:: c
+
+    struct simulation {
+        struct cmb_process *arr;
+        struct cmb_buffer *que;
+        struct cmb_process *srv;
+    };
+
+    struct trial {
+        /* Parameters */
+        double arr_rate;
+        double srv_rate;
+        double warmup_time;
+        double duration;
+        /* Results */
+        uint64_t seed_used;
+        double avg_queue_length;
+    };
+
+    struct context {
+        struct simulation *sim;
+        struct trial *trl;
+    };
+
+This is user application code, so you can call these structs what you want. Our use
+of ``struct simulation`` here is a slight tip o' the hat toward old Simula's ``CLASS
+SIMULATION``. Note also that we chose to let the trial function get its own seed from
+hardware and store it as a result value rather than feed it a pre-packaged seed for the
+trial.
+
+The trial function, here ``run_MM1_trial()``, expects to receive a pointer to a
+``struct trial`` as argument (disguised as a ``void *``), sets up, executes the
+simulation, and cleans up afterwards.
+
+The user application allocates the experiment array, e.g.:
+
+.. code-block:: c
+
+    struct trial *experiment = calloc(n_trials, sizeof(*experiment));
+
+and initializes it with the various trial parameters, with the necessary variations and
+replications. Once it has loaded parameters into each trial of the experiment array, it
+calls ``cimba_run_experiment()`` and waits for the results.
+
+.. code-block:: c
+
+    cimba_run_experiment(experiment, n_trials, sizeof(*experiment), run_MM1_trial);
+
+Once this function returns, each trial in the experiment array will have its results
+fields populated. The application can then parse the outcome and present the results in
+any way it wants.
+
+Two less obvious features to be aware of, perhaps less useful, but still:
+
+* You can use different trial functions per trial. If the last argument to
+  ``cimba_run_experiment()`` is ``NULL``, it will instead take the first 64 bits of your
+  trial structure as a pointer to the trial function to be used for this particular
+  trial structure. You could have different trial functions for every trial if you
+  want. Of course, if the trial function argument to ``cimba_run_experiment()`` is ``NULL``
+  and the first 64 bits of your trial structure do *not* contain a valid function
+  address, your program will promptly crash with a segmentation fault.
+
+* ``cimba_run_experiment()`` does not even care if the trial functions it executes is a
+  simulation or something else. You could feed it some array of parameter values and a
+  pointer to some function that does something with whatever those parameter values
+  indicate. It is just a wrapper to a worker pool of pthreads and will happily
+  multithread whatever task you ask it to. The design challenge with Cimba was to
+  construct a discrete event simulation engine that could be run in that wrapper like
+  Cimba 2.0 did in its trans-Atlantic distributed simulation of 1995.
+
+As a final advice and request for now, please do read the source code if something
+seems unclear. It is written to be readable for humans, not just for the compiler. It
+is well commented and contains plentiful ``assert()`` statements that mercilessly
+enforce whatever condition they claim to be true at that point. You can consider the
+asserts trustworthy, self-enforcing documentation. The code is strongly influenced by
+the `Design by Contract <https://en.wikipedia.org/wiki/Design_by_contract>`_ paradigm,
+where asserts are used to document and enforce preconditions, invariants, and
+postconditions for every function. It should provide significant clarity on exactly
+what can be expected from any Cimba function.
+
+
