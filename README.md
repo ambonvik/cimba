@@ -36,8 +36,7 @@ It is powerful, fast, reliable, and free.
     for anything you can express as a function returning a binary true or false result.
   
   * A wide range of fast, high-quality random number generators, both
-    of academically important and more empirically oriented types. See
-    [cmb_random.h](include/cmb_random.h)
+    of academically important and more empirically oriented types.
   
   * Integrated logging and data collection features that make it easy
     to get a model running and understand what is happening inside it.
@@ -74,9 +73,6 @@ fast memory pool allocators for generic small objects, and sophisticated data
 structures like hash-heaps combining a binary heap and an open addressing hash
 map with fibonacci hashing for fast access to various objects. These are not
 part of the public Cimba API but are used internally and part of the codebase.
-See [tut_2_2.c](tutorial/tut_2_2.c) for one example of how these can
-be used in your model code (but please read the relevant source code before
-using any Cimba internal functions in your own code).
 
 ### So, exactly how fast is it?
 The experiment in [test_cimba.c](test/test_cimba.c) simulates an M/G/1 queue at
@@ -152,4 +148,4 @@ It is right here. You clone the repository, build, and install it. You
 will need a C compiler and the Meson build manager. On Linux, you can use GCC 
 or Clang, while the recommended approach on Windows is MinGW with its GCC 
 compiler. For convenience, we recommend the CLion integrated development environment 
-with MinGW, GCC, Meson, and Ninja built-in support on both Linux and Windows.
+with GCC, Meson, and Ninja built-in support on both Linux and Windows.

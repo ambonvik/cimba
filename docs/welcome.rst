@@ -78,10 +78,7 @@ If you look under the hood, you will also find reusable internal components
 like stackful coroutines doing their own thing on thread-safe cactus stacks,
 fast memory pool allocators for generic small objects, and sophisticated data
 structures like hash-heaps combining a binary heap and an open addressing hash
-map with fibonacci hashing for fast access to various objects. These are not
-part of the public Cimba API, but are used internally and part of the codebase.
-See [test_condition.c](test/test_condition.c) for an example of how these can
-be used in your model code (but please read the relevant source code first).
+map with fibonacci hashing for fast access to various objects.
 
 You had me at "free". How do I get my hands on Cimba?
 -----------------------------------------------------
