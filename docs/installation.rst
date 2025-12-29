@@ -32,21 +32,21 @@ On Linux, it is straightforward:
     sudo meson install -C build
 
 You need elevated privileges (`sudo`) for the last step, since it installs
-the library and header files in system locations  `/usr/local/lib`
-and `/usr/local/include`.
+the library and header files in system locations  ``/usr/local/lib``
+and ``/usr/local/include``.
 
 Windows
 -------
 
 As always, things are more complicated on Windows. So far, Cimba only supports a MinGW-W64
-build chain with the `gcc` or `clang` compiler. MSVC is not yet supported.
+build chain with the gcc or clang compiler. MSVC is not yet supported.
 
-To use the MinGW-W64 build chain, first make sure you have `gcc` installed and
-in your PATH by typing `gcc --version` in a command shell. If it does not respond,
+To use the MinGW-W64 build chain, first make sure you have ``gcc`` installed and
+in your PATH by typing ``gcc --version`` in a command shell. If it does not respond,
 please install it before continuing, see https://www.mingw-w64.org/.
 
 We have encapsulated most of the Windows setup complexity in a batch script called
-`setup_MinGW.bat`. This script will call on Microsoft Powershell internally to
+``setup_MinGW.bat``. This script will call on Microsoft Powershell internally to
 change system environment variables safely.
 
 Start a command shell (`cmd.exe`) as administrator. Change directory to where you
@@ -60,10 +60,10 @@ want to have the Cimba source hierarchy and issue the following commands:
    meson compile -C build
    meson install -C build
 
-This will install Cimba in `C:\Program Files\Cimba` and add its `bin` to your
-`PATH`. Close the administrator command window when this is done, restart your
-computer, and open a new command window without administrator privileges. Type
-`echo %PATH%` to verify that the Cimba directory now is in the `PATH`.
+This will install Cimba in ``C:\Program Files\Cimba`` and add its ``bin``
+directory to your ``PATH``. Close the administrator command window when this is done,
+restart your computer, and open a new command window without administrator privileges.
+Type ``echo %PATH%`` to verify that the Cimba directory now is in the ``PATH``.
 
 If you have Windows Security ransomware protection enabled, you may have to
 allow access for various build chain applications to your build folders. You may
@@ -71,13 +71,13 @@ also encounter issues with incompatible DLL's already installed by other applica
 Windows will load the one first encountered in your PATH environment variable,
 which may be older and incompatible with newly compiled source code.
 This may be solved by reordering the items in your PATH or updating the other
-applications to the latest version. If all else fails, copy `libwinpthread-1.dll`
+applications to the latest version. If all else fails, copy ``libwinpthread-1.dll``
 from the mingw64\\bin directory to the same directory as your executable files.
 
 Verifying your installation
 ---------------------------
 
-After installation, we can write a C program like `tutorial/hello.c`:
+After installation, we can write a C program like ``tutorial/hello.c``:
 
 .. code-block:: c
 
@@ -106,7 +106,7 @@ For a more comprehensive test, type:
 
     meson test -C build
 
-This will run the full suite of unit tests from the `test` directory. It will
+This will run the full suite of unit tests from the ``test`` directory. It will
 take a while. The output will look similar to this:
 
 .. image:: ../images/test_suite.png
