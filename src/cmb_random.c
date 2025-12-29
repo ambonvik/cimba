@@ -536,7 +536,6 @@ int cmb_random_flip(void)
 /*
  * Geometric distribution, the number of trials until
  * and including the first success.
- *
  */
 unsigned cmb_random_geometric(const double p)
 {
@@ -580,7 +579,8 @@ unsigned cmb_random_negative_binomial(const unsigned m, const double p)
 
     unsigned fctr = 0;
     for (unsigned ui = 0u; ui < m; ui++) {
-        fctr += cmb_random_geometric(p);
+        /* The geometric distribution includes the final success, subtract it */
+        fctr += cmb_random_geometric(p) - 1u;
     }
 
     return fctr;

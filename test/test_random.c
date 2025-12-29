@@ -779,7 +779,7 @@ static void test_quality_pascal(const unsigned m, const double p)
     const double skew = (2.0 - p) / sqrt(q * (double)m);
     const double kurt = 6.0 / (double)m + (p * p) / (q * (double)m);
 
-    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
+    print_expected(MAX_ITER, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -981,9 +981,9 @@ int main(void)
     test_quality_flip();
     test_quality_bernoulli(0.6);
     test_quality_geometric(0.1);
-    test_quality_binomial(100, 0.1);
+    test_quality_binomial(10, 0.1);
     test_quality_pascal(10, 0.1);
-    test_quality_poisson(100.0);
+    test_quality_poisson(10.0);
 
     test_quality_dice(1, 6);
 
