@@ -301,7 +301,7 @@ calling ``cmb_process_exit(ptr)`` is enough, calling ``cmb_process_exit(me, ptr)
 would be slightly strange. We believe this exception makes the code more intuitive,
 even if it is not entirely consistent.
 
-One can (and wilL!) claim that this approach to object-oriented programming provides
+One can claim that this approach to object-oriented programming provides
 most of the benefits while minimizing the overhead and constraints from a typical
 object-oriented programming language. However, there are some features we cannot
 provide directly:
@@ -321,7 +321,7 @@ provide directly:
   destroying an object. The allocate/destroy pair handles raw memory allocation. For
   objects declared as local variables or implicitly as parent class objects, these are
   not called. The initialize/terminate pair makes the allocated memory space ready for
-  use as an actual object, and handles any necessary clean-up (such as deallocating
+  use as an actual object and handles any necessary clean-up (such as deallocating
   internal arrays allocated during the object's lifecycle). In some cases, there is
   also a reset function, in effect a terminate followed by a new initialize, returning
   the object to a newly initialized state.
@@ -337,7 +337,7 @@ last case is done by calling the parent class constructor, here
 ``cmb_process_initialize()`` from within the child class constructor function.
 
 Similarly, your code needs to provide a destructor to free any memory allocated by the
-object (``ship_terminate()``, and a deallocator to free the object itself
+object (``ship_terminate()``), and a deallocator to free the object itself
 (``ship_destroy()``). Your destructor function should also call the parent class
 destructor (here ``cmb_process_terminate()``), but your de-allocator should NOT call
 the parent class de-allocator, since that would be free'ing the same memory twice and
@@ -355,7 +355,7 @@ function) for how to handle that for a particular kind of resource.
 Events and the Event Queue
 --------------------------
 
-The fundamental property of a discrete event simulation model is that state only can
+The most fundamental property of a discrete event simulation model is that state only can
 change at the event times. The basic algorithm is to maintain a priority queue of
 scheduled events, retrieve the first one, set the simulation clock to its reactivation
 time, execute the event, and repeat.
@@ -397,6 +397,14 @@ will see, you can cancel a scheduled event, reschedule it, or change its priorit
 is still not an object. In computer sciency terms, it is a *closure*, a function with a
 context to be executed at a future time and place.
 
+The event queue also provides wildcard functions to search for, count, or cancel entries
+that match some combination of (action, subject, object). For this purpose,
+special values ``CMB_ANY_ACTION``, ``CMB_ANY_SUBJECT``, and ``CMB_ANY_OBJECT`` are
+defined. As an example, suppose we are building a large-scale simulation model of an
+air war. When some plane in the simulation gets shot down, all its scheduled future
+events should be cancelled. In Cimba, this can be done by a simple call like
+``cmb_event_pattern_cancel(CMB_ANY_ACTION, my_airplane, CMB_ANY_OBJECT);``
+
 The Hash-Heap - A Binary Heap meets a Hash Map
 ----------------------------------------------
 
@@ -424,11 +432,11 @@ Cimba uses a hash-heap data structure for this. It consists of two interconnecte
 Once we have this module tightly packaged, it can be used elsewhere than just the main
 event queue. We use the same data structure for all priority queues of processes
 waiting for some resource, since our ``cmb_resourceguard`` is a derived class from
-``cmi_hashheap``. In our second tutorial, the LNG harbor simulation, we even used it at
-the modeling level to maintain the set of active ships in the model.
+``cmi_hashheap``. In our second tutorial, the LNG harbor simulation, we even used an
+instance of it at the modeling level to maintain the set of active ships in the model.
 
 Each entry in the hashheap array provides space for four 64-bit payload items, together
-with the handle, a ``double``, and a signed 64-bit integer for use as prioritization
+with the event handle, a ``double``, and a signed 64-bit integer for use as prioritization
 keys. The ``cmi_hashheap`` struct also has a pointer to an application-provided comparator
 function that determines the ordering between two entries. For the main event priority
 queue, this is based on reactivation time, priority, and handle value (i.e. FIFO
@@ -437,13 +445,18 @@ priority and the handle value as ordering keys. If no comparator function is pro
 the hashheap will use a default comparator that only uses the ``double`` key and
 retrieves the smallest value first.
 
-The hashheap also provides wildcard functions to search for, count, or cancel scheduled
-events that match some combination of (action, subject, object). For this purpose,
-special values ``CMB_ANY_ACTION``, ``CMB_ANY_SUBJECT``, and ``CMB_ANY_OBJECT`` are
-defined. As an example, suppose we are building a large-scale simulation model of an
-air war. When some plane in the simulation gets shot down, all its scheduled future
-events should be cancelled. In Cimba, this can be done by a simple call like
-``cmb_event_pattern_cancel(CMB_ANY_ACTION, my_airplane, CMB_ANY_OBJECT);``
+The event queue pattern search is a repackaging of the similar pattern search
+functions in the parent hashheap class, where the pattern searches all four 64-bit
+payload items and provides a single ``CMI_ANY_ITEM`` to match against any value in each
+of the four positions. The parent class does not assign any particular meaning to the
+payload values, just considers them raw binary data.
+
+For efficiency reasons, the hash table needs to be sized as a power of two. It will
+start small and grow if needed. Cimba initializes its event queue with only 8 slots in
+the heap and 16 in the hash map (guaranteeing <= 50 % hash map utilization before
+doubling). This way, the entire structure will fit well inside a 2K CPU L1 cache until
+it has to outgrow the cache. We do not want to penalize small simulation models for
+the ability to run very large ones.
 
 Guarded Resources and Conditions
 --------------------------------
@@ -497,6 +510,180 @@ on the C++ ``promise``: Cimba processes do not promise. They *demand*.
 
 Pseudo-Random Number Generators and Distributions
 -------------------------------------------------
+
+Cimba has a few specific requirements to its pseudo-random number generators as well. For
+any discrete event simulation framework, the PRNG's need to be fast and have high
+statistical quality. In addition, we need them to be thread-safe, since it must be
+possible to reproduce the exact sequence of random numbers in a trial when given the
+same seed. We cannot have the outcome depend on other trials that may or may not be
+running in parallel. This is not very difficult to do, but it needs to be considered
+from the beginning, since the obvious way to code a PRNG is to keep its state as static
+variables between calls.
+
+The PRNG in Cimba is an implementation of Chris Doty-Humphrey's *sfc64*. It
+provides 64-bit output and maintains a 256-bit state. It is certain to have a cycle
+period of at least 2^64. It is in public domain, see https://pracrand.sourceforge.net
+for the details. In our implementation, the PRNG state is thread local, giving each trial
+its own stream of random numbers, independent from any other trials.
+
+We initialize the PRNG in a three-stage bootstrapping process:
+
+* First, a truly random 64-bit seed can be obtained from a suitable hardware source of
+  entropy by calling ``cmb_random_get_hwseed()``. It will query the CPU for its best
+  source of randomness. On the x86-64 architecture, the preferred source is the
+  ``RDSEED`` instruction that is available on Intel CPUs since 2014 and AMD CPUs since
+  2026. This instruction uses thermal noise from the CPU itself to create a 64-bit
+  random value. If not available, we will negotiate alternatives with the CPU and
+  return the best entropy that is available, if necessary by doing a mashup of the clock
+  value, thread identifier, and CPU cycle counter.
+
+* Second, the seed is used to initialize the PRNG by calling ``cmb_random_initialize()``.
+  It needs to create 256 bits of state from a 64-bit seed. We use a dedicated 64-bit state
+  PRNG for this. We initialize it with the 64-bit seed, and then draw four samples from it
+  to initialize the state of our main PRNG. This auxiliary PRNG is *splitmix64*, also
+  public domain, see https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64#C
+
+* Finally, we draw and discard 20 samples from the main PRNG to make sure that any
+  initial transient is gone before starting to provide pseudo-random numbers to the user
+  applications.
+
+The result is a pseudo-random number sequence that cannot be distinguished from true
+randomness by any available statistical methods. In particular, successive values
+appear to be totally uncorrelated, so it is not necessary or recommended to use
+multiple streams of pseudo-random numbers in the same trial. It would do more harm than
+good. For this reason, the PRNG is not implemented as an object in the simulated world,
+where various entities can carry around their own sources of randomness, but more like
+a property of the simulated world. It just *is*. The simulated entities can obtain
+sample values from it according to whatever distribution is needed.
+
+The basic ``cmb_random_sfc64()`` returns an unsigned 64-bit bit pattern from the PRNG.
+This is a bit spartan for most purposes. The function ``cmb_random()`` instead returns
+the sample as a ``double`` between zero and one, inclusive. The first unit test in
+``test/test_random.c`` checks the output of ``cmb_random()`` against its expected values:
+
+.. code-block:: none
+
+    Quality testing basic random number generator cmb_random(), uniform on [0,1]
+    Drawing 100000000 samples...
+
+    Expected: N 100000000  Mean   0.5000  StdDev   0.2887  Variance  0.08333  Skewness    0.000  Kurtosis   -1.200
+    Actual:   N 100000000  Mean   0.5000  StdDev   0.2887  Variance  0.08333  Skewness -1.537e-05  Kurtosis   -1.200
+    --------------------------------------------------------------------------------
+    ( -Infinity,  8.569e-09)   |
+    [ 8.569e-09,    0.05000)   |#################################################=
+    [   0.05000,     0.1000)   |#################################################=
+    [    0.1000,     0.1500)   |#################################################=
+    [    0.1500,     0.2000)   |#################################################=
+    [    0.2000,     0.2500)   |#################################################=
+    [    0.2500,     0.3000)   |#################################################=
+    [    0.3000,     0.3500)   |#################################################=
+    [    0.3500,     0.4000)   |#################################################=
+    [    0.4000,     0.4500)   |#################################################=
+    [    0.4500,     0.5000)   |#################################################=
+    [    0.5000,     0.5500)   |#################################################=
+    [    0.5500,     0.6000)   |#################################################=
+    [    0.6000,     0.6500)   |#################################################=
+    [    0.6500,     0.7000)   |#################################################=
+    [    0.7000,     0.7500)   |#################################################=
+    [    0.7500,     0.8000)   |#################################################=
+    [    0.8000,     0.8500)   |#################################################=
+    [    0.8500,     0.9000)   |#################################################=
+    [    0.9000,     0.9500)   |##################################################
+    [    0.9500,      1.000)   |#################################################=
+    [     1.000,  Infinity )   |-
+    --------------------------------------------------------------------------------
+
+    Autocorrelation factors (expected 0.0):
+               -1.0                              0.0                              1.0
+    --------------------------------------------------------------------------------
+       1  -0.000                                 -|
+       2  -0.000                                 -|
+       3   0.000                                  |-
+       4   0.000                                  |-
+       5   0.000                                  |-
+       6   0.000                                  |-
+       7   0.000                                  |-
+       8  -0.000                                 -|
+       9  -0.000                                 -|
+      10  -0.000                                 -|
+      11  -0.000                                 -|
+      12  -0.000                                 -|
+      13   0.000                                  |-
+      14  -0.000                                 -|
+      15  -0.000                                 -|
+    --------------------------------------------------------------------------------
+
+    Partial autocorrelation factors (expected 0.0):
+               -1.0                              0.0                              1.0
+    --------------------------------------------------------------------------------
+       1  -0.000                                 -|
+       2  -0.000                                 -|
+       3   0.000                                  |-
+       4   0.000                                  |-
+       5   0.000                                  |-
+       6   0.000                                  |-
+       7   0.000                                  |-
+       8  -0.000                                 -|
+       9  -0.000                                 -|
+      10  -0.000                                 -|
+      11  -0.000                                 -|
+      12  -0.000                                 -|
+      13   0.000                                  |-
+      14  -0.000                                 -|
+      15  -0.000                                 -|
+    --------------------------------------------------------------------------------
+
+    Raw moment:   Expected:   Actual:   Error:
+    --------------------------------------------------------------------------------
+        1             0.5     0.50002    0.004 %
+        2         0.33333     0.33335    0.006 %
+        3            0.25     0.25002    0.008 %
+        4             0.2     0.20002    0.010 %
+        5         0.16667     0.16669    0.012 %
+        6         0.14286     0.14288    0.013 %
+        7           0.125     0.12502    0.015 %
+        8         0.11111     0.11113    0.016 %
+        9             0.1     0.10002    0.018 %
+       10        0.090909    0.090926    0.019 %
+       11        0.083333    0.083349    0.019 %
+       12        0.076923    0.076938    0.020 %
+       13        0.071429    0.071443    0.020 %
+       14        0.066667     0.06668    0.021 %
+       15          0.0625    0.062513    0.021 %
+    --------------------------------------------------------------------------------
+    ================================================================================
+
+The various pseudo-random number distributions build on this generator, shaping its
+output to mach the required probability density functions. The algorithms used are
+selected for speed and accuracy. The exponential and normal distributions are
+implementations of Chris McFarland's Ziggurat algorithms, see https://github.com/cd-mcfarland/fast_prng
+or https://arxiv.org/pdf/1403.6870
+
+The gamma distribution uses an algorithm due to Marsaglia and Tsang, https://dl.acm.org/doi/10.1145/358407.358414
+It uses a similar rejection sampling approach as the Ziggurat algorithm, but with a
+continuous function instead of the stepped rectangles of the Ziggurat.
+
+Many other distributions are built on top of these, as sums, products, or ratios of
+samples. For example, the infamous Cauchy distribution is simply the ratio of two normal
+variates, suitably scaled and shifted.
+
+Cimba also provides a collection of discrete-valued distributions, starting from the
+simple unbiased coin flip in ``cmb_random_flip()``. It also provides Bernoulli trials
+(biased coin flips, if such a thing exists), fair and loaded dice, Poisson and Pascal
+distributions, and so forth.
+
+In some cases, a model needs to sample based on some empirical, discrete-valued set of
+probabilities. The probabilities can be given as an array ``p[n]``, where ``p[i]`` is the
+probability of outcome ``i``, for ``0 <= i < n``. A clever algorithm for this is the
+Vose alias method, see https://www.keithschwarz.com/darts-dice-coins/
+
+The alias method requires an initial step of setting up an alias table, but provides
+O(1) sampling thereafter. This is worthwhile for ``n > 10``, and about three times
+faster than the basic O(n) method for ``n = 30``. In Cimba, the alias table is created
+by calling ``cmb_random_alias_create()``, sampled with ``cmb_random_alias_sample()``, and
+destroyed with cmb_random_alias_destroy()``. (In this case, we have bundled the
+allocation and initialization steps into the ``_create`` function, and the termination and
+deallocation steps into the ``_destroy()`` function.)
 
 Data Collectors
 ---------------
