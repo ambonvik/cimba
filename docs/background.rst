@@ -289,9 +289,10 @@ our rule, but since it is a global state in the simulated world and not related 
 particular event, it is more intuitive to make this one exception for it.
 
 As part of our convention, the object methods will take a first argument that is a
-pointer to the object itself. Again, there are a few exceptions: Some functions that are
-called by the current process and act on itself do not have this argument. It is
-enough to say ``cmb_process_hold(5)``, not ``cmb_process_hold(me, 5)``. Similarly,
+pointer to the object itself. This corresponds to the implicit ``this`` or ``self``
+pointer in object-oriented languages. Again, there are a few exceptions: Some functions
+that are only called by the current process and act on itself do not have this argument.
+It is enough to say ``cmb_process_hold(5)``, not ``cmb_process_hold(me, 5)``. Similarly,
 calling ``cmb_process_exit(ptr)`` is enough, calling ``cmb_process_exit(me, ptr)``
 would be slightly strange. We believe this exception makes the code more intuitive,
 even if it is not entirely consistent.

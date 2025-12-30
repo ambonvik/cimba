@@ -53,7 +53,7 @@ It is powerful, fast, reliable, and free.
 * *Free*: Cimba should fit well into the budget of most research groups.
 
 ### What can I use Cimba for?
-It is a general-purpose discrete event library, in the general spirit of a
+It is a general-purpose discrete event library, in the spirit of a
 21st century descendant of Simula67. You can use it
 * as a collection of fast random number generators, 
 * as a purely event-oriented simulation world view, 
@@ -61,7 +61,7 @@ It is a general-purpose discrete event library, in the general spirit of a
   on active behaviors and interact in complex ways with each other and with 
   passive objects,
 * as a wrapper for multi-threading concurrency on a modern multicore computer,
-* or as a mix of all of the above.
+* or as all of the above.
 
 See the tutorial examples at [tut_1_7.c](tutorial/tut_1_7.c), 
 [tut_2_2.c](tutorial/tut_2_2.c), and [tut_3_1.c](tutorial/tut_3_1.c) for 
