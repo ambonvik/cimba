@@ -34,7 +34,10 @@ code tree, and type these commands:
 
 You need elevated privileges (``sudo``) for the last step, since it installs
 the library and header files in system locations  ``/usr/local/lib``
-and ``/usr/local/include``.
+and ``/usr/local/include``. These should already be in the respective paths for
+compilation and runtime linking. If you encounter errors, such as the include file not
+found by the compiler or the Cimba library not found at runtime, please check that these
+paths are correctly configured on your system.
 
 Windows
 -------
