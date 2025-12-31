@@ -218,8 +218,10 @@ void test_queue(double duration)
 
     printf("Clean up\n");
     for (unsigned ui = 0; ui < 3; ui++) {
+        cmb_process_terminate(quetst->putters[ui]);
         cmb_process_terminate(quetst->getters[ui]);
         cmb_process_destroy(quetst->putters[ui]);
+        cmb_process_destroy(quetst->getters[ui]);
     }
 
     cmb_process_terminate(quetst->nuisance);

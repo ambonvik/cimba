@@ -77,7 +77,7 @@ extern struct cmb_objectqueue *cmb_objectqueue_create(void);
  *
  * @param oqp Pointer to a `cmb_objectqueue`
  * @param name Its identifying name string
- * @param capacity Its maximum size, possibly `UINT64_MAX` for unlimited.
+ * @param capacity Its maximum size, possibly `CMB_OBJECTQUEUE_UNLIMITED` for unlimited.
  */
 extern void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
                                        const char *name,
