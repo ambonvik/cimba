@@ -171,13 +171,18 @@ extern int cmb_vfprintf(FILE *fp,
 
 /**
  * @brief Wrapper for an information message. Written as a macro to provide the
- *        calling function name and line number automatically.
+ *        calling function name and line number automatically. Goes away entirely
+ *        if compiled with -DNLOGINFO (like assert() and -DNDEBUG)
  * @param fp File pointer, possibly `stdout`
  * @param fmtstr printf-like format string
  * @param ... Arguments to the format string.
  */
-#define cmb_logger_info(fp, fmtstr, ...) \
+#ifndef NLOGINFO
+  #define cmb_logger_info(fp, fmtstr, ...) \
     cmi_logger_info(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+#else
+  #define cmb_logger_info(fp, fmtstr, ...) ((void)(0))
+#endif
 
 /**
  * @brief Wrapper for an application-defined message. Written as a macro to

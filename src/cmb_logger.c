@@ -1,7 +1,7 @@
 /*
  * cmb_logger.c - centralized logging functions with simulation timestamps
  *
- * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -129,7 +129,7 @@ int cmb_vfprintf(FILE *fp,
         }
 
         if (flags >= CMB_LOGGER_WARNING) {
-            r = fprintf(fp, "0x%" PRIx64 "\t", cmb_random_get_curseed());
+            r = fprintf(fp, "0x%" PRIx64 "\t", cmb_random_curseed());
             assert(r > 0);
             ret += r;
         }
@@ -138,9 +138,9 @@ int cmb_vfprintf(FILE *fp,
         assert(r > 0);
         ret += r;
 
-        const struct cmb_process *pp = cmb_process_get_current();
+        const struct cmb_process *pp = cmb_process_current();
         if (pp != NULL) {
-            const char *pp_name = cmb_process_get_name(pp);
+            const char *pp_name = cmb_process_name(pp);
             r = fprintf(fp, "%s\t", pp_name);
             assert(r > 0);
             ret += r;
@@ -190,11 +190,13 @@ void cmi_logger_fatal(FILE *fp,
                       char *fmtstr,
                       ...)
 {
-    fflush(NULL);
-    va_list args;
-    va_start(args, fmtstr);
-    (void)cmb_vfprintf(fp, CMB_LOGGER_FATAL, func, line, fmtstr, args);
-    va_end(args);
+    if ((CMB_LOGGER_FATAL & cmi_logger_mask) != 0) {
+        fflush(NULL);
+        va_list args;
+        va_start(args, fmtstr);
+        (void)cmb_vfprintf(fp, CMB_LOGGER_FATAL, func, line, fmtstr, args);
+        va_end(args);
+    }
 
     abort();
 }
@@ -205,11 +207,13 @@ void cmi_logger_error(FILE *fp,
                       char *fmtstr,
                       ...)
 {
-    fflush(NULL);
-    va_list args;
-    va_start(args, fmtstr);
-    (void)cmb_vfprintf(fp, CMB_LOGGER_ERROR, func, line, fmtstr, args);
-    va_end(args);
+    if ((CMB_LOGGER_ERROR & cmi_logger_mask) != 0) {
+        fflush(NULL);
+        va_list args;
+        va_start(args, fmtstr);
+        (void)cmb_vfprintf(fp, CMB_LOGGER_ERROR, func, line, fmtstr, args);
+        va_end(args);
+    }
 
     pthread_exit(NULL);
     /* Not reached */
@@ -222,11 +226,13 @@ void cmi_logger_warning(FILE *fp,
                         char *fmtstr,
                         ...)
 {
-    fflush(NULL);
-    va_list args;
-    va_start(args, fmtstr);
-    (void)cmb_vfprintf(fp, CMB_LOGGER_WARNING, func, line, fmtstr, args);
-    va_end(args);
+    if ((CMB_LOGGER_WARNING & cmi_logger_mask) != 0) {
+        fflush(NULL);
+        va_list args;
+        va_start(args, fmtstr);
+        (void)cmb_vfprintf(fp, CMB_LOGGER_WARNING, func, line, fmtstr, args);
+        va_end(args);
+    }
 }
 
 void cmi_logger_info(FILE *fp,
@@ -235,10 +241,12 @@ void cmi_logger_info(FILE *fp,
                      char *fmtstr,
                      ...)
 {
-    va_list args;
-    va_start(args, fmtstr);
-    (void)cmb_vfprintf(fp, CMB_LOGGER_INFO, func, line, fmtstr, args);
-    va_end(args);
+    if ((CMB_LOGGER_INFO & cmi_logger_mask) != 0) {
+        va_list args;
+        va_start(args, fmtstr);
+        (void)cmb_vfprintf(fp, CMB_LOGGER_INFO, func, line, fmtstr, args);
+        va_end(args);
+    }
 }
 
 void cmi_logger_user(FILE *fp,
@@ -248,8 +256,10 @@ void cmi_logger_user(FILE *fp,
                      char *fmtstr,
                      ...)
 {
-    va_list args;
-    va_start(args, fmtstr);
-    (void)cmb_vfprintf(fp, flags, func, line, fmtstr, args);
-    va_end(args);
+    if ((flags & cmi_logger_mask) != 0) {
+        va_list args;
+        va_start(args, fmtstr);
+        (void)cmb_vfprintf(fp, flags, func, line, fmtstr, args);
+        va_end(args);
+    }
 }
