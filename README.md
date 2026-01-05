@@ -3,10 +3,13 @@
 ## A multithreaded discrete event simulation library in C
 
 ### What is it?
-A very fast discrete event simulation library written in C and assembly for
+A fast discrete event simulation library written in C and assembly for
 both Linux and Windows on x86-64 architectures, providing process- and 
 event-oriented simulated world views combined with multithreaded coarse-trained 
-parallelism for high performance on modern CPUs.
+parallelism for high performance on modern CPUs. It runs some 25-50 times faster 
+than SimPy on a modern CPU.
+
+![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
 
 Parallelizing discrete event simulation is both a very hard and a trivially 
 simple problem, depending on the way you look at it. Parallelizing a single 
@@ -47,6 +50,12 @@ It is powerful, fast, reliable, and free.
   intervals in your experiments and a high density of data points along parameter 
   variations.
 
+  In our benchmark shown above, a simple M/M/1 queue simulation on an AMD 3970x CPU with 
+  Arch Linux, Cimba runs about 27 times faster than SimPy on a single core and about 43 
+  times faster than SimPy + Python multiprocessing when all CPU cores are used. This 
+  translates into doing your simulation experiments in seconds instead of minutes, or 
+  minutes instead of hours.
+
 * *Reliable*: Cimba is well-engineered open source. There is no
   mystery to the results you get. Each simulated world sits inside its own thread.
 
@@ -54,18 +63,18 @@ It is powerful, fast, reliable, and free.
 
 ### What can I use Cimba for?
 It is a general-purpose discrete event library, in the spirit of a
-21st century descendant of Simula67. You can use it
-* as a collection of fast random number generators, 
-* as a purely event-oriented simulation world view, 
-* as a process-oriented simulation world view where your simulated entities take
-  on active behaviors and interact in complex ways with each other and with 
-  passive objects,
-* as a wrapper for multi-threading concurrency on a modern multicore computer,
-* or as all of the above.
+21st century descendant of Simula67. You can use it to model
+* computer networks,
+* operating system task scheduling, 
+* transportation networks, 
+* queuing systems like bank tellers and store checkouts,
+* military command and control systems,
+* and quite a few more application domains.
 
 See the tutorial examples at [tut_1_7.c](tutorial/tut_1_7.c), 
-[tut_2_2.c](tutorial/tut_2_2.c), and [tut_3_1.c](tutorial/tut_3_1.c) for 
-illustrations of both model expressiveness and multithreading.
+[tut_2_2.c](tutorial/tut_2_2.c), and [tut_3_1.c](tutorial/tut_3_1.c) for illustrations of model expressiveness. 
+For direct comparison, you will find the same scenario modeled in both Cimba and 
+SimPy in the benchmark directory.
 
 If you look under the hood, you will also find reusable internal components
 like stackful coroutines doing their own thing on thread-safe cactus stacks,
@@ -74,14 +83,166 @@ structures like hash-heaps combining a binary heap and an open addressing hash
 map with fibonacci hashing for fast access to various objects. These are not
 part of the public Cimba API but are used internally and part of the codebase.
 
+### What does the code look like?
+It is C11/C17. As an illustration, this is the entire code for our multithreaded M/M/1 
+benchmark mentioned above:
+
+```
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdint.h>
+
+#include <cimba.h>
+
+#define NUM_OBJECTS 1000000u
+#define ARRIVAL_RATE 0.9
+#define SERVICE_RATE 1.0
+#define NUM_TRIALS 100
+
+struct simulation {
+    struct cmb_process *putter;
+    struct cmb_process *getter;
+    struct cmb_objectqueue *queue;
+};
+
+struct trial {
+    double arr_rate;
+    double srv_rate;
+    uint64_t obj_cnt;
+    double sum_wait;
+    double avg_wait;
+};
+
+struct context {
+    struct simulation *sim;
+    struct trial *trl;
+};
+
+void *putterfunc(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    const struct context *ctx = vctx;
+    struct cmb_objectqueue *qp = ctx->sim->queue;
+    const double mean_hld = 1.0 / ctx->trl->arr_rate;
+    for (uint64_t ui = 0; ui < NUM_OBJECTS; ui++) {
+        const double t_hld = cmb_random_exponential(mean_hld);
+        cmb_process_hold(t_hld);
+        void *object = cmi_mempool_get(&cmi_mempool_8b);
+        double *dblp = object;
+        *dblp = cmb_time();
+        cmb_objectqueue_put(qp, &object);
+    }
+
+    return NULL;
+}
+
+void *getterfunc(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    const struct context *ctx = vctx;
+    struct cmb_objectqueue *qp = ctx->sim->queue;
+    const double mean_srv = 1.0 / ctx->trl->srv_rate;
+    uint64_t *cnt = &(ctx->trl->obj_cnt);
+    double *sum = &(ctx->trl->sum_wait);
+    while (true) {
+        void *object = NULL;
+        cmb_objectqueue_get(qp, &object);
+        const double *dblp = object;
+        const double t_srv = cmb_random_exponential(mean_srv);
+        cmb_process_hold(t_srv);
+        const double t_sys = cmb_time() - *dblp;
+        *sum += t_sys;
+        *cnt += 1u;
+        cmi_mempool_put(&cmi_mempool_8b, object);
+    }
+}
+
+void run_trial(void *vtrl)
+{
+    struct trial *trl = vtrl;
+
+    cmb_logger_flags_off(CMB_LOGGER_INFO);
+    cmb_random_initialize(cmb_random_hwseed());
+    cmb_event_queue_initialize(0.0);
+    struct context *ctx = malloc(sizeof(*ctx));
+    ctx->trl = trl;
+    struct simulation *sim = malloc(sizeof(*sim));
+    ctx->sim = sim;
+
+    sim->queue = cmb_objectqueue_create();
+    cmb_objectqueue_initialize(sim->queue, "Queue", CMB_UNLIMITED);
+
+    sim->putter = cmb_process_create();
+    cmb_process_initialize(sim->putter, "Putter", putterfunc, ctx, 0);
+    cmb_process_start(sim->putter);
+    sim->getter = cmb_process_create();
+    cmb_process_initialize(sim->getter, "Getter", getterfunc, ctx, 0);
+    cmb_process_start(sim->getter);
+
+    cmb_event_queue_execute();
+
+    cmb_process_terminate(sim->putter);
+    cmb_process_terminate(sim->getter);
+
+    cmb_objectqueue_destroy(sim->queue);
+    cmb_event_queue_terminate();
+    free(sim);
+    free(ctx);
+}
+
+int main(void)
+{
+    struct trial *experiment = calloc(NUM_TRIALS, sizeof(*experiment));
+    for (unsigned ui = 0; ui < NUM_TRIALS; ui++) {
+        struct trial *trl = &experiment[ui];
+        trl->arr_rate = ARRIVAL_RATE;
+        trl->srv_rate = SERVICE_RATE;
+        trl->obj_cnt = 0u;
+        trl->sum_wait = 0.0;
+    }
+
+    cimba_run_experiment(experiment,
+                         NUM_TRIALS,
+                         sizeof(*experiment),
+                         run_trial);
+
+    struct cmb_datasummary summary;
+    cmb_datasummary_initialize(&summary);
+    for (unsigned ui = 0; ui < NUM_TRIALS; ui++) {
+        const double avg_tsys = experiment[ui].sum_wait / experiment[ui].obj_cnt;
+        cmb_datasummary_add(&summary, avg_tsys);
+    }
+
+    const unsigned un = cmb_datasummary_count(&summary);
+    if (un > 1) {
+        const double mean_tsys = cmb_datasummary_mean(&summary);
+        const double sdev_tsys = cmb_datasummary_stddev(&summary);
+        const double serr_tsys = sdev_tsys / sqrt((double)un);
+        const double ci_w = 1.96 * serr_tsys;
+        const double ci_l = mean_tsys - ci_w;
+        const double ci_u = mean_tsys + ci_w;
+
+        printf("Average system time %f (n %u, conf.int. %f - %f, expected %f)\n",
+               mean_tsys, un, ci_l, ci_u, 1.0 / (SERVICE_RATE - ARRIVAL_RATE));
+
+        return 0;
+    }
+}
+
+```
+See our tutorial for more examples, at https://cimba.readthedocs.io/en/latest/tutorial.html
+
 ### So, exactly how fast is it?
-The experiment in [test_cimba.c](test/test_cimba.c) simulates an M/G/1 queue at
-four different levels of service process variability. For each level, it tries 
+As shown above, it is some 25–50 times faster than SimPy in one relevant benchmark.
+
+For another illustration of how to benefit from the sheer speed, the experiment in 
+[test_cimba.c] (test/test_cimba.c) simulates an M/G/1 queue at four different levels of 
+service process variability. For each level, it tries 
 five system utilization levels. There are ten replications for each parameter 
 combination, in total 4 * 5 * 10 = 200 trials. Each trial lasts for one million 
 time units, where the average service time always is 1.0 time units. This entire 
-simulation runs in about 2.7 seconds on an AMD Threadripper 3970X with Arch Linux,
-processing some 100–150 million events per second, producing the chart below. 
+simulation runs in about 1.4 seconds on an AMD Threadripper 3970X with Arch Linux,
+processing some 500 million simulation events per second, and produces the chart below. 
 
 ![M/G/1 queue](images/MG1%20example.png)
 
@@ -125,11 +286,11 @@ You will find the test files corresponding to each code module in the `test` dir
 
 But do read the [LICENSE](LICENSE). We do not give any warranties here.
 
-### Object-oriented? In C17 and assembly? Why not just use C++?
+### Object-oriented? In C and assembly? Why not just use C++?
 Long story made short: C++ exception handling is not very friendly to the stackful 
 coroutines we need in Cimba. C++ coroutines are something entirely different.
 
-C++ has also become a very large and feature-rich language, where it will be
+C++ has also become a large and feature-rich language, where it will be
 hard to ensure compatibility with every possible combination of features.
 
 Hence (like the Linux kernel), we chose the simpler platform for speed, clarity,
