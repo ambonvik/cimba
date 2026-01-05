@@ -1095,6 +1095,13 @@ Our (admittedly biased) view is that SimPy is good for simple one-off simulation
 where learning curve and development time are the critical constraints, while Cimba
 should be preferred for larger models where run time and efficiency become important.
 
+How about the name 'Cimba'?
+---------------------------
+
+Very simple. This is a simulation library in C, the author's initials are 'AMB', 'simba'
+means 'lion' in Swahili, and it is a little-known fact that real lions actually eat python
+snakes for breakfast. Of course it had to be named Cimba.
+
 If in Doubt, Read the Source Code
 ---------------------------------
 
