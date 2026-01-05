@@ -22,21 +22,20 @@
 section .text
 global cmi_coroutine_context_switch
 global cmi_coroutine_trampoline
-global cmi_coroutine_get_rsp
-global cmi_coroutine_get_stackbase
-global cmi_coroutine_get_stacklimit
+global cmi_coroutine_stackbase
+global cmi_coroutine_stacklimit
 
 ;-------------------------------------------------------------------------------
 ; Callable function to return the current StackBase (top of allocated stack)
 ;
-cmi_coroutine_get_stackbase:
+cmi_coroutine_stackbase:
     mov rax, [gs:8]
     ret
 
 ;-------------------------------------------------------------------------------
 ; Callable funnction to return the current StackLimit (bottom of allocated stack)
 ;
-cmi_coroutine_get_stacklimit:
+cmi_coroutine_stacklimit:
     mov rax, [gs:16]
     ret
 

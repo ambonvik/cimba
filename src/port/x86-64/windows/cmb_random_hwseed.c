@@ -30,7 +30,7 @@ extern uint32_t cmi_threadid(void);
 extern uint32_t cmi_rdtsc(void);
 
 /* Windows-specific code to get a suitable 64-bit seed from hardware */
-uint64_t cmb_random_get_hwseed(void)
+uint64_t cmb_random_hwseed(void)
 {
     uint64_t seed = 0u;
     if (cmi_cpu_has_rdseed()) {

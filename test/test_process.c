@@ -84,8 +84,8 @@ void *procfunc2(struct cmb_process *me, void *ctx)
     cmb_logger_user(stdout,
                     USERFLAG1,
                     "Running, tgt %s",
-                    cmb_process_get_name(tgt));
-    const int64_t pri = cmb_process_get_priority(me);
+                    cmb_process_name(tgt));
+    const int64_t pri = cmb_process_priority(me);
     for (unsigned ui = 0u; ui < 5u; ui++) {
         const double dur = cmb_random_exponential(10.0);
         (void)cmb_process_hold(dur);
@@ -110,7 +110,7 @@ void *procfunc3(struct cmb_process *me, void *ctx)
     cmb_logger_user(stdout,
                     USERFLAG1,
                     "Running, tgt %s",
-                    cmb_process_get_name(tgt));
+                    cmb_process_name(tgt));
     int64_t r = cmb_process_wait_event(cuckoo_clock_handle);
     cmb_logger_user(stdout, USERFLAG1, "Got cuckoo clock signal %" PRIi64, r);
 
@@ -118,12 +118,12 @@ void *procfunc3(struct cmb_process *me, void *ctx)
     cmb_logger_user(stdout,
                     USERFLAG1,
                     "Waiting for process %s",
-                    cmb_process_get_name(tgt));
+                    cmb_process_name(tgt));
     r = cmb_process_wait_process(tgt);
     cmb_logger_user(stdout,
                     USERFLAG1,
                     "Tgt %s ended, we received signal %" PRIi64,
-                    cmb_process_get_name(tgt), r);
+                    cmb_process_name(tgt), r);
 
     cmb_process_exit(NULL);
 
@@ -133,7 +133,7 @@ void *procfunc3(struct cmb_process *me, void *ctx)
 
 int main(void)
 {
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
 
     cmi_test_print_line("*");
@@ -183,11 +183,11 @@ int main(void)
     cmb_event_queue_execute();
 
     printf("%s returned %p\n",
-           cmb_process_get_name(cpp1),
-           cmb_process_get_exit_value(cpp1));
+           cmb_process_name(cpp1),
+           cmb_process_exit_value(cpp1));
     printf("%s returned %p\n",
-           cmb_process_get_name(cpp2),
-           cmb_process_get_exit_value(cpp2));
+           cmb_process_name(cpp2),
+           cmb_process_exit_value(cpp2));
 
     printf("cmb_process_destroy ...\n");
     cmb_process_destroy(cpp1);

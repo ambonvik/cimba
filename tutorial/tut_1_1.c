@@ -24,13 +24,13 @@ void *service(struct cmb_process *me, void *ctx)
 
 int main(void)
 {
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
 
     cmb_event_queue_initialize(0.0);
 
     struct cmb_buffer *que = cmb_buffer_create();
-    cmb_buffer_initialize(que, "Queue", CMB_BUFFER_UNLIMITED);
+    cmb_buffer_initialize(que, "Queue", CMB_UNLIMITED);
 
     struct cmb_process *arr_proc = cmb_process_create();
     cmb_process_initialize(arr_proc, "Arrival", arrival, que, 0);

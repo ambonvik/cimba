@@ -525,7 +525,7 @@ its own stream of random numbers, independent from any other trials.
 We initialize the PRNG in a three-stage bootstrapping process:
 
 * First, a truly random 64-bit seed can be obtained from a suitable hardware source of
-  entropy by calling ``cmb_random_get_hwseed()``. It will query the CPU for its best
+  entropy by calling ``cmb_random_hwseed()``. It will query the CPU for its best
   source of randomness. On the x86-64 architecture, the preferred source is the
   ``RDSEED`` instruction that is available on Intel CPUs since 2014 and AMD CPUs since
   2016. This instruction uses thermal noise from the CPU itself to create a 64-bit
@@ -851,6 +851,249 @@ Two less obvious features to be aware of, perhaps less useful, but still:
   multithread whatever task you ask it to. The design challenge with Cimba was to
   construct a discrete event simulation engine that could be run in that wrapper like
   Cimba 2.0 did in its trans-Atlantic distributed simulation of 1995.
+
+Benchmarking it against SimPy
+-----------------------------
+
+The most relevant comparison is probably the Python package SimPy (https://pypi.org/project/simpy/),
+since it provides similar functionality to Cimba, only with Python as its base language
+instead of C. SimPy emphasises ease of use as a main design objective, following the
+overall Python philosophy, while Cimba (being a C library) has a natural emphasis on
+speed.
+
+In the ``benchmark`` directory, you will find examples of the same simulated scenario
+implemented in SimPy and Cimba. A complete multithreaded M/M/1 queue simulation could
+look like this in SimPy:
+
+.. code-block:: Python
+
+    import simpy
+    import random
+    import multiprocessing
+    import statistics
+    import math
+
+    NUM_OBJECTS = 1000000
+    ARRIVAL_RATE = 0.9
+    SERVICE_RATE = 1.0
+    NUM_TRIALS = 100
+
+    def arrival_process(env, store, n_limit, arrival_rate):
+        for _ in range(n_limit):
+            t = random.expovariate(arrival_rate)
+            yield env.timeout(t)
+            yield store.put(env.now)
+
+    def service_process(env, store, service_rate, stats):
+        while True:
+            arr_time = yield store.get()
+            t = random.expovariate(service_rate)
+            yield env.timeout(t)
+            stats['sum_tsys'] += env.now - arr_time
+            stats['obj_cnt'] += 1
+
+    def run_trial(args):
+        n_objects, arr_rate, svc_rate = args
+        env = simpy.Environment()
+        store = simpy.Store(env)
+        stats = {'sum_tsys': 0.0, 'obj_cnt': 0}
+        env.process(arrival_process(env, store, n_objects, arr_rate))
+        env.process(service_process(env, store, svc_rate, stats))
+        env.run()
+
+        return stats['sum_tsys'] / stats['obj_cnt']
+
+    def main():
+        num_cores = multiprocessing.cpu_count()
+        trl_args = [(NUM_OBJECTS, ARRIVAL_RATE, SERVICE_RATE)] * NUM_TRIALS
+        with multiprocessing.Pool(processes=num_cores) as pool:
+            results = pool.map(run_trial, trl_args)
+
+        valid_results = [r for r in results if r > 0]
+        n = len(valid_results)
+        if (n > 1):
+            mean_tsys = statistics.mean(valid_results)
+            sdev_tsys = statistics.stdev(valid_results)
+            serr_tsys = sdev_tsys / math.sqrt(n)
+            ci_w = 1.96 * serr_tsys
+            ci_l = mean_tsys - ci_w
+            ci_u = mean_tsys + ci_w
+
+            print(f"Average time in system: {mean_tsys} (n {n}, conf int {ci_l} - "
+                  f"{ci_u}, expected: "
+                  f"{1.0 / (SERVICE_RATE - ARRIVAL_RATE)})")
+
+    if __name__ == "__main__":
+        main()
+
+The exact same model would look like this in Cimba:
+
+.. code-block:: C
+
+    #include <inttypes.h>
+    #include <stdio.h>
+    #include <stdint.h>
+
+    #include <cimba.h>
+
+    #define NUM_OBJECTS 1000000u
+    #define ARRIVAL_RATE 0.9
+    #define SERVICE_RATE 1.0
+    #define NUM_TRIALS 100
+
+    struct simulation {
+        struct cmb_process *putter;
+        struct cmb_process *getter;
+        struct cmb_objectqueue *queue;
+    };
+
+    struct trial {
+        double arr_rate;
+        double srv_rate;
+        uint64_t obj_cnt;
+        double sum_wait;
+        double avg_wait;
+    };
+
+    struct context {
+        struct simulation *sim;
+        struct trial *trl;
+    };
+
+    void *putterfunc(struct cmb_process *me, void *vctx)
+    {
+        cmb_unused(me);
+        const struct context *ctx = vctx;
+        struct cmb_objectqueue *qp = ctx->sim->queue;
+        const double mean_hld = 1.0 / ctx->trl->arr_rate;
+        for (uint64_t ui = 0; ui < NUM_OBJECTS; ui++) {
+            const double t_hld = cmb_random_exponential(mean_hld);
+            cmb_process_hold(t_hld);
+            void *object = cmi_mempool_get(&cmi_mempool_8b);
+            double *dblp = object;
+            *dblp = cmb_time();
+            cmb_objectqueue_put(qp, &object);
+        }
+
+        return NULL;
+    }
+
+    void *getterfunc(struct cmb_process *me, void *vctx)
+    {
+        cmb_unused(me);
+        const struct context *ctx = vctx;
+        struct cmb_objectqueue *qp = ctx->sim->queue;
+        const double mean_srv = 1.0 / ctx->trl->srv_rate;
+        uint64_t *cnt = &(ctx->trl->obj_cnt);
+        double *sum = &(ctx->trl->sum_wait);
+        while (true) {
+            void *object = NULL;
+            cmb_objectqueue_get(qp, &object);
+            const double *dblp = object;
+            const double t_srv = cmb_random_exponential(mean_srv);
+            cmb_process_hold(t_srv);
+            const double t_sys = cmb_time() - *dblp;
+            *sum += t_sys;
+            *cnt += 1u;
+            cmi_mempool_put(&cmi_mempool_8b, object);
+        }
+    }
+
+    void run_trial(void *vtrl)
+    {
+        struct trial *trl = vtrl;
+
+        cmb_logger_flags_off(CMB_LOGGER_INFO);
+        cmb_random_initialize(cmb_random_hwseed());
+        cmb_event_queue_initialize(0.0);
+        struct context *ctx = malloc(sizeof(*ctx));
+        ctx->trl = trl;
+        struct simulation *sim = malloc(sizeof(*sim));
+        ctx->sim = sim;
+
+        sim->queue = cmb_objectqueue_create();
+        cmb_objectqueue_initialize(sim->queue, "Queue", CMB_UNLIMITED);
+
+        sim->putter = cmb_process_create();
+        cmb_process_initialize(sim->putter, "Putter", putterfunc, ctx, 0);
+        cmb_process_start(sim->putter);
+        sim->getter = cmb_process_create();
+        cmb_process_initialize(sim->getter, "Getter", getterfunc, ctx, 0);
+        cmb_process_start(sim->getter);
+
+        cmb_event_queue_execute();
+
+        cmb_process_terminate(sim->putter);
+        cmb_process_terminate(sim->getter);
+
+        cmb_objectqueue_destroy(sim->queue);
+        cmb_event_queue_terminate();
+        free(sim);
+        free(ctx);
+    }
+
+    int main(void)
+    {
+        struct trial *experiment = calloc(NUM_TRIALS, sizeof(*experiment));
+        for (unsigned ui = 0; ui < NUM_TRIALS; ui++) {
+            struct trial *trl = &experiment[ui];
+            trl->arr_rate = ARRIVAL_RATE;
+            trl->srv_rate = SERVICE_RATE;
+            trl->obj_cnt = 0u;
+            trl->sum_wait = 0.0;
+        }
+
+        cimba_run_experiment(experiment,
+                             NUM_TRIALS,
+                             sizeof(*experiment),
+                             run_trial);
+
+        struct cmb_datasummary summary;
+        cmb_datasummary_initialize(&summary);
+        for (unsigned ui = 0; ui < NUM_TRIALS; ui++) {
+            const double avg_tsys = experiment[ui].sum_wait / experiment[ui].obj_cnt;
+            cmb_datasummary_add(&summary, avg_tsys);
+        }
+
+        const unsigned un = cmb_datasummary_count(&summary);
+        if (un > 1) {
+            const double mean_tsys = cmb_datasummary_mean(&summary);
+            const double sdev_tsys = cmb_datasummary_stddev(&summary);
+            const double serr_tsys = sdev_tsys / sqrt((double)un);
+            const double ci_w = 1.96 * serr_tsys;
+            const double ci_l = mean_tsys - ci_w;
+            const double ci_u = mean_tsys + ci_w;
+
+            printf("Average system time %f (n %u, conf.int. %f - %f, expected %f)\n",
+                   mean_tsys, un, ci_l, ci_u, 1.0 / (SERVICE_RATE - ARRIVAL_RATE));
+
+            return 0;
+        }
+    }
+
+Obviously, the Cimba code is significantly longer, in this case 140 vs 60 lines. The C
+base language also demands more careful declarations of object types, where Python will
+happily try to infer types from context.
+
+Both programs produce a one-liner output similar to this:
+
+.. code-block:: none
+
+    Average system time 10.000026 (n 100, conf.int. 9.964877 - 10.035176, expected 10.000000)
+
+However, the Cimba experiment can run its 100 trials in 0.56 second, while the SimPy
+version takes 25.5 seconds to do the exact same thing. Cimba runs from 28 times faster on
+a single core to about *45 times faster* with all available cores in use.
+
+In fact, Cimba processes more simulated events per second on a single core (approx 20
+million events / second) than what SimPy can do if it has all 64 cores to itself (approx
+16 million events / second).
+
+.. image:: ../images/Speed_test_AMD_3970x.png
+
+Our (admittedly biased) view is that SimPy is good for simple one-off simulations,
+where learning curve and development time are the critical constraints, while Cimba
+should be preferred for larger models where run time and efficiency become important.
 
 If in Doubt, Read the Source Code
 ---------------------------------

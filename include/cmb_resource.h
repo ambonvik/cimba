@@ -6,7 +6,7 @@
  */
 
  /*
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -112,7 +112,7 @@ extern int64_t cmb_resource_preempt(struct cmb_resource *rp);
  * @param rp Pointer to an initialized resource object.
  * @return The name of the process as a null-terminated text string.
  */
-static inline const char *cmb_resource_get_name(struct cmb_resource *rp)
+static inline const char *cmb_resource_name(struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
 
@@ -188,7 +188,7 @@ extern void cmb_resource_stop_recording(struct cmb_resource *rp);
  * @param rp Pointer to an initialized resource object.
  * @return Pointer to a `cmb_timeseries` containing the resource usage history.
  */
-extern struct cmb_timeseries *cmb_resource_get_history(struct cmb_resource *rp);
+extern struct cmb_timeseries *cmb_resource_history(struct cmb_resource *rp);
 
 /**
  * @brief Print a simple text mode report of the resource usage, including key

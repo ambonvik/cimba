@@ -115,7 +115,7 @@ static inline bool cmi_is_power_of_two(const size_t n)
                         ((type *)((char *)(ptr) - cmi_offset_of(type, member)))
 
 /* System-dependent utility functions in src/arch/cmi_memutils_*.c */
-extern size_t cmi_get_pagesize(void);
+extern size_t cmi_pagesize(void);
 extern void *cmi_aligned_alloc(size_t align, size_t sz);
 extern void cmi_aligned_free(void *p);
 extern void *cmi_aligned_realloc(void *p, size_t align, size_t sz);

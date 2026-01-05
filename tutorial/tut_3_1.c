@@ -239,7 +239,7 @@ void *catfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout, USERFLAG1, "Awake, looking for rodents");
             (void)cmb_process_hold(cmb_random_exponential(1.0));
             struct cmb_process *tgt = cpp[cmb_random_dice(0, num - 1)];
-            cmb_logger_user(stdout, USERFLAG1, "Chasing %s", cmb_process_get_name(tgt));
+            cmb_logger_user(stdout, USERFLAG1, "Chasing %s", cmb_process_name(tgt));
 
             /* Send it a random interrupt signal */
             const int64_t sig = (cmb_random_flip()) ?
@@ -259,7 +259,7 @@ void run_trial(void *vtrl)
     struct simulation *simp = cmi_malloc(sizeof(*simp));
     cmi_memset(simp, 0, sizeof(*simp));
 
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_event_queue_initialize(0.0);

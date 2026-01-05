@@ -262,7 +262,7 @@ void *catfunc(struct cmb_process *me, void *ctx)
         cmb_logger_user(stdout,
                         USERFLAG1,
                         "Chasing %s",
-                        cmb_process_get_name(tgt));
+                        cmb_process_name(tgt));
 
         const int64_t sig = (cmb_random_flip()) ?
                              CMB_PROCESS_INTERRUPTED :
@@ -276,7 +276,7 @@ void test_store(void)
     struct simulation *storetest = cmi_malloc(sizeof(*storetest));
     cmi_memset(storetest, 0, sizeof(*storetest));
 
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
     printf("seed: 0x%" PRIx64 "\n", seed);
 

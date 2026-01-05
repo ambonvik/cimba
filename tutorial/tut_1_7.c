@@ -167,7 +167,7 @@ void run_MM1_trial(void *vtrl)
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
-    trl->seed_used = cmb_random_get_hwseed();
+    trl->seed_used = cmb_random_hwseed();
     cmb_random_initialize(trl->seed_used);
     cmb_logger_user(stdout, USERFLAG2,
                     "seed: 0x%016" PRIx64 " rho: %f",
@@ -175,7 +175,7 @@ void run_MM1_trial(void *vtrl)
 
     /* Create the queue itself. Using a cmb_buffer, since we do not track each object */
     ctx.sim->que = cmb_buffer_create();
-    cmb_buffer_initialize(ctx.sim->que, "Queue", CMB_BUFFER_UNLIMITED);
+    cmb_buffer_initialize(ctx.sim->que, "Queue", CMB_UNLIMITED);
 
     /* Create the arrival process */
     ctx.sim->arr = cmb_process_create();
@@ -200,7 +200,7 @@ void run_MM1_trial(void *vtrl)
 
     /* Done, collect statistics and store in the results field */
     struct cmb_wtdsummary wtdsum;
-    const struct cmb_timeseries *ts = cmb_buffer_get_history(ctx.sim->que);
+    const struct cmb_timeseries *ts = cmb_buffer_history(ctx.sim->que);
     cmb_timeseries_summarize(ts, &wtdsum);
     ctx.trl->avg_queue_length = cmb_wtdsummary_mean(&wtdsum);
 

@@ -2,7 +2,7 @@
  * cmi_config.h - preprocessor macros to identify architecture, compiler, and
  *                operating system, defining macros for portability.
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,12 +52,17 @@
 #define CMI_CLANG 2
 #if defined (__clang__)
   #define CMI_COMPILER CMI_CLANG
-  #define CMB_THREAD_LOCAL _Thread_local
 #elif defined (__GNUC__)
   #define CMI_COMPILER CMI_GCC
-  #define CMB_THREAD_LOCAL _Thread_local
 #else
   #error "Compiler not yet supported."
 #endif
+
+#if CMI_OS == CMI_LINUX
+    #define CMB_THREAD_LOCAL _Thread_local __attribute__((tls_model("initial-exec")))
+#else
+    #define CMB_THREAD_LOCAL _Thread_local
+#endif
+
 
 #endif /* CIMBA_CMI_CONFIG_H */

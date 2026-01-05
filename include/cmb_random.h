@@ -16,7 +16,7 @@
  * interactions with each other.
  *
  * Suitable 64-bit seeds can be obtained from hardware entropy by calling
- * `cmb_random_get_hwseed`.
+ * `cmb_random_hwseed`.
  *
  * The various random number distributions are built on this generator. They use
  * the fastest available algorithms without making any compromises on accuracy.
@@ -38,7 +38,7 @@
  */
 
 /*
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
  *
  * The normal and exponential distributions below are based on code at
  *      https://github.com/cd-mcfarland/fast_prng
@@ -99,7 +99,7 @@ extern void cmb_random_terminate(void);
  * @return A random 64-bit value from the best available entropy source of the
  *         current CPU hardware.
  */
-extern uint64_t cmb_random_get_hwseed(void);
+extern uint64_t cmb_random_hwseed(void);
 
 /**
  * @brief Get the seed that was used for the ongoing run in this thread. Used as
@@ -110,7 +110,7 @@ extern uint64_t cmb_random_get_hwseed(void);
  * @return The 64-bit seed that was used to initialize the generator. If it
  *         returns `0x0000DEAD5EED0000`, the generator was never initialized.
  */
-extern uint64_t cmb_random_get_curseed(void);
+extern uint64_t cmb_random_curseed(void);
 
 /**
  * @brief The main pseudo-random number generator - 64-bit output, 256-bit

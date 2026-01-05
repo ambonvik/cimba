@@ -372,7 +372,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
 
         /* Got one, collect its exit value */
         struct ship *shp = cmi_list_pop(dep_head);
-        double *t_sys_p = cmb_process_get_exit_value((struct cmb_process *)shp);
+        double *t_sys_p = cmb_process_exit_value((struct cmb_process *)shp);
         cmb_assert_debug(t_sys_p != NULL);
         cmb_logger_user(stdout, USERFLAG1,
                         "Recycling ship %s, time in system %f",
@@ -448,7 +448,7 @@ void set_test_parameters(struct trial *trl)
 void test_condition(void)
 {
     /* Get a suitable seed from a hardware entropy source */
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     printf("seed: 0x%" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
 

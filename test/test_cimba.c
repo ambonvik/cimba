@@ -12,7 +12,7 @@
  *  - Replication  A trial with the same parameters as another.
  *  - Experiment   A set of trials according to some experimental design.
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -175,7 +175,7 @@ void run_mg1_trial(void *vtrl)
 {
     struct trial *trl = vtrl;
     if (trl->seed == 0u) {
-        const uint64_t seed = cmb_random_get_hwseed();
+        const uint64_t seed = cmb_random_hwseed();
         cmb_random_initialize(seed);
         trl->seed = seed;
     }
@@ -219,7 +219,7 @@ void run_mg1_trial(void *vtrl)
     cmb_event_queue_execute();
 
     /* Collect and save statistics into the trial struct */
-    const struct cmb_timeseries *tsp = cmb_buffer_get_history(sim->queue);
+    const struct cmb_timeseries *tsp = cmb_buffer_history(sim->queue);
     struct cmb_wtdsummary ws;
     cmb_wtdsummary_initialize(&ws);
     cmb_timeseries_summarize(tsp, &ws);

@@ -142,7 +142,7 @@ bool cmb_condition_signal(struct cmb_condition *cvp)
                             rbp->name, pp->name);
             tmp[cnt++] = htp->handle;
             const double time = cmb_time();
-            const int64_t priority = cmb_process_get_priority(pp);
+            const int64_t priority = cmb_process_priority(pp);
             (void)cmb_event_schedule(cond_waitwu_evt, pp,
                                      (void *)CMB_PROCESS_SUCCESS,
                                      time, priority);

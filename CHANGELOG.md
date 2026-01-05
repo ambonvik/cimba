@@ -6,9 +6,12 @@ corner without this warranting a new major release. We will summarize new featur
 changes, and bug fixes below. For complete details, see the git commit history.
 
 ### Not released: 3.0.0
-* Bug fixes and speed improvements only, no feature changes planned
+* Bug fixes and speed improvements
+* Adds cmb_priorityqueue
+* Possible API changes based on beta test feedback
 
 ### 2025-12-27: 3.0.0 beta
-* Initial public release
+* Initial public version
 * Documentation on Read the Docs
-* Stable on both Linux and Windows x86-64
+* Support for Linux and Windows on x86-64
+* Should be considered an active build with ongoing changes

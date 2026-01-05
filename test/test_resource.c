@@ -58,7 +58,7 @@ void *procfunc1(struct cmb_process *me, void *ctx)
             else if (sig == CMB_PROCESS_PREEMPTED){
                 cmb_logger_user(stdout, USERFLAG1,
                                 "Someone stole %s from me, signal %" PRIi64,
-                                cmb_resource_get_name(rp),  sig);
+                                cmb_resource_name(rp),  sig);
             }
             else {
                 cmb_logger_user(stdout, USERFLAG1,
@@ -81,7 +81,7 @@ void *procfunc2(struct cmb_process *me, void *ctx)
         const int64_t sig = cmb_resource_preempt(rp);
         cmb_logger_user(stdout, USERFLAG1,
                         "Preempt %s returned signal %" PRIi64,
-                        cmb_resource_get_name(rp), sig);
+                        cmb_resource_name(rp), sig);
         cmb_process_hold(cmb_random_exponential(1.0));
         cmb_resource_release(rp);
         cmb_process_hold(cmb_random_exponential(1.0));
@@ -90,7 +90,7 @@ void *procfunc2(struct cmb_process *me, void *ctx)
 
 void test_resource(void)
 {
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
 
     printf("seed: %" PRIu64 "\n", seed);

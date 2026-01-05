@@ -23,10 +23,10 @@
 #include "cmi_memutils.h"
 
 /*
- * cmi_get_pagesize : Get page size from OS.
+ * cmi_pagesize : Get page size from OS.
  * Should be 4096 bytes, but better check.
  */
-size_t cmi_get_pagesize(void)
+size_t cmi_pagesize(void)
 {
     SYSTEM_INFO sys_info;
     GetSystemInfo(&sys_info);

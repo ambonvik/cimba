@@ -103,7 +103,7 @@ static void print_expected(const uint64_t n,
 static void test_getsetseed(void)
 {
     printf("Getting hardware entropy seed ... ");
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     printf("%#" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
 }
@@ -187,7 +187,7 @@ static double exponential_inv(const double m)
 
 static void test_speed_exponential(const double m)
 {
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     printf("\nSpeed testing standard exponential distribution, seed = %#" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
     printf("\nInversion method, drawing %" PRIu64 " samples...", MAX_ITER);
@@ -340,7 +340,7 @@ static void test_quality_normal(const double m, const double s)
 
 static void test_speed_normal(const double m, const double s)
 {
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     printf("\nSpeed testing normal distribution, seed = %#" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
     printf("\nBox Muller method, drawing %" PRIu64 " samples...", MAX_ITER);
@@ -876,7 +876,7 @@ static void test_quality_vose_alias(const unsigned n, const double pa[n])
 
 static void test_speed_vose_alias(const unsigned init, const unsigned end, const unsigned step)
 {
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
     printf("\nSpeed testing vose alias sampling, %" PRIu64 " samples, seed = %#" PRIx64 ".\n", MAX_ITER, seed);
     printf("Iterations per second (ips)\n");

@@ -94,7 +94,7 @@ afterwards. Let us try this:
 
     int main(void)
     {
-        const uint64_t seed = cmb_random_get_hwseed();
+        const uint64_t seed = cmb_random_hwseed();
         cmb_random_initialize(seed);
 
         cmb_event_queue_initialize(0.0);
@@ -271,7 +271,7 @@ and schedule an ``end_sim`` event before executing the event queue:
 
     int main(void)
     {
-        const uint64_t seed = cmb_random_get_hwseed();
+        const uint64_t seed = cmb_random_hwseed();
         cmb_random_initialize(seed);
 
         cmb_event_queue_initialize(0.0);
@@ -597,13 +597,13 @@ one that is more than half full, and ``-`` for one that contains something but l
 than half filled.
 
 We can also get a pointer to the ``cmb_timeseries`` object by
-calling ``cmb_buffer_get_history()`` and doing further analysis on that. As an
+calling ``cmb_buffer_history()`` and doing further analysis on that. As an
 example, let's do the first 20 partial autocorrelation coefficients of the queue
 length time series and print a correlogram of that as well:
 
 .. code-block:: c
 
-    struct cmb_timeseries *ts = cmb_buffer_get_history(sim.que);
+    struct cmb_timeseries *ts = cmb_buffer_history(sim.que);
     double pacf_arr[21];
     cmb_timeseries_PACF(ts, 20, pacf_arr, NULL);
     cmb_timeseries_print_correlogram(ts, stdout, 20, pacf_arr);
@@ -789,7 +789,7 @@ queue length, and store it in the ``trial`` results field:
 .. code-block:: c
 
         struct cmb_wtdsummary wtdsum;
-        const struct cmb_timeseries *ts = cmb_buffer_get_history(ctx.sim->que);
+        const struct cmb_timeseries *ts = cmb_buffer_history(ctx.sim->que);
         cmb_timeseries_summarize(ts, &wtdsum);
         ctx.trl->avg_queue_length = cmb_wtdsummary_mean(&wtdsum);
 
@@ -1562,7 +1562,7 @@ to do something.
 
             /* There is one, collect its exit value */
             struct ship *shpp = cmi_list_pop(dep_head);
-            double *t_sys_p = cmb_process_get_exit_value((struct cmb_process *)shpp);
+            double *t_sys_p = cmb_process_exit_value((struct cmb_process *)shpp);
             cmb_assert_debug(t_sys_p != NULL);
             cmb_logger_user(stdout, USERFLAG1,
                             "Recycling %s, time in system %f",
@@ -1952,7 +1952,7 @@ In cases like this, the functions ``cmb_resource_held_by_process`` and
 ``cmb_resourcestore_held_by_process()`` with a pointer to itself as the second
 argument can be useful to figure out which resource was preempted. If the caller
 does not have a pointer to itself handy (it is always the first argument to the
-process function), it can get one by calling ``cmb_process_get_current()``,
+process function), it can get one by calling ``cmb_process_current()``,
 returning a pointer to the currently executing process, i.e. the caller.
 
 Buffers and object queues, interrupted
@@ -2031,7 +2031,7 @@ to just contain the simulation struct. We can then write something like:
             else if (sig == CMB_PROCESS_PREEMPTED) {
                 /* The acquire call did not end well */
                 cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
-                                cmb_resourcestore_get_name(sp));
+                                cmb_resourcestore_name(sp));
                 amount_held = 0u;
             }
             else {
@@ -2048,7 +2048,7 @@ to just contain the simulation struct. We can then write something like:
             else if (sig == CMB_PROCESS_PREEMPTED) {
                 /* Somebody snatched it all away from us */
                 cmb_logger_user(stdout, USERFLAG1, "Someone stole all my %s from me!",
-                                cmb_resourcestore_get_name(sp));
+                                cmb_resourcestore_name(sp));
                 amount_held = 0u;
             }
             else {
@@ -2071,7 +2071,7 @@ to just contain the simulation struct. We can then write something like:
             if (sig == CMB_PROCESS_PREEMPTED) {
                 cmb_logger_user(stdout, USERFLAG1,
                                 "Someone stole the rest of my %s, signal %" PRIi64,
-                                cmb_resourcestore_get_name(sp), sig);
+                                cmb_resourcestore_name(sp), sig);
                 amount_held = 0u;
            }
         }
@@ -2111,7 +2111,7 @@ The cats, on the other hand, are never interrupted and just ignore return values
                 cmb_logger_user(stdout, USERFLAG1, "Awake, looking for rodents");
                 (void)cmb_process_hold(cmb_random_exponential(1.0));
                 struct cmb_process *tgt = cpp[cmb_random_dice(0, num - 1)];
-                cmb_logger_user(stdout, USERFLAG1, "Chasing %s", cmb_process_get_name(tgt));
+                cmb_logger_user(stdout, USERFLAG1, "Chasing %s", cmb_process_name(tgt));
 
                 /* Send it a random interrupt signal */
                 const int64_t sig = (cmb_random_flip()) ?

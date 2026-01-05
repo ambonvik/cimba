@@ -37,7 +37,7 @@ extern void cmi_coroutine_trampoline(void);
 /*
  * Linux-specific code to get the top and bottom of the current (main) stack
  */
-void cmi_coroutine_get_stacklimits(unsigned char **top, unsigned char **bottom)
+void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
 {
     cmb_assert_debug(top != NULL);
     cmb_assert_debug(bottom != NULL);
@@ -109,8 +109,7 @@ void cmi_coroutine_get_stacklimits(unsigned char **top, unsigned char **bottom)
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
     cmb_assert_debug(cp->stack_limit != NULL);
-
-    const struct cmi_coroutine *cp_main = cmi_coroutine_get_main();
+    const struct cmi_coroutine *cp_main = cmi_coroutine_main();
     if (cp == cp_main) {
         cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
         cmb_assert_debug(cp->stack == NULL);

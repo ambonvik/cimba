@@ -26,7 +26,6 @@ default rel
 section .text
 global cmi_coroutine_context_switch
 global cmi_coroutine_trampoline
-global cmi_coroutine_get_rsp
 
 ;-------------------------------------------------------------------------------
 ; Macro to store relevant registers to current stack

@@ -1,7 +1,7 @@
 /*
  * cmi_coroutine.c - general stackful coroutines
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,24 +46,24 @@ extern bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp);
 extern void cmi_coroutine_context_init(struct cmi_coroutine *cp);
 
 /* Simple getters and putters, not inlined to avoid exposing internals */
-struct cmi_coroutine *cmi_coroutine_get_current(void)
+struct cmi_coroutine *cmi_coroutine_current(void)
 {
     return coroutine_current;
 }
 
-struct cmi_coroutine *cmi_coroutine_get_main(void)
+struct cmi_coroutine *cmi_coroutine_main(void)
 {
     return coroutine_main;
 }
 
-enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp)
+enum cmi_coroutine_state cmi_coroutine_status(const struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
 
     return cp->status;
 }
 
-void *cmi_coroutine_get_context(const struct cmi_coroutine *cp)
+void *cmi_coroutine_context(const struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
 
@@ -77,7 +77,7 @@ void cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context)
     cp->context = context;
 }
 
-void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp)
+void *cmi_coroutine_exit_value(const struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
 
@@ -85,7 +85,7 @@ void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp)
 }
 
 /* System dependent, in port/x86-64/.../cmi_coroutine_context.c */
-extern void cmi_coroutine_get_stacklimits(unsigned char **top, unsigned char **bottom);
+extern void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom);
 
 /*
  * create_main : Helper function to set up the dummy main coroutine
@@ -103,7 +103,7 @@ static void create_main(void)
     coroutine_main->stack = NULL;
 
     /* Get current extent of main thread stack */
-    cmi_coroutine_get_stacklimits(&(coroutine_main->stack_base), &(coroutine_main->stack_limit));
+    cmi_coroutine_stacklimits(&(coroutine_main->stack_base), &(coroutine_main->stack_limit));
 
     /* Stack pointer will be set the first time we transfer out of it */
     coroutine_main->stack_pointer = NULL;
@@ -268,7 +268,7 @@ void cmi_coroutine_stop(struct cmi_coroutine *cp, void *retval)
     cmb_assert_release(cp->status == CMI_COROUTINE_RUNNING);
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 
-    if (cp == cmi_coroutine_get_current()) {
+    if (cp == cmi_coroutine_current()) {
         cmi_coroutine_exit(retval);
     }
     else {
@@ -318,7 +318,7 @@ extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *msg)
 /* Asymmetric coroutine pattern yield/resume, called from within coroutine */
 void *cmi_coroutine_yield(void *msg)
 {
-    const struct cmi_coroutine *from = cmi_coroutine_get_current();
+    const struct cmi_coroutine *from = cmi_coroutine_current();
     cmb_assert_release(from != NULL);
     cmb_assert_release(from->status == CMI_COROUTINE_RUNNING);
 
@@ -335,7 +335,7 @@ void *cmi_coroutine_yield(void *msg)
 void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *msg)
 {
     cmb_assert_release(cp != NULL);
-    cmb_assert_release(cp != cmi_coroutine_get_current());
+    cmb_assert_release(cp != cmi_coroutine_current());
     cmb_assert_release(cp->status == CMI_COROUTINE_RUNNING);
 
     void *ret = cmi_coroutine_transfer(cp, msg);

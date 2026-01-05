@@ -372,7 +372,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
 
         /* There is one, collect its exit value */
         struct ship *shpp = cmi_list_pop(dep_head);
-        double *t_sys_p = cmb_process_get_exit_value((struct cmb_process *)shpp);
+        double *t_sys_p = cmb_process_exit_value((struct cmb_process *)shpp);
         cmb_assert_debug(t_sys_p != NULL);
         cmb_logger_user(stdout, USERFLAG1,
                         "Recycling %s, time in system %f",
@@ -460,7 +460,7 @@ void run_trial(void *vtrl)
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
-    trlp->seed_used = cmb_random_get_hwseed();
+    trlp->seed_used = cmb_random_hwseed();
     cmb_random_initialize(trlp->seed_used);
 
     /* Create and initialize the statistics collectors */

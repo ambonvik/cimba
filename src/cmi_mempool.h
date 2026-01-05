@@ -55,7 +55,8 @@ struct cmi_mempool {
     void *next_obj;
 };
 
-/* Pre-defined memory pools for generic 16-, 32-, and 64-byte objects  */
+/* Pre-defined memory pools for generic 8-, 16-, 32-, and 64-byte objects  */
+extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_8b;
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_16b;
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_32b;
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_64b;

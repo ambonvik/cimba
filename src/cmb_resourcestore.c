@@ -96,7 +96,7 @@ static void resourcestore_drop_holder(struct cmi_holdable *rbp,
 
     struct cmb_resourcestore *sp = (struct cmb_resourcestore *)rbp;
     struct cmi_hashheap *hp = &(sp->holders);
-    void **item = cmi_hashheap_get_item(hp, handle);
+    void **item = cmi_hashheap_item(hp, handle);
     cmb_assert_debug(item[0] == pp);
 
     const uint64_t held = (uint64_t)item[1];
@@ -123,7 +123,7 @@ static void reprioritize_holder(struct cmi_holdable *rbp,
 
     const struct cmb_resourcestore *sp = (struct cmb_resourcestore *)rbp;
     const struct cmi_hashheap *hp = &(sp->holders);
-    const double dkey = cmi_hashheap_get_dkey(hp, handle);
+    const double dkey = cmi_hashheap_dkey(hp, handle);
     cmi_hashheap_reprioritize(hp, handle, dkey, pri);
 }
 
@@ -210,7 +210,7 @@ static void add_to_holder(const struct cmi_hashheap *hp,
     cmb_assert_release(holder_handle != 0u);
     cmb_assert_release(amount > 0u);
 
-    void **item = cmi_hashheap_get_item(hp, holder_handle);
+    void **item = cmi_hashheap_item(hp, holder_handle);
     const uint64_t cur_amt = (uint64_t)item[1];
     const uint64_t new_amt = cur_amt + amount;
     item[1] = (void *)new_amt;
@@ -225,7 +225,7 @@ static uint64_t reset_holder(const struct cmi_hashheap *hp,
     cmb_assert_release(holder_handle != 0u);
     cmb_assert_release(amount > 0u);
 
-    void **item = cmi_hashheap_get_item(hp, holder_handle);
+    void **item = cmi_hashheap_item(hp, holder_handle);
     const uint64_t old_amt = (uint64_t)item[1];
     cmb_assert_debug(old_amt >= amount);
 
@@ -332,7 +332,7 @@ uint64_t cmb_resourcestore_held_by_process(struct cmb_resourcestore *rsp,
     const uint64_t handle = find_handle(rtloc, hrp);
     if (handle != 0u) {
         const struct cmi_hashheap *hp = &(rsp->holders);
-        void **item = cmi_hashheap_get_item(hp, handle);
+        void **item = cmi_hashheap_item(hp, handle);
         ret = (uint64_t)item[1];
     }
 
@@ -417,7 +417,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
     cmb_assert_release(claim_amount > 0u);
     cmb_assert_debug(sp->in_use <= sp->capacity);
 
-    struct cmb_process *caller = cmb_process_get_current();
+    struct cmb_process *caller = cmb_process_current();
 
     /* Does the caller already hold some? */
     uint64_t initially_held = 0u;
@@ -428,7 +428,7 @@ int64_t cmi_store_acquire_inner(struct cmb_resourcestore *sp,
     uint64_t caller_hdle = find_handle(caller_rtloc, hrp);
     if (caller_hdle != 0u) {
         /* It does. Note the amount in case we need to roll back to here */
-        void **item = cmi_hashheap_get_item(hp, caller_hdle);
+        void **item = cmi_hashheap_item(hp, caller_hdle);
         initially_held = (uint64_t)item[1];
     }
 
@@ -617,7 +617,7 @@ void cmb_resourcestore_release(struct cmb_resourcestore *rsp, const uint64_t amo
     cmb_assert_release(rsp->in_use >= amount);
     cmb_assert_release(amount <= rsp->capacity);
 
-    struct cmb_process *pp = cmb_process_get_current();
+    struct cmb_process *pp = cmb_process_current();
     cmb_assert_debug(pp != NULL);
 
     struct cmi_list_tag32 **rtloc = &(pp->resources_listhead);
@@ -625,7 +625,7 @@ void cmb_resourcestore_release(struct cmb_resourcestore *rsp, const uint64_t amo
     const uint64_t caller_handle = find_handle(rtloc, hrp);
     cmb_assert_debug(caller_handle != 0u);
 
-    void **item = cmi_hashheap_get_item(&(rsp->holders), caller_handle);
+    void **item = cmi_hashheap_item(&(rsp->holders), caller_handle);
     cmb_assert_debug(item[0] == pp);
     const uint64_t held = (uint64_t)item[1];
     cmb_logger_info(stdout,

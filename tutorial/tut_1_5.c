@@ -108,7 +108,7 @@ void run_MM1_trial(void *vtrl)
     ctx.sim = &sim;
     ctx.trl = trl;
 
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
 
     cmb_logger_flags_off(CMB_LOGGER_INFO);
@@ -117,7 +117,7 @@ void run_MM1_trial(void *vtrl)
     cmb_event_queue_initialize(0.0);
 
     ctx.sim->que = cmb_buffer_create();
-    cmb_buffer_initialize(ctx.sim->que, "Queue", CMB_BUFFER_UNLIMITED);
+    cmb_buffer_initialize(ctx.sim->que, "Queue", CMB_UNLIMITED);
 
     ctx.sim->arr = cmb_process_create();
     cmb_process_initialize(ctx.sim->arr, "Arrival", arrival, &ctx, 0);
@@ -136,7 +136,7 @@ void run_MM1_trial(void *vtrl)
     cmb_event_queue_execute();
 
     struct cmb_wtdsummary wtdsum;
-    const struct cmb_timeseries *ts = cmb_buffer_get_history(ctx.sim->que);
+    const struct cmb_timeseries *ts = cmb_buffer_history(ctx.sim->que);
     cmb_timeseries_summarize(ts, &wtdsum);
     ctx.trl->avg_queue_length = cmb_wtdsummary_mean(&wtdsum);
 

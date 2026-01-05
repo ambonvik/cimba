@@ -103,15 +103,15 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(demand != NULL);
 
-    /* cmb_process_get_current returns NULL if called from the main process */
-    struct cmb_process *pp = cmb_process_get_current();
+    /* cmb_process_current returns NULL if called from the main process */
+    struct cmb_process *pp = cmb_process_current();
     cmb_assert_release(pp != NULL);
     cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
     cmb_assert_debug(pp->waitsfor.ptr == NULL);
     cmb_assert_debug(pp->waitsfor.handle == UINT64_C(0));
 
     const double entry_time = cmb_time();
-    const int64_t priority = cmb_process_get_priority(pp);
+    const int64_t priority = cmb_process_priority(pp);
 
     const uint64_t handle = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
                                                  (void *)pp,
@@ -196,7 +196,7 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
             cmb_logger_info(stdout, "Scheduling wakeup event for %s", pp->name);
             (void)cmi_hashheap_dequeue(hp);
             const double time = cmb_time();
-            const int64_t priority = cmb_process_get_priority(pp);
+            const int64_t priority = cmb_process_priority(pp);
             (void)cmb_event_schedule(resgrd_waitwu_evt, pp,
                                     (void *)CMB_PROCESS_SUCCESS,
                                     time, priority);
@@ -232,7 +232,7 @@ bool cmb_resourceguard_cancel(struct cmb_resourceguard *rgp,
     if (handle != 0u) {
         (void)cmi_hashheap_cancel(hp, handle);
         const double time = cmb_time();
-        const int64_t priority = cmb_process_get_priority(pp);
+        const int64_t priority = cmb_process_priority(pp);
         (void)cmb_event_schedule(resgrd_waitwu_evt, pp,
                                  (void *)CMB_PROCESS_CANCELLED,
                                  time, priority);

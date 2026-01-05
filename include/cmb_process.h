@@ -22,7 +22,7 @@
  */
 
 /*
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@
 /**
  * @brief The states a process can be in (direct from the underlying coroutine)
  */
-enum cmb_process_state {
+enum cmb_process_status {
     CMB_PROCESS_CREATED = 0,
     CMB_PROCESS_RUNNING,
     CMB_PROCESS_FINISHED
@@ -276,7 +276,7 @@ extern void cmb_process_stop(struct cmb_process *pp, void *retval);
  *
  * @param pp Pointer to a process.
  */
-static inline const char *cmb_process_get_name(const struct cmb_process *pp)
+static inline const char *cmb_process_name(const struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
@@ -303,7 +303,7 @@ extern void cmb_process_set_name(struct cmb_process *pp,
  * @param pp Pointer to a process.
  * @return Pointer to the process context.
  */
-extern void *cmb_process_get_context(const struct cmb_process *pp);
+extern void *cmb_process_context(const struct cmb_process *pp);
 
 /**
  * @brief  Replace the process context with something else.
@@ -325,7 +325,7 @@ extern void cmb_process_set_context(struct cmb_process *pp, void *context);
  * @param pp Pointer to a process.
  * @return The current priority value.
  */
-extern int64_t cmb_process_get_priority(const struct cmb_process *pp);
+extern int64_t cmb_process_priority(const struct cmb_process *pp);
 
 /**
  * @brief  Change the priority for the process.
@@ -336,19 +336,19 @@ extern int64_t cmb_process_get_priority(const struct cmb_process *pp);
 extern void cmb_process_set_priority(struct cmb_process *pp, int64_t pri);
 
 /**
- * @brief  Get the current state of the process
+ * @brief  Get the current status of the process
  *
  * @param pp Pointer to a process.
  *
  * @return The current state of the process and its underlying coroutine.
  */
-static inline enum cmb_process_state cmb_process_get_state(const struct cmb_process *pp)
+static inline enum cmb_process_status cmb_process_status(const struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
+    const struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
 
-    return (enum cmb_process_state)(cp->status);
+    return (enum cmb_process_status)(cp->status);
 }
 
 /**
@@ -359,7 +359,7 @@ static inline enum cmb_process_state cmb_process_get_state(const struct cmb_proc
  *
  * @param pp Pointer to a process.
  */
-extern void *cmb_process_get_exit_value(const struct cmb_process *pp);
+extern void *cmb_process_exit_value(const struct cmb_process *pp);
 
 /**
  * @brief  Return a pointer to the currently executing process, i.e., the calling
@@ -369,7 +369,7 @@ extern void *cmb_process_get_exit_value(const struct cmb_process *pp);
  * outside a named process, such as the main process that executes the event
  * scheduler.
  */
-extern struct cmb_process *cmb_process_get_current(void);
+extern struct cmb_process *cmb_process_current(void);
 
 
 #endif /* CIMBA_CMB_PROCESS_H */

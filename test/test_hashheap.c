@@ -56,7 +56,7 @@ static bool heap_order_check(const struct cmi_heap_tag *a,
 
 int main(void)
 {
-    cmb_random_initialize(cmb_random_get_hwseed());
+    cmb_random_initialize(cmb_random_hwseed());
 
     cmi_test_print_line("-");
     printf("Testing event queue\n");

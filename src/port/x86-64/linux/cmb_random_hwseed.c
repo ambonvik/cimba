@@ -1,7 +1,7 @@
 /*
  * cmb_random_hwseed.c - Linux specific hardware seed
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ extern uint64_t cmi_rdseed(void);
 extern uint64_t cmi_rdrand(void);
 
 /* Windows-specific code to get a suitable 64-bit seed from hardware */
-uint64_t cmb_random_get_hwseed(void)
+uint64_t cmb_random_hwseed(void)
 {
     uint64_t seed = 0u;
     if (cmi_cpu_has_rdseed()) {

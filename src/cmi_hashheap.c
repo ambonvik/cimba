@@ -241,7 +241,7 @@ static void hashheap_grow(struct cmi_hashheap *hp)
     const size_t heapbts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
     const size_t hashbts = hp->hash_size * sizeof(struct cmi_hash_tag);
     const size_t newsz = heapbts + hashbts;
-    const size_t pagesz = cmi_get_pagesize();
+    const size_t pagesz = cmi_pagesize();
     const size_t npages = (size_t)(newsz + pagesz - 1u) / pagesz;
     cmb_assert_debug(npages >= 1u);
 
@@ -319,7 +319,7 @@ void cmi_hashheap_initialize(struct cmi_hashheap *hp,
     const size_t heapbts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
     const size_t hashbts = (hp->heap_size * 2u) * sizeof(struct cmi_hash_tag);
     const size_t initsz = heapbts + hashbts;
-    const size_t pagesz = cmi_get_pagesize();
+    const size_t pagesz = cmi_pagesize();
     const size_t npages = (size_t)(initsz + pagesz - 1u) / pagesz;
     cmb_assert_debug(npages >= 1u);
 
@@ -560,9 +560,9 @@ bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp, const uint64_t hand
 }
 
 /*
- * cmi_hashheap_get_item : Return a pointer to the current location of the item
+ * cmi_hashheap_item : Return a pointer to the current location of the item
  */
-void **cmi_hashheap_get_item(const struct cmi_hashheap *hp, const uint64_t handle)
+void **cmi_hashheap_item(const struct cmi_hashheap *hp, const uint64_t handle)
 {
     cmb_assert_release(hp != NULL);
     cmb_assert_release(handle != 0u);
@@ -577,9 +577,9 @@ void **cmi_hashheap_get_item(const struct cmi_hashheap *hp, const uint64_t handl
 
 
 /*
- * cmi_hashheap_get_dkey/ikey/ukey : Get the dkey/ikey/ukey for the given item.
+ * cmi_hashheap_dkey/ikey/ukey : Get the dkey/ikey/ukey for the given item.
  */
-double cmi_hashheap_get_dkey(const struct cmi_hashheap *hp,
+double cmi_hashheap_dkey(const struct cmi_hashheap *hp,
                              const uint64_t handle)
 {
     cmb_assert_release(hp != NULL);
@@ -593,7 +593,7 @@ double cmi_hashheap_get_dkey(const struct cmi_hashheap *hp,
     return hp->heap[idx].dkey;
 }
 
-int64_t cmi_hashheap_get_ikey(const struct cmi_hashheap *hp,
+int64_t cmi_hashheap_ikey(const struct cmi_hashheap *hp,
                               const uint64_t handle)
 {
     cmb_assert_release(hp != NULL);

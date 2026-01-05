@@ -223,15 +223,15 @@ extern void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *msg);
 extern void cmi_coroutine_exit(void *retval);
 
 /*
- * cmi_coroutine_get_status : Return the current state of the given coroutine.
+ * cmi_coroutine_status : Return the current state of the given coroutine.
  */
-extern enum cmi_coroutine_state cmi_coroutine_get_status(const struct cmi_coroutine *cp);
+extern enum cmi_coroutine_state cmi_coroutine_status(const struct cmi_coroutine *cp);
 
 /*
- * cmi_coroutine_get_context : Return the current context pointer of the given
+ * cmi_coroutine_context : Return the current context pointer of the given
  * coroutine
  */
-extern void *cmi_coroutine_get_context(const struct cmi_coroutine *cp);
+extern void *cmi_coroutine_context(const struct cmi_coroutine *cp);
 /*
  * cmi_coroutine_set_context : Overwrite the current context pointer of the
  * given coroutine, e.g., for retrofitting context that was not available when
@@ -240,22 +240,22 @@ extern void *cmi_coroutine_get_context(const struct cmi_coroutine *cp);
 extern void cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context);
 
 /*
- * cmi_coroutine_get_exit_value : Return the exit value of the given coroutine,
+ * cmi_coroutine_exit_value : Return the exit value of the given coroutine,
  * NULL if it has not yet returned (or if it returned NULL).
  */
-extern void *cmi_coroutine_get_exit_value(const struct cmi_coroutine *cp);
+extern void *cmi_coroutine_exit_value(const struct cmi_coroutine *cp);
 
 /*
- * cmi_coroutine_get_current : Return a pointer to the currently executing
+ * cmi_coroutine_current : Return a pointer to the currently executing
  * coroutine, i.e., a self-pointer for where the function is called from.
  * Will return NULL if no coroutines have yet been initiated.
  */
-extern struct cmi_coroutine *cmi_coroutine_get_current(void);
+extern struct cmi_coroutine *cmi_coroutine_current(void);
 
 /*
- * cmi_coroutine_get_main : Return a pointer to the main coroutine, possibly
+ * cmi_coroutine_main : Return a pointer to the main coroutine, possibly
  * NULL if it has not yet been created.
  */
-extern struct cmi_coroutine *cmi_coroutine_get_main(void);
+extern struct cmi_coroutine *cmi_coroutine_main(void);
 
 #endif /* CIMBA_CMI_COROUTINE_H */

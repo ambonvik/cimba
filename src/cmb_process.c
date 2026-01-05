@@ -141,11 +141,11 @@ void cmb_process_set_name(struct cmb_process *cp, const char *name)
     cmb_assert_release(r >= 0);
 }
 
-void *cmb_process_get_context(const struct cmb_process *pp)
+void *cmb_process_context(const struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    return cmi_coroutine_get_context((struct cmi_coroutine *)pp);
+    return cmi_coroutine_context((struct cmi_coroutine *)pp);
 }
 
 void cmb_process_set_context(struct cmb_process *pp, void *context)
@@ -155,7 +155,7 @@ void cmb_process_set_context(struct cmb_process *pp, void *context)
     cmi_coroutine_set_context((struct cmi_coroutine *)pp, context);
 }
 
-int64_t cmb_process_get_priority(const struct cmb_process *pp)
+int64_t cmb_process_priority(const struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
@@ -182,8 +182,8 @@ void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
         cmb_assert_debug(handle != UINT64_C(0));
         struct cmb_resourceguard *rgp = pp->waitsfor.ptr;
         const struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
-        const double dkey = cmi_hashheap_get_dkey(hp, handle);
-        const int64_t check = cmi_hashheap_get_ikey(hp, handle);
+        const double dkey = cmi_hashheap_dkey(hp, handle);
+        const int64_t check = cmi_hashheap_ikey(hp, handle);
         cmb_assert_debug(check == oldpri);
         cmi_hashheap_reprioritize(hp, handle, dkey, pri);
     }
@@ -203,35 +203,35 @@ void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
 }
 
 /*
- * cmb_process_get_exit_value : Returns the stored exit value from the process,
+ * cmb_process_exit_value : Returns the stored exit value from the process,
  * as set by cmb_process_exit, cmb_process_stop, or simply returned by the
  * process function. Will return NULL if the process has not yet finished.
  */
-void *cmb_process_get_exit_value(const struct cmb_process *pp)
+void *cmb_process_exit_value(const struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
     const struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
-    if (cmi_coroutine_get_status(cp) != CMI_COROUTINE_FINISHED) {
+    if (cmi_coroutine_status(cp) != CMI_COROUTINE_FINISHED) {
         cmb_logger_warning(stdout,
                            "Requested exit value but process %s has not yet finished",
                            pp->name);
     }
 
     /* Will just return NULL if not yet finished */
-    return cmi_coroutine_get_exit_value(cp);
+    return cmi_coroutine_exit_value(cp);
 }
 
 /*
- * cmb_process_get_current : Returns a pointer to the currently executing
+ * cmb_process_current : Returns a pointer to the currently executing
  * process, i.e., the calling process itself. Returns NULL if called from outside
  * a named process, such as the main process that executes the event scheduler.
  */
-struct cmb_process *cmb_process_get_current(void)
+struct cmb_process *cmb_process_current(void)
 {
     struct cmb_process *rp;
-    const struct cmi_coroutine *cp = cmi_coroutine_get_current();
-    const struct cmi_coroutine *mp = cmi_coroutine_get_main();
+    const struct cmi_coroutine *cp = cmi_coroutine_current();
+    const struct cmi_coroutine *mp = cmi_coroutine_main();
     if (cp != mp) {
         rp = (struct cmb_process *)cp;
     }
@@ -278,7 +278,7 @@ int64_t cmb_process_hold(const double dur)
 
     /* Schedule a wakeup call at time + dur and yield */
     const double t = cmb_time() + dur;
-    struct cmb_process *pp = cmb_process_get_current();
+    struct cmb_process *pp = cmb_process_current();
     cmb_assert_debug(pp != NULL);
 
     /* Not already holding, are we? */
@@ -288,7 +288,7 @@ int64_t cmb_process_hold(const double dur)
     cmb_logger_info(stdout, "Hold until time %f", t);
 
     /* Set an alarm clock */
-    const int64_t pri = cmb_process_get_priority(pp);
+    const int64_t pri = cmb_process_priority(pp);
     pp->waitsfor.type = CMI_WAITABLE_CLOCK;
     pp->waitsfor.handle = cmb_event_schedule(proc_holdwu_evt,
                                     pp, NULL, t, pri);
@@ -333,7 +333,7 @@ static void proc_waitwu_evt(void *vp, void *arg)
     else {
          cmb_logger_warning(stdout,
                            "process wait wakeup call found process %s dead",
-                           cmb_process_get_name(pp));
+                           cmb_process_name(pp));
     }
 }
 
@@ -345,7 +345,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
 {
     cmb_assert_release(awaited != NULL);
 
-    struct cmb_process *pp = cmb_process_get_current();
+    struct cmb_process *pp = cmb_process_current();
     cmb_assert_release(pp != NULL);
     cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
     cmb_assert_debug(pp->waitsfor.ptr == NULL);
@@ -385,7 +385,7 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     cmb_assert_release(cmb_event_is_scheduled(ev_handle));
 
     /* Cannot be called from the main process, which will return NULL here */
-    struct cmb_process *pp = cmb_process_get_current();
+    struct cmb_process *pp = cmb_process_current();
     cmb_assert_release(pp != NULL);
     cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
     cmb_assert_debug(pp->waitsfor.ptr == NULL);
@@ -420,7 +420,7 @@ void cmi_process_wake_all(struct cmi_list_tag **ptloc, const int64_t signal)
         struct cmb_process *pp = ptag->ptr;
         cmb_assert_debug(pp != NULL);
         const double time = cmb_time();
-        const int64_t priority = cmb_process_get_priority(pp);
+        const int64_t priority = cmb_process_priority(pp);
         (void)cmb_event_schedule(proc_waitwu_evt,
                                  pp,
                                  (void *)signal,
@@ -440,9 +440,9 @@ void cmi_process_wake_all(struct cmi_list_tag **ptloc, const int64_t signal)
  */
 void cmb_process_exit(void *retval)
 {
-    struct cmb_process *pp = cmb_process_get_current();
+    struct cmb_process *pp = cmb_process_current();
     const struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
-    cmb_assert_debug(cp != cmi_coroutine_get_main());
+    cmb_assert_debug(cp != cmi_coroutine_main());
 
     cmb_logger_info(stdout, "Exit with value %p", retval);
 

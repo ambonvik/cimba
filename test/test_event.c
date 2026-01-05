@@ -57,7 +57,7 @@ int main(void)
     cmb_event_queue_initialize(start_time);
     printf("Current simulation time %g\n", cmb_time());
 
-    cmb_random_initialize(cmb_random_get_hwseed());
+    cmb_random_initialize(cmb_random_hwseed());
     printf("Scheduling 3x3 events\n");
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {

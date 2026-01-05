@@ -2,7 +2,7 @@
  * cmb_event.c - event view of discrete event simulation.
  * Provides routines to handle clock sequencing and event scheduling.
  *
- * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -178,7 +178,7 @@ double cmb_event_time(const uint64_t handle)
 {
     cmb_assert_release(event_queue != NULL);
 
-    return cmi_hashheap_get_dkey(event_queue, handle);
+    return cmi_hashheap_dkey(event_queue, handle);
 }
 
 /*
@@ -188,7 +188,7 @@ int64_t cmb_event_priority(const uint64_t handle)
 {
     cmb_assert_release(event_queue != NULL);
 
-    return cmi_hashheap_get_ikey(event_queue, handle);
+    return cmi_hashheap_ikey(event_queue, handle);
 }
 
 /*
@@ -200,7 +200,7 @@ struct cmi_list_tag **cmi_event_tag_loc(const uint64_t handle)
 {
     cmb_assert_release(event_queue != NULL);
 
-    void **tmp = cmi_hashheap_get_item(event_queue, handle);
+    void **tmp = cmi_hashheap_item(event_queue, handle);
     cmb_assert_debug(tmp != NULL);
 
     return (struct cmi_list_tag **)&(tmp[3]);
@@ -266,7 +266,7 @@ void cmb_event_cancel(const uint64_t handle)
     cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
     cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
 
-    void **tmp = cmi_hashheap_get_item(event_queue, handle);
+    void **tmp = cmi_hashheap_item(event_queue, handle);
     cmb_assert_debug(tmp != NULL);
     void **wait_loc = &(tmp[3]);
     if (*wait_loc != NULL) {
@@ -289,7 +289,7 @@ void cmb_event_reschedule(const uint64_t handle, const double time)
     cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
 
     /* Do not change the priority ikey */
-    const int64_t pri = cmi_hashheap_get_ikey(event_queue, handle);
+    const int64_t pri = cmi_hashheap_ikey(event_queue, handle);
 
     cmi_hashheap_reprioritize(event_queue, handle, time, pri);
 }
@@ -306,7 +306,7 @@ void cmb_event_reprioritize(const uint64_t handle,
     cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
 
     /* Do not change the priority ikey, ukey not used */
-    const double time = cmi_hashheap_get_dkey(event_queue, handle);
+    const double time = cmi_hashheap_dkey(event_queue, handle);
     cmb_assert_debug(time >= sim_time);
 
     cmi_hashheap_reprioritize(event_queue, handle, time, priority);

@@ -45,7 +45,7 @@ void *service(struct cmb_process *me, void *ctx)
 
 int main(void)
 {
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
 
     cmb_logger_flags_off(CMB_LOGGER_INFO);
@@ -55,7 +55,7 @@ int main(void)
 
     struct simulation sim = {};
     sim.que = cmb_buffer_create();
-    cmb_buffer_initialize(sim.que, "Queue", CMB_BUFFER_UNLIMITED);
+    cmb_buffer_initialize(sim.que, "Queue", CMB_UNLIMITED);
 
     sim.arr = cmb_process_create();
     cmb_process_initialize(sim.arr, "Arrival", arrival, sim.que, 0);

@@ -19,7 +19,7 @@
  * to the appropriate compare function is stored in the hashheap control
  * structure.
  *
- * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -279,7 +279,7 @@ static inline bool cmi_hashheap_cancel(struct cmi_hashheap *hp, uint64_t handle)
 extern bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp, uint64_t handle);
 
 /*
- * cmi_hashheap_get_item : Return a pointer to the current location of the item
+ * cmi_hashheap_item : Return a pointer to the current location of the item
  * associated with the given handle. Note that the location is volatile and will
  * be overwritten in the next enqueue/dequeue operation, but the item value will
  * continue to be associated with the handle also when moved to a different
@@ -287,15 +287,15 @@ extern bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp, uint64_t han
  * this needs to be done atomically. Do not expect the item to be in the same
  * location later, retrieve it again before each use.
  */
-extern void **cmi_hashheap_get_item(const struct cmi_hashheap *hp, uint64_t handle);
+extern void **cmi_hashheap_item(const struct cmi_hashheap *hp, uint64_t handle);
 
 /*
- * cmi_hashheap_get_dkey/ikey : Get the dkey/ikey for the given item.
+ * cmi_hashheap_dkey/ikey : Get the dkey/ikey for the given item.
  * Precondition: The item is in the priority queue, otherwise it is an error.
  * If in doubt, call cmi_hashheap_is_enqueued(handle) first to verify.
  */
-extern double cmi_hashheap_get_dkey(const struct cmi_hashheap *hp, uint64_t handle);
-extern int64_t cmi_hashheap_get_ikey(const struct cmi_hashheap *hp, uint64_t handle);
+extern double cmi_hashheap_dkey(const struct cmi_hashheap *hp, uint64_t handle);
+extern int64_t cmi_hashheap_ikey(const struct cmi_hashheap *hp, uint64_t handle);
 
 /*
  * cmi_hashheap_reprioritize: Changes one or more of the prioritization keys.

@@ -122,7 +122,7 @@ void cmb_random_terminate(void) {
  * Return The 64-bit seed that was used to initialize the generator.
  * If it returns ´0x0000DEAD5EED0000`, the generator was never initialized.
  */
-uint64_t cmb_random_get_curseed(void)
+uint64_t cmb_random_curseed(void)
 {
     return initial_seed;
 }

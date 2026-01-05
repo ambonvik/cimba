@@ -30,7 +30,7 @@
 #define CHUNK_LIST_SIZE 64u
 
 /*
- * Conveniently predefined memory pools for 16-, 32-, and 64-bit objects.
+ * Conveniently predefined memory pools for 8-, 16-, 32-, and 64-bit objects.
  * Pre-store arguments to initialize call, zero-initialize the rest to be
  * calculated with proper values by cmi_mempool_initialize() when and if needed.
  * The CMI_MAGIC_COOKIE informs other functions that the pool is not yet
@@ -39,6 +39,10 @@
  * know what arguments it should feed to cmi_mempool_initialize(), and here
  * they are.
  */
+CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_8b = { CMI_MAGIC_COOKIE,
+                                                        8u,
+                                                        512u,
+                                                        0u, 0u, 0u, NULL, NULL };
 CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_16b = { CMI_MAGIC_COOKIE,
                                                         16u,
                                                         256u,
@@ -91,7 +95,7 @@ void cmi_mempool_initialize(struct cmi_mempool *mp,
     mp->obj_sz = obj_sz;
 
     /* Calculate the size of memory to allocate in each chunk */
-    const size_t page_sz = cmi_get_pagesize();
+    const size_t page_sz = cmi_pagesize();
     const size_t total_sz = obj_num * obj_sz;
     mp->incr_sz = ((total_sz + page_sz - 1u) / page_sz) * page_sz;
     cmb_assert_debug((mp->incr_sz % page_sz) == 0u);
@@ -168,7 +172,7 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
     }
 
     /* Allocate another contiguous array of objects, aligned to page size */
-    const size_t pagesz = cmi_get_pagesize();
+    const size_t pagesz = cmi_pagesize();
     void *ap = cmi_aligned_alloc(pagesz, mp->incr_sz);
     mp->chunk_list[mp->chunk_list_cnt - 1u] = ap;
 

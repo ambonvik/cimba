@@ -27,8 +27,8 @@
 
 /* Assembly functions, see src/port/x86-64/windows/cmi_coroutine_context_*.asm */
 extern void cmi_coroutine_trampoline(void);
-extern void *cmi_coroutine_get_stackbase(void);
-extern void *cmi_coroutine_get_stacklimit(void);
+extern void *cmi_coroutine_stackbase(void);
+extern void *cmi_coroutine_stacklimit(void);
 
 /*
  * Windows-specific code to allocate and initialize stack for a new coroutine.
@@ -89,7 +89,7 @@ extern void *cmi_coroutine_get_stacklimit(void);
     cmb_assert_debug(cp->stack_base != NULL);
     cmb_assert_debug(cp->stack_limit != NULL);
 
-    const struct cmi_coroutine *cp_main = cmi_coroutine_get_main();
+    const struct cmi_coroutine *cp_main = cmi_coroutine_main();
     if (cp == cp_main) {
         cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
         cmb_assert_debug(cp->stack == NULL);
@@ -213,13 +213,13 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
  * Windows specific code to get top and bottom of current (main) stack,
  * picking the addresses out of the Thread Information Block in assembly.
  */
-void cmi_coroutine_get_stacklimits(unsigned char **top, unsigned char **bottom)
+void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
 {
      cmb_assert_debug(top != NULL);
      cmb_assert_debug(bottom != NULL);
 
-     *top = cmi_coroutine_get_stackbase();
-     *bottom = cmi_coroutine_get_stacklimit();
+     *top = cmi_coroutine_stackbase();
+     *bottom = cmi_coroutine_stacklimit();
 
      /* Stack grows downward in address space */
      cmb_assert_debug(*top > *bottom);
