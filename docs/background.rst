@@ -401,7 +401,7 @@ air war. When some plane in the simulation gets shot down, all its scheduled fut
 events should be cancelled. In Cimba, this can be done by a simple call like
 ``cmb_event_pattern_cancel(CMB_ANY_ACTION, my_airplane, CMB_ANY_OBJECT);``
 
-The Hash-Heap - A Binary Heap meets a Hash Map
+The Hash-Heap - A Binary Heap Meets a Hash Map
 ----------------------------------------------
 
 Since the basic discrete event simulation algorithm is all about inserting and
