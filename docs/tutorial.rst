@@ -315,12 +315,15 @@ In Cimba, the simulation end does not even have to be at a predetermined time. I
 equally valid for some process in the simulation to schedule an end simulation
 event at the current time whenever some condition is met, such as a certain
 number of customers having been serviced, a statistics collector having a
-certain number of samples, or something else.
+certain number of samples, or something else. Or, perhaps even easier, the arrival
+process could just stop generating new arrivals, the event queue would clear, and the
+simulation would stop. (See ``benchmark/MM1_single.c`` for an example doing exactly that.)
 
 We gave the end simulation event a default priority of 0 as the last argument to
 ``cmb_event_schedule()``. Priorities are signed 64-bit integers, ``int64_t``. The
-Cimba dispatcher will always execute the next scheduled event with the lowest
-scheduled time. The simulation clock then jumps to that time. If several events
+Cimba dispatcher will always select the scheduled event with the lowest
+scheduled time as the next event. The simulation clock then jumps to that time and that
+event will be executed. If several events
 have the *same* scheduled time, the dispatcher will execute the one with the
 highest priority first. If several events have the same scheduled time *and*
 the same priority, it will execute them in first in first out order.
