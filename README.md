@@ -6,8 +6,11 @@
 A fast discrete event simulation library written in C and assembly for
 both Linux and Windows on x86-64 architectures, providing process- and 
 event-oriented simulated world views combined with multithreaded coarse-trained 
-parallelism for high performance on modern CPUs. It runs some 25-50 times faster 
-than SimPy on a modern CPU.
+parallelism for high performance on modern CPUs. 
+
+The chart below shows the number of simulated events processed per second of wall 
+clock time with same scenario, a simple M/M1 queue, implemented in SimPy and Cimba.
+Cimba runs the scenario 45 times faster than SimPy.
 
 ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
 
@@ -26,7 +29,18 @@ cores available for.
 Which is what Cimba does.
 
 ### Why should I use it?
-It is powerful, fast, reliable, and free.
+It is fast, powerful, reliable, and free.
+
+* *Fast*: The speed from multithreaded parallel execution translates to high
+  resolution in your simulation modeling. You can run hundreds of replications
+  and parameter variations in just a few seconds, generating tight confidence
+  intervals in your experiments and a high density of data points along parameter
+  variations.
+
+  In the benchmark shown above, Cimba runs the same scenario about 28 times faster than 
+  SimPy on a single core and about *45 times faster* than SimPy + Python multiprocessing 
+  when all CPU cores are used. This translates into doing your simulation experiments in 
+  seconds instead of minutes, or in minutes instead of hours.
 
 * *Powerful*: Cimba provides a comprehensive toolkit for discrete event simulation:
 
@@ -43,18 +57,6 @@ It is powerful, fast, reliable, and free.
   
   * Integrated logging and data collection features that make it easy
     to get a model running and understand what is happening inside it.
-
-* *Fast*: The speed from multithreaded parallel execution translates to high 
-  resolution in your simulation modeling. You can run hundreds of replications 
-  and parameter variations in just a few seconds, generating tight confidence 
-  intervals in your experiments and a high density of data points along parameter 
-  variations.
-
-  In our benchmark shown above, a simple M/M/1 queue simulation on an AMD 3970x CPU with 
-  Arch Linux, Cimba runs about 27 times faster than SimPy on a single core and about 43 
-  times faster than SimPy + Python multiprocessing when all CPU cores are used. This 
-  translates into doing your simulation experiments in seconds instead of minutes, or 
-  minutes instead of hours.
 
 * *Reliable*: Cimba is well-engineered open source. There is no
   mystery to the results you get. Each simulated world sits inside its own thread.
@@ -232,8 +234,10 @@ int main(void)
 ```
 See our tutorial for more examples, at https://cimba.readthedocs.io/en/latest/tutorial.html
 
-### So, exactly how fast is it?
-As shown above, it is some 25–50 times faster than SimPy in one relevant benchmark.
+### So, what can I use all that speed for?
+As shown above, it is some 25–50 times faster than SimPy in one relevant benchmark. 
+This means getting your results almost immediately rather than after a "go brew a pot of 
+coffee" delay.
 
 For another illustration of how to benefit from the sheer speed, the experiment in 
 [test_cimba.c] (test/test_cimba.c) simulates an M/G/1 queue at four different levels of 
