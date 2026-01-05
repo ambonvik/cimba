@@ -5,7 +5,7 @@
  * not available, the producers wait, and if there is not enough content, the
  * consumers wait.
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -154,7 +154,7 @@ void cmb_buffer_stop_recording(struct cmb_buffer *bp)
     bp->is_recording = false;
 }
 
-struct cmb_timeseries *cmb_buffer_get_history(struct cmb_buffer *bp)
+struct cmb_timeseries *cmb_buffer_history(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
@@ -204,17 +204,8 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
     *amntp = 0u;
     while (true) {
         cmb_assert_debug(bp->level <= bp->capacity);
-        if (bp->capacity == CMB_BUFFER_UNLIMITED) {
-            cmb_logger_info(stdout,
-                            "%s capacity unlimited, level now %" PRIu64,
-                            rbp->name, bp->level);
-        }
-        else {
-            cmb_logger_info(stdout,
-                            "%s capacity %" PRIu64 ", level now %" PRIu64,
-                            rbp->name, bp->capacity, bp->level);
-        }
-        cmb_logger_info(stdout, "Gets %" PRIu64 " from %s", rem_claim, rbp->name);
+        cmb_logger_info(stdout, "Gets %" PRIu64 " from %s, level %" PRIu64,
+                        rem_claim, rbp->name, bp->level);
         if (bp->level >= rem_claim) {
             /* Grab what we need */
             bp->level -= rem_claim;
@@ -251,17 +242,8 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 
         /* Wait at the front door until some more becomes available  */
         cmb_assert_debug(rem_claim > 0u);
-        cmb_logger_info(stdout, "Waiting for content");
-        if (bp->capacity == CMB_BUFFER_UNLIMITED) {
-            cmb_logger_info(stdout,
-                            "%s capacity unlimited, level now %" PRIu64,
-                            rbp->name, bp->level);
-        }
-        else {
-            cmb_logger_info(stdout,
-                            "%s capacity %" PRIu64 ", level now %" PRIu64,
-                            rbp->name, bp->capacity, bp->level);
-        }
+        cmb_logger_info(stdout, "Waiting for more, level now %" PRIu64,
+                        bp->level);
         cmb_resourceguard_signal(&(bp->rear_guard));
         const int64_t sig = cmb_resourceguard_wait(&(bp->front_guard),
                                                    buffer_has_content,
@@ -307,17 +289,8 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
     uint64_t rem_claim = *amntp;
     while (true) {
         cmb_assert_debug(bp->level <= bp->capacity);
-        if (bp->capacity == CMB_BUFFER_UNLIMITED) {
-            cmb_logger_info(stdout,
-                            "%s capacity unlimited, level now %" PRIu64,
-                            rbp->name, bp->level);
-        }
-        else {
-            cmb_logger_info(stdout,
-                            "%s capacity %" PRIu64 ", level now %" PRIu64,
-                            rbp->name, bp->capacity, bp->level);
-        }
-        cmb_logger_info(stdout, "Puts %" PRIu64 " into %s", rem_claim, rbp->name);
+        cmb_logger_info(stdout, "Puts %" PRIu64 " into %s, level %" PRIu64,
+                        rem_claim, rbp->name, bp->level);
         if ((bp->capacity - bp->level) >= rem_claim) {
             /* Push the remainder into the buffer */
             bp->level += rem_claim;
@@ -353,9 +326,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
 
         /* Wait at the back door until some more becomes available  */
         cmb_assert_debug(rem_claim > 0u);
-        cmb_logger_info(stdout, "Waiting for space");
-        cmb_logger_info(stdout, "%s capacity %" PRIu64 " level %" PRIu64,
-                       rbp->name, bp->capacity, bp->level);
+        cmb_logger_info(stdout, "Waiting for space, level %" PRIu64, bp->level);
         cmb_resourceguard_signal(&(bp->front_guard));
         const int64_t sig = cmb_resourceguard_wait(&(bp->rear_guard),
                                                    buffer_has_space,

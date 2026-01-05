@@ -20,7 +20,7 @@
  */
 
 /*
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,9 @@
 /**
  * @brief Unlimited queue size
  */
-#define CMB_OBJECTQUEUE_UNLIMITED UINT64_MAX
+#ifndef CMB_UNLIMITED
+  #define CMB_UNLIMITED UINT64_MAX
+#endif
 
 /**
  * @brief A fixed capacity queue for passing arbitrary objects from one or more
@@ -64,7 +66,6 @@ struct cmb_objectqueue {
     struct queue_tag *queue_end;            /**< The tail of the queue, `NULL` if empty */
     bool is_recording;                      /**< Is it recording its history? */
     struct cmb_timeseries history;          /**< History of queue lengths */
-    struct cmb_dataset wait_times;          /**< Additional data set for history of waiting times */
 };
 
 /**
@@ -145,7 +146,7 @@ extern int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp,
  * @param oqp Pointer to an object queue
  * @return A null-terminated string containing the name of the object queue.
  */
-static inline const char *cmb_objectqueue_get_name(struct cmb_objectqueue *oqp)
+static inline const char *cmb_objectqueue_name(struct cmb_objectqueue *oqp)
 {
     cmb_assert_debug(oqp != NULL);
 
@@ -204,22 +205,12 @@ extern void cmb_objectqueue_stop_recording(struct cmb_objectqueue *oqp);
  * @param oqp Pointer to an object queue
  * @return Pointer to a `cmb_timeseries` containing the queue length history.
  */
-extern struct cmb_timeseries *cmb_objectqueue_get_history(struct cmb_objectqueue *oqp);
+extern struct cmb_timeseries *cmb_objectqueue_history(struct cmb_objectqueue *oqp);
 
 /**
- * @brief Get the recorded data set of waiting times. A dataset, not a time
- * series, since each sample value is associated with an object, not a point in
- * time.
- *
- * @param oqp Pointer to an object queue
- * @return Pointer to a `cmb_dataset` containing the waiting times.
- */
-extern struct cmb_dataset *cmb_objectqueue_get_waiting_times(struct cmb_objectqueue *oqp);
-
-/**
- * @brief Print a simple text mode report of the queue lengths and waiting times,
- *        including key statisticcal metrics and histograms. Mostly intended for
- *        debugging purposes, not presentation graphics.
+ * @brief Print a simple text mode report of the queue lengths, including key
+ *        statistical metrics and histograms. Mostly intended for debugging
+ *        purposes, not presentation graphics.
  *
  * @param oqp Pointer to an object queue
  * @param fp File pointer, possibly `stdout`.

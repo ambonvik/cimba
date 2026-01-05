@@ -1,7 +1,7 @@
 /*
 * Test script for queues
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,13 +61,11 @@ static void end_sim_evt(void *subject, void *object)
     cmb_event_queue_clear();
 }
 
-void *putterfunc(struct cmb_process *me, void *ctx)
+void *putterfunc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
-    cmb_assert_release(ctx != NULL);
-    struct cmb_objectqueue *qp = (struct cmb_objectqueue *)ctx;
-
-    void *object = NULL;
+    cmb_assert_release(vctx != NULL);
+    struct cmb_objectqueue *qp = (struct cmb_objectqueue *)vctx;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
@@ -80,11 +78,12 @@ void *putterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
         }
 
+        void *object = cmi_mempool_get(&cmi_mempool_8b);
         cmb_logger_user(stdout,
                         USERFLAG1,
                         "Putting object %p into %s...",
                         object,
-                        cmb_objectqueue_get_name(qp));
+                        cmb_objectqueue_name(qp));
 
         sig = cmb_objectqueue_put(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
@@ -92,6 +91,7 @@ void *putterfunc(struct cmb_process *me, void *ctx)
         }
         else {
             cmb_logger_user(stdout, USERFLAG1, "Put returned signal %" PRIi64, sig);
+            cmi_mempool_put(&cmi_mempool_8b, object);
         }
     }
 }
@@ -102,8 +102,6 @@ void *getterfunc(struct cmb_process *me, void *ctx)
     cmb_assert_release(ctx != NULL);
 
     struct cmb_objectqueue *qp = (struct cmb_objectqueue *) ctx;
-
-    void *object = NULL;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
@@ -119,11 +117,12 @@ void *getterfunc(struct cmb_process *me, void *ctx)
         cmb_logger_user(stdout,
                         USERFLAG1,
                         "Getting object from %s...",
-                        cmb_objectqueue_get_name(qp));
-
+                        cmb_objectqueue_name(qp));
+        void *object = NULL;
         sig = cmb_objectqueue_get(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Get succeeded");
+            cmi_mempool_put(&cmi_mempool_8b, object);
         }
         else {
             cmb_logger_user(stdout, USERFLAG1, "Get returned signal %" PRIi64, sig);
@@ -161,7 +160,7 @@ void test_queue(double duration)
     struct simulation *quetst = cmi_malloc(sizeof(*quetst));
     cmi_memset(quetst, 0, sizeof(*quetst));
 
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
     printf("seed: %" PRIx64 "\n", seed);
 
@@ -201,7 +200,7 @@ void test_queue(double duration)
         cmb_process_start(quetst->getters[ui]);
     }
 
-    printf("Create a bloody nuisance\n");
+    printf("Create a nuisance\n");
     quetst->nuisance = cmb_process_create();
     cmb_process_initialize(quetst->nuisance, "Nuisance", nuisancefunc, quetst, 0);
     cmb_process_start(quetst->nuisance);

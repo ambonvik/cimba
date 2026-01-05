@@ -61,11 +61,11 @@ static void end_sim_evt(void *subject, void *object)
     cmb_event_queue_clear();
 }
 
-void *putterfunc(struct cmb_process *me, void *ctx)
+void *putterfunc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
-    cmb_assert_release(ctx != NULL);
-    struct cmb_buffer *bp = (struct cmb_buffer *) ctx;
+    cmb_assert_release(vctx != NULL);
+    struct cmb_buffer *bp = (struct cmb_buffer *) vctx;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
@@ -164,7 +164,7 @@ void test_queue(const double duration)
     struct simulation *thesim = cmi_malloc(sizeof(*thesim));
     cmi_memset(thesim, 0, sizeof(*thesim));
 
-    const uint64_t seed = cmb_random_get_hwseed();
+    const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
     printf("seed: %" PRIx64 "\n", seed);
 

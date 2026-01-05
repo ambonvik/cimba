@@ -12,7 +12,7 @@
  * The queue_tags and their memory pool is defined here, since they are only
  * used internally by the cmb_objectqueue class.
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,12 +40,9 @@
 
 /*
  * struct queue_tag : A tag for the singly linked list that is a queue.
- * Padded by 8 bytes to add up to a 32-byte object.
  */
 struct queue_tag {
     struct queue_tag *next;
-    double timestamp;
-    uint64_t padding;
     void *object;
 };
 
@@ -79,7 +76,6 @@ void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
 
     oqp->is_recording = false;
     cmb_timeseries_initialize(&(oqp->history));
-    cmb_dataset_initialize(&(oqp->wait_times));
 }
 
 void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
@@ -96,7 +92,6 @@ void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
     oqp->queue_head = NULL;
     oqp->queue_end = NULL;
 
-    cmb_dataset_terminate(&(oqp->wait_times));
     cmb_timeseries_terminate(&(oqp->history));
 
     cmb_resourceguard_terminate(&(oqp->rear_guard));
@@ -148,10 +143,6 @@ static bool has_space(const struct cmi_resourcebase *rbp,
     return (oqp->length < oqp->capacity);
 }
 
-/*
- * Record queue length, the waiting times will be updated when objects
- * leave the cmb_objectqueue
- */
 static void record_sample(struct cmb_objectqueue *oqp) {
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
@@ -180,20 +171,12 @@ void cmb_objectqueue_stop_recording(struct cmb_objectqueue *oqp)
     oqp->is_recording = false;
 }
 
-struct cmb_timeseries *cmb_objectqueue_get_history(struct cmb_objectqueue *oqp)
+struct cmb_timeseries *cmb_objectqueue_history(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
     return &(oqp->history);
-}
-
-struct cmb_dataset *cmb_queue_get_wait_times(struct cmb_objectqueue *oqp)
-{
-    cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
-
-    return &(oqp->wait_times);
 }
 
 void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp) {
@@ -210,14 +193,6 @@ void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp) {
 
     const unsigned nbin = (oqp->capacity > 20) ? 20 : oqp->capacity + 1;
     cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(oqp->capacity + 1u));
-
-    fprintf(fp, "Waiting times for %s:\n", oqp->core.name);
-    struct cmb_datasummary *ds = cmb_datasummary_create();
-    (void)cmb_dataset_summarize(&(oqp->wait_times), ds);
-    cmb_datasummary_print(ds, fp, true);
-    cmb_wtdsummary_destroy(ws);
-
-    cmb_dataset_print_histogram(&(oqp->wait_times), fp, nbin, 0.0, (double)(oqp->capacity + 1u));
 }
 
 int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
@@ -228,15 +203,15 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
+    cmb_logger_info(stdout, "Gets an object from %s, length now %" PRIu64,
+                    rbp->name, oqp->length);
     while (true) {
         cmb_assert_debug(oqp->length <= oqp->capacity);
-        cmb_logger_info(stdout, "Gets an object from %s, length now %" PRIu64,
-                        rbp->name, oqp->length);
 
         if (oqp->queue_head != NULL) {
             /* There is one ready */
             struct queue_tag *tag = oqp->queue_head;
-            cmb_assert_debug(sizeof(*tag) == 32u);
+            cmb_assert_debug(sizeof(*tag) == 16u);
             oqp->queue_head = tag->next;
             oqp->length--;
             if (oqp->queue_head == NULL) {
@@ -246,7 +221,6 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
             *objectloc = tag->object;
             if (oqp->is_recording) {
                 record_sample(oqp);
-                cmb_dataset_add(&(oqp->wait_times), cmb_time() - tag->timestamp);
             }
 
             cmb_logger_info(stdout, "Success, got %p", *objectloc);
@@ -287,25 +261,14 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_logger_info(stdout, "Puts object %p into %s, length %" PRIu64,
+                    *objectloc, rbp->name, oqp->length);
     while (true) {
         cmb_assert_debug(oqp->length <= oqp->capacity);
-        if (oqp->capacity == CMB_OBJECTQUEUE_UNLIMITED) {
-            cmb_logger_info(stdout,
-                            "%s capacity unlimited, length now %" PRIu64,
-                            rbp->name, oqp->length);
-        }
-        else {
-            cmb_logger_info(stdout,
-                            "%s capacity %" PRIu64 ", length now %" PRIu64,
-                            rbp->name, oqp->capacity, oqp->length);
-        }
-
-        cmb_logger_info(stdout, "Puts object %p into %s", *objectloc, rbp->name);
         if (oqp->length < oqp->capacity) {
             /* There is space */
             struct queue_tag *tag = cmi_mempool_get(&cmi_mempool_32b);
             tag->object = *objectloc;
-            tag->timestamp = cmb_time();
             tag->next = NULL;
 
             if (oqp->queue_head == NULL) {
@@ -337,7 +300,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
         }
         else {
             cmb_logger_info(stdout,
-                            "Interrupted by signal %" PRIi64 ", returns without putting object %p into %s",
+                            "Interrupted by signal %" PRIi64 ", could not put object %p into %s",
                             sig, *objectloc, rbp->name);
             cmb_assert_debug(oqp->length <= oqp->capacity);
 

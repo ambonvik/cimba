@@ -15,7 +15,7 @@
  */
 
 /*
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,9 @@
 /**
  * @brief Unlimited buffer size
  */
-#define CMB_BUFFER_UNLIMITED UINT64_MAX
+#ifndef CMB_UNLIMITED
+  #define CMB_UNLIMITED UINT64_MAX
+#endif
 
 /**
  * A `cmb_buffer` has two resource guards, one for get (front) and one for put
@@ -211,7 +213,7 @@ extern void cmb_buffer_stop_recording(struct cmb_buffer *bp);
  * @param bp Pointer to the buffer object.
  * @return Pointer to a `cmb_timeseries`containing the buffer level history.
  */
-extern struct cmb_timeseries *cmb_buffer_get_history(struct cmb_buffer *bp);
+extern struct cmb_timeseries *cmb_buffer_history(struct cmb_buffer *bp);
 
 /**
  * @brief Print a simple text mode report of the buffer levels, including key
