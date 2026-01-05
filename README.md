@@ -64,12 +64,14 @@ It is fast, powerful, reliable, and free.
 * *Free*: Cimba should fit well into the budget of most research groups.
 
 ### What can I use Cimba for?
-It is a general-purpose discrete event library, in the spirit of a
-21st century descendant of Simula67. You can use it to model
+It is a general-purpose discrete event simulation library, in the spirit of a
+21st century descendant of Simula67. You can use it to model, e.g.
 * computer networks,
 * operating system task scheduling, 
 * transportation networks, 
+* manufacturing systems and job shops,
 * queuing systems like bank tellers and store checkouts,
+* urban systems like emergency services and garbage collection,
 * military command and control systems,
 * and quite a few more application domains.
 

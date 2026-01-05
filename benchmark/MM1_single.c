@@ -79,8 +79,7 @@ void *servicefunc(struct cmb_process *me, void *vctx)
         const double *dblp = object;
         const double t_srv = cmb_random_exponential(mean_srv);
         cmb_process_hold(t_srv);
-        const double t_sys = cmb_time() - *dblp;
-        *sum += t_sys;
+        *sum += cmb_time() - *dblp;
         *cnt += 1u;
         cmi_mempool_put(&cmi_mempool_8b, object);
     }

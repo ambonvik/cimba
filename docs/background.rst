@@ -992,8 +992,7 @@ The exact same model would look like this in Cimba:
             const double *dblp = object;
             const double t_srv = cmb_random_exponential(mean_srv);
             cmb_process_hold(t_srv);
-            const double t_sys = cmb_time() - *dblp;
-            *sum += t_sys;
+            *sum += cmb_time() - *dblp;
             *cnt += 1u;
             cmi_mempool_put(&cmi_mempool_8b, object);
         }
@@ -1091,10 +1090,17 @@ million events / second) than what SimPy can do if it has all 64 logical cores t
 
 .. image:: ../images/Speed_test_AMD_3970x.png
 
+Moreover, Cimba's stackful coroutines allow calls to context-switching functions (like
+``cmb_process_hold()`` or ``cmb_resource_acquire()``) from arbitrary deep within
+function call hierarchies. Control will leave the call stack where it is and pick up
+again from the same point when control is passed back into that ``cmb_process``.  A Python
+``generator`` cannot do this, effectively limiting SimPy to relatively simple
+simulations where all ``yield`` statements can be within the same function.
+
 Our (admittedly biased) view is that SimPy is good for simple one-off simulations,
 where learning curve and development time are the critical constraints, while Cimba
-is preferred for larger and more long-lived models where run time and efficiency become
-important.
+is better for larger, more complex, and more long-lived models where run time and
+efficiency become important.
 
 How About the Name 'Cimba'?
 ---------------------------
