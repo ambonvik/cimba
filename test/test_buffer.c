@@ -183,7 +183,8 @@ void test_queue(const double duration)
         thesim->putters[ui] = cmb_process_create();
         snprintf(scratchpad, sizeof(scratchpad), "Putter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(thesim->putters[ui], scratchpad, putterfunc, thesim->buf, pri);
+        cmb_process_initialize(thesim->putters[ui], scratchpad, putterfunc, thesim->buf,
+            pri);
         cmb_process_start(thesim->putters[ui]);
     }
 
@@ -192,7 +193,8 @@ void test_queue(const double duration)
         thesim->getters[ui] = cmb_process_create();
         snprintf(scratchpad, sizeof(scratchpad), "Getter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(thesim->getters[ui], scratchpad, getterfunc, thesim->buf, pri);
+        cmb_process_initialize(thesim->getters[ui], scratchpad, getterfunc, thesim->buf,
+            pri);
         cmb_process_start(thesim->getters[ui]);
     }
 

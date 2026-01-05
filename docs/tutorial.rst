@@ -240,7 +240,7 @@ before it yields control to the dispatcher. When executed, this event will *resu
 the coroutine where it left off, returning through the ``cmb_process_hold()`` call with a
 return value that indicates normal or abnormal return. (We have ignored the
 return values for now in the example above.) So, whenever there are more than
-one process running, there will be future events scheduled in the event queue.
+one process running, there may be future events scheduled in the event queue.
 
 To stop the simulation, we simply schedule an "end simulation" event, which
 stops any running processes at that point. The dispatcher then ends the run.

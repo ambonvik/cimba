@@ -852,8 +852,8 @@ Two less obvious features to be aware of, perhaps less useful, but still:
   construct a discrete event simulation engine that could be run in that wrapper like
   Cimba 2.0 did in its trans-Atlantic distributed simulation of 1995.
 
-Benchmarking it against SimPy
------------------------------
+Benchmarking Cimba Against SimPy
+--------------------------------
 
 The most relevant comparison is probably the Python package SimPy (https://pypi.org/project/simpy/),
 since it provides similar functionality to Cimba, only with Python as its base language
@@ -960,7 +960,7 @@ The exact same model would look like this in Cimba:
         struct trial *trl;
     };
 
-    void *putterfunc(struct cmb_process *me, void *vctx)
+    void *arrivalfunc(struct cmb_process *me, void *vctx)
     {
         cmb_unused(me);
         const struct context *ctx = vctx;
@@ -978,7 +978,7 @@ The exact same model would look like this in Cimba:
         return NULL;
     }
 
-    void *getterfunc(struct cmb_process *me, void *vctx)
+    void *servicefunc(struct cmb_process *me, void *vctx)
     {
         cmb_unused(me);
         const struct context *ctx = vctx;
@@ -1015,10 +1015,10 @@ The exact same model would look like this in Cimba:
         cmb_objectqueue_initialize(sim->queue, "Queue", CMB_UNLIMITED);
 
         sim->putter = cmb_process_create();
-        cmb_process_initialize(sim->putter, "Putter", putterfunc, ctx, 0);
+        cmb_process_initialize(sim->putter, "Putter", arrivalfunc, ctx, 0);
         cmb_process_start(sim->putter);
         sim->getter = cmb_process_create();
-        cmb_process_initialize(sim->getter, "Getter", getterfunc, ctx, 0);
+        cmb_process_initialize(sim->getter, "Getter", servicefunc, ctx, 0);
         cmb_process_start(sim->getter);
 
         cmb_event_queue_execute();
@@ -1082,20 +1082,21 @@ Both programs produce a one-liner output similar to this:
     Average system time 10.000026 (n 100, conf.int. 9.964877 - 10.035176, expected 10.000000)
 
 However, the Cimba experiment can run its 100 trials in 0.56 second, while the SimPy
-version takes 25.5 seconds to do the exact same thing. Cimba runs from 28 times faster on
-a single core to about *45 times faster* with all available cores in use.
+version takes 25.5 seconds to do the exact same thing. Cimba runs about *45 times faster*
+with all available cores in use.
 
-In fact, Cimba processes more simulated events per second on a single core (approx 20
-million events / second) than what SimPy can do if it has all 64 cores to itself (approx
-16 million events / second).
+In fact, Cimba processes 25 % more simulated events per second on a single core (approx 20
+million events / second) than what SimPy can do if it has all 64 logical cores to itself
+(approx 16 million events / second).
 
 .. image:: ../images/Speed_test_AMD_3970x.png
 
 Our (admittedly biased) view is that SimPy is good for simple one-off simulations,
 where learning curve and development time are the critical constraints, while Cimba
-should be preferred for larger models where run time and efficiency become important.
+is preferred for larger and more long-lived models where run time and efficiency become
+important.
 
-How about the name 'Cimba'?
+How About the Name 'Cimba'?
 ---------------------------
 
 Very simple. This is a simulation library in C, the author's initials are 'AMB', 'simba'
@@ -1108,7 +1109,7 @@ If in Doubt, Read the Source Code
 Please do read the source code if something seems unclear. It is written to be
 readable for humans, not just for the compiler. It is well commented and contains
 plentiful ``assert()`` statements that mercilessly enforce whatever condition they
-claim to be true at that point. You can consider the asserts trustworthy,
+state to be true at that point. You can consider the asserts trustworthy,
 self-enforcing documentation.
 
 The code is strongly influenced by the

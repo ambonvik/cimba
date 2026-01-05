@@ -29,8 +29,8 @@
 #define NUM_TRIALS 100
 
 struct simulation {
-    struct cmb_process *putter;
-    struct cmb_process *getter;
+    struct cmb_process *arrival;
+    struct cmb_process *service;
     struct cmb_objectqueue *queue;
 };
 
@@ -47,7 +47,7 @@ struct context {
     struct trial *trl;
 };
 
-void *putterfunc(struct cmb_process *me, void *vctx)
+void *arrivalfunc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     const struct context *ctx = vctx;
@@ -65,7 +65,7 @@ void *putterfunc(struct cmb_process *me, void *vctx)
     return NULL;
 }
 
-void *getterfunc(struct cmb_process *me, void *vctx)
+void *servicefunc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     const struct context *ctx = vctx;
@@ -101,17 +101,17 @@ void run_trial(void *vtrl)
     sim->queue = cmb_objectqueue_create();
     cmb_objectqueue_initialize(sim->queue, "Queue", CMB_UNLIMITED);
 
-    sim->putter = cmb_process_create();
-    cmb_process_initialize(sim->putter, "Putter", putterfunc, ctx, 0);
-    cmb_process_start(sim->putter);
-    sim->getter = cmb_process_create();
-    cmb_process_initialize(sim->getter, "Getter", getterfunc, ctx, 0);
-    cmb_process_start(sim->getter);
+    sim->arrival = cmb_process_create();
+    cmb_process_initialize(sim->arrival, "Arrival", arrivalfunc, ctx, 0);
+    cmb_process_start(sim->arrival);
+    sim->service = cmb_process_create();
+    cmb_process_initialize(sim->service, "Service", servicefunc, ctx, 0);
+    cmb_process_start(sim->service);
 
     cmb_event_queue_execute();
 
-    cmb_process_terminate(sim->putter);
-    cmb_process_terminate(sim->getter);
+    cmb_process_terminate(sim->arrival);
+    cmb_process_terminate(sim->service);
 
     cmb_objectqueue_destroy(sim->queue);
     cmb_event_queue_terminate();
@@ -138,7 +138,7 @@ int main(void)
     struct cmb_datasummary summary;
     cmb_datasummary_initialize(&summary);
     for (unsigned ui = 0; ui < NUM_TRIALS; ui++) {
-        const double avg_tsys = experiment[ui].sum_wait / experiment[ui].obj_cnt;
+        const double avg_tsys = experiment[ui].sum_wait / (double)(experiment[ui].obj_cnt);
         cmb_datasummary_add(&summary, avg_tsys);
     }
 
