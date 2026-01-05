@@ -859,7 +859,7 @@ The most relevant comparison is probably the Python package SimPy (https://pypi.
 since it provides similar functionality to Cimba, only with Python as its base language
 instead of C. SimPy emphasises ease of use as a main design objective, following the
 overall Python philosophy, while Cimba (being a C library) has a natural emphasis on
-speed.
+speed. The current SimPy version is 4.1.1.
 
 In the ``benchmark`` directory, you will find examples of the same simulated scenario
 implemented in SimPy and Cimba. A complete multithreaded M/M/1 queue simulation could
@@ -1081,7 +1081,7 @@ Both programs produce a one-liner output similar to this:
 
     Average system time 10.000026 (n 100, conf.int. 9.964877 - 10.035176, expected 10.000000)
 
-However, the Cimba experiment can run its 100 trials in 0.56 second, while the SimPy
+However, the Cimba experiment can run its 100 trials in 0.56 seconds, while the SimPy
 version takes 25.5 seconds to do the exact same thing. Cimba runs about *45 times faster*
 with all available cores in use.
 
