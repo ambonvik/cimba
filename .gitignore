@@ -160,6 +160,13 @@ docs/latex/
 docs/html/
 docs/api/
 
+# Python venv
+benchmark/venv/
+
+# profiler output
+perf.data
+perf.data.old
+
 # Nuclear option
 .idea
 .vscode
