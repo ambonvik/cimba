@@ -220,8 +220,8 @@ int main(void)
     }
 }
 ```
-See our tutorial for more usage examples at https://cimba.readthedocs.
-io/en/latest/tutorial.html
+See our tutorial for more usage examples at 
+https://cimba.readthedocs.io/en/latest/tutorial.html
 
 ### So, what can I use all that speed for?
 As shown above, it is some 45 times faster than SimPy in a relevant benchmark. 
@@ -229,7 +229,7 @@ This means getting your results almost immediately rather than after a "go brew 
 coffee" delay breaking your line of thought.
 
 For another illustration of how to benefit from the sheer speed, the experiment in 
-`test/test_cimba.c <https://github.com/ambonvik/cimba/blob/main/test/test_cimba.c>`_ 
+[test_cimba.c](test/test_cimba.c)
 simulates an M/G/1 queue at four different levels of 
 service process variability. For each variability level, it tries 
 five system utilization levels. There are ten replications for each parameter 

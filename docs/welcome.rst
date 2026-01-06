@@ -61,20 +61,28 @@ It is powerful, fast, reliable, and free.
 What can I use Cimba for?
 -------------------------
 
-It is a general purpose discrete event library, in the spirit of a
+It is a general purpose discrete event simulation library, in the spirit of a
 21st century descendant of Simula67. It may be the right tool for the job if you need
 quantitative performance analysis of some system that is so complex that it is
 not possible to derive an analytical solution, but where the behavior and interactions
 of the constituent parts can be described in C code. For example, you can use it
 to model:
+
 * computer networks,
+
 * operating system task scheduling,
+
 * transportation networks,
+
 * manufacturing systems and job shops,
+
 * queuing systems like bank tellers and store checkouts,
+
 * urban systems like emergency services and garbage collection,
+
 * military command and control systems,
-* and quite a few more application domains.
+
+* and many other application domains.
 
 See the tutorials for illustrations of both expressive power and how to use
 it for multi-threaded computing power.
