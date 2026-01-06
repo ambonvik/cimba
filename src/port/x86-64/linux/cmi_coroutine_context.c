@@ -136,7 +136,7 @@ void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
 void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
-    cmb_assert_debug(cp->stack != NULL),
+    cmb_assert_debug(cp->stack != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
 
     /* Make sure we can recognize if something overwrites the end of stack */
