@@ -200,7 +200,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(objectloc != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     cmb_logger_info(stdout, "Gets an object from %s, length now %" PRIu64,
@@ -259,7 +259,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(objectloc != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_logger_info(stdout, "Puts object %p into %s, length %" PRIu64,
                     *objectloc, rbp->name, oqp->length);
