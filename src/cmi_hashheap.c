@@ -279,7 +279,7 @@ struct cmi_hashheap *cmi_hashheap_create(void)
  * Order by dkey only, only provided as a default convenience function.
  */
 static bool default_order_check(const struct cmi_heap_tag *a,
-                                 const struct cmi_heap_tag *b)
+                                const struct cmi_heap_tag *b)
 {
     cmb_assert_debug(a != NULL);
     cmb_assert_debug(b != NULL);
