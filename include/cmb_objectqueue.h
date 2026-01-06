@@ -60,10 +60,10 @@ struct cmb_objectqueue {
     struct cmi_resourcebase core;           /**< The virtual base class */
     struct cmb_resourceguard front_guard;   /**< Front waiting room for getters */
     struct cmb_resourceguard rear_guard;    /**< Rear waiting room for putters */
-    uint64_t capacity;                      /**< The maximum size, possibly `UINT64_MAX` for unlimited */
-    uint64_t length;                        /**< The current queue length */
     struct queue_tag *queue_head;           /**< The head of the queue, `NULL` if empty */
     struct queue_tag *queue_end;            /**< The tail of the queue, `NULL` if empty */
+    uint64_t capacity;                      /**< The maximum size, possibly `CMB_UNLIMITED` */
+    uint64_t length;                        /**< The current queue length */
     bool is_recording;                      /**< Is it recording its history? */
     struct cmb_timeseries history;          /**< History of queue lengths */
 };
