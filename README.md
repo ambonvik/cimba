@@ -4,9 +4,9 @@
 
 ### What is it?
 A fast discrete event simulation library written in C and assembly for
-both Linux and Windows on x86-64 architectures, providing process- and 
-event-oriented simulated world views combined with multithreaded coarse-trained 
-parallelism for high performance on modern CPUs. 
+both Linux and Windows, providing process- and event-oriented simulated world views 
+combined with multithreaded coarse-trained parallelism for high performance on modern CPUs. 
+Initially only for x86-64 architectures, ARM and Apple Silicon are planned next.
 
 The chart below shows the number of simulated events processed per second of wall 
 clock time with the same scenario, a simple M/M1 queue, implemented in SimPy and Cimba.
@@ -36,9 +36,6 @@ It is fast, powerful, reliable, and free.
     resource stores, buffers, object queues, and even condition variables where
     your simulated process can wait for arbitrarily complex conditions – essentially
     for anything you can express as a function returning a binary true or false result.
-
-  * Cimba processes can call Cimba process interactions from any point in its call 
-    stack, allowing complex models to be built with good 
 
   * A wide range of fast, high-quality random number generators, both
     of academically important and more empirically oriented types.

@@ -31,8 +31,12 @@ It is powerful, fast, reliable, and free.
   a few seconds, generating tight confidence intervals in your experiments and
   high density of data points along parameter variations.
 
-    * Cimba includes a wide range of fast, high quality random number generators, both
-      academically important and more empirically oriented types.
+    * Cimba supports both process- and event-based simulation world views, and
+      combinations of the two.
+
+    * Cimba processes are full asymmetric coroutines, making it possible to pass
+      control between processes at any depth of the call stack, not just in a single
+      generator function. This makes it possible to build large, well-structured models.
 
     * Cimba provides pre-packaged process interaction mechanisms like resources,
       resource stores, buffers, object queues, and even condition variables where
@@ -41,6 +45,9 @@ It is powerful, fast, reliable, and free.
 
     * Cimba includes powerful logging and data collection features that makes it easy
       to get a model running and understand what is happening inside it.
+
+    * Cimba includes a wide range of fast, high quality random number generators, both
+      academically important and more empirically oriented types.
 
 * *Fast*: The speed from multithreaded parallel execution translates to high
   resolution in your simulation modelling. You can run hundreds of replications
