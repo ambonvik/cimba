@@ -12,7 +12,7 @@ else:
     release = '3.0.0'
     version = release
 
-copyright = 'Asbjørn M. Bonvik 2025'
+copyright = 'Asbjørn M. Bonvik 2025-26'
 
 extensions = ['breathe', 'exhale']
 
