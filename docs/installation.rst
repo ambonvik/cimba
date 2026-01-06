@@ -22,7 +22,7 @@ Linux
 -----
 
 On Linux, open a terminal window, change directory to where you want to have the source
-code tree, and type these commands:
+code tree, and enter these commands:
 
 .. code-block:: bash
 
