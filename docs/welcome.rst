@@ -48,6 +48,11 @@ It is powerful, fast, reliable, and free.
   intervals in your experiments and high density of data points along parameter
   variations.
 
+  In a M/M/1 queue benchmark, Cimba runs about *45 times faster* than SimPy with all
+  available cores in use. This corresponds to a 97.8 % reduction in run time.
+
+  .. image:: ../images/Speed_test_AMD_3970x.png
+
 * *Reliable*: Cimba is well engineered, self-contained open source. There is no mystery to
   the results you get. Each simulated world sits inside its own thread.
 
@@ -57,22 +62,22 @@ What can I use Cimba for?
 -------------------------
 
 It is a general purpose discrete event library, in the spirit of a
-21st century descendant of Simula67. You can use it:
+21st century descendant of Simula67. It may be the right tool for the job if you need
+quantitative performance analysis of some system that is so complex that it is
+not possible to derive an analytical solution, but where the behavior and interactions
+of the constituent parts can be described in C code. For example, you can use it
+to model:
+* computer networks,
+* operating system task scheduling,
+* transportation networks,
+* manufacturing systems and job shops,
+* queuing systems like bank tellers and store checkouts,
+* urban systems like emergency services and garbage collection,
+* military command and control systems,
+* and quite a few more application domains.
 
-* as a collection of fast random number generators,
-
-* as a purely event-oriented simulation world view,
-
-* as a process-oriented simulation world view where your simulated entities take
-  on active behaviors and interact in complex ways with each other and with
-  passive objects,
-
-* as a wrapper for multi-threading concurrency on a modern multicore computer,
-
-* or as a mix of all of the above.
-
-See the tutorials for illustrations of both expressive power and multi-threaded
-computing power.
+See the tutorials for illustrations of both expressive power and how to use
+it for multi-threaded computing power.
 
 If you look under the hood, you will also find reusable internal components
 like stackful coroutines doing their own thing on thread-safe cactus stacks,
