@@ -225,7 +225,7 @@ void *cmb_process_exit_value(const struct cmb_process *pp)
 /*
  * cmb_process_current : Returns a pointer to the currently executing
  * process, i.e., the calling process itself. Returns NULL if called from outside
- * a named process, such as the main process that executes the event scheduler.
+ * a named process, such as the main process that executes the event dispatcher.
  */
 struct cmb_process *cmb_process_current(void)
 {
@@ -293,7 +293,7 @@ int64_t cmb_process_hold(const double dur)
     pp->waitsfor.handle = cmb_event_schedule(proc_holdwu_evt,
                                     pp, NULL, t, pri);
 
-    /* Yield to the scheduler and collect the return signal value */
+    /* Yield to the dispatcher and collect the return signal value */
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
 
     /* Back here again, possibly much later. */
@@ -363,7 +363,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
         pp->waitsfor.ptr = awaited;
         cmi_list_push(&(awaited->waiters_listhead), pp);
 
-        /* Yield to the scheduler and collect the return signal value */
+        /* Yield to the dispatcher and collect the return signal value */
         const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
 
         /* Possibly much later */
@@ -395,7 +395,7 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     struct cmi_list_tag **loc = cmi_event_tag_loc(ev_handle);
     cmi_list_push(loc, pp);
 
-    /* Yield to the scheduler and collect the return signal value */
+    /* Yield to the dispatcher and collect the return signal value */
     pp->waitsfor.type = CMI_WAITABLE_EVENT;
     pp->waitsfor.handle = ev_handle;
     const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
