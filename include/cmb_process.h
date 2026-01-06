@@ -92,7 +92,7 @@
 /**
  * @brief The states a process can be in (direct from the underlying coroutine)
  */
-enum cmb_process_status {
+enum cmb_process_state {
     CMB_PROCESS_CREATED = 0,
     CMB_PROCESS_RUNNING,
     CMB_PROCESS_FINISHED
@@ -342,13 +342,13 @@ extern void cmb_process_set_priority(struct cmb_process *pp, int64_t pri);
  *
  * @return The current state of the process and its underlying coroutine.
  */
-static inline enum cmb_process_status cmb_process_status(const struct cmb_process *pp)
+static inline enum cmb_process_state cmb_process_status(const struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
     const struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
 
-    return (enum cmb_process_status)(cp->status);
+    return (enum cmb_process_state)(cp->status);
 }
 
 /**
@@ -367,7 +367,7 @@ extern void *cmb_process_exit_value(const struct cmb_process *pp);
  *
  * @return Pointer to the currently executing process, `NULL` if called from
  * outside a named process, such as the main process that executes the event
- * scheduler.
+ * dispatcher.
  */
 extern struct cmb_process *cmb_process_current(void);
 
