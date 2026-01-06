@@ -185,13 +185,13 @@ coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
 coroutines, or even as a mix of those paradigms by mixing asymmetric yield/resume pairs
 with symmetric transfers. (Debugging such a program may become rather confusing, though.)
 
-Cimba Processes
----------------
+Cimba Processes Are Named, Asymmetric Coroutines
+------------------------------------------------
 
-Our coroutines are a bit *too* general and powerful for simulation modeling. We use these
-as internal building blocks for the Cimba *processes*. These are essentially named
+Our basic coroutines are a bit *too* general and powerful for simulation modeling. We use
+these as internal building blocks for the Cimba *processes*. These are essentially named
 asymmetric coroutines, inheriting all properties and methods from the coroutine class,
-and adding a name, a priority for scheduling processes, and pointers to things it may be
+adding a name, a priority for scheduling processes, and pointers to things it may be
 waiting for, resources it may be holding, and other processes that may be waiting for
 it. As asymmetric coroutines, the Cimba processes always transfer control to a single
 dispatcher process, and are always re-activated from the dispatcher process only.
@@ -358,7 +358,7 @@ time, execute the event, and repeat.
 
 An event may schedule, cancel, or re-prioritize other events, and in general change
 the state of the model in arbitrary and application-defined ways. This is why
-parallelizing a single model run is near impossible: The scheduler cannot know what
+parallelizing a single model run is near impossible: The dispatcher cannot know what
 event to execute next or what state the next event will encounter before the current event
 is finished executing.
 
