@@ -1,5 +1,5 @@
 /*
-* Test script for queues
+* Test script for priority queues
  *
  * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
@@ -19,9 +19,8 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <time.h>
 
-#include "cmb_objectqueue.h"
+#include "cmb_priorityqueue.h"
 #include "cmb_event.h"
 #include "cmb_logger.h"
 #include "cmb_process.h"
@@ -38,7 +37,7 @@ struct simulation {
     struct cmb_process *putters[NUM_PUTTERS];
     struct cmb_process *getters[NUM_PUTTERS];
     struct cmb_process *nuisance;
-    struct cmb_objectqueue *queue;
+    struct cmb_priorityqueue *queue;
 };
 
 static void end_sim_evt(void *subject, void *object)
@@ -63,9 +62,9 @@ static void end_sim_evt(void *subject, void *object)
 
 void *putterfunc(struct cmb_process *me, void *vctx)
 {
-    cmb_unused(me);
     cmb_assert_release(vctx != NULL);
-    struct cmb_objectqueue *qp = (struct cmb_objectqueue *)vctx;
+    struct cmb_priorityqueue *qp = (struct cmb_priorityqueue *)vctx;
+    const int64_t pri = cmb_process_priority(me);
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
@@ -81,11 +80,11 @@ void *putterfunc(struct cmb_process *me, void *vctx)
         void *object = cmi_mempool_get(&cmi_mempool_8b);
         cmb_logger_user(stdout,
                         USERFLAG1,
-                        "Putting object %p into %s...",
-                        object,
-                        cmb_objectqueue_name(qp));
+                        "Putting object %p priority %" PRIi64 " into %s...",
+                        object, pri,
+                        cmb_priorityqueue_name(qp));
 
-        sig = cmb_objectqueue_put(qp, &object);
+        sig = cmb_priorityqueue_put(qp, &object, pri);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Put succeeded");
         }
@@ -101,7 +100,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
 
-    struct cmb_objectqueue *qp = (struct cmb_objectqueue *) ctx;
+    struct cmb_priorityqueue *qp = (struct cmb_priorityqueue *) ctx;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
@@ -117,9 +116,9 @@ void *getterfunc(struct cmb_process *me, void *ctx)
         cmb_logger_user(stdout,
                         USERFLAG1,
                         "Getting object from %s...",
-                        cmb_objectqueue_name(qp));
+                        cmb_priorityqueue_name(qp));
         void *object = NULL;
-        sig = cmb_objectqueue_get(qp, &object);
+        sig = cmb_priorityqueue_get(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Get succeeded");
             cmi_mempool_put(&cmi_mempool_8b, object);
@@ -155,7 +154,7 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
     }
 }
 
-void test_queue(double duration)
+void test_priorityqueue(const double duration)
 {
     struct simulation *quetst = cmi_malloc(sizeof(*quetst));
     cmi_memset(quetst, 0, sizeof(*quetst));
@@ -164,14 +163,14 @@ void test_queue(double duration)
     cmb_random_initialize(seed);
     printf("seed: %" PRIx64 "\n", seed);
 
-    cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG1);
+    // cmb_logger_flags_off(CMB_LOGGER_INFO);
+    // cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
 
-    printf("Create a queue\n");
-    quetst->queue = cmb_objectqueue_create();
-    cmb_objectqueue_initialize(quetst->queue, "Queue", 10u);
-    cmb_objectqueue_start_recording(quetst->queue);
+    printf("Create a priority queue\n");
+    quetst->queue = cmb_priorityqueue_create();
+    cmb_priorityqueue_initialize(quetst->queue, "Queue", 10u);
+    cmb_priorityqueue_start_recording(quetst->queue);
 
     char scratchpad[32];
     printf("Create three processes feeding into the queue\n");
@@ -212,8 +211,8 @@ void test_queue(double duration)
     cmb_event_queue_execute();
 
     printf("Report statistics...\n");
-    cmb_objectqueue_stop_recording(quetst->queue);
-    cmb_objectqueue_print_report(quetst->queue, stdout);
+    cmb_priorityqueue_stop_recording(quetst->queue);
+    cmb_priorityqueue_print_report(quetst->queue, stdout);
 
     printf("Clean up\n");
     for (unsigned ui = 0; ui < 3; ui++) {
@@ -225,7 +224,7 @@ void test_queue(double duration)
 
     cmb_process_terminate(quetst->nuisance);
     cmb_process_destroy(quetst->nuisance);
-    cmb_objectqueue_destroy(quetst->queue);
+    cmb_priorityqueue_destroy(quetst->queue);
     cmb_event_queue_terminate();
     cmi_free(quetst);
 }
@@ -233,10 +232,10 @@ void test_queue(double duration)
 int main(void)
 {
     cmi_test_print_line("*");
-    printf("**************************   Testing object queues   ***************************\n");
+    printf("**************************   Testing priority queues   ***************************\n");
     cmi_test_print_line("*");
 
-    test_queue(1000000);
+    test_priorityqueue(1000000);
 
     cmi_test_print_line("*");
     return 0;
