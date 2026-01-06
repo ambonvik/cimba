@@ -10,7 +10,7 @@ necessary background for the project goals.
 Project History and Goals
 -------------------------
 
-Cimba 3.0.0 is released on GitHub as public beta in late 2025, but as the version number
+Cimba 3.0.0 was released on GitHub as public beta in late 2025, but as the version number
 indicates, there is some history before this first public release.
 
 The earliest ideas that eventually became Cimba date to work done at the Norwegian Defence
@@ -147,9 +147,9 @@ The *trampoline* is a function that gets pre-loaded onto a new coroutine's stack
 it starts executing. It is never called directly. Once started, the trampoline will
 call the actual coroutine function and then silently wait for it to return. If it ever
 does, the trampoline will catch it and call the ``exit()`` function with the
-return value as argument, giving exactly the same effect of a ``return ptr;`` as a
-``exit(ptr);``, because it becomes the same thing. The code is in the same assembly
-files as above, function ``cmi_coroutine_trampoline``.
+return value as argument, giving exactly the same effect of a ``return ptr`` statement
+as a ``exit(ptr)`` call, because it becomes the same thing. The code is in the same
+assembly files as above, function ``cmi_coroutine_trampoline``.
 
 The *data structure* ``struct cmi_coroutine`` is defined in `src/cmi_coroutine.h
 <https://github.com/ambonvik/cimba/blob/main/src/cmi_coroutine.h>`_. It
@@ -237,7 +237,7 @@ language feature. It uses concepts like *encapsulation*, *inheritance*, and
   then have a list of *shapes*, ask each one to *draw()* itself, and have the different
   subtypes of shapes do the appropriate thing.
 
-This can easily be implemented in a language like C, without explicit support from
+This can also be implemented in a language like C, without explicit support from
 programming language features. The key observation is that the first member of a C
 ``struct`` is guaranteed to have the same address in memory as the struct itself. We
 can then use structs as classes, encapsulating the properties of our "class" as struct

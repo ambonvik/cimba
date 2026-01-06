@@ -9,24 +9,10 @@ event-oriented simulated world views combined with multithreaded coarse-trained
 parallelism for high performance on modern CPUs. 
 
 The chart below shows the number of simulated events processed per second of wall 
-clock time with same scenario, a simple M/M1 queue, implemented in SimPy and Cimba.
-Cimba runs the scenario 45 times faster than SimPy.
+clock time with the same scenario, a simple M/M1 queue, implemented in SimPy and Cimba.
+Cimba runs the scenario 45 times faster than SimPy with all CPU cores in use.
 
 ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
-
-Parallelizing discrete event simulation is both a very hard and a trivially 
-simple problem, depending on the way you look at it. Parallelizing a single 
-simulation run is near impossible, since all events and processes inside the 
-simulated world depend on a shared time variable and cannot race ahead.
-
-Luckily, we almost never run only a _single_ simulation run, but a possibly 
-large experiment consisting of many trials (replications and parameter 
-combinations) to generate statistical results. These trials are _intended_
-to be independent trials, making them near-trivial to parallelize by simply
-running them all at the same time, or at least running as many as you have CPU 
-cores available for.
-
-Which is what Cimba does.
 
 ### Why should I use it?
 It is fast, powerful, reliable, and free.
@@ -37,10 +23,9 @@ It is fast, powerful, reliable, and free.
   intervals in your experiments and a high density of data points along parameter
   variations.
 
-  In the benchmark shown above, Cimba runs the same scenario about 28 times faster than 
-  SimPy on a single core and about *45 times faster* than SimPy + Python multiprocessing 
-  when all CPU cores are used. This translates into doing your simulation experiments in 
-  seconds instead of minutes, or in minutes instead of hours.
+  In the benchmark shown above, Cimba reduces the run time by 97.8 % compared to the 
+  same model in SimPy using all CPU cores. This translates into doing your simulation 
+  experiments in seconds instead of minutes, or in minutes instead of hours.
 
 * *Powerful*: Cimba provides a comprehensive toolkit for discrete event simulation:
 
@@ -51,7 +36,11 @@ It is fast, powerful, reliable, and free.
     resource stores, buffers, object queues, and even condition variables where
     your simulated process can wait for arbitrarily complex conditions – essentially
     for anything you can express as a function returning a binary true or false result.
-  
+
+  * Cimba processes can consist of many functions and can call Cimba process
+    interactions from any point in its call stack, allowing arbitrarily complex models
+    to be built.
+
   * A wide range of fast, high-quality random number generators, both
     of academically important and more empirically oriented types.
   
@@ -154,8 +143,7 @@ void *servicefunc(struct cmb_process *me, void *vctx)
         const double *dblp = object;
         const double t_srv = cmb_random_exponential(mean_srv);
         cmb_process_hold(t_srv);
-        const double t_sys = cmb_time() - *dblp;
-        *sum += t_sys;
+        *sum += cmb_time() - *dblp;
         *cnt += 1u;
         cmi_mempool_put(&cmi_mempool_8b, object);
     }
@@ -236,7 +224,7 @@ int main(void)
 See our tutorial for more examples, at https://cimba.readthedocs.io/en/latest/tutorial.html
 
 ### So, what can I use all that speed for?
-As shown above, it is some 25–50 times faster than SimPy in a relevant benchmark. 
+As shown above, it is some 45 times faster than SimPy in a relevant benchmark. 
 This means getting your results almost immediately rather than after a "go brew a pot of 
 coffee" delay breaking your line of thought.
 
@@ -267,8 +255,8 @@ modules form logical inheritance hierarchies, where e.g., a `cmb_process` is a
 derived subclass from a `cmi_coroutine`, inheriting all its methods and members.
 
 We distinguish between "is a" (inheritance) and "has a" (composition) relationships.
-For example, a `cmb_resource` _is a_ `cmi_holdable`, which _is a_ `cmi_resourcebase`
-(a virtual base class), while it _has a_ `cmb_resourceguard` maintaining an orderly
+For example, a `cmb_resource` _is a_ `cmi_holdable` (a virtual base class), while 
+it _has a_ `cmb_resourceguard` maintaining an orderly
 priority queue of waiting processes, where the `cmi_resourceguard` itself _is a_ 
 `cmi_hashheap`. Each class of objects has allocator, constructor, destructor, and
 de-allocator functions for an orderly object lifecycle, and where derived classes
