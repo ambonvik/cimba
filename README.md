@@ -37,9 +37,8 @@ It is fast, powerful, reliable, and free.
     your simulated process can wait for arbitrarily complex conditions – essentially
     for anything you can express as a function returning a binary true or false result.
 
-  * Cimba processes can consist of many functions and can call Cimba process
-    interactions from any point in its call stack, allowing arbitrarily complex models
-    to be built.
+  * Cimba processes can call Cimba process interactions from any point in its call 
+    stack, allowing complex models to be built with good 
 
   * A wide range of fast, high-quality random number generators, both
     of academically important and more empirically oriented types.
@@ -221,7 +220,8 @@ int main(void)
     }
 }
 ```
-See our tutorial for more examples, at https://cimba.readthedocs.io/en/latest/tutorial.html
+See our tutorial for more usage examples at https://cimba.readthedocs.
+io/en/latest/tutorial.html
 
 ### So, what can I use all that speed for?
 As shown above, it is some 45 times faster than SimPy in a relevant benchmark. 
@@ -229,7 +229,8 @@ This means getting your results almost immediately rather than after a "go brew 
 coffee" delay breaking your line of thought.
 
 For another illustration of how to benefit from the sheer speed, the experiment in 
-[test_cimba.c] (test/test_cimba.c) simulates an M/G/1 queue at four different levels of 
+`test/test_cimba.c <https://github.com/ambonvik/cimba/blob/main/test/test_cimba.c>`_ 
+simulates an M/G/1 queue at four different levels of 
 service process variability. For each variability level, it tries 
 five system utilization levels. There are ten replications for each parameter 
 combination, in total 4 * 5 * 10 = 200 trials. Each trial lasts for one million 
