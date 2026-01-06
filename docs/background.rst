@@ -462,9 +462,9 @@ provides four resource classes and one very general condition variable class. Tw
 the resource classes are holdable with acquire/release semantics, where ``cmb_resource``
 is a simple binary semaphore that only one process can hold at a time, while the
 ``cmb_resourcestore`` is a counting semaphore where several processes can hold some
-amount of the resource. The other two resource types have put/get semantics, where the
+amount of the resource. The other three resource types have put/get semantics, where the
 ``cmb_buffer`` only considers the number of units that goes in and out, while the
-``cmb_objectqueue`` allows individual pointers to objects.
+``cmb_objectqueue`` and ``cmb_priorityqueue`` allow individual pointers to objects.
 
 The common theme for all these is that a process requests something and may have to
 wait in an orderly priority queue for its turn if that something is not immediately

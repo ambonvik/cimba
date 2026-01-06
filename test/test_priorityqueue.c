@@ -163,8 +163,8 @@ void test_priorityqueue(const double duration)
     cmb_random_initialize(seed);
     printf("seed: %" PRIx64 "\n", seed);
 
-    // cmb_logger_flags_off(CMB_LOGGER_INFO);
-    // cmb_logger_flags_off(USERFLAG1);
+    cmb_logger_flags_off(CMB_LOGGER_INFO);
+    cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
 
     printf("Create a priority queue\n");

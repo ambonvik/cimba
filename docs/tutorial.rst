@@ -1972,9 +1972,9 @@ does not have any obvious meaning. If a buffer is empty, a process get call is w
 at the resource guard, and a higher priority process wants to get some first, it
 just calls ``cmb_buffer_get()`` and goes first in the priority queue.
 
-However, waiting puts and gets can still be interrupted. For the ``cmb_objectqueue``,
-it is very simple. If the ``cmb_objectqueue_put()`` (or ``_get()``) call
-returned ``CMB_PROCESS_SUCCESS`` the object was successfully added to the queue.
+However, waiting puts and gets can still be interrupted. For the ``cmb_objectqueue``
+and ``cmb_priorityqueue``, it is very simple. If the respective ``_put()`` or ``_get()``
+call returned ``CMB_PROCESS_SUCCESS`` the object was successfully added to the queue.
 If it returned anything else, it was not.
 
 The ``cmb_buffer`` is similarly intuitive. Recall from our first tutorial that
