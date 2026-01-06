@@ -18,11 +18,11 @@ desired_flags = ['-Wno-pedantic',
                  '-D_POSIX_C_SOURCE=200809L',
                  '-fno-semantic-interposition',
                  '-ftls-model=initial-exec',
-                 '-O3',
-                 '-flto=auto',
-                 '-fuse-linker-plugin',
-                 '-DNDEBUG',
-                 '-DNLOGINFO'
+#                 '-O2',
+#                 '-flto=auto',
+#                 '-fuse-linker-plugin',
+#                 '-DNDEBUG',
+#                 '-DNLOGINFO'
 ]
 supported_flags = cc.get_supported_arguments(desired_flags)
 add_project_arguments(supported_flags, language : 'c', native : true)

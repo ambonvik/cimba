@@ -112,6 +112,17 @@ test_objectqueue = executable('test_objectqueue',
 
 test('object_queue', test_objectqueue)
 
+test_priorityqueue = executable('test_priorityqueue',
+                              files('test_priorityqueue.c', 'test.h'),
+                              include_directories : [inc_api, inc_int],
+                              link_with : cimba_lib,
+                              dependencies : [project_deps],
+                              install : false,
+                              native : true
+)
+
+test('priority_queue', test_priorityqueue)
+
 test_process = executable('test_process',
                             files('test_process.c', 'test.h'),
                             include_directories : [inc_api, inc_int],

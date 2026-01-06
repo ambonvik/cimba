@@ -13,6 +13,7 @@ install_headers(
     'cmb_event.h',
     'cmb_logger.h',
     'cmb_objectqueue.h',
+    'cmb_priorityqueue.h',
     'cmb_process.h',
     'cmb_random.h',
     'cmb_resource.h',
