@@ -49,7 +49,9 @@ It is powerful, fast, reliable, and free.
   variations.
 
   In a M/M/1 queue benchmark, Cimba runs about *45 times faster* than SimPy with all
-  available cores in use. This corresponds to a 97.8 % reduction in run time.
+  available cores in use. This corresponds to a 97.8 % reduction in run time. In fact,
+  Cimba runs faster on a single core (left chart, about 20 million events per second)
+  than SimPy does with all 64 cores (right chart, about 16 million events per second).
 
   .. image:: ../images/Speed_test_AMD_3970x.png
 
@@ -65,8 +67,9 @@ It is a general purpose discrete event simulation library, in the spirit of a
 21st century descendant of Simula67. It may be the right tool for the job if you need
 quantitative performance analysis of some system that is so complex that it is
 not possible to derive an analytical solution, but where the behavior and interactions
-of the constituent parts can be described in C code. For example, you can use it
-to model:
+of the constituent parts can be described in C code.
+
+For example, you can use it to model:
 
 * computer networks,
 
