@@ -200,7 +200,7 @@ wait for some other process to finish, interrupt or stop other processes, wait f
 specific event, or even wait for some arbitrarily complex condition to become true.
 
 Since the simulated processes as asymmetric coroutines is fundamental to how Cimba
-works, we will explain precisely what happens during a context switch between processes.
+works, we will now look closely at what happens during a context switch between processes.
 
 Suppose we are running the M/M/1 simulation used to benchmark against SimPy,
 `benchmark/MM1_single.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`_.
