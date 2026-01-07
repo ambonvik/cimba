@@ -75,8 +75,7 @@ If you look under the hood, you will also find reusable internal components
 like stackful coroutines doing their own thing on thread-safe cactus stacks,
 fast memory pool allocators for generic small objects, and sophisticated data
 structures like hash-heaps combining a binary heap and an open addressing hash
-map with fibonacci hashing for fast access to various objects. These are not
-part of the public Cimba API but are used internally and part of the codebase.
+map with fibonacci hashing for fast access to various objects.
 
 ### What does the code look like?
 It is C11/C17. As an illustration, this is the entire code for our multithreaded M/M/1 
