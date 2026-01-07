@@ -105,9 +105,13 @@ map with fibonacci hashing for fast access to various objects.
 You had me at "free". How do I get my hands on Cimba?
 -----------------------------------------------------
 
-It is right here. You simply clone the repository from https://github.com/ambonvik/cimba,
+You simply clone the repository from https://github.com/ambonvik/cimba,
 build, and install it. You will need a C build chain and the Meson build manager.
 On Linux, you can use gcc or Clang, while the recommended approach on Windows is
 MinGW with its gcc compiler. For convenience, we use the CLion integrated
 development environment with built-in support for our build chain on both
 Linux and Windows.
+
+See also the
+`installation guide <https://cimba.readthedocs.io/en/latest/installation.html>`_
+for a more detailed description.
