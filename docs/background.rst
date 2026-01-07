@@ -443,7 +443,7 @@ Our process interactions are also events. For example, a process calling
 simulation time + 5.0 before it yields to the dispatcher. At some point, that event has
 bubbled up to the top of the priority queue and gets executed. Similarly, when a
 ``cmb_resourceguard`` wakes up a waiting process to inform it that "congratulations,
-you now hae the resource", it schedules an event at the current time with the process'
+you now have the resource", it schedules an event at the current time with the process'
 priority that actually resumes the process. This avoids long and complicated call
 stacks.
 
@@ -451,12 +451,16 @@ This also happens to be the reason why our events need to be (at least) a triple
 event to reactivate some process needs to contain the reactivation function, a pointer to
 the process, and a pointer to the context argument for its ``resume()`` call.
 
-Note that the event is not an object. It is ephemeral; once it has occurred, it is gone.
+Note that the event is *not* an object. It is ephemeral; once it has occurred, it is gone.
 You cannot take a pointer to an event. You can schedule an event as a triple ``(action,
 subject, object)`` for a certain point in time with a certain priority, and as we soon
 will see, you can cancel a scheduled event, reschedule it, or change its priority, but it
 is still not an object. In computer sciency terms, it is a *closure*, a function with a
 context to be executed at a future time and place.
+
+Events are instantaneous in simulated time and always execute on the main stack directly
+from the dispatcher. If an event function tries to call ``cmb_process_hold()`` it will try
+to put the dispatcher to sleep, which is not a good idea.
 
 The event queue also provides wildcard functions to search for, count, or cancel entries
 that match some combination of (action, subject, object). For this purpose,
@@ -471,7 +475,7 @@ The Hash-Heap - A Binary Heap Meets a Hash Map
 
 Since the basic discrete event simulation algorithm is all about inserting and
 retrieving events in a priority queue, the efficiency of this data structure and the
-algorithms acting on it becomes e key determinant of the overall application efficiency.
+algorithms acting on it becomes a key determinant of the overall application efficiency.
 
 Cimba uses a hash-heap data structure for this. It consists of two interconnected parts:
 
@@ -493,8 +497,10 @@ Cimba uses a hash-heap data structure for this. It consists of two interconnecte
 Once we have this module tightly packaged, it can be used elsewhere than just the main
 event queue. We use the same data structure for all priority queues of processes
 waiting for some resource, since our ``cmb_resourceguard`` is a derived class from
-``cmi_hashheap``. In our second tutorial, the LNG harbor simulation, we even used an
-instance of it at the modeling level to maintain the set of active ships in the model.
+``cmi_hashheap``. It is also used for the ``cmb_priorityqueue`` class of arbitrary
+objects passing from some producer to some consumer process. In our second tutorial, the
+LNG harbor simulation, we even used an instance of it at the modeling level to maintain
+the set of active ships in the model.
 
 Each entry in the hashheap array provides space for four 64-bit payload items, together
 with the event handle, a ``double``, and a signed 64-bit integer for use as prioritization
@@ -513,11 +519,11 @@ of the four positions. The parent class does not assign any particular meaning t
 payload values, just considers them raw binary data.
 
 For efficiency reasons, the hash table needs to be sized as a power of two. It will
-start small and grow if needed. Cimba initializes its event queue with only 8 slots in
+start small and grow as needed. Cimba initializes its event queue with only 8 slots in
 the heap and 16 in the hash map (guaranteeing <= 50 % hash map utilization before
 doubling). This way, the entire structure will fit well inside a 2K CPU L1 cache until
-it has to outgrow the cache. We do not want to penalize small simulation models for
-the ability to run very large ones.
+it has to outgrow the cache. We do not want to penalize the performance of small
+simulation models for the ability to run very large ones.
 
 Resources, Resource Guards, Demands and Conditions
 --------------------------------------------------
@@ -567,7 +573,7 @@ tutorial, it can include continuous-valued state variables.
 We believe that the open-ended flexibility of our demand predicate function,
 pre-packaged for the common resource types and exposed for the ``cmb_condition``, makes
 Cimba a very powerful and expressive simulation tool. There may also be a weak pun here
-on the C++ ``promise``: Cimba processes do not promise. They *demand*.
+somewhere on the C++ ``promise``: Cimba processes do not promise. They *demand*.
 
 Pseudo-Random Number Generators and Distributions
 -------------------------------------------------
