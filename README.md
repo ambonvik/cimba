@@ -227,9 +227,9 @@ See our tutorial for more usage examples at
 https://cimba.readthedocs.io/en/latest/tutorial.html
 
 ### So, what can I use all that speed for?
-As shown above, it is some 45 times faster than SimPy in a relevant benchmark. 
-This means getting your results almost immediately rather than after a "go brew a pot of 
-coffee" delay breaking your line of thought.
+As shown above, it is some 45 times faster than SimPy in a relevant benchmark. It means 
+getting your results almost immediately rather than after a "go brew a pot of coffee" 
+delay breaking your line of thought.
 
 For another illustration of how to benefit from the sheer speed, the experiment in 
 [test_cimba.c](test/test_cimba.c)
@@ -238,8 +238,8 @@ service process variability. For each variability level, it tries
 five system utilization levels. There are ten replications for each parameter 
 combination, in total 4 * 5 * 10 = 200 trials. Each trial lasts for one million 
 time units, where the average service time always is 1.0 time units. This entire 
-simulation runs in about 1.4 seconds on an AMD Threadripper 3970X with Arch Linux,
-processing some 500 million simulation events per second, and produces the chart below. 
+simulation runs in about 1.4 seconds on an AMD Threadripper 3970X with Arch Linux 
+and produces the chart below. 
 
 ![M/G/1 queue](images/MG1%20example.png)
 

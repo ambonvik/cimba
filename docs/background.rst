@@ -18,23 +18,23 @@ Research Establishment in the late 1980s. I built discrete event simulation mode
 in languages like Simscript and Simula67. Encountering Simula67's coroutines and
 object-orientation was revelatory in its essential *rightness*. However, Simula67 was
 still severely limited in many other respects and not really a practical option at that
-time. Our simulation models were quite large, for instance modelling the third world war
-in the airspace over Europe. The main language used was Simscript II.5.
+time. Our simulation models were quite large, up to several hundred thousand lines of
+code. The main language used was Simscript II.5.
 
 Around 1990, we started building discrete event simulation models in C++ as early adopters
-of that language. The first C++ models ran on VAXstations, where spawning a coroutine is
+of that language. The first C++ models ran on VAXstations where spawning a coroutine is
 a single assembly instruction. Trying to port that code to a Windows PC was a somewhat
 painful experience (and a complete failure). I actually complained to Bjarne Stroustrup in
 person about the inconsistent to non-existent support for Simula-like coroutines in C++ at
 a conference in Helsingør, probably in 1991. He seemed to agree but I silently resolved
-to build my next simulation model in pure Kernighan & Richie C. Which I did.
+to build my next simulation model in pure K&R C. Which I did.
 
 That opportunity arose at MIT around 1994, where I needed a discrete event simulation
 model for cross-checking analytical models of manufacturing systems. For perhaps obvious
 reasons, this was a clean sheet design with no code carried forward from the earlier
 C++ work at NDRE. It had a collection of standard random number generators and
 distributions, and used a linked list for its main event queue. It did the job, running
-on a Linux PC, but could be improved. In retrospect, we consider this Cimba version 1.0.
+on a Linux PC, but could be improved. In retrospect, I consider this Cimba version 1.0.
 
 For my PhD thesis research, I needed to run *many* simulations with various parameter
 combinations and replications. By then, I had realized that parallelizing a discrete
@@ -46,7 +46,7 @@ resources for, and use one computing node to dole out the jobs and collect the
 statistics.
 
 This was lashed together at the operating system process level using ``rsh`` and a Perl
-script to control the individual simulations on a cluster of workstations, and just to
+script to control the individual simulations on a cluster of workstations, and, just to
 make a point, on at least one computer back at the Norwegian Defence Research
 Establishment for a trans-Atlantic distributed simulation model. At the same time, the
 core discrete event simulation was rewritten in ANSI C with a binary heap event queue. It
@@ -63,18 +63,19 @@ CPU's, this time coded in C17. This is the present Cimba 3.0.
 The goals for Cimba 3.0 are quite similar to those for earlier versions:
 
 * Speed and efficiency, where small size in memory translates to execution speed on
-  modern CPUs with cached memory pipelines, and multithreading trials on CPU cores
+  modern CPUs with cached memory pipelines, and where multithreading on CPU cores
   provides the parallelism.
 
 * Portability, running both on Linux and Windows, initially limited to the AMD64 /
-  x86-64 architecture and GCC-like compilers.
+  x86-64 architecture and GCC-like compilers, with more architectures planned.
 
 * Expressive power, combining process-oriented and event-oriented simulation
   worldviews with a comprehensive collection of state-of-the-art pseudo-random number
   generators and distributions.
 
 * Robustness, using object-oriented design principles and comprehensive unit testing to
-  ensure that it works as expected (but do read the `Licence <https://github.com/ambonvik/cimba/blob/main/LICENSE>`_,
+  ensure that it works as expected (but do read the
+  `Licence <https://github.com/ambonvik/cimba/blob/main/LICENSE>`_,
   we are not making any warranties here).
 
 I believe that Cimba 3.0 meets these goals and hope you will agree.
@@ -186,8 +187,8 @@ coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
 coroutines, or even as a mix of those paradigms by mixing asymmetric yield/resume pairs
 with symmetric transfers. (Debugging such a program may become rather confusing, though.)
 
-Cimba Processes Are Named, Asymmetric Coroutines
-------------------------------------------------
+Cimba Processes Are Asymmetric Coroutines
+-----------------------------------------
 
 Our basic coroutines are a bit *too* general and powerful for simulation modeling. We use
 these as internal building blocks for the Cimba *processes*. These are essentially named
@@ -213,7 +214,7 @@ needs to be handed it as a callback function from the derived class at initializ
 Since the simulated processes as asymmetric coroutines is fundamental to how Cimba
 works, we will explain precisely what happens during a context switch between processes.
 
-Suppose we arerunning the M/M/1 simulation used to benchmark against SimPy,
+Suppose we are running the M/M/1 simulation used to benchmark against SimPy,
 `benchmark/MM1_single.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`_.
 We are running on a single CPU core. The queue is currently empty, the arrival process is
 holding, the service process has just woken up from its ``hold()``, and is now about to
@@ -227,7 +228,7 @@ The service process to the right (green) has the CPU and is executing user code 
 text). The main system stack is to the left. The dispatcher has executed the wakeup event
 that resumed the service process. It has stored its registers on the stack and transferred
 control to the service process. The main stack pointer is at the last register pushed to
-the stack.
+the stack, but itself safely stored to memory instead of the register.
 
 The arrival process is holding. That call caused a context switch, so its stack pointer
 is at the last register that was pushed to its stack. The difference from the
@@ -242,18 +243,19 @@ stacks look like this:
 
 The arrival process has saved its registers to the stack and its stack pointer to the
 appropriate member of our ``struct cmi_coroutine``. Control transfers to the dispatcher
-on the main stack:
+on the main stack by loading its stack pointer from memory to the register, and then
+popping the remaining register values from the stack.
 
 .. image:: ../images/stack_3.png
 
-The stack rapidly returns to the dispatcher loop in ``cmb_event_queue_execute()``,
-which pulls off and executes the next event from the event queue. That happens to be
+The stack rapidly returns up to the dispatcher loop in ``cmb_event_queue_execute()``,
+which now pulls off and executes the next event from the event queue. That happens to be
 another hold wakeup call. When executed, that event in turn resumes the target process,
 this time the arrival process. The asymmetric coroutine ``yield()``/``resume()`` pair
 is implemented by symmetric ``transfer()`` calls, which in turn triggers the context
 switch.
 
-At the end of this sequence, returning from one event and executing the next, the
+At this point, returned from one event and executing the next, the
 stacks look the same as in the previous illustration, just with different data values
 in the registers and stack variables.
 
@@ -263,14 +265,14 @@ into the appropriate register.
 .. image:: ../images/stack_4.png
 
 It pops the other saved register values from the stack and returns from the context
-call, which in turn returns back to the user code immediately after the arrival process
+call, which in turn returns back to the user code immediately after the
 ``hold()`` call in line 58 of
 `benchmark/MM1_single.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`_.
 At this point, the context switch from the service to the arrival process by way of
 the dispatcher is complete, the arrival process is executing user code, and the stacks
 look like this:
 
-.. image:: ../images/stack_4.png
+.. image:: ../images/stack_5.png
 
 Cimba can process some 20 million events like this per second on a single CPU core.
 
