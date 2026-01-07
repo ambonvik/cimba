@@ -451,16 +451,21 @@ This also happens to be the reason why our events need to be (at least) a triple
 event to reactivate some process needs to contain the reactivation function, a pointer to
 the process, and a pointer to the context argument for its ``resume()`` call.
 
-Note that the event is *not* an object. It is ephemeral; once it has occurred, it is gone.
-You cannot take a pointer to an event. You can schedule an event as a triple ``(action,
-subject, object)`` for a certain point in time with a certain priority, and as we soon
-will see, you can cancel a scheduled event, reschedule it, or change its priority, but it
-is still not an object. In computer sciency terms, it is a *closure*, a function with a
-context to be executed at a future time and place.
-
 Events are instantaneous in simulated time and always execute on the main stack directly
 from the dispatcher. If an event function tries to call ``cmb_process_hold()`` it will try
-to put the dispatcher to sleep, which is not a good idea.
+to put the event dispatcher itself to sleep, which is not a good idea.
+
+Events do not have a return value. There is nowhere to return the value to. There is
+nowhere to store a return value for later use either. An event function has signature
+``void foo(void*, void*)`` while a process function has signature
+``void *bar(void*, void*)``.
+
+An event is not even an object. It is ephemeral; once it has occurred, it is gone.
+You cannot take a pointer to an event. You can schedule an event as a triple ``(action,
+subject, object)`` to occur at a certain point in time with a certain priority, and as we
+soon will see, you can cancel a scheduled event, reschedule it, or change its priority,
+but it is still not an object. In computer sciency terms, it is a *closure*, a function
+with a context to be executed at a future time and place.
 
 The event queue also provides wildcard functions to search for, count, or cancel entries
 that match some combination of (action, subject, object). For this purpose,

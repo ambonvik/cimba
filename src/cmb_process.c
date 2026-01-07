@@ -280,6 +280,7 @@ int64_t cmb_process_hold(const double dur)
     const double t = cmb_time() + dur;
     struct cmb_process *pp = cmb_process_current();
     cmb_assert_debug(pp != NULL);
+    cmb_assert_debug(pp != (struct cmb_process *)cmi_coroutine_main());
 
     /* Not already holding, are we? */
     cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_NONE);
