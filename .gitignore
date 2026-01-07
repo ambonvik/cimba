@@ -167,6 +167,9 @@ benchmark/venv/
 perf.data
 perf.data.old
 
+# LibreOffice working files
+.~lock.*#
+
 # Nuclear option
 .idea
 .vscode
