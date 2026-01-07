@@ -131,55 +131,12 @@ function or by calling a special ``exit()`` function with an argument. These sho
 equivalent, and the exit value should be persistent after the coroutine execution ends.
 
 We are not aware of any open source coroutine implementation that exactly meets these
-requirements, so Cimba contains its own, built from the ground up. There are several
-parts to the Cimba coroutine implementation; the *context switch*, the *trampoline*,
-the *data structure* with the stack and stack pointer, and the *setup code*.
-
-The *context switch* is straightforward but system dependent assembly code. It stores
-the active registers from the current execution context, including the stack pointer,
-loads the target stack pointer and registers, puts the apparent return value into the
-correct register, and "returns" to wherever the target context came from. See the
-function ``cmi_coroutine_context_switch`` in
-`src/port/x86-64/linux/cmi_coroutine_context.asm <https://github.com/ambonvik/cimba/blob/main/src/port/x86-64/linux/cmi_coroutine_context.asm>`_
-and
-`src/port/x86-64/windows/cmi_coroutine_context.asm <https://github.com/ambonvik/cimba/blob/main/src/port/x86-64/windows/cmi_coroutine_context.asm>`_
-for Linux and Windows, respectively.
-
-The *trampoline* is a function that gets pre-loaded onto a new coroutine's stack before
-it starts executing. It is never called directly. Once started, the trampoline will
-call the actual coroutine function and then silently wait for it to return. If it ever
-does, the trampoline will catch it and call the appropriate ``exit()`` function with the
-return value as argument, giving exactly the same effect of a ``return`` statement
-as an ``exit()`` call, because it becomes the exact same thing. The code is in the same
-assembly files as above, function ``cmi_coroutine_trampoline``.
-
-The *data structure* ``struct cmi_coroutine`` is defined in `src/cmi_coroutine.h
-<https://github.com/ambonvik/cimba/blob/main/src/cmi_coroutine.h>`_. It
-contains pointers to the coroutine stack, its parent and latest caller coroutines, the
-coroutine function, its context argument, and the coroutine's status and exit value.
-
-Finally, the *setup code* initializes a new coroutine stack and makes it ready to start
-execution. This is system-dependent C code, function ``cmi_coroutine_context_init`` in
-`src/port/x86-64/linux/cmi_coroutine_context.c <https://github.com/ambonvik/cimba/blob/main/src/port/x86-64/linux/cmi_coroutine_context.c>`_
-and
-`src/port/x86-64/windows/cmi_coroutine_context.c <https://github.com/ambonvik/cimba/blob/main/src/port/x86-64/windows/cmi_coroutine_context.c>`_.
-Basically, it fakes the stack frame that a function would see when executing normally on
-the new stack, with the trampoline at its return address, and then transfers control into
-the new coroutine. This starts executing the trampoline function, which in turn starts the
-actual coroutine function as described above.
-
-This machinery is hidden from the user application which only needs to provide a
-coroutine function using the ``yield()``, ``resume()``, and/or ``transfer()`` primitives
-to run either asymmetric or symmetric coroutines. The coroutine function
-prototype is ``void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *context)``,
-i.e., a function that takes a pointer to a coroutine (itself) and a ``void *`` to some
-user application-defined context as arguments and returns a ``void *``.
-
-This gives us a very powerful set of coroutines, fulfilling all requirements to "full"
+requirements, so Cimba contains its own, built from the ground up in C and assembly. This
+gives us a powerful set of stackful coroutines, fulfilling all requirements to "full"
 coroutines, and in addition providing general mechanisms for communication between
 coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
 coroutines, or even as a mix of those paradigms by mixing asymmetric yield/resume pairs
-with symmetric transfers. (Debugging such a program may become rather confusing, though.)
+with symmetric transfers.(Debugging such a program may become rather confusing, though.)
 
 Cimba Processes Are Asymmetric Coroutines
 -----------------------------------------
