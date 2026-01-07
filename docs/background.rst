@@ -148,9 +148,9 @@ for Linux and Windows, respectively.
 The *trampoline* is a function that gets pre-loaded onto a new coroutine's stack before
 it starts executing. It is never called directly. Once started, the trampoline will
 call the actual coroutine function and then silently wait for it to return. If it ever
-does, the trampoline will catch it and call the ``exit()`` function with the
+does, the trampoline will catch it and call the appropriate ``exit()`` function with the
 return value as argument, giving exactly the same effect of a ``return`` statement
-as a ``exit()`` call, because it becomes the exact same thing. The code is in the same
+as an ``exit()`` call, because it becomes the exact same thing. The code is in the same
 assembly files as above, function ``cmi_coroutine_trampoline``.
 
 The *data structure* ``struct cmi_coroutine`` is defined in `src/cmi_coroutine.h
@@ -175,12 +175,6 @@ prototype is ``void *(cmi_coroutine_func)(struct cmi_coroutine *cp, void *contex
 i.e., a function that takes a pointer to a coroutine (itself) and a ``void *`` to some
 user application-defined context as arguments and returns a ``void *``.
 
-For even more flexibility, we also allow the user application to define what ``exit()``
-function to be called if/when the coroutine function returns. This may seem like an
-intricate way of calling the exit function indirectly by returning from the coroutine
-function instead of just calling it directly, but as we will see, we will use that
-feature at the next higher level.
-
 This gives us a very powerful set of coroutines, fulfilling all requirements to "full"
 coroutines, and in addition providing general mechanisms for communication between
 coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
@@ -204,12 +198,6 @@ amount of simulated time. Underneath this call are the asymmetric coroutine prim
 advanced by this amount). Processes can also ``acquire()`` and ``release()`` resources,
 wait for some other process to finish, interrupt or stop other processes, wait for some
 specific event, or even wait for some arbitrarily complex condition to become true.
-
-When initializing a process, we provide the process ``exit()`` function to be called by
-the coroutine trampoline if the process should ever return. The reason is simple:
-The parent coroutine class should not have any privileged knowledge about the content
-of its child classes. Hence the coroutine module cannot just hard-code this function, but
-needs to be handed it as a callback function from the derived class at initialization.
 
 Since the simulated processes as asymmetric coroutines is fundamental to how Cimba
 works, we will explain precisely what happens during a context switch between processes.
