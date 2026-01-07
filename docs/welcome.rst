@@ -26,10 +26,8 @@ Why should I use Cimba?
 
 It is powerful, fast, reliable, and free.
 
-* *Powerful*: The speed and expressivity translates to high resolution in your simulation
-  modelling. You can run hundreds of replications and parameter variations in
-  a few seconds, generating tight confidence intervals in your experiments and
-  high density of data points along parameter variations.
+* *Powerful*: Cimba provides a comprehensive toolkit for well-engineered discrete event
+  simulation models, including very large ones.
 
     * Cimba supports both process- and event-based simulation world views, and
       combinations of the two.
