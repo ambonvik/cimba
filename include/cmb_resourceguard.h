@@ -11,7 +11,7 @@
  */
 
 /*
- *Copyright (c) Asbjørn M. Bonvik 2025.
+ *Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,10 +50,10 @@ struct cmb_resourceguard {
 /**
  * @brief Function prototype for a resource demand predicate.
  *
+ * @memberof cmb_resourceguard
  * @param rbp Pointer to a resource base object.
  * @param pp Pointer to a process
  * @param ctx Pointer to whatever context is needed to determine the outcome.
- *
  * @return `true` if the demand is considered satisfied (e.g., a resource is
  *         available), `false` if not.
  */
@@ -64,6 +64,7 @@ typedef bool (cmb_resourceguard_demand_func)(const struct cmi_resourcebase *rbp,
 /**
  * @brief Make a resource guard ready for use.
  *
+ * @memberof cmb_resourceguard
  * @param rgp Pointer to a resource guard.
  * @param rbp Pointer to the thing it will be guarding.
  */
@@ -73,6 +74,7 @@ extern void cmb_resourceguard_initialize(struct cmb_resourceguard *rgp,
 /**
  * @brief  Un-initializes a resource guard.
  *
+ * @memberof cmb_resourceguard
  * @param rgp Pointer to a resource guard.
  */
 extern void cmb_resourceguard_terminate(struct cmb_resourceguard *rgp);
@@ -87,6 +89,7 @@ extern void cmb_resourceguard_terminate(struct cmb_resourceguard *rgp);
  * Returns whatever signal was received when the process was reactivated.
  * Cannot be called from the main process.
  *
+ * @memberof cmb_resourceguard
  * @param rgp Pointer to a resource guard.
  * @param demand Pointer to the demand predicate function
  * @param ctx The context argument to the demand predicate function.
@@ -120,6 +123,7 @@ extern int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
  * resume. If this sort of thing is important in your use case, you probably
  * want to write that code yourself.
  *
+ * @memberof cmb_resourceguard
  * @param rgp Pointer to a resource guard.
  */
 extern bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp);
@@ -131,6 +135,7 @@ extern bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp);
  * @param rgp Pointer to a resource guard.
  * @param pp Pointer to a process
  *
+ * @memberof cmb_resourceguard
  * @return `true` if the process was in the queue, `false` if not.
  */
 extern bool cmb_resourceguard_cancel(struct cmb_resourceguard *rgp,
@@ -142,6 +147,7 @@ extern bool cmb_resourceguard_cancel(struct cmb_resourceguard *rgp,
  * @param rgp Pointer to a resource guard.
  * @param pp Pointer to a process
  *
+ * @memberof cmb_resourceguard
  * @return `true` if the process was in the queue, `false` if not.
  */
 extern bool cmb_resourceguard_remove(struct cmb_resourceguard *rgp,
@@ -151,6 +157,7 @@ extern bool cmb_resourceguard_remove(struct cmb_resourceguard *rgp,
  * @brief Register another resource guard as an observer of this one, forwarding
  * signals and causing the observer to evaluate its demand predicates as well.
  *
+ * @memberof cmb_resourceguard
  * @param rgp Pointer to the subject resource guard.
  * @param obs Pointer to an observer resource guard.
  */
@@ -160,9 +167,9 @@ extern void cmb_resourceguard_register(struct cmb_resourceguard *rgp,
 /**
  * @brief Unregister another resource guard as an observer of this one.
  *
+ * @memberof cmb_resourceguard
  * @param rgp Pointer to the subject resource guard.
  * @param obs Pointer to an observer resource guard.
- *
  * @return `true` if the observer was registered, `false` if not.
  */
 extern bool cmb_resourceguard_unregister(struct cmb_resourceguard *rgp,

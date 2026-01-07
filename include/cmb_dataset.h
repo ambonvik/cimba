@@ -9,7 +9,7 @@
 
 /*
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ struct cmb_dataset {
  * Remember to call a matching `cmb_dataset_destroy` when done to avoid memory
  * leakage.
  *
+ * @memberof cmb_dataset
  * @return A freshly allocated dataset object.
  */
 extern struct cmb_dataset *cmb_dataset_create(void);
@@ -62,6 +63,7 @@ extern struct cmb_dataset *cmb_dataset_create(void);
 /**
  * @brief Initialize the dataset, clearing any data values.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to an already allocated dataset object.
  */
 extern void cmb_dataset_initialize(struct cmb_dataset *dsp);
@@ -69,6 +71,7 @@ extern void cmb_dataset_initialize(struct cmb_dataset *dsp);
 /**
  * @brief Re-initialize it, returning it to a newly initialized state.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to an already allocated dataset object.
  */
 extern void cmb_dataset_reset(struct cmb_dataset *dsp);
@@ -76,6 +79,7 @@ extern void cmb_dataset_reset(struct cmb_dataset *dsp);
 /**
  * @brief Un-initialize it, returning it to a newly created state.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to an already allocated dataset object.
  */
 extern void cmb_dataset_terminate(struct cmb_dataset *dsp);
@@ -83,9 +87,9 @@ extern void cmb_dataset_terminate(struct cmb_dataset *dsp);
 /**
  * @brief Copy `tgt` into `src`, overwriting whatever was in `tgt`.
  *
+ * @memberof cmb_dataset
  * @param tgt Pointer to the target dataset object.
  * @param src Pointer to the source dataset object.
- *
  * @return Number of data points copied.
  */
 extern uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
@@ -95,10 +99,10 @@ extern uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
  * @brief  Merge datasets `s1` and `s2` into dataset `tgt`.
  *         The target may or may not be one of the two sources, but not `NULL`.
  *
+ * @memberof cmb_dataset
  * @param tgt Pointer to the target dataset object.
  * @param s1 Pointer to the first source dataset object.
  * @param s2 Pointer to the second source dataset object.
- *
  * @return Number of data points in the merged data set.
  */
 extern uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
@@ -113,6 +117,7 @@ extern uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
  * `cmb_dataset_create`. Otherwise, only use `cmb_dataset_terminate` to
  * free the internal data array.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a previously allocated dataset object.
  */
 extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
@@ -120,6 +125,7 @@ extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
 /**
  * @brief  Sort the data array in ascending order
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  */
 extern void cmb_dataset_sort(const struct cmb_dataset *dsp);
@@ -127,9 +133,9 @@ extern void cmb_dataset_sort(const struct cmb_dataset *dsp);
 /**
  * @brief  Add a single value to a dataset, resizing the array as needed.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param x The new sample value to add.
- *
  * @return The new number of data values in the array.
  */
 extern uint64_t cmb_dataset_add(struct cmb_dataset *dsp, double x);
@@ -137,9 +143,9 @@ extern uint64_t cmb_dataset_add(struct cmb_dataset *dsp, double x);
 /**
  * @brief  Calculate summary statistics of the data series
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param dsump Pointer to a data summary object to store the results.
- *
  * @return The number of data values included in the summary.
  */
 extern uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
@@ -148,8 +154,8 @@ extern uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
 /**
  * @brief Count the number of data values.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
- *
  * @return The number of data values in the data set.
  */
 static inline uint64_t cmb_dataset_count(const struct cmb_dataset *dsp)
@@ -162,8 +168,8 @@ static inline uint64_t cmb_dataset_count(const struct cmb_dataset *dsp)
 /**
  * @brief The minimum sample value in the dataset.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
- *
  * @return The minimum data value in the data set, `DBL_MAX` if no data yet.
  */
 static inline double cmb_dataset_min(const struct cmb_dataset *dsp)
@@ -176,8 +182,8 @@ static inline double cmb_dataset_min(const struct cmb_dataset *dsp)
 /**
  * @brief The maximum sample value in the dataset.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
- *
  * @return The maximum data value in the data set, `-DBL_MAX` if no data yet.
  */
 static inline double cmb_dataset_max(const struct cmb_dataset *dsp)
@@ -193,8 +199,8 @@ static inline double cmb_dataset_max(const struct cmb_dataset *dsp)
  * May be somewhat time-consuming, since it first needs to sort the data array.
  * Calling it on an empty dataset will generate a warning and return zero.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
- *
  * @return The maximum data value in the data set, zero if no data yet.
  */
 extern double cmb_dataset_median(const struct cmb_dataset *dsp);
@@ -203,9 +209,9 @@ extern double cmb_dataset_median(const struct cmb_dataset *dsp);
  * @brief Calculate and print the "five-number" summary of dataset quantiles,
  *        i.e., minimum, first quartile, median, third quartile, and maximum.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly `stdout`
- *
  * @param lead_ins Flag for whether to add lead-in texts or just print the
  *                 numeric values.
  */
@@ -222,6 +228,7 @@ extern void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
 *
  *  Adds overflow bins to the ends of the range to catch anything outside.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly `stdout`
  * @param num_bins The number of bins, not including the two overflow bins
@@ -237,6 +244,7 @@ extern void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
 /**
  * @brief Print the raw data values in a single column.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly ``stdout``
  */
@@ -245,6 +253,7 @@ extern void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp);
 /**
  * @brief Calculate autocorrelation coefficients.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param n The highest lag value to calculate
  * @param acf The array where the acf's will be stored, size ``n + 1``
@@ -261,6 +270,7 @@ extern void cmb_dataset_ACF(const struct cmb_dataset *dsp,
  * argument ``acf[]``. If this argument is ``NULL``, they will be calculated
  * directly from the dataset during the call.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param n The highest lag value to calculate.
  * @param pacf The array where the pacf's will be stored, size ``n + 1``
@@ -281,6 +291,7 @@ extern void cmb_dataset_PACF(const struct cmb_dataset *dsp,
  *
  * To print PACFs, give a vector of PACFs as the ``acf`` argument.
  *
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly ``stdout``
  * @param n The highest lag value to calculate.

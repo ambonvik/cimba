@@ -48,6 +48,7 @@ struct cmb_resource {
 /**
  * @brief Allocate memory for a resource object.
  *
+ * @memberof cmb_resource
  * @return Pointer to the newly created resource.
  */
 extern struct cmb_resource *cmb_resource_create(void);
@@ -55,6 +56,7 @@ extern struct cmb_resource *cmb_resource_create(void);
 /**
  * @brief Make an allocated resource object ready for use.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to an already allocated resource object.
  * @param name A null-terminated string naming the resource.
  */
@@ -64,6 +66,7 @@ extern void cmb_resource_initialize(struct cmb_resource *rp,
 /**
  * @brief Un-initializes a resource object.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to an already allocated resource object.
  */
 extern void cmb_resource_terminate(struct cmb_resource *rp);
@@ -71,6 +74,7 @@ extern void cmb_resource_terminate(struct cmb_resource *rp);
 /**
  * @brief  Deallocates memory for a resource object.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to an already allocated resource object.
  */
 extern void cmb_resource_destroy(struct cmb_resource *rp);
@@ -79,8 +83,8 @@ extern void cmb_resource_destroy(struct cmb_resource *rp);
  * @brief  Request and, if necessary, make the current process wait for the
  *         resource. Returns immediately if available.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to an initialized resource object.
- *
  * @return  `CMB_PROCESS_SUCCESS` if all is well, otherwise the signal value
  *          received when interrupted or preempted.
  */
@@ -89,6 +93,7 @@ extern int64_t cmb_resource_acquire(struct cmb_resource *rp);
 /**
  * @brief   Release the resource.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to an initialized resource object.
  */
 extern void cmb_resource_release(struct cmb_resource *rp);
@@ -99,8 +104,8 @@ extern void cmb_resource_release(struct cmb_resource *rp);
  *        process has higher priority than the current holder. Otherwise,
  *        it will politely wait for its turn.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to an initialized resource object.
- *
  * @return  `CMB_PROCESS_SUCCESS` if all is well, otherwise the signal value
  *          received when interrupted or preempted.
  */
@@ -109,6 +114,7 @@ extern int64_t cmb_resource_preempt(struct cmb_resource *rp);
 /**
  * @brief Returns name of resource as const char *.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to an initialized resource object.
  * @return The name of the process as a null-terminated text string.
  */
@@ -125,6 +131,7 @@ static inline const char *cmb_resource_name(struct cmb_resource *rp)
 /**
  * @brief Returns the number of resources currently in use
  *
+ * @memberof cmb_resource
  * @param rp Pointer to resource
  * @return The number of units in use, 0 or 1
  */
@@ -139,6 +146,7 @@ static inline uint64_t cmb_resource_in_use(struct cmb_resource *rp)
 /**
  * @brief Returns the number of currently available resources
  *
+ * @memberof cmb_resource
  * @param rp Pointer to resource
  * @return The number of units not in use, 0 or 1
  */
@@ -154,6 +162,7 @@ static inline uint64_t cmb_resource_available(struct cmb_resource *rp)
  * @brief Return the amount of this resource that is currently held by the given
  *        process, i.e., either zero or one.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to a resource.
  * @param pp Pointer to a process.
  *
@@ -171,6 +180,7 @@ static inline uint64_t cmb_resource_held_by_process(struct cmb_resource *rp,
 /**
  * @brief Turn on data recording.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to an initialized resource object.
  */
 extern void cmb_resource_start_recording(struct cmb_resource *rp);
@@ -178,6 +188,7 @@ extern void cmb_resource_start_recording(struct cmb_resource *rp);
 /**
  * @brief Turn off data recording.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to an initialized resource object.
  */
 extern void cmb_resource_stop_recording(struct cmb_resource *rp);
@@ -185,6 +196,7 @@ extern void cmb_resource_stop_recording(struct cmb_resource *rp);
 /**
  * @brief Get the recorded timeseries of resource usage.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to an initialized resource object.
  * @return Pointer to a `cmb_timeseries` containing the resource usage history.
  */
@@ -195,6 +207,7 @@ extern struct cmb_timeseries *cmb_resource_history(struct cmb_resource *rp);
  *        statistical metrics and a histogram. Mostly intended for debugging
  *        purposes, not presentation graphics.
  *
+ * @memberof cmb_resource
  * @param rp Pointer to an initialized resource object.
  * @param fp File pointer, possibly `stdout`.
  */

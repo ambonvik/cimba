@@ -17,7 +17,7 @@
  */
 
 /*
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,8 @@
 /**
  * @brief A time series with a conveniently resizing sample array. The parent
  *        class `cmb_dataset` provides the `xa` array.
+ *
+ * @extends cmb_dataset
  */
 struct cmb_timeseries {
     struct cmb_dataset ds;  /**< Parent class providing the `xa` array */
@@ -54,24 +56,31 @@ struct cmb_timeseries {
  * Remember to call a matching `cmb_timeseries_destroy` when done to avoid
  * memory leakage.
  *
+ * @memberof cmb_timeseries
  * @return A freshly allocated time series object.
  */
 extern struct cmb_timeseries *cmb_timeseries_create(void);
 
 /**
  * @brief Initialize the time series, clearing any data values.
+ *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to an already allocated time series object.
  */
 extern void cmb_timeseries_initialize(struct cmb_timeseries *tsp);
 
 /**
  * @brief Re-initialize it, returning it to a newly initialized state.
+ *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to an already allocated time series object.
  */
 extern void cmb_timeseries_reset(struct cmb_timeseries *tsp);
 
 /**
  * @brief Un-initialize it, returning it to a newly created state.
+ *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to an already allocated time series object.
  */
 extern void cmb_timeseries_terminate(struct cmb_timeseries *tsp);
@@ -84,6 +93,7 @@ extern void cmb_timeseries_terminate(struct cmb_timeseries *tsp);
  * `cmb_timeseries_create`. Otherwise, use `cmb_timeseries_terminate` to free
  * the data array only.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a previously allocated time series object.
  */
 extern void cmb_timeseries_destroy(struct cmb_timeseries *tsp);
@@ -92,9 +102,9 @@ extern void cmb_timeseries_destroy(struct cmb_timeseries *tsp);
 /**
  * @brief Copy `tgt` into `src`, overwriting whatever was in `tgt`.
  *
+ * @memberof cmb_timeseries
  * @param tgt Pointer to the target time series object.
  * @param src Pointer to the source time series object.
- *
  * @return Number of data points copied.
  */
 extern uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
@@ -103,10 +113,10 @@ extern uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
 /**
  * @brief  Add a single value to a time series, resizing the array as needed.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param x The new sample x-value to add.
  * @param t The t-value (timestamp) for the new sample.
- *
  * @return The new number of data values in the array.
  */
 extern uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp,
@@ -124,6 +134,7 @@ extern uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp,
  * argument for user flexibility in any other use cases and for better
  * separation between Cimba modules.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param t The t-value (timestamp) for the final value, usually `cmb_time()`.
  */
@@ -136,6 +147,7 @@ extern uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, double t);
  * Caution: Changes the sequence of data points, no longer a timeseries after
  * this call.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  */
 extern void cmb_timeseries_sort_x(struct cmb_timeseries *tsp);
@@ -144,6 +156,7 @@ extern void cmb_timeseries_sort_x(struct cmb_timeseries *tsp);
  * @brief  An "undo" function for `cmb_timeseries_sort_x()`, sorting the time
  *         series back to an ascending time sequence.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  */
 extern void cmb_timeseries_sort_t(struct cmb_timeseries *tsp);
@@ -151,9 +164,9 @@ extern void cmb_timeseries_sort_t(struct cmb_timeseries *tsp);
 /**
  * @brief  Calculate summary statistics of the time series.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param wsp Pointer to a weighted data summary object.
-
  * @return The number of data points in the summary.
  */
 extern uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp,
@@ -162,8 +175,8 @@ extern uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp,
 /**
  * @brief  Count the number of samples in the time series.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
- *
  * @return The number of samples in the time series.
  */
 static inline uint64_t cmb_timeseries_count(const struct cmb_timeseries *tsp)
@@ -176,8 +189,8 @@ static inline uint64_t cmb_timeseries_count(const struct cmb_timeseries *tsp)
 /**
  * @brief  Find the smallest sample (x) value in the time series.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
- *
  * @return The smallest sample (x) value in the time series.
  */
 static inline double cmb_timeseries_min(const struct cmb_timeseries *tsp)
@@ -190,8 +203,8 @@ static inline double cmb_timeseries_min(const struct cmb_timeseries *tsp)
 /**
  * @brief  Find the largest sample (x) value in the time series.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
- *
  * @return The largest sample (x) value in the time series.
  */
 static inline double cmb_timeseries_max(const struct cmb_timeseries *tsp)
@@ -208,8 +221,8 @@ static inline double cmb_timeseries_max(const struct cmb_timeseries *tsp)
  *
  * Call `cmb_dataset_median((struct cmb_dataset *)tsp, ...)` for unweighted.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
- *
  * @return The median value in the time series.
  */
 extern double cmb_timeseries_median(const struct cmb_timeseries *tsp);
@@ -221,6 +234,7 @@ extern double cmb_timeseries_median(const struct cmb_timeseries *tsp);
  * Call `cmb_dataset_print_fivenum((struct cmb_dataset *)tsp, ...)` to get
  * unweighted quantiles.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param fp A file pointer for the output, possibly `stdout`.
  * @param lead_ins A flag indicating whether to add explanatory text (if `true`)
@@ -237,6 +251,7 @@ extern void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp,
  *
  *  Call `cmb_dataset_histogram((struct cmb_dataset *)tsp, ...)` for unweighted.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param fp A file pointer for the output, possibly `stdout`.
  * @param num_bins Number of histogram bins to use. Will add one more on either
@@ -254,6 +269,7 @@ extern void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp,
 /**
  * @brief Print the raw data in the timeseries.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param fp A file pointer for the output, possibly `stdout`.
  */
@@ -264,6 +280,7 @@ extern void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp);
  *        individual samples, only considering the sequence, disregarding the
  *        time duration between samples.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param n The number of coefficients to calculate.
  * @param acf The array to store the autocorrelation coefficients, size ``n + 1``
@@ -286,6 +303,7 @@ static inline void cmb_timeseries_ACF(const struct cmb_timeseries *tsp,
  * argument `acf[]`. If this argument is `NULL`, they will be calculated
  * directly from the dataset.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param n The number of coefficients to calculate.
  * @param pacf The array to store the partial autocorrelation coefficients, size ``n + 1``.
@@ -311,6 +329,7 @@ static inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
  * To print PACFs, give a vector of already calculated PACFs as the `acf`
  * argument.
  *
+ * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param fp A file pointer for the output, possibly `stdout`.
  * @param n The number of coefficients to calculate.

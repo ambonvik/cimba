@@ -8,7 +8,7 @@
  */
 
 /*
- * Copyright (c) Asbjørn M. Bonvik 2025-26.
+ * Copyright (c) Asbjørn M. Bonvik 2026.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,12 +58,15 @@ struct cmb_priorityqueue {
 
 /**
  * @brief Allocate memory for a `cmb_priorityqueue` object.
+ *
+ * @memberof cmb_priorityqueue
  */
 extern struct cmb_priorityqueue *cmb_priorityqueue_create(void);
 
 /**
  * @brief Make an allocated `cmb_priorityqueue` ready for use.
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to a `cmb_priorityqueue`
  * @param name Its identifying name string
  * @param capacity Its maximum size, possibly `CMB_UNLIMITED`
@@ -75,6 +78,7 @@ extern void cmb_priorityqueue_initialize(struct cmb_priorityqueue *pqp,
 /**
  * @brief  Un-initializes an object queue.
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to a `cmb_priorityqueue`
  */
 extern void cmb_priorityqueue_terminate(struct cmb_priorityqueue *pqp);
@@ -82,6 +86,7 @@ extern void cmb_priorityqueue_terminate(struct cmb_priorityqueue *pqp);
 /**
  * @brief  Deallocate memory for an object queue.
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to a `cmb_priorityqueue`
  */
 extern void cmb_priorityqueue_destroy(struct cmb_priorityqueue *pqp);
@@ -99,9 +104,9 @@ extern void cmb_priorityqueue_destroy(struct cmb_priorityqueue *pqp);
  * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
  * object pointer will be `NULL`.
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @param objectloc Pointer to the location for storing the obtained object.
- *
  * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
  */
 extern int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp,
@@ -120,10 +125,10 @@ extern int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp,
  * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
  * object pointer will still be unchanged.
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @param objectloc Pointer to the location where the object is stored.
  * @param priority The object priority, higher goes before lower
- *
  * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
  */
 extern int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
@@ -133,6 +138,7 @@ extern int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
 /**
  * @brief Returns name of queue as `const char *`.
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @return A null-terminated string containing the name of the object queue.
  */
@@ -149,6 +155,7 @@ static inline const char *cmb_priorityqueue_name(struct cmb_priorityqueue *pqp)
 /**
  * @brief Returns current object queue length
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @return The current queue length
  */
@@ -163,6 +170,7 @@ static inline uint64_t cmb_priorityqueue_length(struct cmb_priorityqueue *pqp)
 /**
  * @brief Returns current free space in object queue
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @return The available space in the queue
  */
@@ -178,6 +186,7 @@ static inline uint64_t cmb_priorityqueue_space(struct cmb_priorityqueue *pqp)
 /**
  * @brief Turn on data recording.
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to a object queue
  */
 extern void cmb_priorityqueue_start_recording(struct cmb_priorityqueue *pqp);
@@ -185,6 +194,7 @@ extern void cmb_priorityqueue_start_recording(struct cmb_priorityqueue *pqp);
 /**
  * @brief Turn off data recording.
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  */
 extern void cmb_priorityqueue_stop_recording(struct cmb_priorityqueue *pqp);
@@ -192,6 +202,7 @@ extern void cmb_priorityqueue_stop_recording(struct cmb_priorityqueue *pqp);
 /**
  * @brief Get the recorded timeseries of queue lengths.
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @return Pointer to a `cmb_timeseries` containing the queue length history.
  */
@@ -202,6 +213,7 @@ extern struct cmb_timeseries *cmb_priorityqueue_history(struct cmb_priorityqueue
  *        statistical metrics and histograms. Mostly intended for debugging
  *        purposes, not presentation graphics.
  *
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @param fp File pointer, possibly `stdout`.
  */

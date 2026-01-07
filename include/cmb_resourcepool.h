@@ -27,7 +27,7 @@
  */
 
 /*
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,6 +69,7 @@ struct cmb_resourcepool {
 /**
  * @brief  Allocate memory for a resource pool.
  *
+ * @memberof cmb_resourcepool
  * @return Pointer to an allocated resource pool.
  */
 extern struct cmb_resourcepool *cmb_resourcepool_create(void);
@@ -76,6 +77,7 @@ extern struct cmb_resourcepool *cmb_resourcepool_create(void);
 /**
  * @brief  Make an allocated resource pool ready for use.
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  * @param name A null-terminated string naming the resource pool.
  * @param capacity The maximum amount that can be assigned at the same time.
@@ -87,6 +89,7 @@ extern void cmb_resourcepool_initialize(struct cmb_resourcepool *rsp,
 /**
  * @brief  Un-initializes a resource pool.
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  */
 extern void cmb_resourcepool_terminate(struct cmb_resourcepool *rsp);
@@ -94,6 +97,7 @@ extern void cmb_resourcepool_terminate(struct cmb_resourcepool *rsp);
 /**
  * @brief Deallocates memory for a resource pool.
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to an allocated resource pool object.
  */
 extern void cmb_resourcepool_destroy(struct cmb_resourcepool *rsp);
@@ -102,9 +106,9 @@ extern void cmb_resourcepool_destroy(struct cmb_resourcepool *rsp);
  * @brief Return the amount of this pool that is currently held by the given
  *        process, possibly zero.
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  * @param pp Pointer to a `cmb_process`
- *
  * @return The amount from this resource pool that is held by the process.
  */
 extern uint64_t cmb_resourcepool_held_by_process(struct cmb_resourcepool *rsp,
@@ -126,9 +130,9 @@ extern uint64_t cmb_resourcepool_held_by_process(struct cmb_resourcepool *rsp,
  * In particular, do not assume that the process has received the requested
  * amount when it returns.
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  * @param amount The requested amount.
-*
  * @return `CMB_PROCESS_SUCCESS` if successful, otherwise the signal received
  *         when preempted or interrupted.
  */
@@ -147,9 +151,9 @@ extern int64_t cmb_resourcepool_acquire(struct cmb_resourcepool *rsp,
  * amount, an unchanged amount (interrupted), or nothing at all (preempted). This
  * function does not return the amount received or held, only the signal value.
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  * @param amount The requested amount.
- *
  * @return `CMB_PROCESS_SUCCESS` if successful, otherwise the signal received
  *         when preempted or interrupted.
  */
@@ -161,6 +165,7 @@ extern int64_t cmb_resourcepool_preempt(struct cmb_resourcepool *rsp,
  *        everything that the calling process holds, but not more than it is
  *        currently holding. Always returns immediately.
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  * @param amount The requested amount.
  */
@@ -170,6 +175,7 @@ extern void cmb_resourcepool_release(struct cmb_resourcepool *rsp,
 /**
  * @brief Returns name of pool as const char *.
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  * @return A null-terminated string with the name of the resource pool.
  */
@@ -186,6 +192,7 @@ static inline const char *cmb_resourcepool_get_name(struct cmb_resourcepool *rsp
 /**
  * @brief Returns the number of resources currently in use
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool
  * @return The number of units in use
  */
@@ -201,6 +208,7 @@ static inline uint64_t cmb_resourcepool_in_use(struct cmb_resourcepool *rsp)
 /**
  * @brief Returns the number of currently available resources
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool
  * @return The number of units not in use
  */
@@ -223,6 +231,7 @@ extern void cmb_resourcepool_start_recording(struct cmb_resourcepool *rsp);
 /**
  * @brief Turn off data recording.
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  */
 extern void cmb_resourcepool_stop_recording(struct cmb_resourcepool *rsp);
@@ -230,6 +239,7 @@ extern void cmb_resourcepool_stop_recording(struct cmb_resourcepool *rsp);
 /**
  * @brief Get the recorded timeseries of resource usage.
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  * @return Pointer to a `cmb_timeseries` containing the usage history.
  */
@@ -240,6 +250,7 @@ extern struct cmb_timeseries *cmb_resourcepool_get_history(struct cmb_resourcepo
  *        statistical metrics and a histogram. Mostly intended for debugging
  *        purposes, not presentation graphics.
  *
+ * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  * @param fp File pointer, possibly `stdout`.
  */

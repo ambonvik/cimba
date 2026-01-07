@@ -132,6 +132,7 @@ typedef void *(cmb_process_func)(struct cmb_process *cp, void *context);
  * same pattern as is done here with parent class `cmi_coroutine` and derived
  * class `cmb_process`.
  *
+ * @memberof cmb_process
  * @return Pointer to the newly created process.
  */
 extern struct cmb_process *cmb_process_create(void);
@@ -141,6 +142,7 @@ extern struct cmb_process *cmb_process_create(void);
  * for the underlying coroutine stack. Uses a default stack size per
  * process, `#defined` here. Does not start the process yet.
  *
+ * @memberof cmb_process
  * @param pp Pointer to an already created process.
  * @param name Null terminated string for the process name.
  * @param foo The process function that will be executed when the process starts.
@@ -163,6 +165,7 @@ extern void cmb_process_initialize(struct cmb_process *pp,
  * Do not confuse this object destructor function with cmb_process_stop to force
  * a running process to exit non-voluntarily. Call that first.
  *
+ * @memberof cmb_process
  * @param pp Pointer to an already created process.
  */
 extern void cmb_process_terminate(struct cmb_process *pp);
@@ -170,6 +173,7 @@ extern void cmb_process_terminate(struct cmb_process *pp);
 /**
  * @brief Deallocate memory for the process struct and its underlying coroutine.
  *
+ * @memberof cmb_process
  * @param pp Pointer to an already created process.
  */
 extern void cmb_process_destroy(struct cmb_process *pp);
@@ -180,6 +184,7 @@ extern void cmb_process_destroy(struct cmb_process *pp);
  * This is a non-blocking call, allowing the calling process to continue
  * execution until it explicitly yields to some other process.
  *
+ * @memberof cmb_process
  * @param pp Pointer to an already created process.
  */
 extern void cmb_process_start(struct cmb_process *pp);
@@ -187,7 +192,8 @@ extern void cmb_process_start(struct cmb_process *pp);
 /**
  * @brief  Hold (sleep) for a specified duration of simulated time. Called from
  *         within a process.
-*
+ *
+ * @memberof cmb_process
  * @param dur The duration to hold for, relative to the current simulation time.
  * @return `CMB_PROCESS_SUCCESS` if returning normally at the scheduled time,
  *        otherwise some other signal value indicating the type of interruption.
@@ -199,6 +205,7 @@ extern int64_t cmb_process_hold(double dur);
  *
  * Returns immediately if the awaited process already is finished.
  *
+ * @memberof cmb_process
  * @param awaited The process we will be waiting for.
  * @return `CMB_PROCESS_SUCCESS` if the awaited process exited normally,
  *         `CMB_PROCESS_STOPPED` if it was stopped by some other process,
@@ -209,6 +216,7 @@ extern int64_t cmb_process_wait_process(struct cmb_process *awaited);
 /**
  * @brief  Wait for an event to occur. Called from within a process.
  *
+ * @memberof cmb_process
  * @param ev_handle The handle of the event we will be waiting for. Note that
  *                  this is not a pointer, see `cmb_event.h`for details.
  * @return `CMB_PROCESS_SUCCESS` if the awaited event occurred,
@@ -220,6 +228,8 @@ extern int64_t cmb_process_wait_event(uint64_t ev_handle);
 /**
  * @brief  Terminate the process with the given exit value. Called from within
  *         the process.
+ *
+ * @memberof cmb_process
  * @param retval The return value from the process, user defined meaning.
  *               Will be stored as the `cmb_coroutine` `exit_value`.
  */
@@ -238,6 +248,7 @@ extern void cmb_process_exit(void *retval);
  * calling process complete whatever else it is doing at the current time before
  * the interrupt is executed and control is transferred to the target.
  *
+ * @memberof cmb_process
  * @param pp Pointer to the target process.
  * @param sig The signal to be passed to the victim process, e.g.,
  *            `CMB_PROCESS_INTERRUPTED`, or something user-application defined.
@@ -260,6 +271,7 @@ extern void cmb_process_interrupt(struct cmb_process *pp,
  * allocation. The target process can be restarted from the beginning by calling
  * `cmb_process_start(pp)` again.
  *
+ * @memberof cmb_process
  * @param pp Pointer to the target process.
  * @param retval The return value from the process, user defined meaning, often
  *               `NULL` for an externally killed process. Will be stored as the
@@ -274,6 +286,7 @@ extern void cmb_process_stop(struct cmb_process *pp, void *retval);
  * If the name for some reason needs to be changed, use `cmb_process_set_name`
  * to do it safely, not by modifying through this pointer.
  *
+ * @memberof cmb_process
  * @param pp Pointer to a process.
  */
 static inline const char *cmb_process_name(const struct cmb_process *pp)
@@ -290,6 +303,7 @@ static inline const char *cmb_process_name(const struct cmb_process *pp)
  * If the new name is too large for the buffer, it will be truncated at one less
  * than the buffer size, leaving space for the terminating zero char.
  *
+ * @memberof cmb_process
  * @param pp Pointer to a process.
  * @param name Null terminated string for the process name.
  */
@@ -300,6 +314,7 @@ extern void cmb_process_set_name(struct cmb_process *pp,
  * @brief  Return a pointer to the context. Not const, the caller may change the
  *         content of the context data through this pointer.
  *
+ * @memberof cmb_process
  * @param pp Pointer to a process.
  * @return Pointer to the process context.
  */
@@ -312,6 +327,7 @@ extern void *cmb_process_context(const struct cmb_process *pp);
  * is initialized, e.g., because it will contain a pointer to some object that
  * has not been created yet.
  *
+ * @memberof cmb_process
  * @param pp Pointer to a process.
  * @param context The second argument to the process function, after the pointer
  *                 to the process itself. The content and meaning are user
@@ -322,6 +338,7 @@ extern void cmb_process_set_context(struct cmb_process *pp, void *context);
 /**
  * @brief  Get the current priority for the process.
  *
+ * @memberof cmb_process
  * @param pp Pointer to a process.
  * @return The current priority value.
  */
@@ -330,6 +347,7 @@ extern int64_t cmb_process_priority(const struct cmb_process *pp);
 /**
  * @brief  Change the priority for the process.
  *
+ * @memberof cmb_process
  * @param pp Pointer to a process.
  * @param pri The new priority value.
  */
@@ -338,8 +356,8 @@ extern void cmb_process_set_priority(struct cmb_process *pp, int64_t pri);
 /**
  * @brief  Get the current status of the process
  *
+ * @memberof cmb_process
  * @param pp Pointer to a process.
- *
  * @return The current state of the process and its underlying coroutine.
  */
 static inline enum cmb_process_state cmb_process_status(const struct cmb_process *pp)
@@ -357,6 +375,7 @@ static inline enum cmb_process_state cmb_process_status(const struct cmb_process
  * process function. Will issue a warning and return `NULL` if the process has
  * not yet finished.
  *
+ * @memberof cmb_process
  * @param pp Pointer to a process.
  */
 extern void *cmb_process_exit_value(const struct cmb_process *pp);
@@ -365,6 +384,7 @@ extern void *cmb_process_exit_value(const struct cmb_process *pp);
  * @brief  Return a pointer to the currently executing process, i.e., the calling
  * process itself.
  *
+ * @memberof cmb_process
  * @return Pointer to the currently executing process, `NULL` if called from
  * outside a named process, such as the main process that executes the event
  * dispatcher.
