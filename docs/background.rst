@@ -517,12 +517,6 @@ priority and the handle value as ordering keys. If no comparator function is pro
 the hashheap will use a default comparator that only uses the ``double`` key and
 retrieves the smallest value first.
 
-The event queue pattern search is a repackaging of the similar pattern search
-functions in the parent hashheap class, where the pattern searches all four 64-bit
-payload items and provides a single ``CMI_ANY_ITEM`` to match against any value in each
-of the four positions. The parent class does not assign any particular meaning to the
-payload values, just considers them raw binary data.
-
 For efficiency reasons, the hash table needs to be sized as a power of two. It will
 start small and grow as needed. Cimba initializes its event queue with only 8 slots in
 the heap and 16 in the hash map (guaranteeing <= 50 % hash map utilization before
