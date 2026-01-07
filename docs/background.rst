@@ -219,8 +219,6 @@ look like this:
 
 .. image:: ../images/stack_5.png
 
-Cimba can process some 20 million events like this per second on a single CPU core.
-
 As should be evident from these examples, Cimba does not care about what level of the
 function call stack its context switching functions get called from. It can be directly
 from the process function (like in this example), or the process function can call another
