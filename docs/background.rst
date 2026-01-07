@@ -276,6 +276,16 @@ look like this:
 
 Cimba can process some 20 million events like this per second on a single CPU core.
 
+As should be evident from these examples, Cimba does not care about what level of the
+function call stack its context switching functions get called from. It can be directly
+from the process function (like in this example), or the process function can call another
+function, that calls some other function, which in turn calls a Cimba function like
+``cmb_process_hold()``. The intermediate user functions in the call chain do not even
+need to know that they are part of a discrete event simulation, much less care about
+what stack they are executing on. They are just C functions that get called and do their
+thing. There is no need to refactor the whole call chain to yield generators at multiple
+levels. This is why we insisted on proper *stackful* coroutines.
+
 We will soon return to Cimba's processes and their interactions, but if the reader has
 been paying attention, there is something else we need to address first: We just said
 *"inheriting all properties and methods from the coroutine class"*, but we also just
@@ -1193,6 +1203,6 @@ where asserts are used to document and enforce preconditions, invariants, and
 postconditions for every function. It should provide significant clarity on exactly
 what can be expected from any Cimba function.
 
-If something *still* seems mysterious, you may have uncovered a bug, and we consider
+If something *still* seems mysterious, you may have uncovered a bug, and we also consider
 unclear or incorrect documentation to constitute a bug. Please open an issue for it in
 the GitHub issue tracker at https://github.com/ambonvik/cimba/issues
