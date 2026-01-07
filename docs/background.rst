@@ -18,7 +18,8 @@ Research Establishment in the late 1980s. I built discrete event simulation mode
 in languages like Simscript and Simula67. Encountering Simula67's coroutines and
 object-orientation was revelatory in its essential *rightness*. However, Simula67 was
 still severely limited in many other respects and not really a practical option at that
-time.
+time. Our simulation models were quite large, for instance modelling the third world war
+in the airspace over Europe. The main language used was Simscript II.5.
 
 Around 1990, we started building discrete event simulation models in C++ as early adopters
 of that language. The first C++ models ran on VAXstations, where spawning a coroutine is
@@ -208,6 +209,70 @@ the coroutine trampoline if the process should ever return. The reason is simple
 The parent coroutine class should not have any privileged knowledge about the content
 of its child classes. Hence the coroutine module cannot just hard-code this function, but
 needs to be handed it as a callback function from the derived class at initialization.
+
+Since the simulated processes as asymmetric coroutines is fundamental to how Cimba
+works, we will explain precisely what happens during a context switch between processes.
+
+Suppose we arerunning the M/M/1 simulation used to benchmark against SimPy,
+`benchmark/MM1_single.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`_.
+We are running on a single CPU core. The queue is currently empty, the arrival process is
+holding, the service process has just woken up from its ``hold()``, and is now about to
+``get()`` an object from the queue in line 78 of the code.
+
+The illustration below shows the stacks at this point:
+
+.. image:: ../images/stack_1.png
+
+The service process to the right (green) has the CPU and is executing user code (red
+text). The main system stack is to the left. The dispatcher has executed the wakeup event
+that resumed the service process. It has stored its registers on the stack and transferred
+control to the service process. The main stack pointer is at the last register pushed to
+the stack.
+
+The arrival process is holding. That call caused a context switch, so its stack pointer
+is at the last register that was pushed to its stack. The difference from the
+dispatcher on the main stack is that it *on its own stack* without touching the main
+stack at all.
+
+Now the service process is in its ``get()`` call and finds the queue empty. It has to
+wait, so it registers itself with the resource guard and yields. At that moment, the
+stacks look like this:
+
+.. image:: ../images/stack_2.png
+
+The arrival process has saved its registers to the stack and its stack pointer to the
+appropriate member of our ``struct cmi_coroutine``. Control transfers to the dispatcher
+on the main stack:
+
+.. image:: ../images/stack_3.png
+
+The stack rapidly returns to the dispatcher loop in ``cmb_event_queue_execute()``,
+which pulls off and executes the next event from the event queue. That happens to be
+another hold wakeup call. When executed, that event in turn resumes the target process,
+this time the arrival process. The asymmetric coroutine ``yield()``/``resume()`` pair
+is implemented by symmetric ``transfer()`` calls, which in turn triggers the context
+switch.
+
+At the end of this sequence, returning from one event and executing the next, the
+stacks look the same as in the previous illustration, just with different data values
+in the registers and stack variables.
+
+Control then passes to the arrival process. Its stack pointer is loaded from memory
+into the appropriate register.
+
+.. image:: ../images/stack_4.png
+
+It pops the other saved register values from the stack and returns from the context
+call, which in turn returns back to the user code immediately after the arrival process
+``hold()`` call in line 58 of
+`benchmark/MM1_single.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`_.
+At this point, the context switch from the service to the arrival process by way of
+the dispatcher is complete, the arrival process is executing user code, and the stacks
+look like this:
+
+.. image:: ../images/stack_4.png
+
+Cimba can process some 20 million events like this per second on a single CPU core.
 
 We will soon return to Cimba's processes and their interactions, but if the reader has
 been paying attention, there is something else we need to address first: We just said
