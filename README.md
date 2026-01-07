@@ -10,7 +10,9 @@ Initially only for x86-64 architectures, ARM and Apple Silicon are planned next.
 
 The chart below shows the number of simulated events processed per second of wall 
 clock time with the same scenario, a simple M/M/1 queue, implemented in SimPy and Cimba.
-Cimba runs the scenario 45 times faster than SimPy with all CPU cores in use.
+Cimba runs the scenario 45 times faster than SimPy with all CPU cores in use. In fact, 
+Cimba runs 25 % faster (20M events/sec) _on a single core_ than SimPy does on all 64 
+cores (16M events/sec).
 
 ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
 
