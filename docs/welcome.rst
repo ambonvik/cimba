@@ -40,8 +40,8 @@ It is powerful, fast, reliable, and free.
       simulation models.
 
     * Cimba provides pre-packaged process interaction mechanisms like resources,
-      resource stores, buffers, object queues, and even condition variables where
-      your simulated process can wait for arbitrarily complex conditions -
+      resource pools, buffers, object queues, priority queues, and even condition
+      variables where your simulated process can wait for arbitrarily complex conditions -
       anything you can express as a function returning a binary true or false result.
 
     * Cimba includes powerful logging and data collection features that makes it easy

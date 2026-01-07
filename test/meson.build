@@ -157,8 +157,8 @@ test_resource = executable('test_resource',
 
 test('resource', test_resource)
 
-test_resourcestore = executable('test_resourcestore',
-                           files('test_resourcestore.c', 'test.h'),
+test_resourcepool = executable('test_resourcepool',
+                           files('test_resourcepool.c', 'test.h'),
                            include_directories : [inc_api, inc_int],
                            link_with : cimba_lib,
                            dependencies : [project_deps],
@@ -166,4 +166,4 @@ test_resourcestore = executable('test_resourcestore',
                            native : true
 )
 
-test('resourcestore', test_resourcestore)
+test('resourcepool', test_resourcepool)

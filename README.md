@@ -36,10 +36,10 @@ It is fast, powerful, reliable, and free.
     yield and resume control from any level of a function call stack, allowing 
     well-structured coding of arbitrarily large simulation models.
   
-  * Pre-packaged process interaction mechanisms like resources,
-    resource stores, buffers, object queues, and even condition variables where
-    your simulated process can wait for arbitrarily complex conditions – essentially
-    for anything you can express as a function returning a binary true or false result.
+  * Pre-packaged process interaction mechanisms like resources, resource pools, buffers, 
+    object queues, priority queues, and even condition variables where your simulated 
+    processes can wait for arbitrarily complex conditions to become true – anything 
+    you can express as a function returning a binary true or false result.
 
   * A wide range of fast, high-quality random number generators, both
     of academically important and more empirically oriented types.

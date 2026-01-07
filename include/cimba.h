@@ -63,7 +63,7 @@ extern const char *cimba_version(void);
 #include "cmb_random.h"
 #include "cmb_resource.h"
 #include "cmb_resourceguard.h"
-#include "cmb_resourcestore.h"
+#include "cmb_resourcepool.h"
 #include "cmb_timeseries.h"
 #include "cmb_wtdsummary.h"
 

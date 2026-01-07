@@ -12,7 +12,7 @@ project('cimba', 'c',
 # We also need the portable Netwide Assembler for assembly code
 add_languages('nasm', required : true, native : true)
 
-# Ensure system dependent argument format
+# Check for compiler flags availability
 cc = meson.get_compiler('c')
 desired_flags = ['-Wno-pedantic',
                  '-D_POSIX_C_SOURCE=200809L',

@@ -18,7 +18,7 @@ install_headers(
     'cmb_random.h',
     'cmb_resource.h',
     'cmb_resourceguard.h',
-    'cmb_resourcestore.h',
+    'cmb_resourcepool.h',
     'cmb_timeseries.h',
     'cmb_wtdsummary.h'
 )

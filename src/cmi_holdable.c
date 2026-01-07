@@ -1,7 +1,7 @@
 /*
  * cmi_holdable.h - extends the base cmi_resourcebase class to the derived
  * subclass of resources that can be held by a process. The cmb_resource and
- * cmb_resourcestore will be derived from here, but not cmb_buffer since there
+ * cmb_resourcepool will be derived from here, but not cmb_buffer since there
  * is no way the process can "hold" a buffer in the same way as holding an
  * acquired resource.
  *

@@ -1073,7 +1073,7 @@ will be our second Cimba tutorial.
 
 In our first tutorial, the active processes interacted through a ``cmb_buffer`` with
 ``put`` and ``get`` methods. We will now introduce other process interactions through
-``cmb_resource`` and ``cmb_resourcestore`` with their ``acquire``, ``hold``, and ``release``
+``cmb_resource`` and ``cmb_resourcepool`` with their ``acquire``, ``hold``, and ``release``
 semantics, and the extremely powerful ``cmb_condition`` that allows arbitrarily
 complex ``wait`` calls. We will also show how to create a derived "class" of ships
 from our ``cmb_process`` class, itself derived from the ``cmi_coroutine`` class.
@@ -1223,7 +1223,7 @@ only that:
    by whatever process changes the state. In a discrete event simulation, state
    only changes due to some event, and no polling is needed between events.
 
-Resources, resourcestores, and condition variables
+Resources, resourcepools, and condition variables
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To understand the general ``cmb_condition`` class, it may be helpful to start
@@ -1244,7 +1244,7 @@ resource, the guard is signaled, the predicate evaluates to ``true``, and the
 highest priority waiting process gets the resource, returning successfully from
 its ``cmb_resource_acquire()`` call as the new holder of the resource.
 
-Similarly, the ``cmb_resourcestore`` is a counting semaphore, where there is a
+Similarly, the ``cmb_resourcepool`` is a counting semaphore, where there is a
 certain number of resource items, and a process can acquire and release more
 than one unit at a time. Again, if not enough is available, the process files its
 demand with the guard and waits. This demand function is also internal and
@@ -1303,14 +1303,14 @@ a ship requesting permission from the harbormaster to dock:
             return false;
         }
 
-        if (cmb_resourcestore_available(simp->tugs) < shpp->tugs_needed) {
+        if (cmb_resourcepool_available(simp->tugs) < shpp->tugs_needed) {
             cmb_logger_user(stdout, USERFLAG1,
                             "Not enough available tugs for %s",
                             pp->name);
             return false;
         }
 
-        if (cmb_resourcestore_available(simp->berths[shpp->size]) < 1u) {
+        if (cmb_resourcepool_available(simp->berths[shpp->size]) < 1u) {
             cmb_logger_user(stdout, USERFLAG1,
                             "No available berth for %s",
                             pp->name);
@@ -1364,8 +1364,8 @@ the same signature as for the ``cmb_process``. It can look like this:
 
         /* Resources are ready, grab them for ourselves */
         cmb_logger_user(stdout, USERFLAG1, "%s cleared to dock", me->name);
-        cmb_resourcestore_acquire(simp->berths[shpp->size], 1u);
-        cmb_resourcestore_acquire(simp->tugs, shpp->tugs_needed);
+        cmb_resourcepool_acquire(simp->berths[shpp->size], 1u);
+        cmb_resourcepool_acquire(simp->tugs, shpp->tugs_needed);
 
         /* Announce our intention to move */
         cmb_resource_acquire(simp->comms);
@@ -1377,14 +1377,14 @@ the same signature as for the ``cmb_process``. It can look like this:
 
         /* Safely at the quay to unload cargo, dismiss the tugs for now */
         cmb_logger_user(stdout, USERFLAG1, "%s docked, unloading", me->name);
-        cmb_resourcestore_release(simp->tugs, shpp->tugs_needed);
+        cmb_resourcepool_release(simp->tugs, shpp->tugs_needed);
         const double tua = trlp->unloading_time_avg[shpp->size];
         const double unloading_time = cmb_random_PERT(0.75 * tua, tua, 2 * tua);
         cmb_process_hold(unloading_time);
 
         /* Need the tugs again to get out of here */
         cmb_logger_user(stdout, USERFLAG1, "%s ready to leave", me->name);
-        cmb_resourcestore_acquire(simp->tugs, shpp->tugs_needed);
+        cmb_resourcepool_acquire(simp->tugs, shpp->tugs_needed);
 
         /* Announce our intention to move */
         cmb_resource_acquire(simp->comms);
@@ -1396,8 +1396,8 @@ the same signature as for the ``cmb_process``. It can look like this:
 
         /* Cleared berth, done with the tugs */
         cmb_logger_user(stdout, USERFLAG1, "%s left harbor", me->name);
-        cmb_resourcestore_release(simp->berths[shpp->size], 1u);
-        cmb_resourcestore_release(simp->tugs, shpp->tugs_needed);
+        cmb_resourcepool_release(simp->berths[shpp->size], 1u);
+        cmb_resourcepool_release(simp->tugs, shpp->tugs_needed);
 
         /* One pass process, remove ourselves from the active set */
         cmi_hashheap_remove(simp->active_ships, hndl);
@@ -1444,8 +1444,8 @@ is safe:
 
         /* Resources are ready, grab them for ourselves */
         cmb_logger_user(stdout, USERFLAG1, "%s cleared to dock", me->name);
-        cmb_resourcestore_acquire(simp->berths[shpp->size], 1u);
-        cmb_resourcestore_acquire(simp->tugs, shpp->tugs_needed);
+        cmb_resourcepool_acquire(simp->berths[shpp->size], 1u);
+        cmb_resourcepool_acquire(simp->tugs, shpp->tugs_needed);
 
         /* Announce our intention to move */
         cmb_resource_acquire(simp->comms);
@@ -1474,8 +1474,8 @@ On the other hand, this is not safe at all:
 
         /* Who knows what happened to the resources in the meantime? */
         cmb_logger_user(stdout, USERFLAG1, "%s cleared to dock", me->name);
-        cmb_resourcestore_acquire(simp->berths[shpp->size], 1u);
-        cmb_resourcestore_acquire(simp->tugs, shpp->tugs_needed);
+        cmb_resourcepool_acquire(simp->berths[shpp->size], 1u);
+        cmb_resourcepool_acquire(simp->tugs, shpp->tugs_needed);
 
 The mutex is not needed, but only because a coroutine has atomic execution between
 explicit yield points. It is the application program's own responsibility to avoid
@@ -1858,7 +1858,7 @@ one does not make much sense even at the highest traffic scenario. The SPA shoul
 rather consider building another one or two small berths next.
 
 This concludes our second tutorial. We have introduced ``cmb_resource``,
-``cmb_resourcestore``, and the very powerful ``cmb_condition`` allowing processes
+``cmb_resourcepool``, and the very powerful ``cmb_condition`` allowing processes
 to wait for arbitrary combinations of conditions. Along the way, we demonstrated
 that user applications can build derived classes from Cimba parent classes using
 single inheritance. For example, the ``ship`` class in this tutorial was derived
@@ -1906,8 +1906,8 @@ meanings. In particular, all positive integers are available to the application
 for coding various interrupt signals between processes.
 
 These signal values create a rich set of direct process interactions. As an
-example, suppose some process currently holds 10 units from some resource store.
-It then calls ``cmb_resourcestore_acquire()`` requesting 10 more units. At that
+example, suppose some process currently holds 10 units from some resource pool.
+It then calls ``cmb_resourcepool_acquire()`` requesting 10 more units. At that
 moment, only 5 are available. The process takes these 5 and adds itself to the
 priority queue maintained by the resource guard, asking to be woken whenever some
 more is available, intending to return from its acquire call only when all 10
@@ -1918,7 +1918,7 @@ There are now three different outcomes for the acquire call:
 1. All goes as expected, 5 more units eventually become available, the process
    takes them, and returns ``CMB_PROCESS_SUCCESS``. It now holds 20 units.
 
-2. Some higher priority process calls ``cmb_resourcestore_preempt()`` and this
+2. Some higher priority process calls ``cmb_resourcepool_preempt()`` and this
    process is targeted. The higher priority process takes *all* units held by
    the victim process. Its acquire call returns ``CMB_PROCESS_PREEMPTED``. It
    now holds 0 units.
@@ -1929,7 +1929,7 @@ There are now three different outcomes for the acquire call:
    ``CMB_PROCESS_INTERRUPTED`` or some other value that has an
    application-defined meaning. It unwinds the 5 units it collected during the
    call and returns holding the same amount as it held before
-   calling ``cmb_resourcestore_acquire()``, 10 units.
+   calling ``cmb_resourcepool_acquire()``, 10 units.
 
 Preempt calls can themselves be preempted by higher priority processes or
 interrupted in the same way as acquire calls if the preempt was not immediately
@@ -1942,8 +1942,8 @@ resource, for example:
 .. code-block:: c
 
     cmb_resource_acquire(rp);
-    cmb_resourcestore_acquire(rsp1, 10);
-    cmb_resourcestore_acquire(rsp2, 15);
+    cmb_resourcepool_acquire(rsp1, 10);
+    cmb_resourcepool_acquire(rsp2, 15);
 
     int64_t signal = cmb_process_hold(100,0);
 
@@ -1952,7 +1952,7 @@ resource, for example:
     }
 
 In cases like this, the functions ``cmb_resource_held_by_process`` and
-``cmb_resourcestore_held_by_process()`` with a pointer to itself as the second
+``cmb_resourcepool_held_by_process()`` with a pointer to itself as the second
 argument can be useful to figure out which resource was preempted. If the caller
 does not have a pointer to itself handy (it is always the first argument to the
 process function), it can get one by calling ``cmb_process_current()``,
@@ -1962,7 +1962,7 @@ Buffers and object queues, interrupted
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The semantics of buffers and object queues are different from the resources
-resource stores. A process can acquire and hold a resource, making it unavailable
+resource pools. A process can acquire and hold a resource, making it unavailable
 for other processes until it is released. Preempting it naturally means taking
 the resource away from the process because someone else needs it more, right now.
 
@@ -2013,19 +2013,19 @@ to just contain the simulation struct. We can then write something like:
         cmb_assert_release(ctx != NULL);
 
         const struct simulation *simp = ctx;
-        struct cmb_resourcestore *sp = simp->cheese;
+        struct cmb_resourcepool *sp = simp->cheese;
         uint64_t amount_held = 0u;
 
         while (true) {
             /* Verify that the amount matches our own calculation */
-            cmb_assert_debug(amount_held == cmb_resourcestore_held_by_process(sp, me));
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
 
             /* Decide on a random amount to get next time and set a random priority */
             const uint64_t amount_req = cmb_random_dice(1, 5);
             const int64_t pri = cmb_random_dice(-10, 10);
             cmb_process_set_priority(me, pri);
             cmb_logger_user(stdout, USERFLAG1, "Acquiring %" PRIu64, amount_req);
-            int64_t sig = cmb_resourcestore_acquire(sp, amount_req);
+            int64_t sig = cmb_resourcepool_acquire(sp, amount_req);
             if (sig == CMB_PROCESS_SUCCESS) {
                 /* Acquire returned successfully */
                 amount_held += amount_req;
@@ -2034,7 +2034,7 @@ to just contain the simulation struct. We can then write something like:
             else if (sig == CMB_PROCESS_PREEMPTED) {
                 /* The acquire call did not end well */
                 cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
-                                cmb_resourcestore_name(sp));
+                                cmb_resourcepool_name(sp));
                 amount_held = 0u;
             }
             else {
@@ -2051,7 +2051,7 @@ to just contain the simulation struct. We can then write something like:
             else if (sig == CMB_PROCESS_PREEMPTED) {
                 /* Somebody snatched it all away from us */
                 cmb_logger_user(stdout, USERFLAG1, "Someone stole all my %s from me!",
-                                cmb_resourcestore_name(sp));
+                                cmb_resourcepool_name(sp));
                 amount_held = 0u;
             }
             else {
@@ -2064,7 +2064,7 @@ to just contain the simulation struct. We can then write something like:
                 const uint64_t amount_rel = cmb_random_dice(1, (long)amount_held);
                 cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
                                 amount_held, amount_rel);
-                cmb_resourcestore_release(sp, amount_rel);
+                cmb_resourcepool_release(sp, amount_rel);
                 amount_held -= amount_rel;
             }
 
@@ -2074,7 +2074,7 @@ to just contain the simulation struct. We can then write something like:
             if (sig == CMB_PROCESS_PREEMPTED) {
                 cmb_logger_user(stdout, USERFLAG1,
                                 "Someone stole the rest of my %s, signal %" PRIi64,
-                                cmb_resourcestore_name(sp), sig);
+                                cmb_resourcepool_name(sp), sig);
                 amount_held = 0u;
            }
         }
@@ -2082,7 +2082,7 @@ to just contain the simulation struct. We can then write something like:
 
 The rats are pretty much the same as the mice, just a bit hungrier and stronger
 (i.e. assigning themselves somewhat higher priorities), and using
-``cmb_resourcestore_preempt()`` instead of ``_acquire()``:
+``cmb_resourcepool_preempt()`` instead of ``_acquire()``:
 
 .. code-block:: c
 
@@ -2091,7 +2091,7 @@ The rats are pretty much the same as the mice, just a bit hungrier and stronger
     const int64_t pri = cmb_random_dice(-5, 15);
     cmb_process_set_priority(me, pri);
     cmb_logger_user(stdout, USERFLAG1, "Preempting %" PRIu64, amount_req);
-    int64_t sig = cmb_resourcestore_preempt(sp, amount_req);
+    int64_t sig = cmb_resourcepool_preempt(sp, amount_req);
 
 The cats, on the other hand, are never interrupted and just ignore return values:
 
@@ -2206,7 +2206,7 @@ We compile and run, and get output similar to this:
 
 
 ...and so on. The interactions can get rather intricate, but hopefully intuitive:
-A ``cmb_resourestore_preempt()`` call will start from the lowest priority victim
+A ``cmb_resourepool_preempt()`` call will start from the lowest priority victim
 process and take *all* of its resource, but only if the victim has strictly lower
 priority than the caller. If the requested amount is not satisfied from the first
 victim, it will continue to the next lowest priority victim. If some amount is
@@ -2225,8 +2225,8 @@ Real world uses
 
 The example above was originally written as part of the Cimba unit test suite,
 to ensure that the library tracking of how many units each process holds from
-the resource store always matches the expected values calculated here. Hence all
-the ``cmb_assert_debug(amount_held == cmb_resourcestore_held_by_process(sp, me));``
+the resource pool always matches the expected values calculated here. Hence all
+the ``cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));``
 statements. We wanted to make very sure that this is correct in all possible
 sequences of events, hence this frantic stress test with preemptions and
 interruptions galore.
@@ -2242,7 +2242,7 @@ Building, validating, and parallelizing the simulation will follow the same
 pattern as in our two first tutorials, so we will not repeat that here.
 
 This completes our third tutorial, demonstrating how to use direct process
-interactions like ``cmb_process_interrupt()`` and ``cmb_resourcestore_preempt()``.
+interactions like ``cmb_process_interrupt()`` and ``cmb_resourcepool_preempt()``.
 We have mentioned, but not demonstrated ``cmb_process_wait_process()``
 and ``cmb_process_wait_event()``. We encourage you to look up these in the
 API reference documentation next. Any remaining question may best be answered by

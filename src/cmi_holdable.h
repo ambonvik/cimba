@@ -3,7 +3,7 @@
 * @brief A virtual class that extends `cmi_resourcebase` to the derived
  *       subclass of resources that can be held by a process.
  *
- * The `cmb_resource` and `cmb_resourcestore` are derived from here, but not
+ * The `cmb_resource` and `cmb_resourcepool` are derived from here, but not
  * `cmb_buffer` since there is no meaningful way a process can "hold" a buffer
  * in the same way as holding an acquired resource.
  *
@@ -62,7 +62,7 @@ typedef void (cmi_holdable_drop_func)(struct cmi_holdable *hrp,
  * A pointer to this type of function is stored in the virtual base class for
  * calling the appropriate `reprio` function for each derived class. For some
  * resource classes (e.g., a binary semaphore `cmb_resource`) this is trivial,
- * for others (e.g., a counting semaphore `cmb_resourcestore`) with many
+ * for others (e.g., a counting semaphore `cmb_resourcepool`) with many
  * holding processes less so. The process that changes its priority can simply
  * call `(*reprio)` for each resource it holds and get the correct handling.
  */

@@ -55,7 +55,7 @@ enum ship_size {
     LARGE
 };
 
-/* Our simulateed world consists of these entities. */
+/* Our simulated world consists of these entities. */
 struct simulation {
     /* Environmental processes */
     struct cmb_process *weather;
@@ -65,9 +65,9 @@ struct simulation {
     struct cmb_process *departures;
 
     /* The fleet of tugboats */
-    struct cmb_resourcestore *tugs;
+    struct cmb_resourcepool *tugs;
     /* Small and large berths */
-    struct cmb_resourcestore *berths[2];
+    struct cmb_resourcepool *berths[2];
     /* The radio channel */
     struct cmb_resource *comms;
 
@@ -262,14 +262,14 @@ bool is_ready_to_dock(const struct cmb_condition *cvp,
         return false;
     }
 
-    if (cmb_resourcestore_available(simp->tugs) < shpp->tugs_needed) {
+    if (cmb_resourcepool_available(simp->tugs) < shpp->tugs_needed) {
         cmb_logger_user(stdout, USERFLAG1,
                         "Not enough available tugs for %s",
                         pp->name);
         return false;
     }
 
-    if (cmb_resourcestore_available(simp->berths[shpp->size]) < 1u) {
+    if (cmb_resourcepool_available(simp->berths[shpp->size]) < 1u) {
         cmb_logger_user(stdout, USERFLAG1,
                         "No available berth for %s",
                         pp->name);
@@ -308,8 +308,8 @@ void *ship_proc(struct cmb_process *me, void *vctx)
 
     /* Resources are ready, grab them for ourselves */
     cmb_logger_user(stdout, USERFLAG1, "%s cleared to dock, acquires berth and tugs", me->name);
-    cmb_resourcestore_acquire(simp->berths[shpp->size], 1u);
-    cmb_resourcestore_acquire(simp->tugs, shpp->tugs_needed);
+    cmb_resourcepool_acquire(simp->berths[shpp->size], 1u);
+    cmb_resourcepool_acquire(simp->tugs, shpp->tugs_needed);
 
     /* Announce our intention to move */
     cmb_resource_acquire(simp->comms);
@@ -321,14 +321,14 @@ void *ship_proc(struct cmb_process *me, void *vctx)
 
     /* Safely at the quay to unload cargo, dismiss the tugs for now */
     cmb_logger_user(stdout, USERFLAG1, "%s docked, releases tugs, unloading", me->name);
-    cmb_resourcestore_release(simp->tugs, shpp->tugs_needed);
+    cmb_resourcepool_release(simp->tugs, shpp->tugs_needed);
     const double tua = trlp->unloading_time_avg[shpp->size];
     const double unloading_time = cmb_random_PERT(0.75 * tua, tua, 2 * tua);
     cmb_process_hold(unloading_time);
 
     /* Need the tugs again to get out of here */
     cmb_logger_user(stdout, USERFLAG1, "%s ready to leave, requests tugs", me->name);
-    cmb_resourcestore_acquire(simp->tugs, shpp->tugs_needed);
+    cmb_resourcepool_acquire(simp->tugs, shpp->tugs_needed);
 
     /* Announce our intention to move */
     cmb_resource_acquire(simp->comms);
@@ -340,8 +340,8 @@ void *ship_proc(struct cmb_process *me, void *vctx)
 
     /* Cleared berth, done with the tugs */
     cmb_logger_user(stdout, USERFLAG1, "%s left harbor, releases berth and tugs", me->name);
-    cmb_resourcestore_release(simp->berths[shpp->size], 1u);
-    cmb_resourcestore_release(simp->tugs, shpp->tugs_needed);
+    cmb_resourcepool_release(simp->berths[shpp->size], 1u);
+    cmb_resourcepool_release(simp->tugs, shpp->tugs_needed);
 
     /* One pass process, remove ourselves from the active set */
     cmi_hashheap_remove(simp->active_ships, hndl);
@@ -474,9 +474,9 @@ static void start_rec(void *subject, void *object)
     const struct context *ctxp = object;
     const struct simulation *simp = ctxp->sim;
 
-    cmb_resourcestore_start_recording(simp->tugs);
+    cmb_resourcepool_start_recording(simp->tugs);
     for (int i = 0; i < 2; i++) {
-        cmb_resourcestore_start_recording(simp->berths[i]);
+        cmb_resourcepool_start_recording(simp->berths[i]);
     }
 }
 
@@ -487,9 +487,9 @@ static void stop_rec(void *subject, void *object)
     const struct context *ctxp = object;
     const struct simulation *simp = ctxp->sim;
 
-    cmb_resourcestore_start_recording(simp->tugs);
+    cmb_resourcepool_start_recording(simp->tugs);
     for (int i = 0; i < 2; i++) {
-        cmb_resourcestore_stop_recording(simp->berths[i]);
+        cmb_resourcepool_stop_recording(simp->berths[i]);
     }
 }
 
@@ -531,11 +531,11 @@ void run_trial(void *vtrl)
     /* Create the resources */
     sim.comms = cmb_resource_create();
     cmb_resource_initialize(sim.comms, "Comms");
-    sim.tugs = cmb_resourcestore_create();
-    cmb_resourcestore_initialize(sim.tugs, "Tugs", trlp->num_tugs);
+    sim.tugs = cmb_resourcepool_create();
+    cmb_resourcepool_initialize(sim.tugs, "Tugs", trlp->num_tugs);
     for (unsigned i = 0; i < N_SIZES; i++) {
-        sim.berths[i] = cmb_resourcestore_create();
-        cmb_resourcestore_initialize(sim.berths[i],
+        sim.berths[i] = cmb_resourcepool_create();
+        cmb_resourcepool_initialize(sim.berths[i],
             ((i == 0)? "Small berth" : "Large berth"),
             trlp->num_berths[i]);
     }
@@ -585,12 +585,12 @@ void run_trial(void *vtrl)
     /* Clean up */
     for (unsigned i = 0; i < N_SIZES; i++) {
         cmb_dataset_destroy(sim.time_in_system[i]);
-        cmb_resourcestore_destroy(sim.berths[i]);
+        cmb_resourcepool_destroy(sim.berths[i]);
     }
 
     cmb_condition_destroy(sim.harbormaster);
     cmb_condition_destroy(sim.davyjones);
-    cmb_resourcestore_destroy(sim.tugs);
+    cmb_resourcepool_destroy(sim.tugs);
     cmb_process_destroy(sim.weather);
     cmb_process_destroy(sim.tide);
 
