@@ -110,7 +110,7 @@ test_objectqueue = executable('test_objectqueue',
                               native : true
 )
 
-test('object_queue', test_objectqueue)
+test('objectqueue', test_objectqueue)
 
 test_priorityqueue = executable('test_priorityqueue',
                               files('test_priorityqueue.c', 'test.h'),
@@ -121,7 +121,7 @@ test_priorityqueue = executable('test_priorityqueue',
                               native : true
 )
 
-test('priority_queue', test_priorityqueue)
+test('priorityqueue', test_priorityqueue)
 
 test_process = executable('test_process',
                             files('test_process.c', 'test.h'),
