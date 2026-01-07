@@ -1149,10 +1149,12 @@ The same model would look like this in Cimba:
     }
 
 
-The Cimba code is significantly longer, in this case 140 vs 60 lines. The C
-base language also demands more careful declarations of object types, where Python will
-happily try to infer types from context. C also requires explicit management of object
-creation and destruction, since it does not have Python's automatic garbage collection.
+The Cimba code is significantly longer for the simple example, in this case 140 vs 60
+lines. The C base language also demands more careful declarations of object types, where
+Python will happily try to infer types from context. C also requires explicit management
+of object creation and destruction, since it does not have Python's automatic garbage
+collection. For a larger model, where the process function could be large, complex, and
+call various other functions, the SimPy code could become much harder to follow.
 
 Both programs produce a one-liner output similar to this:
 
@@ -1164,7 +1166,7 @@ However, the Cimba experiment can run its 100 trials in 0.56 seconds, while the 
 version takes 25.5 seconds to do the exact same thing. Cimba runs about *45 times faster*
 with all available cores in use.
 
-In fact, Cimba processes 25 % more simulated events per second on a single core (approx 20
+Cimba processes 25 % more simulated events per second on a single core (approx 20
 million events / second) than what SimPy can do if it has all 64 logical cores to itself
 (approx 16 million events / second).
 
@@ -1177,10 +1179,11 @@ again from the same point when control is passed back into that ``cmb_process``.
 ``generator`` cannot do this, effectively limiting SimPy to relatively simple
 simulations where all ``yield`` statements can be within the same generator function.
 
-Our (admittedly biased) view is that SimPy is good for simple one-off simulations,
-where learning curve and development time are the critical constraints, while Cimba
-is better for larger, more complex, and more long-lived models where run time and
-efficiency become important.
+Our (admittedly biased) view is that SimPy is good for simple one-off simulations where
+learning curve and development time are the critical constraints, perhaps as part of a
+data analyst's Jupyter notebook, while Cimba is better for larger, more complex, and
+more long-lived models where software engineering, maintainability, and efficiency become
+important.
 
 How About the Name 'Cimba'?
 ---------------------------
@@ -1192,7 +1195,7 @@ snakes for breakfast. Of course it had to be named Cimba.
 If in Doubt, Read the Source Code
 ---------------------------------
 
-Please do read the source code if something seems unclear. It is written to be
+Please read the source code if something seems unclear. It is written to be
 readable for humans, not just for the compiler. It is well commented and contains
 plentiful ``assert()`` statements that mercilessly enforce whatever condition they
 state to be true at that point.
