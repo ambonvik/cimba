@@ -9,7 +9,7 @@ combined with multithreaded coarse-trained parallelism for high performance on m
 Initially only for x86-64 architectures, ARM and Apple Silicon are planned next.
 
 The chart below shows the number of simulated events processed per second of wall 
-clock time with the same scenario, a simple M/M1 queue, implemented in SimPy and Cimba.
+clock time with the same scenario, a simple M/M/1 queue, implemented in SimPy and Cimba.
 Cimba runs the scenario 45 times faster than SimPy with all CPU cores in use.
 
 ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
@@ -31,6 +31,10 @@ It is fast, powerful, reliable, and free.
 
   * Support for both process- and event-based simulation world views, and 
     combinations of the two.
+
+  * Processes implemented as full, asymmetric stackful coroutines. A simulated process can
+    yield and resume control from any level of a function call stack, allowing 
+    well-structured coding of arbitrarily large simulation models.
   
   * Pre-packaged process interaction mechanisms like resources,
     resource stores, buffers, object queues, and even condition variables where

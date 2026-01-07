@@ -34,9 +34,10 @@ It is powerful, fast, reliable, and free.
     * Cimba supports both process- and event-based simulation world views, and
       combinations of the two.
 
-    * Cimba processes are full asymmetric coroutines, making it possible to pass
+    * Cimba processes are full asymmetric stackful coroutines. It is possible to pass
       control between processes at any depth of the call stack, not just in a single
-      generator function. This makes it possible to build large, well-structured models.
+      generator function. This enables well-structured coding of arbitrarily large
+      simulation models.
 
     * Cimba provides pre-packaged process interaction mechanisms like resources,
       resource stores, buffers, object queues, and even condition variables where
