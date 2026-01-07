@@ -149,8 +149,8 @@ The *trampoline* is a function that gets pre-loaded onto a new coroutine's stack
 it starts executing. It is never called directly. Once started, the trampoline will
 call the actual coroutine function and then silently wait for it to return. If it ever
 does, the trampoline will catch it and call the ``exit()`` function with the
-return value as argument, giving exactly the same effect of a ``return ptr`` statement
-as a ``exit(ptr)`` call, because it becomes the same thing. The code is in the same
+return value as argument, giving exactly the same effect of a ``return`` statement
+as a ``exit()`` call, because it becomes the exact same thing. The code is in the same
 assembly files as above, function ``cmi_coroutine_trampoline``.
 
 The *data structure* ``struct cmi_coroutine`` is defined in `src/cmi_coroutine.h
@@ -194,16 +194,16 @@ Our basic coroutines are a bit *too* general and powerful for simulation modelin
 these as internal building blocks for the Cimba *processes*. These are essentially named
 asymmetric coroutines, inheriting all properties and methods from the coroutine class,
 adding a name, a priority for scheduling processes, and pointers to things it may be
-waiting for, resources it may be holding, and other processes that may be waiting for
-it. As asymmetric coroutines, the Cimba processes always transfer control to a single
+waiting for, to resources it may be holding, and to other processes that may be waiting
+for it. As asymmetric coroutines, the Cimba processes always transfer control to a single
 dispatcher process, and are always re-activated from the dispatcher process only.
 
-The processes also understand the simulation time, and may ``hold()`` for a certain
-amount of simulated time. Underneath this call are the coroutine primitives of ``yield()``
-(to the simulation dispatcher) and ``resume()`` (when the simulation clock has advanced
-by this amount). Processes can also ``acquire()`` and ``release()`` resources, wait for
-some other process to finish, interrupt or stop other processes, wait for some specific
-event, or even wait for some arbitrarily complex condition to become true.
+The processes understand the simulation time, and may ``hold()`` for a certain
+amount of simulated time. Underneath this call are the asymmetric coroutine primitives of
+``yield()`` (to the simulation dispatcher) and ``resume()`` (when the simulation clock has
+advanced by this amount). Processes can also ``acquire()`` and ``release()`` resources,
+wait for some other process to finish, interrupt or stop other processes, wait for some
+specific event, or even wait for some arbitrarily complex condition to become true.
 
 When initializing a process, we provide the process ``exit()`` function to be called by
 the coroutine trampoline if the process should ever return. The reason is simple:
@@ -218,7 +218,7 @@ Suppose we are running the M/M/1 simulation used to benchmark against SimPy,
 `benchmark/MM1_single.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`_.
 We are running on a single CPU core. The queue is currently empty, the arrival process is
 holding, the service process has just woken up from its ``hold()``, and is now about to
-``get()`` an object from the queue in line 78 of the code.
+``get()`` an object from the queue, line 78 of the code.
 
 The illustration below shows the stacks at this point:
 
@@ -228,7 +228,7 @@ The service process to the right (green) has the CPU and is executing user code 
 text). The main system stack is to the left. The dispatcher has executed the wakeup event
 that resumed the service process. It has stored its registers on the stack and transferred
 control to the service process. The main stack pointer is at the last register pushed to
-the stack, but itself safely stored to memory instead of the register.
+the stack, but is itself safely stored to memory instead of in the ``SP`` register.
 
 The arrival process is holding. That call caused a context switch, so its stack pointer
 is at the last register that was pushed to its stack. The difference from the
@@ -244,7 +244,7 @@ stacks look like this:
 The arrival process has saved its registers to the stack and its stack pointer to the
 appropriate member of our ``struct cmi_coroutine``. Control transfers to the dispatcher
 on the main stack by loading its stack pointer from memory to the register, and then
-popping the remaining register values from the stack.
+popping the remaining register values from the main stack.
 
 .. image:: ../images/stack_3.png
 
@@ -1185,8 +1185,7 @@ If in Doubt, Read the Source Code
 Please do read the source code if something seems unclear. It is written to be
 readable for humans, not just for the compiler. It is well commented and contains
 plentiful ``assert()`` statements that mercilessly enforce whatever condition they
-state to be true at that point. You can consider the asserts trustworthy,
-self-enforcing documentation.
+state to be true at that point.
 
 The code is strongly influenced by the
 `Design by Contract <https://en.wikipedia.org/wiki/Design_by_contract>`_ paradigm,
@@ -1197,5 +1196,3 @@ what can be expected from any Cimba function.
 If something *still* seems mysterious, you may have uncovered a bug, and we consider
 unclear or incorrect documentation to constitute a bug. Please open an issue for it in
 the GitHub issue tracker at https://github.com/ambonvik/cimba/issues
-
-
