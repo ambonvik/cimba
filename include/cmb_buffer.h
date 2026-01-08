@@ -67,8 +67,11 @@
  */
 
 /**
- * @brief A two-sided fixed capacity buffer between one or more producer
- *        (putter) and one or more consumer (getter) processes.
+* @brief A two-headed fixed-capacity resource where one or more
+ *       producer (putter) processes can put an amount into the one end, and one or more
+ *       consumer (getter) processes can get an amount out of the other end. If enough space is
+ *       not available, the producers wait, and if there is not enough content, the
+ *       consumers wait.
  */
 struct cmb_buffer {
     struct cmi_resourcebase core;           /**< The virtual base class */

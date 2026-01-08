@@ -1,7 +1,7 @@
 /**
  * @file cmb_resourceguard.h
  * @brief The gatekeeper class for resources a process can wait for. It is
- *        derived from `cmi_hashheap` by composition and inherits its methods,
+ *        derived from `cmi_hashheap` and inherits its methods,
  *        adding a pointer to the resource it guards and a list of any observer
  *        resource guards that get signals forwarded from this one.
  *
@@ -38,8 +38,10 @@
 #include "cmi_list.h"
 
 /**
- * @brief The resource guard struct, a hash-heap priority queue with a pointer
- *        to the resource it guards and a list of any observers.
+ * @brief The gatekeeper class for resources a process can wait for. It is
+ *        derived from `cmi_hashheap` and inherits its methods,
+ *        adding a pointer to the resource it guards and a list of any observer
+ *        resource guards that get signals forwarded from this one.
  */
 struct cmb_resourceguard {
     struct cmi_hashheap priority_queue;         /**< The base hashheap class */

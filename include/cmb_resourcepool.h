@@ -52,9 +52,12 @@
 #include "cmi_holdable.h"
 
 /**
- * @brief The resource pool struct inherits all properties from `cmi_holdable`
- * and adds the resource guard, a hashheap of processes holding
- * some amount of the resource, and a timeseries for logging its history.
+ * @brief A counting semaphore that supports acquire, release, and preempt in
+ *        specific amounts against a fixed resource capacity, where a process
+ *        also can acquire more of a resource it already holds some amount of,
+ *        or release parts of its holding. Several processes can be holding
+ *        parts of the resource capacity at the same time, possibly also
+ *        different amounts.
  */
 struct cmb_resourcepool {
     struct cmi_holdable core;           /**< The virtual base class */

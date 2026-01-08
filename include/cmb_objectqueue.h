@@ -1,9 +1,9 @@
 /**
  * @file cmb_objectqueue.h
- * @brief A fixed-capacity queue where one or more producer processes
+ * @brief A fixed-capacity queue where one or more producer processes (putters)
  * can put arbitrary objects into the one end, and one or more consumer
- * processes can get objects out of the other end. If enough space is not
- * available, the producers wait, and if there is not enough content, the
+ * processes (getters) can get objects out of the other end. If space is not
+ * available, the producers wait, and if there is no content, the
  * consumers wait.
  *
  * The difference from `cmb_buffer` is that it only represents amounts, while
@@ -53,8 +53,11 @@
 #endif
 
 /**
- * @brief A fixed capacity queue for passing arbitrary objects from one or more
- *        producer (putter) processes to one or more consumer (getter) processes.
+* @brief A fixed-capacity queue where one or more producer processes (putters)
+ * can put arbitrary objects into the one end, and one or more consumer
+ * processes (getters) can get objects out of the other end. If space is not
+ * available, the producers wait, and if there is no content, the
+ * consumers wait.
  */
 struct cmb_objectqueue {
     struct cmi_resourcebase core;           /**< The virtual base class */

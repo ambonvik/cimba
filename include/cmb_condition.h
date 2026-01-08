@@ -53,7 +53,11 @@
 #include "cmb_resourceguard.h"
 
 /**
- * @brief The condition struct, basically a named resource guard.
+ * @brief A condition variable class that allows a process to wait for an
+ *        arbitrary condition to become true and be reactivated at that point.
+ *        It does not assign any resource, just signals that the condition is
+ *        fulfilled. The application provides the demand predicate function to
+ *        be evaluated.
  */
 struct cmb_condition {
     struct cmi_resourcebase base;           /**< The parent class, providing name and initialization */

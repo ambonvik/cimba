@@ -1,10 +1,10 @@
 /**
  * @file cmb_priorityqueue.h
- * @brief A fixed-capacity priority queue where one or more producer processes
+ * @brief A fixed-capacity priority queue where one or more producer processes (putters)
  *        can put arbitrary objects into the one end, and one or more consumer
- *        processes can get objects out of the other end. If enough space is not
- *        available, the producers wait, and if there is not enough content, the
- *        consumers wait. Object will be retrieved in priority order.
+ *        processes (getters) can get objects out of the other end. If space is not
+ *        available, the producers wait, and if there is no content, the
+ *        consumers wait. Objects will be retrieved in priority order.
  */
 
 /*
@@ -42,9 +42,11 @@
 #endif
 
 /**
- * @brief A fixed capacity queue for passing arbitrary objects from one or more
- *        producer (putter) processes to one or more consumer (getter) processes,
- *        to be retrieved in priority order.
+ * @brief A fixed-capacity priority queue where one or more producer processes (putters)
+ *        can put arbitrary objects into the one end, and one or more consumer
+ *        processes (getters) can get objects out of the other end. If space is not
+ *        available, the producers wait, and if there is no content, the
+ *        consumers wait. Objects will be retrieved in priority order.
  */
 struct cmb_priorityqueue {
     struct cmi_resourcebase core;           /**< The virtual base class */

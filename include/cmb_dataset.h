@@ -38,7 +38,8 @@
 /** @endcond */
 
 /**
- * @brief A data set with a conveniently resizing sample array.
+ * @brief An automatically resizing array of (possibly unordered) sample values,
+ *        each sample a double.
  */
 struct cmb_dataset {
     uint64_t cookie;    /**< A "magic cookie" to catch uninitialized objects */

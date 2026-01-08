@@ -34,7 +34,10 @@
 #include "cmi_memutils.h"
 
 /**
- * @brief A data summary maintaining running tally statistics.
+ * @brief  A running tally of basic statistics. The `cmb_datasummary` does not
+ * keep individual data values, just the summary statistics. Use `cmb_dataset`
+ * instead if youneed individual values, and use `cmb_dataset_summarize` to
+ * extract the summary statistics from a collected data set.
  */
 struct cmb_datasummary {
     uint64_t cookie;    /**< A "magic cookie" to catch uninitialized objects */
