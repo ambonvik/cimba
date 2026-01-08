@@ -79,19 +79,21 @@ For example, you can use it to model:
 
 * computer networks,
 
-* operating system task scheduling,
+* hospital patient flows,
 
 * transportation networks,
 
+* operating system task scheduling,
+
 * manufacturing systems and job shops,
+
+* military command and control systems,
 
 * queuing systems like bank tellers and store checkouts,
 
 * urban systems like emergency services and garbage collection,
 
-* military command and control systems,
-
-* and many other application domains.
+* ...and many other application domains along similar lines.
 
 See the tutorials for illustrations of both expressive power and how to use
 it for multi-threaded computing power.
