@@ -18,9 +18,9 @@ desired_flags = ['-Wno-pedantic',
                  '-D_POSIX_C_SOURCE=200809L',
                  '-fno-semantic-interposition',
                  '-ftls-model=initial-exec',
-#                 '-O2',
-#                 '-flto=auto',
-#                 '-fuse-linker-plugin',
+                 '-O2',
+                 '-flto=auto',
+                 '-fuse-linker-plugin',
 #                 '-DNDEBUG',
 #                 '-DNLOGINFO'
 ]
