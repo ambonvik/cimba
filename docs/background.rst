@@ -1072,7 +1072,7 @@ Two less obvious features to be aware of, perhaps less useful, but still:
   construct a discrete event simulation engine that could be run in that wrapper like
   Cimba 2.0 did in its trans-Atlantic distributed simulation of 1995.
 
-Benchmarking Cimba Against SimPy
+Benchmarking Cimba against SimPy
 --------------------------------
 
 The most relevant comparison is probably the Python package SimPy (https://pypi.org/project/simpy/),
