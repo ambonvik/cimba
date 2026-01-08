@@ -722,7 +722,7 @@ stacks. However, it will not be needed very often and can be turned off with
 
     cmb_logger_flags_off(CMB_LOGGER_INFO);
 
-It will still be in the code if turned off, requiring one bit comparison per call, but
+It will still be in the code if turned off, requiring one 32-bit comparison per call, but
 you can make it vanish completely (like the asserts) by defining the preprocessor symbol
 ``NLOGINFO``. That will turn the ``cmb_logger_info()`` wrapper macro into a no-op
 statement ``((void)(0))``, eliminating it from the code. For fast production code, you
@@ -748,7 +748,7 @@ running in parallel. This is not very difficult to do, but it needs to be consid
 from the beginning, since the obvious way to code a PRNG is to keep its state as static
 variables between calls.
 
-The PRNG in Cimba is an implementation of Chris Doty-Humphrey's *sfc64*. It
+The PRNG in Cimba is an implementation of Chris Doty-Humphrey's ``sfc64``. It
 provides 64-bit output and maintains a 256-bit state. It is certain to have a cycle
 period of at least 2^64. It is in public domain, see https://pracrand.sourceforge.net
 for the details. In our implementation, the PRNG state is thread local, giving each trial
@@ -771,9 +771,9 @@ We initialize the PRNG in a three-stage bootstrapping process:
   to initialize the state of our main PRNG. This auxiliary PRNG is *splitmix64*, also
   public domain, see https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64#C
 
-* Finally, we draw and discard 20 samples from the main PRNG to make sure that any
-  initial transient is gone before starting to provide pseudo-random numbers to the user
-  applications.
+* Finally, ``cmb_random_initialize()`` draws and discards 20 samples from the main PRNG
+  to make sure that any initial transient is gone before returning and allowing
+  ``sfc64`` to provide pseudo-random numbers to the user applications.
 
 The result is a pseudo-random number sequence that cannot be distinguished from true
 randomness by any available statistical methods. In particular, successive values
