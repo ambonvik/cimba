@@ -564,14 +564,15 @@ execution to proceed past that point.
 The second important observation is that tracing the flow of execution in a large
 discrete event simulation model can become mind-bogglingly complex. We have two levels
 of concurrency within the same memory space: Multithreading and stackful coroutines.
-Your debugger will probably be very confused. Error messages need to give additional
-useful information, not just about what went wrong and where in the code it went wrong,
-but also what process, thread, random number seed, and so on, to locate, replicate, and
-fix the issue. The same thing goes for logging messages: We need simulation-specific
-information to help us figure out what is happening.
+Your debugger will probably be very confused. Finding out what happened if the error
+has had time to propagate elsewhere in your code before something crashes will be near
+impossible. We need to catch it as close to the source as possible. Error messages need
+to give additional useful information, not just about what went wrong and where in the
+code it went wrong, but also what process, thread, random number seed, and so on, to
+locate, replicate, and fix the issue.
 
-Hence, Cimba provides its own ``assert()`` macros and logging functions. Tripping a Cimba
-assert will give a crash report like this:
+Cimba provides its own ``assert()`` macros. Tripping a Cimba assert will give a crash
+report like this:
 
 .. code-block:: none
 
@@ -1094,7 +1095,7 @@ The same model would look like this in Cimba:
         for (uint64_t ui = 0; ui < NUM_OBJECTS; ui++) {
             const double t_hld = cmb_random_exponential(mean_hld);
             cmb_process_hold(t_hld);
-            void *object = cmi_mempool_get(&cmi_mempool_8b);
+            void *object = cmi_mempool_alloc(&cmi_mempool_8b);
             double *dblp = object;
             *dblp = cmb_time();
             cmb_objectqueue_put(qp, &object);
@@ -1120,7 +1121,7 @@ The same model would look like this in Cimba:
             const double t_sys = cmb_time() - *dblp;
             *sum += t_sys;
             *cnt += 1u;
-            cmi_mempool_put(&cmi_mempool_8b, object);
+            cmi_mempool_free(&cmi_mempool_8b, object);
         }
     }
 

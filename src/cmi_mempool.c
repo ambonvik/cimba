@@ -81,7 +81,7 @@ struct cmi_mempool *cmi_mempool_create(void)
  * maximum number of objects that fits in that memory size (allowing for l
  * leftovers if the object size is not a divisor of page size).
  *
- * We'll allocate actual object memory on the first call to cmi_mempool_get,
+ * We'll allocate actual object memory on the first call to cmi_mempool_alloc,
  * hence leaving the object list empty for now.
  */
 void cmi_mempool_initialize(struct cmi_mempool *mp,

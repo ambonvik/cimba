@@ -85,7 +85,7 @@ void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
     while (oqp->queue_head != NULL) {
         struct queue_tag *tag = oqp->queue_head;
         oqp->queue_head = tag->next;
-        cmi_mempool_put(&cmi_mempool_32b, tag);
+        cmi_mempool_free(&cmi_mempool_32b, tag);
     }
 
     oqp->length = 0u;
@@ -226,7 +226,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
             cmb_logger_info(stdout, "Success, got %p", *objectloc);
             tag->next = NULL;
             tag->object = NULL;
-            cmi_mempool_put(&cmi_mempool_32b, tag);
+            cmi_mempool_free(&cmi_mempool_32b, tag);
 
             cmb_resourceguard_signal(&(oqp->rear_guard));
 
@@ -267,7 +267,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
         cmb_assert_debug(oqp->length <= oqp->capacity);
         if (oqp->length < oqp->capacity) {
             /* There is space */
-            struct queue_tag *tag = cmi_mempool_get(&cmi_mempool_32b);
+            struct queue_tag *tag = cmi_mempool_alloc(&cmi_mempool_32b);
             tag->object = *objectloc;
             tag->next = NULL;
 

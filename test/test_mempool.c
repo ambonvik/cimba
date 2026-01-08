@@ -29,20 +29,20 @@ int main(void)
     cmi_test_print_line("=");
     printf("Testing built-in memory pools\n");
 
-    printf("cmi_mempool_get(&cmi_mempool_32b): ... ");
-    void *vp = cmi_mempool_get(&cmi_mempool_32b);
+    printf("cmi_mempool_alloc(&cmi_mempool_32b): ... ");
+    void *vp = cmi_mempool_alloc(&cmi_mempool_32b);
     printf("got %p\n", vp);
 
-    printf("cmi_mempool_put(&cmi_mempool_32b): ... ");
-    cmi_mempool_put(&cmi_mempool_32b, vp);
+    printf("cmi_mempool_free(&cmi_mempool_32b): ... ");
+    cmi_mempool_free(&cmi_mempool_32b, vp);
     printf("done\n");
 
-    printf("cmi_mempool_get(&cmi_mempool_64b): ... ");
-    vp = cmi_mempool_get(&cmi_mempool_64b);
+    printf("cmi_mempool_alloc(&cmi_mempool_64b): ... ");
+    vp = cmi_mempool_alloc(&cmi_mempool_64b);
     printf("got %p\n", vp);
 
-    printf("cmi_mempool_put(&cmi_mempool_64b): ... ");
-    cmi_mempool_put(&cmi_mempool_64b, vp);
+    printf("cmi_mempool_free(&cmi_mempool_64b): ... ");
+    cmi_mempool_free(&cmi_mempool_64b, vp);
     printf("done\n");
 
     cmi_test_print_line("-");
@@ -55,12 +55,12 @@ int main(void)
     struct cmi_mempool *mp = cmi_mempool_create();
     cmi_mempool_initialize(mp, obj_sz, obj_num);
 
-    printf("cmi_mempool_get: ... ");
-    vp = cmi_mempool_get(mp);
+    printf("cmi_mempool_alloc: ... ");
+    vp = cmi_mempool_alloc(mp);
     printf("got %p\n", vp);
 
-    printf("cmi_mempool_put: ... ");
-    cmi_mempool_put(mp, vp);
+    printf("cmi_mempool_free: ... ");
+    cmi_mempool_free(mp, vp);
     printf("done\n");
 
     printf("cmi_mempool_destroy: Deleting the pool ... ");
@@ -74,18 +74,18 @@ int main(void)
     mp = cmi_mempool_create();
     cmi_mempool_initialize(mp, obj_sz, obj_num);
 
-    printf("cmi_mempool_get: pulling out 101 of them, forcing a pool expand ... ");
-    void *vp_first = cmi_mempool_get(mp);
+    printf("cmi_mempool_alloc: pulling out 101 of them, forcing a pool expand ... ");
+    void *vp_first = cmi_mempool_alloc(mp);
     for (unsigned ui = 0; ui < 100; ui++) {
-        vp = cmi_mempool_get(mp);
+        vp = cmi_mempool_alloc(mp);
     }
     printf("done\n");
     printf("First %p\n", vp_first);
     printf("Last %p\n", vp);
 
-    printf("cmi_mempool_put: returning the first and last ... ");
-    cmi_mempool_put(mp, vp_first);
-    cmi_mempool_put(mp, vp);
+    printf("cmi_mempool_free: returning the first and last ... ");
+    cmi_mempool_free(mp, vp_first);
+    cmi_mempool_free(mp, vp);
     printf("done\n");
 
     printf("cmi_mempool_destroy: Deleting the pool ... ");

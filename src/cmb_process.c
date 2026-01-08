@@ -80,7 +80,7 @@ extern void cmb_process_terminate(struct cmb_process *pp)
         /* It had, just recycle the tags */
         struct cmi_list_tag32 *rtag = pp->resources_listhead;
         pp->resources_listhead = rtag->next;
-        cmi_mempool_put(&cmi_mempool_32b, rtag);
+        cmi_mempool_free(&cmi_mempool_32b, rtag);
     }
 
     cmi_coroutine_terminate((struct cmi_coroutine *)pp);
@@ -429,7 +429,7 @@ void cmi_process_wake_all(struct cmi_list_tag **ptloc, const int64_t signal)
                                  priority);
 
         struct cmi_list_tag *tmp = ptag->next;
-        cmi_mempool_put(&cmi_mempool_16b, ptag);
+        cmi_mempool_free(&cmi_mempool_16b, ptag);
         ptag = tmp;
     }
 
@@ -470,7 +470,7 @@ void cmi_process_drop_all(struct cmb_process *pp, struct cmi_list_tag32 **rtloc)
         (*(hrp->drop))(hrp, pp, handle);
 
         struct cmi_list_tag32 *tmp = rtag->next;
-        cmi_mempool_put(&cmi_mempool_32b, rtag);
+        cmi_mempool_free(&cmi_mempool_32b, rtag);
         rtag = tmp;
     }
 

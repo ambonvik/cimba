@@ -104,7 +104,7 @@ extern void cmi_mempool_expand(struct cmi_mempool *mp);
 /*
  * Pop an object off the pool stack, allocating more objects if necessary.
  */
-static inline void *cmi_mempool_get(struct cmi_mempool *mp)
+static inline void *cmi_mempool_alloc(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp != NULL);
     /* Allow for the first call to the predefined memory pools to be initialized */
@@ -126,7 +126,7 @@ static inline void *cmi_mempool_get(struct cmi_mempool *mp)
 /*
  * Push an object back on the pool stack for later reuse.
  */
-static inline void cmi_mempool_put(struct cmi_mempool *mp, void *op)
+static inline void cmi_mempool_free(struct cmi_mempool *mp, void *op)
 {
     cmb_assert_release(mp != NULL);
     cmb_assert_release(mp->cookie == CMI_INITIALIZED);

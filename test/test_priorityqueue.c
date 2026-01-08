@@ -77,7 +77,7 @@ void *putterfunc(struct cmb_process *me, void *vctx)
             cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
         }
 
-        void *object = cmi_mempool_get(&cmi_mempool_8b);
+        void *object = cmi_mempool_alloc(&cmi_mempool_8b);
         cmb_logger_user(stdout,
                         USERFLAG1,
                         "Putting object %p priority %" PRIi64 " into %s...",
@@ -90,7 +90,7 @@ void *putterfunc(struct cmb_process *me, void *vctx)
         }
         else {
             cmb_logger_user(stdout, USERFLAG1, "Put returned signal %" PRIi64, sig);
-            cmi_mempool_put(&cmi_mempool_8b, object);
+            cmi_mempool_free(&cmi_mempool_8b, object);
         }
     }
 }
@@ -121,7 +121,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
         sig = cmb_priorityqueue_get(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Get succeeded");
-            cmi_mempool_put(&cmi_mempool_8b, object);
+            cmi_mempool_free(&cmi_mempool_8b, object);
         }
         else {
             cmb_logger_user(stdout, USERFLAG1, "Get returned signal %" PRIi64, sig);

@@ -41,7 +41,7 @@ static inline void cmi_list_push(struct cmi_list_tag **lloc, void *payload)
 
     struct cmi_list_tag *ltag = NULL;
     cmb_assert_debug(sizeof(*ltag) == 16u);
-    ltag = cmi_mempool_get(&cmi_mempool_16b);
+    ltag = cmi_mempool_alloc(&cmi_mempool_16b);
     cmb_assert_debug(ltag != NULL);
 
     ltag->next = *lloc;
@@ -59,7 +59,7 @@ static inline void *cmi_list_pop(struct cmi_list_tag **lloc)
         struct cmi_list_tag *ltag = *lloc;
         ret = ltag->ptr;
         *lloc = ltag->next;
-        cmi_mempool_put(&cmi_mempool_16b, ltag);
+        cmi_mempool_free(&cmi_mempool_16b, ltag);
     }
 
     return ret;
@@ -75,7 +75,7 @@ static inline bool cmi_list_remove(struct cmi_list_tag **lloc, const void *tgt)
         struct cmi_list_tag *ltag = *ltpp;
         if (ltag->ptr == tgt) {
             *ltpp = ltag->next;
-            cmi_mempool_put(&cmi_mempool_16b, ltag);
+            cmi_mempool_free(&cmi_mempool_16b, ltag);
 
             return true;
         }
@@ -105,7 +105,7 @@ static inline void cmi_list_push32(struct cmi_list_tag32 **lloc,
 
     struct cmi_list_tag32 *ltag = NULL;
     cmb_assert_debug(sizeof(*ltag) == 32u);
-    ltag = cmi_mempool_get(&cmi_mempool_32b);
+    ltag = cmi_mempool_alloc(&cmi_mempool_32b);
     cmb_assert_debug(ltag != NULL);
 
     ltag->next = *lloc;
@@ -125,7 +125,7 @@ static inline void *cmi_list_pop32(struct cmi_list_tag32 **lloc)
         struct cmi_list_tag32 *ltag = *lloc;
         ret = ltag->ptr;
         *lloc = ltag->next;
-        cmi_mempool_put(&cmi_mempool_32b, ltag);
+        cmi_mempool_free(&cmi_mempool_32b, ltag);
     }
 
     return ret;
@@ -142,7 +142,7 @@ static inline bool cmi_list_remove32(struct cmi_list_tag32 **lloc,
         struct cmi_list_tag32 *ltag = *ltpp;
         if (ltag->ptr == target) {
             *ltpp = ltag->next;
-            cmi_mempool_put(&cmi_mempool_32b, ltag);
+            cmi_mempool_free(&cmi_mempool_32b, ltag);
 
             return true;
         }
@@ -174,7 +174,7 @@ static inline void cmi_dlist_push(struct cmi_dlist_tag **dlhloc,
 
     struct cmi_dlist_tag *dtag = NULL;
     cmb_assert_debug(sizeof(*dtag) == 32u);
-    dtag = cmi_mempool_get(&cmi_mempool_32b);
+    dtag = cmi_mempool_alloc(&cmi_mempool_32b);
     cmb_assert_debug(dtag != NULL);
 
     dtag->ptr = payload;
@@ -209,7 +209,7 @@ static inline void *cmi_dlist_pop(struct cmi_dlist_tag **dlhloc,
         *dltloc = NULL;
     }
 
-    cmi_mempool_put(&cmi_mempool_32b, dtag);
+    cmi_mempool_free(&cmi_mempool_32b, dtag);
 
     return tmp;
 }
@@ -226,7 +226,7 @@ static inline void cmi_dlist_add(struct cmi_dlist_tag **dlhloc,
 
     struct cmi_dlist_tag *dtag = NULL;
     cmb_assert_debug(sizeof(*dtag) == 32u);
-    dtag = cmi_mempool_get(&cmi_mempool_32b);
+    dtag = cmi_mempool_alloc(&cmi_mempool_32b);
     cmb_assert_debug(dtag != NULL);
 
     dtag->ptr = payload;
@@ -261,7 +261,7 @@ static inline void *cmi_dlist_pull(struct cmi_dlist_tag **dlhloc,
         *dlhloc = NULL;
     }
 
-    cmi_mempool_put(&cmi_mempool_32b, dtag);
+    cmi_mempool_free(&cmi_mempool_32b, dtag);
 
     return tmp;
 }

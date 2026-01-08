@@ -56,7 +56,7 @@ void *arrivalfunc(struct cmb_process *me, void *vctx)
     for (uint64_t ui = 0; ui < NUM_OBJECTS; ui++) {
         const double t_hld = cmb_random_exponential(mean_hld);
         cmb_process_hold(t_hld);
-        void *object = cmi_mempool_get(&cmi_mempool_8b);
+        void *object = cmi_mempool_alloc(&cmi_mempool_8b);
         double *dblp = object;
         *dblp = cmb_time();
         cmb_objectqueue_put(qp, &object);
@@ -82,7 +82,7 @@ void *servicefunc(struct cmb_process *me, void *vctx)
         const double t_sys = cmb_time() - *dblp;
         *sum += t_sys;
         *cnt += 1u;
-        cmi_mempool_put(&cmi_mempool_8b, object);
+        cmi_mempool_free(&cmi_mempool_8b, object);
     }
 }
 
