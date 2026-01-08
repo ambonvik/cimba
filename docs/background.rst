@@ -530,6 +530,105 @@ pre-packaged for the common resource types and exposed for the ``cmb_condition``
 Cimba a very powerful and expressive simulation tool. There may also be a weak pun here
 somewhere on the C++ ``promise``: Cimba processes do not promise. They *demand*.
 
+Error Handling: The Loud Crashing Noise
+---------------------------------------
+
+Cimba error handling is intentionally draconian. It will not try to "handle" errors
+gently, but will make a loud crashing noise instead.
+
+To understand why, think about the worst case scenario for a discrete
+event simulation model: It must not produce incorrect results. It can not handle
+errors in "helpful" ways that risks introducing biases. The consequences of
+that could range from embarrassing (e.g., your Ph.D. thesis defense) to catastrophic
+(e.g., military decision making). Also, the model will run unattended in a multithreaded
+environment with no direct user interface. Requesting user clarification is not an
+option. It is far better that the simulation stops at any sign of trouble and requires
+you to fix the model code or input than to do something that could turn out to be wrong.
+
+As a contrast, consider a music player application. If some sample is missing, the app
+should interpolate rather than make an audible dropout. If the network is slow, rather
+reduce the bit rate and degrade sound quality than stopping and restarting as the
+buffer empties and refills. That is not the kind of business Cimba is in. Like the
+proverbial samurai, it needs to return victorious or not at all.
+
+Our approach is known as
+"`offensive programming <https://en.wikipedia.org/wiki/Offensive_programming>`_".
+This is closely related to the
+`Design by Contract <https://en.wikipedia.org/wiki/Design_by_contract>`_
+paradigm, where code expresses clear assertions about the expected precondition,
+invariants, and postconditions during function execution. If one of those assertions is
+proven invalid, execution stops right there. The assertions then become self-enforcing
+code documentation, since whatever condition it asserts to be true *must* be true for
+execution to proceed past that point.
+
+The second important observation is that tracing the flow of execution in a large
+discrete event simulation model can become mind-bogglingly complex. We have two levels
+of concurrency within the same memory space: Multithreading and stackful coroutines.
+Your debugger will probably be very confused. Error messages need to give additional
+useful information, not just about what went wrong and where in the code it went wrong,
+but also what process, thread, random number seed, and so on, to locate, replicate, and
+fix the issue. The same thing goes for logging messages: We need simulation-specific
+information to help us figure out what is happening.
+
+Hence, Cimba provides its own ``assert()`` macros and logging functions. Tripping a Cimba
+assert will give a crash report like this:
+
+.. code-block:: none
+
+    0x9bec8a16f0aa802a	    9359.5	Service	cmb_process_hold (272):  Fatal: Assert "dur >= 0.0" failed, source file cmb_process.c
+
+    Process finished with exit code 134 (interrupted by signal 6:SIGABRT)
+
+The first hexadecimal value is the random number seed used for the trial, then the
+simulation time, the process, function, line number, actual condition that failed, and
+the program code file. You now know both where to look and how to reproduce the issue if
+you want a closer look.
+
+Our asserts come in two favors: the ``cmb_assert_debug()`` and ``cmb_assert_release()``
+. TDebug asserts are used at the development stage to ensure
+that everything is working as expected, even if the code to check is time-consuming.
+Inside Cimba, you will asserts that call dedicated predicate functions to validate
+whether the coroutine stacks are valid, if the event queue heap condition is satisfied,
+and so forth. Like the standard C ``assert()`` macro, the debug asserts vanish from the
+code if the preprocessor symbol ``NDEBUG`` is defined. (There is also a ``cmb_assert()
+`` macro, but that is just a shorthand for ``cmb_assert_debug()``.)
+
+The release asserts enforce preconditions, the things that need to be true for some
+function to work correctly. These remain in the code even with ``-DNDEBUG``, since they
+express the contracts towards surrounding code such as valid ranges for input values.
+These are typically simple and fast statements. If you are absolutely certain that your
+model is working correctly and that all your inputs are valid, you can squeeze out a
+very slight speed improvement by defining ``NASSERT`` and making these vanish as well.
+
+As an illustration, consider the function ``cmb_random_uniform()``:
+
+.. code-block:: C
+
+    static inline double cmb_random_uniform(const double min, const double max)
+    {
+        cmb_assert_release(min < max);
+
+        const double r = min + (max - min) * cmb_random();
+        cmb_assert_debug((r >= min) && (r <= max));
+
+        return r;
+    }
+
+The function generates a pseudo-random uniform variate on the interval [min, max]. We use
+those argument names instead of, say, [a, b] to make the expectation clear. We then enforce
+it with a release assert. If ``min`` is not strictly less than ``max`, we stop right
+there. Alternatively, we could be "helpful" and generate samples for intervals with
+reversed limits, but it is more likely than not that both a zero-width interval and an
+interval where min > max indicates an input or model code error. Cimba's way of being
+helpful is to make its loud crashing noise to draw your attention to fixing the error.
+
+The debug assert validates that the result is within the advertised range. It tests for
+internal problems in Cimba and can be turned off after sufficient unit testing. After
+that, it mainly serves as trustworthy documentation: This statement is true, has been
+tested millions of times in unit testing, and you can easily verify it for yourself.
+
+
+
 Pseudo-Random Number Generators and Distributions
 -------------------------------------------------
 
