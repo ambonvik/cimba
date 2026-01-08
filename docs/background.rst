@@ -484,7 +484,7 @@ Resources, Resource Guards, Demands and Conditions
 --------------------------------------------------
 
 Many simulations involve active processes competing for some scarce resource. Cimba
-provides four resource classes and one very general condition variable class. Two of
+provides five resource classes and one very general condition variable class. Two of
 the resource classes are holdable with acquire/release semantics, where ``cmb_resource``
 is a simple binary semaphore that only one process can hold at a time, while the
 ``cmb_resourcepool`` is a counting semaphore where several processes can hold some
@@ -496,7 +496,8 @@ The common theme for all these is that a process requests something and may have
 wait in an orderly priority queue for its turn if that something is not immediately
 available. Our hashheap is a good starting point for building this. For this purpose, we
 derive a class ``cmb_resourceguard`` from the ``cmi_hashheap``, adding a pointer to some
-resource (the abstract base class) to be guarded, and a list of observing resource guards.
+resource (the abstract base class) to be guarded, and a list of any observing resource
+guards.
 
 When a process requests some resource and finds it busy, it enqueues itself in the
 hashheap priority queue. It also registers its *demand function*, a predicate function
@@ -528,7 +529,7 @@ tutorial, it can include continuous-valued state variables.
 We believe that the open-ended flexibility of our demand predicate function,
 pre-packaged for the common resource types and exposed for the ``cmb_condition``, makes
 Cimba a very powerful and expressive simulation tool. There may also be a weak pun here
-somewhere on the C++ ``promise``: Cimba processes do not promise. They *demand*.
+somewhere on the C++ ``promise`` keyword: Cimba processes do not promise. They *demand*.
 
 Error Handling: The Loud Crashing Noise
 ---------------------------------------
@@ -539,15 +540,16 @@ gently, but will make a loud crashing noise instead.
 To understand why, think about the worst case scenario for a discrete
 event simulation model: It must not produce incorrect results. It can not handle
 errors in "helpful" ways that risks introducing biases. The consequences of
-that could range from embarrassing (e.g., your Ph.D. thesis defense) to catastrophic
-(e.g., military decision making). Also, the model will run unattended in a multithreaded
-environment with no direct user interface. Requesting user clarification is not an
-option. It is far better that the simulation stops at any sign of trouble and requires
-you to fix the model code or input than to do something that could turn out to be wrong.
+that could range from embarrassing (e.g., during your Ph.D. thesis defense) to
+catastrophic (e.g., military decision making). Also, the model will run unattended in a
+multithreaded environment with no direct user interface. Requesting user clarification is
+not an option. It is far better that the simulation stops at any sign of trouble and
+requires you to fix the model code or input than to do something that could turn out to
+be wrong.
 
-As a contrast, consider a music player application. If some sample is missing, the app
-should interpolate rather than make an audible dropout. If the network is slow, rather
-reduce the bit rate and degrade sound quality than stopping and restarting as the
+As a contrasting opposite, consider a music player application. If some sample is missing,
+the app should interpolate rather than make an audible dropout. If the network is slow,
+rather reduce the bit rate and degrade sound quality than stopping and restarting as the
 buffer empties and refills. That is not the kind of business Cimba is in. Like the
 proverbial samurai, it needs to return victorious or not at all.
 
@@ -576,23 +578,23 @@ report like this:
 
 .. code-block:: none
 
-    0x9bec8a16f0aa802a	    9359.5	Service	cmb_process_hold (272):  Fatal: Assert "dur >= 0.0" failed, source file cmb_process.c
+    9359.5	Service	cmb_process_hold (272):  Fatal: Assert "dur >= 0.0" failed, source file cmb_process.c, seed 0x9bec8a16f0aa802a
 
     Process finished with exit code 134 (interrupted by signal 6:SIGABRT)
 
-The first hexadecimal value is the random number seed used for the trial, then the
-simulation time, the process, function, line number, actual condition that failed, and
-the program code file. You now know both where to look and how to reproduce the issue if
-you want a closer look.
+It shows the simulation time, process, function, line number, actual condition that failed,
+the program code file, and finally the random number seed used to initialize the trial.
+You now know both where to look and how to reproduce the issue if you want a closer look.
 
-Our asserts come in two favors: the ``cmb_assert_debug()`` and ``cmb_assert_release()``
-. TDebug asserts are used at the development stage to ensure
+Our asserts come in two favors: the ``cmb_assert_debug()`` and ``cmb_assert_release()``.
+(There is also a
+``cmb_assert()`` macro, but it is just a shorthand for ``cmb_assert_debug()``.)
+Debug asserts are used at the development stage to ensure
 that everything is working as expected, even if the code to check is time-consuming.
 Inside Cimba, you will asserts that call dedicated predicate functions to validate
 whether the coroutine stacks are valid, if the event queue heap condition is satisfied,
 and so forth. Like the standard C ``assert()`` macro, the debug asserts vanish from the
-code if the preprocessor symbol ``NDEBUG`` is defined. (There is also a ``cmb_assert()
-`` macro, but that is just a shorthand for ``cmb_assert_debug()``.)
+code if the preprocessor symbol ``NDEBUG`` is defined.
 
 The release asserts enforce preconditions, the things that need to be true for some
 function to work correctly. These remain in the code even with ``-DNDEBUG``, since they
@@ -627,8 +629,6 @@ The debug assert validates that the result is within the advertised range. It te
 internal problems in Cimba and can be turned off after sufficient unit testing. After
 that, it mainly serves as trustworthy documentation: This statement is true, has been
 tested millions of times in unit testing, and you can easily verify it for yourself.
-
-
 
 Pseudo-Random Number Generators and Distributions
 -------------------------------------------------

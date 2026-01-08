@@ -128,12 +128,6 @@ int cmb_vfprintf(FILE *fp,
             ret += r;
         }
 
-        if (flags >= CMB_LOGGER_WARNING) {
-            r = fprintf(fp, "0x%" PRIx64 "\t", cmb_random_curseed());
-            assert(r > 0);
-            ret += r;
-        }
-
         r = fprintf(fp, "%s\t", timeformatter(cmb_time()));
         assert(r > 0);
         ret += r;
@@ -172,6 +166,12 @@ int cmb_vfprintf(FILE *fp,
         r = vfprintf (fp, fmtstr, args);
         assert(r > 0);
         ret += r;
+
+        if (flags >= CMB_LOGGER_WARNING) {
+            r = fprintf(fp, ", seed 0x%" PRIx64 "\t", cmb_random_curseed());
+            assert(r > 0);
+            ret += r;
+        }
 
         r += fprintf(fp, "\n");
         assert(r > 0);

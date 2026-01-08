@@ -687,15 +687,13 @@ We define a small helper function to load the parameters into the ``trial``:
     Sure enough::
 
         /home/ambonvik/github/cimba/build/tutorial/tut_1_5
-        0x9bec8a16f0aa802a	    9359.5	Service	cmb_process_hold (272):  Fatal: Assert "dur >= 0.0" failed, source file cmb_process.c
+        9359.5	Service	cmb_process_hold (272):  Fatal: Assert "dur >= 0.0" failed, source file cmb_process.c, seed 0x9bec8a16f0aa802a
 
         Process finished with exit code 134 (interrupted by signal 6:SIGABRT)
 
-    The output line starts with the random seed that was used, to make it possible
-    to reproduce intermittent issues. It then lists the simulated time, the process,
-    the function and the exact line of code, the condition that failed, and the source
-    code file where it blew up. It looks a lot like the logger output, because it is
-    the logger output, called through a function called ``cmi_assert_failed()``.
+    The output line lists the simulated time, the process, the function and line of code,
+    the condition that failed, the source code file where it blew up, and the random
+    number seed that was used to initialize the run.
 
     If using a debugger, place a breakpoint  in ``cmi_assert_failed()``.
     If some assert trips, control will always
