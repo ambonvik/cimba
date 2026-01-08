@@ -1932,8 +1932,8 @@ derived from) execute atomically until they explicitly yield control. These
 yield (and resume) points are hidden inside functions like ``cmb_process_hold()``
 or ``cmb_resource_acquire``. Inside the call, control may (or may not) be
 passed to some other process. The call will only return when control is transferred
-back to this process. To the calling process, it looks very simple, but a lot of
-things may be happening in the meantime.
+back to this process. To the calling process just sitting on its own stack, it looks very
+simple, but a lot of things may be happening elsewhere in the meantime.
 
 A yielded process does not have any guarantees for what may be happening to it
 before it resumes control. Other processes may act on this process, perhaps
@@ -2013,7 +2013,7 @@ returning a pointer to the currently executing process, i.e. the caller.
 Buffers and object queues, interrupted
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The semantics of buffers and object queues are different from the resources
+The semantics of buffers and object queues are different from the resources and
 resource pools. A process can acquire and hold a resource, making it unavailable
 for other processes until it is released. Preempting it naturally means taking
 the resource away from the process because someone else needs it more, right now.
@@ -2054,7 +2054,7 @@ politely wait its turn. There is also a cat. It sleeps a lot, but when awake,
 it will select random rodents and interrupt whatever it is doing.
 
 Since we do not plan to run any statistics here, we simplify the context struct
-to just contain the simulation struct. We can then write something like:
+to just the simulation struct. We can then write something like:
 
 .. code-block:: c
 
