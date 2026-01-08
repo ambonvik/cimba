@@ -773,7 +773,7 @@ We initialize the PRNG in a three-stage bootstrapping process:
 
 * Finally, ``cmb_random_initialize()`` draws and discards 20 samples from the main PRNG
   to make sure that any initial transient is gone before returning and allowing
-  ``sfc64`` to provide pseudo-random numbers to the user applications.
+  ``cmb_random_sfc64`` to provide pseudo-random numbers to the user application.
 
 The result is a pseudo-random number sequence that cannot be distinguished from true
 randomness by any available statistical methods. In particular, successive values
