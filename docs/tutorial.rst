@@ -1044,10 +1044,6 @@ also that the trials may not be executed in strict sequence, since we do not
 control the detailed interleaving of the threads. That is up to the operating
 system.
 
-Each of simulations was one million time units long, the average service time was
-one time unit, and we ran 390 trials, adding up to 390 million time units.
-We think executing that in 3.4 seconds is pretty fast.
-
 We also get this image in a separate window:
 
     .. image:: ../images/tut_1_6.png
