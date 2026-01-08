@@ -167,53 +167,42 @@ output like this:
 
 .. code-block:: none
 
-    [ambonvik@Threadripper cimba]$ build/tutorial/tut_1_1 | more
-    0.0000	dispatcher	cmb_process_start (121):  Start Arrival 0x55f5d86e1490
-    0.0000	dispatcher	cmb_process_start (121):  Start Service 0x55f5d86e1e10
-    0.0000	dispatcher	cmb_event_queue_execute (252):  Starting simulation run
-    0.0000	Arrival	cmb_process_hold (288):  Hold until time 4.225095
-    0.0000	Service	cmb_buffer_get (208):  Queue capacity unlimited, level now 0
-    0.0000	Service	cmb_buffer_get (217):  Gets 1 from Queue
-    0.0000	Service	cmb_buffer_get (254):  Waiting for content
-    0.0000	Service	cmb_buffer_get (256):  Queue capacity unlimited, level now 0
-    0.0000	Service	cmb_resourceguard_wait (128):  Waits for Queue
-    4.2251	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-    4.2251	Arrival	cmb_buffer_put (311):  Queue capacity unlimited, level now 0
-    4.2251	Arrival	cmb_buffer_put (320):  Puts 1 into Queue
-    4.2251	Arrival	cmb_buffer_put (326):  Success, found room for 1, has 0 remaining
-    4.2251	Arrival	cmb_resourceguard_signal (196):  Scheduling wakeup event for Service
-    4.2251	Arrival	cmb_process_hold (288):  Hold until time 4.272635
-    4.2251	dispatcher	resgrd_waitwu_evt (149):  Wakes Service signal 0 wait type 4
-    4.2251	Service	cmb_buffer_get (270):  Returned successfully from wait
-    4.2251	Service	cmb_buffer_get (208):  Queue capacity unlimited, level now 1
-    4.2251	Service	cmb_buffer_get (217):  Gets 1 from Queue
-    4.2251	Service	cmb_buffer_get (223):  Success, 1 was available, got 1
-    4.2251	Service	cmb_process_hold (288):  Hold until time 6.171486
-    4.2726	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-    4.2726	Arrival	cmb_buffer_put (311):  Queue capacity unlimited, level now 0
-    4.2726	Arrival	cmb_buffer_put (320):  Puts 1 into Queue
-    4.2726	Arrival	cmb_buffer_put (326):  Success, found room for 1, has 0 remaining
-    4.2726	Arrival	cmb_process_hold (288):  Hold until time 5.068268
-    5.0683	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-    5.0683	Arrival	cmb_buffer_put (311):  Queue capacity unlimited, level now 1
-    5.0683	Arrival	cmb_buffer_put (320):  Puts 1 into Queue
-    5.0683	Arrival	cmb_buffer_put (326):  Success, found room for 1, has 0 remaining
-    5.0683	Arrival	cmb_process_hold (288):  Hold until time 6.303422
-    6.1715	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
-    6.1715	Service	cmb_buffer_get (208):  Queue capacity unlimited, level now 2
-    6.1715	Service	cmb_buffer_get (217):  Gets 1 from Queue
-    6.1715	Service	cmb_buffer_get (223):  Success, 1 was available, got 1
-    6.1715	Service	cmb_process_hold (288):  Hold until time 6.181334
-    6.1813	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
-    6.1813	Service	cmb_buffer_get (208):  Queue capacity unlimited, level now 1
-    6.1813	Service	cmb_buffer_get (217):  Gets 1 from Queue
-    6.1813	Service	cmb_buffer_get (223):  Success, 1 was available, got 1
-    6.1813	Service	cmb_process_hold (288):  Hold until time 7.186975
-    6.3034	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-    6.3034	Arrival	cmb_buffer_put (311):  Queue capacity unlimited, level now 0
-    6.3034	Arrival	cmb_buffer_put (320):  Puts 1 into Queue
-    6.3034	Arrival	cmb_buffer_put (326):  Success, found room for 1, has 0 remaining
-    6.3034	Arrival	cmb_process_hold (288):  Hold until time 6.824858
+    [ambonvik@Threadripper cimba]$ ./build/tutorial/tut_1_1 | more
+        0.0000	dispatcher	cmb_process_start (121):  Start Arrival 0x55ea2f505490
+        0.0000	dispatcher	cmb_process_start (121):  Start Service 0x55ea2f505e10
+        0.0000	dispatcher	cmb_event_queue_execute (252):  Starting simulation run
+        0.0000	Arrival	cmb_process_hold (289):  Hold until time 2.182560
+        0.0000	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
+        0.0000	Service	cmb_buffer_get (245):  Waiting for more, level now 0
+        0.0000	Service	cmb_resourceguard_wait (128):  Waits for Queue
+        2.1826	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
+        2.1826	Arrival	cmb_buffer_put (292):  Puts 1 into Queue, level 0
+        2.1826	Arrival	cmb_buffer_put (299):  Success, found room for 1, has 0 remaining
+        2.1826	Arrival	cmb_resourceguard_signal (196):  Scheduling wakeup event for Service
+        2.1826	Arrival	cmb_process_hold (289):  Hold until time 2.894681
+        2.1826	dispatcher	resgrd_waitwu_evt (149):  Wakes Service signal 0 wait type 4
+        2.1826	Service	cmb_buffer_get (252):  Returned successfully from wait
+        2.1826	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
+        2.1826	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
+        2.1826	Service	cmb_process_hold (289):  Hold until time 2.703327
+        2.7033	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
+        2.7033	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
+        2.7033	Service	cmb_buffer_get (245):  Waiting for more, level now 0
+        2.7033	Service	cmb_resourceguard_wait (128):  Waits for Queue
+        2.8947	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
+        2.8947	Arrival	cmb_buffer_put (292):  Puts 1 into Queue, level 0
+        2.8947	Arrival	cmb_buffer_put (299):  Success, found room for 1, has 0 remaining
+        2.8947	Arrival	cmb_resourceguard_signal (196):  Scheduling wakeup event for Service
+        2.8947	Arrival	cmb_process_hold (289):  Hold until time 7.249741
+        2.8947	dispatcher	resgrd_waitwu_evt (149):  Wakes Service signal 0 wait type 4
+        2.8947	Service	cmb_buffer_get (252):  Returned successfully from wait
+        2.8947	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
+        2.8947	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
+        2.8947	Service	cmb_process_hold (289):  Hold until time 5.111000
+        5.1110	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
+        5.1110	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
+        5.1110	Service	cmb_buffer_get (245):  Waiting for more, level now 0
+        5.1110	Service	cmb_resourceguard_wait (128):  Waits for Queue
 
 ...and will keep on doing that forever. We have to press Ctrl-C or similar
 to stop it. The good news is that it works. Each line in the trace contains the
@@ -345,79 +334,36 @@ We compile and run, and get something like this:
 
 .. code-block:: none
 
-    [ambonvik@Threadripper cimba]$ build/tutorial/tut_1_2
-    0.0000	dispatcher	cmb_process_start (121):  Start Arrival 0x55af6eff3490
-    0.0000	dispatcher	cmb_process_start (121):  Start Service 0x55af6eff3e10
-    0.0000	dispatcher	cmb_event_queue_execute (252):  Starting simulation run
-    0.0000	Arrival	cmb_process_hold (288):  Hold until time 5.235388
-    0.0000	Service	cmb_buffer_get (208):  Queue capacity unlimited, level now 0
-    0.0000	Service	cmb_buffer_get (217):  Gets 1 from Queue
-    0.0000	Service	cmb_buffer_get (254):  Waiting for content
-    0.0000	Service	cmb_buffer_get (256):  Queue capacity unlimited, level now 0
-    0.0000	Service	cmb_resourceguard_wait (128):  Waits for Queue
-    5.2354	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-    5.2354	Arrival	cmb_buffer_put (311):  Queue capacity unlimited, level now 0
-    5.2354	Arrival	cmb_buffer_put (320):  Puts 1 into Queue
-    5.2354	Arrival	cmb_buffer_put (326):  Success, found room for 1, has 0 remaining
-    5.2354	Arrival	cmb_resourceguard_signal (196):  Scheduling wakeup event for Service
-    5.2354	Arrival	cmb_process_hold (288):  Hold until time 6.179507
-    5.2354	dispatcher	resgrd_waitwu_evt (149):  Wakes Service signal 0 wait type 4
-    5.2354	Service	cmb_buffer_get (270):  Returned successfully from wait
-    5.2354	Service	cmb_buffer_get (208):  Queue capacity unlimited, level now 1
-    5.2354	Service	cmb_buffer_get (217):  Gets 1 from Queue
-    5.2354	Service	cmb_buffer_get (223):  Success, 1 was available, got 1
-    5.2354	Service	cmb_process_hold (288):  Hold until time 6.801065
-    6.1795	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-    6.1795	Arrival	cmb_buffer_put (311):  Queue capacity unlimited, level now 0
-    6.1795	Arrival	cmb_buffer_put (320):  Puts 1 into Queue
-    6.1795	Arrival	cmb_buffer_put (326):  Success, found room for 1, has 0 remaining
-    6.1795	Arrival	cmb_process_hold (288):  Hold until time 7.890786
-    6.8011	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
-    6.8011	Service	cmb_buffer_get (208):  Queue capacity unlimited, level now 1
-    6.8011	Service	cmb_buffer_get (217):  Gets 1 from Queue
-    6.8011	Service	cmb_buffer_get (223):  Success, 1 was available, got 1
-    6.8011	Service	cmb_process_hold (288):  Hold until time 6.897082
-    6.8971	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
-    6.8971	Service	cmb_buffer_get (208):  Queue capacity unlimited, level now 0
-    6.8971	Service	cmb_buffer_get (217):  Gets 1 from Queue
-    6.8971	Service	cmb_buffer_get (254):  Waiting for content
-    6.8971	Service	cmb_buffer_get (256):  Queue capacity unlimited, level now 0
-    6.8971	Service	cmb_resourceguard_wait (128):  Waits for Queue
-    7.8908	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-    7.8908	Arrival	cmb_buffer_put (311):  Queue capacity unlimited, level now 0
-    7.8908	Arrival	cmb_buffer_put (320):  Puts 1 into Queue
-    7.8908	Arrival	cmb_buffer_put (326):  Success, found room for 1, has 0 remaining
-    7.8908	Arrival	cmb_resourceguard_signal (196):  Scheduling wakeup event for Service
-    7.8908	Arrival	cmb_process_hold (288):  Hold until time 8.252155
-    7.8908	dispatcher	resgrd_waitwu_evt (149):  Wakes Service signal 0 wait type 4
-    7.8908	Service	cmb_buffer_get (270):  Returned successfully from wait
-    7.8908	Service	cmb_buffer_get (208):  Queue capacity unlimited, level now 1
-    7.8908	Service	cmb_buffer_get (217):  Gets 1 from Queue
-    7.8908	Service	cmb_buffer_get (223):  Success, 1 was available, got 1
-    7.8908	Service	cmb_process_hold (288):  Hold until time 8.178792
-    8.1788	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
-    8.1788	Service	cmb_buffer_get (208):  Queue capacity unlimited, level now 0
-    8.1788	Service	cmb_buffer_get (217):  Gets 1 from Queue
-    8.1788	Service	cmb_buffer_get (254):  Waiting for content
-    8.1788	Service	cmb_buffer_get (256):  Queue capacity unlimited, level now 0
-    8.1788	Service	cmb_resourceguard_wait (128):  Waits for Queue
-    8.2522	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-    8.2522	Arrival	cmb_buffer_put (311):  Queue capacity unlimited, level now 0
-    8.2522	Arrival	cmb_buffer_put (320):  Puts 1 into Queue
-    8.2522	Arrival	cmb_buffer_put (326):  Success, found room for 1, has 0 remaining
-    8.2522	Arrival	cmb_resourceguard_signal (196):  Scheduling wakeup event for Service
-    8.2522	Arrival	cmb_process_hold (288):  Hold until time 10.227289
-    8.2522	dispatcher	resgrd_waitwu_evt (149):  Wakes Service signal 0 wait type 4
-    8.2522	Service	cmb_buffer_get (270):  Returned successfully from wait
-    8.2522	Service	cmb_buffer_get (208):  Queue capacity unlimited, level now 1
-    8.2522	Service	cmb_buffer_get (217):  Gets 1 from Queue
-    8.2522	Service	cmb_buffer_get (223):  Success, 1 was available, got 1
-    8.2522	Service	cmb_process_hold (288):  Hold until time 10.829652
-    10.000	dispatcher	cmb_process_stop (611):  Stop Arrival value (nil)
-    10.000	dispatcher	cmb_process_stop (611):  Stop Service value (nil)
-    10.000	dispatcher	proc_stop_evt (573):  Stops Arrival signal 0 wait type 0
-    10.000	dispatcher	proc_stop_evt (573):  Stops Service signal 0 wait type 0
-    10.000	dispatcher	cmb_event_queue_execute (255):  No more events in queue
+    [ambonvik@Threadripper cimba]$ ./build/tutorial/tut_1_2
+        0.0000	dispatcher	cmb_process_start (121):  Start Arrival 0x559e2bbea490
+        0.0000	dispatcher	cmb_process_start (121):  Start Service 0x559e2bbeae10
+        0.0000	dispatcher	cmb_event_queue_execute (252):  Starting simulation run
+        0.0000	Arrival	cmb_process_hold (289):  Hold until time 0.385819
+        0.0000	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
+        0.0000	Service	cmb_buffer_get (245):  Waiting for more, level now 0
+        0.0000	Service	cmb_resourceguard_wait (128):  Waits for Queue
+       0.38582	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
+       0.38582	Arrival	cmb_buffer_put (292):  Puts 1 into Queue, level 0
+       0.38582	Arrival	cmb_buffer_put (299):  Success, found room for 1, has 0 remaining
+       0.38582	Arrival	cmb_resourceguard_signal (196):  Scheduling wakeup event for Service
+       0.38582	Arrival	cmb_process_hold (289):  Hold until time 1.216324
+       0.38582	dispatcher	resgrd_waitwu_evt (149):  Wakes Service signal 0 wait type 4
+       0.38582	Service	cmb_buffer_get (252):  Returned successfully from wait
+       0.38582	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
+       0.38582	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
+       0.38582	Service	cmb_process_hold (289):  Hold until time 0.503544
+
+            ...
+
+        9.8545	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
+        9.8545	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 4
+        9.8545	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
+        9.8545	Service	cmb_process_hold (289):  Hold until time 12.376642
+        10.000	dispatcher	cmb_process_stop (612):  Stop Arrival value (nil)
+        10.000	dispatcher	cmb_process_stop (612):  Stop Service value (nil)
+        10.000	dispatcher	proc_stop_evt (574):  Stops Arrival signal 0 wait type 0
+        10.000	dispatcher	proc_stop_evt (574):  Stops Service signal 0 wait type 0
+        10.000	dispatcher	cmb_event_queue_execute (255):  No more events in queue
 
 Progress: It started, ran, and stopped.
 
@@ -521,8 +467,6 @@ We compile and run, and get something like this:
     9.4011	Arrival	arrival (28):  Puts one into the queue
     9.4011	Arrival	arrival (25):  Holds for 1.751825 time units
     10.000	dispatcher	end_sim (15):  --- Game Over ---
-
-
 
 Only our user-defined logging messages are printed. Note how the simulation time,
 the name of the active process, the calling function, and the line number are
