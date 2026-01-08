@@ -262,6 +262,10 @@ language feature. It uses concepts like *encapsulation*, *inheritance*, and
   then have a list of *shapes*, ask each one to *draw()* itself, and have the different
   subtypes of shapes do the appropriate thing.
 
+* *Abstraction* selectively exposes important features to surrounding code and hides
+  implementation details. This clarifies *what* an object does, while shielding the
+  complexity of *how* it is done.
+
 This can also be implemented in a language like C, without explicit support from
 programming language features. The key observation is that the first member of a C
 ``struct`` is guaranteed to have the same address in memory as the struct itself. We
@@ -276,10 +280,12 @@ this can be extended by having a dedicated ``vtable`` object for the class to av
 multiple copies of the function pointers in each class member object, at the cost of
 one more redirection per function call.
 
-The encapsulation is then a matter of disciplined modularity in structuring the code,
-with the code and header files as a main building block. Careful use of ``static`` and
-``extern`` functions and variables provide the equivalents of ``private``, ``public``,
-and ``friend`` class properties and methods.
+The encapsulation and abstraction is then a matter of disciplined modularity in
+structuring the code, with the code and header files as a main building block. Careful
+use of ``static`` and ``extern`` functions and variables provide the equivalents of
+``private``, ``public``, and ``friend`` class properties and methods. The header file
+encapsulate and expose what a module or class does, while the corresponding C code file
+contains the implementation details.
 
 Even if this is the most natural way of describing the entities in our simulated world,
 there are other things there that might be less natural to describe as classes and
@@ -376,8 +382,8 @@ function) for how to handle that for a particular kind of resource.
 Events and the Event Queue
 --------------------------
 
-The most fundamental property of a discrete event simulation model is that state only can
-change at the event times. The basic algorithm is to maintain a priority queue of
+The most fundamental property of a discrete event simulation is that state only
+changes at the event times. The basic algorithm is to maintain a priority queue of
 scheduled events, retrieve the first one, set the simulation clock to its reactivation
 time, execute the event, and repeat.
 
@@ -387,10 +393,10 @@ parallelizing a single model run is near impossible: The dispatcher cannot know 
 event to execute next or what state the next event will encounter before the current event
 is finished executing.
 
-Cimba maintains a single, thread-local event queue and simulation clock. These are
+Cimba maintains a single thread-local event queue and simulation clock. These are
 global to the simulated world, but local to each trial thread. Two simulations running
 in parallel on separate CPU cores exist in the same shared memory space, but do not
-interact or influence each other.
+interact or influence each other. They are in parallel universes.
 
 We define an *event* as a triple consisting of a pointer to a function that takes two
 pointers to ``void`` as arguments and does not return any value, and the two pointers
@@ -422,10 +428,9 @@ nowhere to store a return value for later use either. An event function has sign
 
 An event is not even an object. It is ephemeral; once it has occurred, it is gone.
 You cannot take a pointer to an event. You can schedule an event as a triple ``(action,
-subject, object)`` to occur at a certain point in time with a certain priority, and as we
-soon will see, you can cancel a scheduled event, reschedule it, or change its priority,
-but it is still not an object. In computer sciency terms, it is a *closure*, a function
-with a context to be executed at a future time and place.
+subject, object)`` to occur at a certain point in time with a certain priority, and you
+can cancel a scheduled event, reschedule it, or change its priority,
+but it is still not an object.
 
 The event queue also provides wildcard functions to search for, count, or cancel entries
 that match some combination of (action, subject, object). For this purpose,
