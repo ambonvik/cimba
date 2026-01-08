@@ -75,7 +75,7 @@ int main(void)
 {
     cmb_random_initialize(cmb_random_hwseed());
     cmb_event_queue_initialize(0.0);
-    cmb_set_timeformatter(myformatter);
+    cmb_logger_set_timeformatter(myformatter);
 
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
