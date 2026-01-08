@@ -227,7 +227,8 @@ function, that calls some other function, which in turn calls a Cimba function l
 need to know that they are part of a discrete event simulation, much less care about
 what stack they are executing on. They are just C functions that get called and do their
 thing. There is no need to refactor the whole call chain to yield generators at multiple
-levels. This is why we insisted on proper *stackful* coroutines.
+levels if you change something deep in the call chain. This is why we insisted on
+proper *stackful* coroutines.
 
 We will soon return to Cimba's processes and their interactions, but if the reader has
 been paying attention, there is something else we need to address first: We just said

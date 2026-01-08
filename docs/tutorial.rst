@@ -100,7 +100,7 @@ afterwards. Let us try this:
         cmb_event_queue_initialize(0.0);
 
         struct cmb_buffer *que = cmb_buffer_create();
-        cmb_buffer_initialize(que, "Queue", CMB_BUFFER_UNLIMITED);
+        cmb_buffer_initialize(que, "Queue", CMB_UNLIMITED);
 
         struct cmb_process *arr_proc = cmb_process_create();
         cmb_process_initialize(arr_proc, "Arrival", arrival, que, 0);
@@ -278,7 +278,7 @@ and schedule an ``end_sim`` event before executing the event queue:
 
         struct simulation sim = {};
         sim.que = cmb_buffer_create();
-        cmb_buffer_initialize(sim.que, "Queue", CMB_BUFFER_UNLIMITED);
+        cmb_buffer_initialize(sim.que, "Queue", CMB_UNLIMITED);
 
         sim.arr = cmb_process_create();
         cmb_process_initialize(sim.arr, "Arrival", arrival, sim.que, 0);
@@ -552,7 +552,7 @@ collectors and reporting functions. There is actually one built into the
 
     struct simulation sim = {};
     sim.que = cmb_buffer_create();
-    cmb_buffer_initialize(sim.que, "Queue", CMB_BUFFER_UNLIMITED);
+    cmb_buffer_initialize(sim.que, "Queue", CMB_UNLIMITED);
     cmb_buffer_start_recording(sim.que);
 
 After the simulation is finished, we can make it report its history like this:
