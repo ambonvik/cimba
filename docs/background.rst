@@ -561,7 +561,7 @@ Our approach is known as
 "`offensive programming <https://en.wikipedia.org/wiki/Offensive_programming>`_".
 This is closely related to the
 `Design by Contract <https://en.wikipedia.org/wiki/Design_by_contract>`_
-paradigm, where code expresses clear assertions about the expected precondition,
+paradigm, where code expresses clear assertions about the expected preconditions,
 invariants, and postconditions during function execution. If one of those assertions is
 proven invalid, execution stops right there. The assertions then become self-enforcing
 code documentation, since whatever condition it asserts to be true *must* be true for
@@ -607,7 +607,9 @@ function to work correctly. These remain in the code even with ``-DNDEBUG``, sin
 express the contracts towards surrounding code such as valid ranges for input values.
 These are typically simple and fast statements. If you are absolutely certain that your
 model is working correctly and that all your inputs are valid, you can squeeze out a
-very slight speed improvement by defining ``NASSERT`` and making these vanish as well.
+very slight speed improvement by defining the preprocessor symbol ``NASSERT`` and making
+these vanish as well. We do not recommend this, since it turns off all input argument
+checking in Cimba functions, but it is possible to do.
 
 As an illustration, consider the function ``cmb_random_uniform()``:
 
@@ -623,18 +625,23 @@ As an illustration, consider the function ``cmb_random_uniform()``:
         return r;
     }
 
-The function generates a pseudo-random uniform variate on the interval [min, max]. We use
-those argument names instead of, say, [a, b] to make the expectation clear. We then enforce
-it with a release assert. If ``min`` is not strictly less than ``max``, we stop right
-there. Alternatively, we could be "helpful" and generate samples for intervals with
-reversed limits, but it is more likely than not that both a zero-width interval and an
-interval where min > max indicates an input or model code error. Cimba's way of being
+The function generates a pseudo-random uniform variate on the interval ``[min, max]``. We
+use those argument names instead of, say, ``[a, b]`` to make the expectation clear. We
+then enforce it with a release assert. If ``min`` is not strictly less than ``max``, we
+stop right there. Alternatively, we could be "helpful" and generate samples for intervals
+with reversed limits, but it is more likely than not that both a zero-width interval and an
+interval where ``min > max`` indicates an input or model code error. Cimba's way of being
 helpful is to make its loud crashing noise to draw your attention to fixing the error.
 
 The debug assert validates that the result is within the advertised range. It tests for
 internal problems in Cimba and can be turned off after sufficient unit testing. After
 that, it mainly serves as trustworthy documentation: This statement is true, has been
 tested millions of times in unit testing, and you can easily verify it for yourself.
+
+It is crystal clear what valid inputs and outputs are for the function above, even
+without a single comment in the code. We are not about to prove total correctness in the
+strict C.A.R. Hoare sense, but the function shown above does constitute a
+`Hoare triple <https://en.wikipedia.org/wiki/Hoare_logic#Hoare_triple>`_
 
 Logging Flags and Bit Masks
 ---------------------------
