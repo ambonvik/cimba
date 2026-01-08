@@ -635,7 +635,94 @@ tested millions of times in unit testing, and you can easily verify it for yours
 Logging Flags and Bit Masks
 ---------------------------
 
+As explained in the tutorial, the key concept for the logger is the logger flags, a bit
+mask given as argument to a logger call and a current bit field. Both are 32-bit
+unsigned integers, type ``uint32_t``. If a simple bitwise and (``&``) between the logger's bit
+field and the caller's bit mask gives a non-zero result, that line is printed, otherwise
+not. Initially, all bits in the logger bit field are on, ``0xFFFFFFFF``. You can turn
+selected bits on and off with ``cmb_logger_flags_on()`` and ``cmb_logger_flags_off()``.
+The bit field is thread local, so the bit twiddles will only affect the current thread.
 
+The top four bits are reserved for Cimba use, defined as ``CMB_LOGGER_FATAL``,
+``CMB_LOGGER_ERROR``, ``CMB_LOGGER_WARNING``, and ``CMB_LOGGER_INFO``, respectively.
+These correspond to logger functions (actually macro wrappers) ``cmb_logger_fatal()``,
+``cmb_logger_error()``, ``cmb_logger_warning()``, and ``cmb_logger_info()``. These are
+``fprintf()``-style functions.
+
+The difference between ``cmb_logger_fatal()`` and ``cmb_logger_error()`` is that
+``_fatal()`` will call ``abort()`` to terminate your entire program, while ``_error()``
+calls ``pthread_exit(NULL)`` to stop the current thread. ``cmb_logger_fatal()`` should
+be used whenever there is a chance of memory corruption that could affect other
+threads, while ``cmb_logger_error()`` can be used if a single trial for some reason is
+unsuccessful and needs to bail out without providing a result. To make this work, you
+will need to initialize the trial result fields in your experiment array to some
+out-of-band value, and ensure that any remaining out-of-band values at the end of the
+experiment are not included in the result calculation.
+
+The ``cmb_logger_info()`` level is used internally in Cimba to give a basic view of
+what is going on. It can look like this:
+
+.. code-block:: none
+
+    [ambonvik@Threadripper cimba]$ ./build/benchmark/MM1_single | more
+        0.0000	dispatcher	cmb_process_start (121):  Start Arrival 0x560aba07b510
+        0.0000	dispatcher	cmb_process_start (121):  Start Service 0x560aba07be90
+        0.0000	dispatcher	cmb_event_queue_execute (252):  Starting simulation run
+        0.0000	Arrival	cmb_process_hold (289):  Hold until time 0.811026
+        0.0000	Service	cmb_objectqueue_get (206):  Gets an object from Queue, length now 0
+        0.0000	Service	cmb_objectqueue_get (238):  Waiting for an object
+        0.0000	Service	cmb_resourceguard_wait (128):  Waits for Queue
+       0.81103	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
+       0.81103	Arrival	cmb_objectqueue_put (264):  Puts object 0x560aba0a3000 into Queue, length 0
+       0.81103	Arrival	cmb_objectqueue_put (286):  Success, put 0x560aba0a3000
+       0.81103	Arrival	cmb_resourceguard_signal (196):  Scheduling wakeup event for Service
+       0.81103	Arrival	cmb_process_hold (289):  Hold until time 0.928586
+       0.81103	dispatcher	resgrd_waitwu_evt (149):  Wakes Service signal 0 wait type 4
+       0.81103	Service	cmb_objectqueue_get (243):  Trying again
+       0.81103	Service	cmb_objectqueue_get (226):  Success, got 0x560aba0a3000
+       0.81103	Service	cmb_process_hold (289):  Hold until time 1.273660
+       0.92859	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
+       0.92859	Arrival	cmb_objectqueue_put (264):  Puts object 0x560aba0a3008 into Queue, length 0
+       0.92859	Arrival	cmb_objectqueue_put (286):  Success, put 0x560aba0a3008
+       0.92859	Arrival	cmb_process_hold (289):  Hold until time 2.416227
+        1.2737	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
+        1.2737	Service	cmb_objectqueue_get (206):  Gets an object from Queue, length now 1
+        1.2737	Service	cmb_objectqueue_get (226):  Success, got 0x560aba0a3008
+        1.2737	Service	cmb_process_hold (289):  Hold until time 3.836229
+        2.4162	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
+        2.4162	Arrival	cmb_objectqueue_put (264):  Puts object 0x560aba0a3000 into Queue, length 0
+        2.4162	Arrival	cmb_objectqueue_put (286):  Success, put 0x560aba0a3000
+        2.4162	Arrival	cmb_process_hold (289):  Hold until time 3.698153
+        3.6982	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
+        3.6982	Arrival	cmb_objectqueue_put (264):  Puts object 0x560aba0a3010 into Queue, length 1
+        3.6982	Arrival	cmb_objectqueue_put (286):  Success, put 0x560aba0a3010
+        3.6982	Arrival	cmb_process_hold (289):  Hold until time 6.278845
+        3.8362	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
+        3.8362	Service	cmb_objectqueue_get (206):  Gets an object from Queue, length now 2
+        3.8362	Service	cmb_objectqueue_get (226):  Success, got 0x560aba0a3000
+        3.8362	Service	cmb_process_hold (289):  Hold until time 4.634069
+
+If you compare this to the stack illustrations in the preceding section on Cimba
+processes as coroutines, this gives a pretty good view of what is happening on the
+stacks. However, it will not be needed very often and can be turned off with
+
+.. code-block:: C
+
+    cmb_logger_flags_off(CMB_LOGGER_INFO);
+
+It will still be in the code if turned off, requiring one bit comparison per call, but
+you can make it vanish completely (like the asserts) by defining the preprocessor symbol
+``NLOGINFO``. That will turn the ``cmb_logger_info()`` wrapper macro into a no-op
+statement ``((void)(0))``, eliminating it from the code. For fast production code, you
+may want to compile Cimba with compiler flags ``-DNDEBUG -DNLOGINFO``. See the top
+level `meson.build <https://github.com/ambonvik/cimba/blob/main/meson.build>`_ and
+uncomment those two options before compiling and (re)installing CImba.
+
+As shown in the tutorial, the user application can define up to 28 different logger
+flags for fine-grained control of what logging messages to print. Remember that these
+are bit masks, so your logging flags should be ``0x00000001``, ``0x00000002``,
+``0x00000004``, ``0x00000008``, ``0x00000010``, and so on for single bits turned off
+and on.
 
 Pseudo-Random Number Generators and Distributions
 -------------------------------------------------
@@ -878,8 +965,8 @@ And, of course, if more statistical power is needed, use the ``cmb_dataset_print
 and ``cmb_timeseries_print()`` functions to write the raw data values to file, and use
 dedicated software such as *R* or *Gnuplot* to analyze and present the data.
 
-An Experiment Consists of Multi-Threaded Trials
------------------------------------------------
+Experiments Consist of Multi-Threaded Trials
+--------------------------------------------
 
 Finally, we return to the primary objective for Cimba: To provide multi-threaded
 discrete event simulation that harnesses the power of modern multi-core CPUS. As
