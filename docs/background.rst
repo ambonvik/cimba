@@ -587,16 +587,18 @@ the program code file, and finally the random number seed used to initialize the
 You now know both where to look and how to reproduce the issue if you want a closer look.
 
 Our asserts come in two favors: the ``cmb_assert_debug()`` and ``cmb_assert_release()``.
-(There is also a
-``cmb_assert()`` macro, but it is just a shorthand for ``cmb_assert_debug()``.)
-Debug asserts are used at the development stage to ensure
+There is also a ``cmb_assert()`` macro, but it is just a shorthand for
+``cmb_assert_debug()``.
+
+*Debug* asserts are used at the development stage to ensure
 that everything is working as expected, even if the code to check is time-consuming.
 Inside Cimba, you will asserts that call dedicated predicate functions to validate
 whether the coroutine stacks are valid, if the event queue heap condition is satisfied,
 and so forth. Like the standard C ``assert()`` macro, the debug asserts vanish from the
-code if the preprocessor symbol ``NDEBUG`` is defined.
+code if the preprocessor symbol ``NDEBUG`` is defined. Disabling the debug asserts
+will approximately double the execution speed of your model.
 
-The release asserts enforce preconditions, the things that need to be true for some
+*Release* asserts enforce preconditions, the things that need to be true for some
 function to work correctly. These remain in the code even with ``-DNDEBUG``, since they
 express the contracts towards surrounding code such as valid ranges for input values.
 These are typically simple and fast statements. If you are absolutely certain that your
@@ -619,7 +621,7 @@ As an illustration, consider the function ``cmb_random_uniform()``:
 
 The function generates a pseudo-random uniform variate on the interval [min, max]. We use
 those argument names instead of, say, [a, b] to make the expectation clear. We then enforce
-it with a release assert. If ``min`` is not strictly less than ``max`, we stop right
+it with a release assert. If ``min`` is not strictly less than ``max``, we stop right
 there. Alternatively, we could be "helpful" and generate samples for intervals with
 reversed limits, but it is more likely than not that both a zero-width interval and an
 interval where min > max indicates an input or model code error. Cimba's way of being
@@ -629,6 +631,11 @@ The debug assert validates that the result is within the advertised range. It te
 internal problems in Cimba and can be turned off after sufficient unit testing. After
 that, it mainly serves as trustworthy documentation: This statement is true, has been
 tested millions of times in unit testing, and you can easily verify it for yourself.
+
+Logging Flags and Bit Masks
+---------------------------
+
+
 
 Pseudo-Random Number Generators and Distributions
 -------------------------------------------------
