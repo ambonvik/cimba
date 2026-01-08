@@ -95,7 +95,7 @@ co-exist and are non-preemptively scheduled. Combined with object-orientation, t
 means that one can describe a class of objects as independent threads of execution, often
 infinite loops, where the object's code just does its own thing. The complexity in the
 simulated world then arises from the interactions between the active processes and various
-other passive objects, while the description of each entity's actions is very natural.
+other passive object, while the description of each entity's actions is very natural.
 
 Coroutines received significant academic interest in the early years, but were then
 overshadowed by the object-oriented inheritance mechanisms. It seems that current
@@ -129,6 +129,10 @@ Moreover, we want our coroutines to return an exit value if and when they termin
 we want the flexibility of either just returning this exit value from the coroutine
 function or by calling a special ``exit()`` function with an argument. These should be
 equivalent, and the exit value should be persistent after the coroutine execution ends.
+
+And, of course, we want our coroutines to be extremely efficient. Calling``malloc()`` and
+``free()`` or ``memcpy()``'ing large amounts of data in each context switch is a definite
+no go.
 
 We are not aware of any open source coroutine implementation that exactly meets these
 requirements, so Cimba contains its own, built from the ground up in C and assembly. This
