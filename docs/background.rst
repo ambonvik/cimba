@@ -640,19 +640,20 @@ tested millions of times in unit testing, and you can easily verify it for yours
 
 It is crystal clear what valid inputs and outputs are for the function above, even
 without a single comment in the code. We are not about to prove total correctness in the
-strict C.A.R. Hoare sense, but the function shown above does constitute a
-`Hoare triple <https://en.wikipedia.org/wiki/Hoare_logic#Hoare_triple>`_
+strict C.A.R. Hoare sense, but the function shown above does constitute a logical
+`Hoare triple <https://en.wikipedia.org/wiki/Hoare_logic#Hoare_triple>`_.
 
 Logging Flags and Bit Masks
 ---------------------------
 
-As explained in the tutorial, the key concept for the logger is the logger flags, a bit
-mask given as argument to a logger call and a current bit field. Both are 32-bit
+As explained in the tutorial, the key concept for the logger is the logger flags; a bit
+mask given as an argument to a logger call, and a current bit field. Both are 32-bit
 unsigned integers, type ``uint32_t``. If a simple bitwise and (``&``) between the logger's bit
 field and the caller's bit mask gives a non-zero result, that line is printed, otherwise
-not. Initially, all bits in the logger bit field are on, ``0xFFFFFFFF``. You can turn
-selected bits on and off with ``cmb_logger_flags_on()`` and ``cmb_logger_flags_off()``.
-The bit field is thread local, so the bit twiddles will only affect the current thread.
+it is not. Initially, all bits in the logger bit field are on, ``0xFFFFFFFF``. You can
+turn selected bits on and off with ``cmb_logger_flags_on()`` and
+``cmb_logger_flags_off()``. The bit field is thread local, so any bit twiddles will only
+affect the current thread.
 
 The top four bits are reserved for Cimba use, defined as ``CMB_LOGGER_FATAL``,
 ``CMB_LOGGER_ERROR``, ``CMB_LOGGER_WARNING``, and ``CMB_LOGGER_INFO``, respectively.
