@@ -1231,9 +1231,8 @@ million events / second) than what SimPy can do if it has all 64 logical cores t
 Moreover, Cimba's stackful coroutines allow calls to context-switching functions (like
 ``cmb_process_hold()`` or ``cmb_resource_acquire()``) from arbitrary deep within
 function call hierarchies. Control will leave the call stack where it is and pick up
-again from the same point when control is passed back into that ``cmb_process``.  A Python
-``generator`` cannot do this, effectively limiting SimPy to relatively simple
-simulations where all ``yield`` statements can be within the same generator function.
+again from the same point when control is passed back into that ``cmb_process``.
+The stackless Python ``generator`` that SimPy processes are based on cannot do this.
 
 Our (admittedly biased) view is that SimPy is good for simple one-off simulations where
 learning curve and development time are the critical constraints, perhaps as part of a
