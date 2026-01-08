@@ -1192,7 +1192,7 @@ concerned about wind magnitude and direction:
         }
     }
 
-Notice that just before looping back to the top, we ``signal`` the harbormaster
+Notice that just before holding, we ``signal`` the harbormaster
 condition, informing it that some state has changed, requiring it to re-evaluate
 its list of waiting ships.
 
@@ -1250,7 +1250,7 @@ The ``cmb_condition`` exposes the resource guard and demand mechanism to the use
 application. It does not provide any particular resource object, but lets a
 process wait until an arbitrary condition is satisfied. The demand function may
 even be different for each waiting process. The condition will evaluate them in
-turn, and will schedule a wakeup event at the current time for every process
+turn, and will schedule a wakeup event at the current time for every waiting process
 whose demand function evaluates to ``true``. What to do next is up to the user
 application.
 
@@ -1462,8 +1462,9 @@ On the other hand, this is not safe at all:
             cmb_condition_wait(hbm, is_ready_to_dock, ctx);
         }
 
-        /* Do NOT do this: Announce our intention to move, yielding execution
-         * to other processes possibly both in the acquire and hold calls */
+        /* Do NOT do this: Hold and/or request a resource not part of the condition
+         * predicate, yielding execution to other processes that may invalidate our
+         * condition before we act on it. */
         cmb_resource_acquire(simp->comms);
         cmb_process_hold(cmb_random_gamma(5.0, 0.01));
         cmb_resource_release(simp->comms);
@@ -1473,9 +1474,11 @@ On the other hand, this is not safe at all:
         cmb_resourcepool_acquire(simp->berths[shpp->size], 1u);
         cmb_resourcepool_acquire(simp->tugs, shpp->tugs_needed);
 
-The mutex is not needed, but only because a coroutine has atomic execution between
+A mutex is not needed, but only because a coroutine has atomic execution between
 explicit yield points. It is the application program's own responsibility to avoid
-doing something that could invalidate the condition before acting on it.
+doing something that could invalidate the condition before acting on it. If your code
+needs a simulated mutex for some reason, a simple ``cmb_resource`` will do, since it is
+a binary semaphore that only can be released by the process that acquired it.
 
 We next write the arrival process generating ships:
 
@@ -1535,13 +1538,67 @@ In this example, we just did the ship allocation and initialization inline. If w
 create and/or initialize ships from more than one place in the
 code, we would wrap these in proper ``ship_create()`` and ``ship_initialize()``
 functions to avoid repeating ourselves, but there is nothing that forces us to write
-pro forma constructor and destructor functions. (For illustration and code style, we
-do this "properly" in the next iteration of the example, ``tutorial/tut_2_2.c``.)
+pro forma constructor and destructor functions. For illustration and code style, we
+do this "properly" in the next iteration of the example, ``tutorial/tut_2_2.c``, where
+the ship class looks like this:
+
+.. code-block:: C
+
+    * A ship is a derived class from cmb_process */
+    struct ship {
+        struct cmb_process core;       /* <= Note: The real thing, not a pointer */
+        enum ship_size size;
+        unsigned tugs_needed;
+        double max_wind;
+        double min_depth;
+    };
+
+    /* We'll do the object lifecycle properly with constructors and destructors. */
+    struct ship *ship_create(void)
+    {
+        struct ship *shpp = malloc(sizeof(struct ship));
+        memset(shpp, 0, sizeof(struct ship));
+
+        return shpp;
+    }
+
+    /* Process function to be defined later, for now just declare that it exists */
+    void *ship_proc(struct cmb_process *me, void *vctx);
+
+    void ship_initialize(struct ship *shpp, const enum ship_size sz, uint64_t cnt, void *vctx)
+    {
+        cmb_assert_release(shpp != NULL);
+        shpp->size = sz;
+
+        /* We would probably not hard-code parameters except in a demo like this */
+        shpp->max_wind = 10.0 + 2.0 * (double)(shpp->size);
+        shpp->min_depth = 8.0 + 5.0 * (double)(shpp->size);
+        shpp->tugs_needed = 1u + 2u * shpp->size;
+
+        char namebuf[20];
+        snprintf(namebuf, sizeof(namebuf),
+                 "Ship_%06" PRIu64 "%s",
+                 ++cnt, ((shpp->size == SMALL) ? "_small" : "_large"));
+
+        /* Done initializing the child class properties, pass it on to the parent class */
+        cmb_process_initialize((struct cmb_process *)shpp, namebuf, ship_proc, vctx, 0);
+    }
+
+    void ship_terminate(struct ship *shpp)
+    {
+        /* Nothing needed for the ship itself, pass it on to parent class */
+        cmb_process_terminate((struct cmb_process *)shpp);
+    }
+
+    void ship_destroy(struct ship *shpp)
+    {
+        free(shpp);
+    }
 
 The departure process is reasonably straightforward, capturing the exit value from
 the ship process and then recycling the entire ship. A ``cmb_condition`` is used
 to know that one or more ships have departed, triggering the departure process
-to do something.
+to do something. Here, we use our new destructor functions:
 
 .. code-block:: c
 
@@ -1573,10 +1630,9 @@ to do something.
                 cmb_dataset_add(simp->time_in_system[shpp->size], *t_sys_p);
             }
 
-            /* Frees internally allocated memory, but not the object itself */
-            cmb_process_terminate((struct cmb_process *)shpp);
-            /* We malloc'ed it, call free() directly instead of cmb_process_destroy() */
-            free(shpp);
+            ship_terminate(shpp);
+            ship_destroy(shpp);
+
             /* The exit value was malloc'ed in the ship process, free it as well */
             free(t_sys_p);
         }
