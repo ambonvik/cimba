@@ -67,7 +67,7 @@ static const char *time_to_string(const double t)
 /* Pointer to current time formatting function */
 static CMB_THREAD_LOCAL const char *(*timeformatter)(double) = time_to_string;
 
-void cmb_set_timeformatter(cmb_timeformatter_func *fp)
+void cmb_logger_set_timeformatter(cmb_timeformatter_func *fp)
 {
     assert(fp != NULL);
 
@@ -97,7 +97,7 @@ void cmb_logger_flags_off(uint32_t flags)
 }
 
 /*
- * cmb_vfprintf : Core logger func, fprintf-style with flags for matching with
+ * cmb_logger_vfprintf : Core logger func, fprintf-style with flags for matching with
  * the mask. Produces a single line of logging output. Will print the trial
  * number as the first field if part of a multi-trial experiment. Will print the
  * random number seed for message levels warning and above to enable reproducing
@@ -111,12 +111,12 @@ void cmb_logger_flags_off(uint32_t flags)
  *
  * Returns the number of characters written, in case anyone cares.
  */
-int cmb_vfprintf(FILE *fp,
-                 const uint32_t flags,
-                 const char *func,
-                 const int line,
-                 const char *fmtstr,
-                 va_list args)
+int cmb_logger_vfprintf(FILE *fp,
+                        const uint32_t flags,
+                        const char *func,
+                        const int line,
+                        const char *fmtstr,
+                        va_list args)
 {
     int ret = 0;
     if ((flags & cmi_logger_mask) != 0) {
@@ -194,7 +194,7 @@ void cmi_logger_fatal(FILE *fp,
         fflush(NULL);
         va_list args;
         va_start(args, fmtstr);
-        (void)cmb_vfprintf(fp, CMB_LOGGER_FATAL, func, line, fmtstr, args);
+        (void)cmb_logger_vfprintf(fp, CMB_LOGGER_FATAL, func, line, fmtstr, args);
         va_end(args);
     }
 
@@ -211,7 +211,7 @@ void cmi_logger_error(FILE *fp,
         fflush(NULL);
         va_list args;
         va_start(args, fmtstr);
-        (void)cmb_vfprintf(fp, CMB_LOGGER_ERROR, func, line, fmtstr, args);
+        (void)cmb_logger_vfprintf(fp, CMB_LOGGER_ERROR, func, line, fmtstr, args);
         va_end(args);
     }
 
@@ -230,7 +230,7 @@ void cmi_logger_warning(FILE *fp,
         fflush(NULL);
         va_list args;
         va_start(args, fmtstr);
-        (void)cmb_vfprintf(fp, CMB_LOGGER_WARNING, func, line, fmtstr, args);
+        (void)cmb_logger_vfprintf(fp, CMB_LOGGER_WARNING, func, line, fmtstr, args);
         va_end(args);
     }
 }
@@ -244,7 +244,7 @@ void cmi_logger_info(FILE *fp,
     if ((CMB_LOGGER_INFO & cmi_logger_mask) != 0) {
         va_list args;
         va_start(args, fmtstr);
-        (void)cmb_vfprintf(fp, CMB_LOGGER_INFO, func, line, fmtstr, args);
+        (void)cmb_logger_vfprintf(fp, CMB_LOGGER_INFO, func, line, fmtstr, args);
         va_end(args);
     }
 }
@@ -259,7 +259,7 @@ void cmi_logger_user(FILE *fp,
     if ((flags & cmi_logger_mask) != 0) {
         va_list args;
         va_start(args, fmtstr);
-        (void)cmb_vfprintf(fp, flags, func, line, fmtstr, args);
+        (void)cmb_logger_vfprintf(fp, flags, func, line, fmtstr, args);
         va_end(args);
     }
 }

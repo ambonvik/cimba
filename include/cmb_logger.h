@@ -104,7 +104,7 @@ typedef const char *(cmb_timeformatter_func)(double t);
  * an argument and returning a `const char *`. See `cmb_logger.c` for one way to
  * do this.
  */
-extern void cmb_set_timeformatter(cmb_timeformatter_func *tf);
+extern void cmb_logger_set_timeformatter(cmb_timeformatter_func *tf);
 
 /**
 * @brief The core logging function, like vfprintf but with logging flags in
@@ -120,13 +120,13 @@ extern void cmb_set_timeformatter(cmb_timeformatter_func *tf);
 * @param fmtstr A printf-like format string.
 * @param args  The arguments to the format string.
 */
-extern int cmb_vfprintf(FILE *fp,
-                        uint32_t flags,
-                        const char *func,
-                        int line,
-                        const char *fmtstr,
-                        va_list args)
-                        __attribute__((format(printf, 3, 0)));
+extern int cmb_logger_vfprintf(FILE *fp,
+                               uint32_t flags,
+                               const char *func,
+                               int line,
+                               const char *fmtstr,
+                               va_list args)
+                                    __attribute__((format(printf, 3, 0)));
 
 /*
  * Wrapper functions for predefined message levels.

@@ -373,7 +373,7 @@ Setting logging levels
 Next, the verbiage. As you would expect at this point in the tutorial, Cimba has
 powerful and flexible logging that gives you fine-grained control of what to log.
 
-The core logging function is called ``cmb_vfprintf()``. As the name says, it is
+The core logging function is called ``cmb_logger_vfprintf()``. As the name says, it is
 similar to the standard function ``vfprintf()`` but with some Cimba-specific added
 features. You will rarely interact directly with this function, but instead call
 wrapper functions (actually macros) like ``cmb_logger_user()`` or ``cmb_logger_error()``.
