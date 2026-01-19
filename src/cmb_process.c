@@ -141,9 +141,7 @@ void cmb_process_start(struct cmb_process *pp)
     const double t = cmb_time();
     const int64_t pri = pp->priority;
 
-    const uint64_t handle = cmb_event_schedule(process_start_event, pp, NULL, t, pri);
-    cmb_logger_info(stdout, "Scheduled start event %" PRIu64 " %s %p",
-                    handle, pp->name, (void *)pp);
+    (void)cmb_event_schedule(process_start_event, pp, NULL, t, pri);
 }
 
 /*
@@ -561,17 +559,14 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
             cmb_assert_debug(pa->ptr == NULL);
             cmb_assert_debug(pa->handle != UINT64_C(0));
             cmb_logger_info(stdout, "Cancels timeout event %" PRIu64, pa->handle);
-            const bool found = cmb_event_cancel(pa->handle);
-            cmb_logger_info(stdout, "Event %" PRIu64 " %s",
-                            pa->handle, found ? "found" : "not found");
+            (void)cmb_event_cancel(pa->handle);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_RESOURCE) {
             cmb_assert_debug(pa->handle != UINT64_C(0));
             cmb_assert_debug(pa->ptr != NULL);
             struct cmb_resourceguard *rgp = pa->ptr;
             cmb_logger_info(stdout, "Cancels resource %s", rgp->guarded_resource->name);
-            const bool found = cmb_resourceguard_remove(rgp, pp);
-            cmb_logger_info(stdout, "Resource %s %s", rgp->guarded_resource->name, found ? "found" : "not found");
+            (void)cmb_resourceguard_remove(rgp, pp);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_PROCESS) {
             /* Waits for a process to end, remove ourselves from the waiter list */
@@ -579,16 +574,14 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
             cmb_assert_debug(pa->ptr != NULL);
             struct cmb_process *pw = (struct cmb_process *)pa->ptr;
             cmb_logger_info(stdout, "Cancels wait for process %s", pw->name);
-            const bool found = cmi_process_remove_waiter(pw, pp);
-            cmb_logger_info(stdout, "Process %s %s", pw->name, found ? "found" : "not found");
+            (void)cmi_process_remove_waiter(pw, pp);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_EVENT) {
             /* Waits for a specific event, remove ourselves from the event's list */
             cmb_assert_debug(pa->ptr == NULL);
             cmb_assert_debug(pa->handle != UINT64_C(0));
             cmb_logger_info(stdout, "Cancels wait for event %" PRIu64, pa->handle);
-            const bool found = cmi_event_remove_waiter(pa->handle, pp);
-            cmb_logger_info(stdout, "Event %" PRIu64 " %s", pa->handle, found ? "found" : "not found");
+            (void)cmi_event_remove_waiter(pa->handle, pp);
         }
 
         /* Recycle the tag */
