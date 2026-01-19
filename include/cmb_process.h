@@ -43,8 +43,7 @@
 #include "cmb_event.h"
 
 #include "cmi_coroutine.h"
-#include "cmi_list.h"
-#include "cmi_waitable.h"
+#include "cmi_slist.h"
 
 /**
  * @brief Maximum length of a process name, anything longer will be truncated
@@ -75,6 +74,7 @@
  *        signed integer value except these predefined values.)
  */
 #define CMB_PROCESS_INTERRUPTED INT64_C(-2)
+
 /**
  * @brief Return code from various process context switching calls, indicating
  *        that the process it was waiting for was stopped (killed) by some other
@@ -86,8 +86,15 @@
  * @brief Return code from various process context switching calls, indicating
  *        that the process request for some type of resource was canceled.
  */
-
 #define CMB_PROCESS_CANCELLED INT64_C(-4)
+
+/**
+ * @brief Return code from various process context switching calls, indicating
+ *        that the process request for some type of resource was interrupted
+ *        by a pre-set timer event. The timer could set any other value, this is
+ *        just a preconfigured possible choice.
+ */
+#define CMB_PROCESS_TIMEOUT INT64_C(-5)
 
 /**
  * @brief The states a process can be in (direct from the underlying coroutine)
@@ -102,18 +109,14 @@ enum cmb_process_state {
  * @brief The process struct, inheriting all properties from `cmi_coroutine` by
  * composition, adding the name, priority, and lists of resources it may be
  * holding and things it may be waiting for.
- *
- * The `waiters_listhead` contains any processes that are waiting for this
- * process to finish. The `resources_listhead` contains any resources held by
- * this process, to be released if the process is stopped by someone else.
 */
 struct cmb_process {
     struct cmi_coroutine core;              /**< The parent coroutine */
     char name[CMB_PROCESS_NAMEBUF_SZ];      /**< The process name string */
     int64_t priority;                       /**< The current process priority */
-    struct cmi_process_waitable waitsfor;   /**< What the process is waiting for, if anything */
-    struct cmi_list_tag *waiters_listhead;  /**< Other processes waiting for this process to finish */
-    struct cmi_list_tag32 *resources_listhead; /**< Any resources held by this process */
+    struct cmi_slist_head awaits;         /**< What this process is waiting for, if anything */
+    struct cmi_slist_head waiters;          /**< Any other processes waiting for this process to finish */
+    struct cmi_slist_head resources;        /**< Any resources held by this process */
 };
 
 /**
@@ -201,6 +204,53 @@ extern void cmb_process_start(struct cmb_process *pp);
 extern int64_t cmb_process_hold(double dur);
 
 /**
+ * @brief  Unconditionally yield control with no fixed duration or condition.
+ *
+ * @memberof cmb_process
+ * @return Whatever signal value is passed by whatever process causing this one
+ *         to resume again, possibly itself by setting a timer before calling.
+ */
+static inline int64_t cmb_process_yield(void)
+{
+    struct cmb_process *pp = (struct cmb_process *)cmi_coroutine_current();
+    cmb_assert_release(pp != (struct cmb_process *)cmi_coroutine_main());
+
+    const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
+
+    return sig;
+}
+
+/**
+ * @brief  Set a timer to resume ourselves with signal sig in time dur.
+ *
+ * Calling
+ *  cmb_process_timer(5.0, CMB_PROCESS_SUCCESS);
+ *  cmb_process_yield();
+ * is exactly the same as calling
+ *  cmb_process_hold(5.0);
+ *
+ * @memberof cmb_process
+ * @param dur The duration to hold for, relative to the current simulation time.
+ * @param sig The signal to be passed at wakeup, e.g., `CMB_PROCESS_TIMEOUT`,
+ *            or something user-application defined.
+ */
+extern void cmb_process_timer(double dur, int64_t sig);
+
+/**
+ * @brief  Schedule a wakeup event at the current time for a yielded process. The
+ *         processes are asymmetric coroutines and only the dispatcher can call
+ *         `cmi_coroutine_resume()`. Hence an event to make the dispatcher do that.
+ *         If the target process was waiting for something else, this call works
+ *         like `cmb_process_interrupt()`.
+ *
+ * @memberof cmb_process
+ * @param pp Pointer to the target process.
+ * @param sig The signal to be passed to the target process.
+ * @param pri The priority for the interrupt event that will be scheduled.
+ */
+extern void cmb_process_resume(struct cmb_process *pp, int64_t sig, int64_t pri);
+
+/**
  * @brief  Wait for some other process to finish. Called from within a process.
  *
  * Returns immediately if the awaited process already is finished.
@@ -259,25 +309,23 @@ extern void cmb_process_interrupt(struct cmb_process *pp,
                                   int64_t pri);
 
 /**
- * @brief  Kill the target process by scheduling a stop event.
+ * @brief  Kill the target process.
  *
  * Sets the target process exit value to the argument value `retval`. The
  * meaning of return values for an externally terminated process is application
- * defined.
+ * defined. Drops any resources held by the target process. Does not transfer
+ * control to the target process.
  *
- * Does not transfer control to the target process, but schedules a stop event
- * at the current simulation time with minimum priority (`INT64_MIN`) to ensure
- * that any other events can execute first. Does not destroy the target's memory
- * allocation. The target process can be restarted from the beginning by calling
- * `cmb_process_start(pp)` again.
+ * Does not destroy the target's memory allocation. The target process can
+ * be restarted from the beginning by calling `cmb_process_start(tgt)` again.
  *
  * @memberof cmb_process
- * @param pp Pointer to the target process.
+ * @param tgt Pointer to the target process.
  * @param retval The return value from the process, user defined meaning, often
  *               `NULL` for an externally killed process. Will be stored as the
  *               `cmb_coroutine` `exit_value`.
  */
-extern void cmb_process_stop(struct cmb_process *pp, void *retval);
+extern void cmb_process_stop(struct cmb_process *tgt, void *retval);
 
 /**
  * @brief  Return the process name as a `const char *`, since it is kept in a
@@ -318,7 +366,12 @@ extern void cmb_process_set_name(struct cmb_process *pp,
  * @param pp Pointer to a process.
  * @return Pointer to the process context.
  */
-extern void *cmb_process_context(const struct cmb_process *pp);
+static inline void *cmb_process_context(const struct cmb_process *pp)
+{
+    cmb_assert_release(pp != NULL);
+
+    return cmi_coroutine_context((struct cmi_coroutine *)pp);
+}
 
 /**
  * @brief  Replace the process context with something else.
@@ -342,7 +395,12 @@ extern void cmb_process_set_context(struct cmb_process *pp, void *context);
  * @param pp Pointer to a process.
  * @return The current priority value.
  */
-extern int64_t cmb_process_priority(const struct cmb_process *pp);
+static inline int64_t cmb_process_priority(const struct cmb_process *pp)
+{
+    cmb_assert_release(pp != NULL);
+
+    return pp->priority;
+}
 
 /**
  * @brief  Change the priority for the process.
@@ -389,7 +447,13 @@ extern void *cmb_process_exit_value(const struct cmb_process *pp);
  * outside a named process, such as the main process that executes the event
  * dispatcher.
  */
-extern struct cmb_process *cmb_process_current(void);
+static inline struct cmb_process *cmb_process_current(void)
+{
+    const struct cmi_coroutine *cp = cmi_coroutine_current();
+    const struct cmi_coroutine *mp = cmi_coroutine_main();
+
+    return (cp == mp) ? NULL : (struct cmb_process *)cp;
+}
 
 
 #endif /* CIMBA_CMB_PROCESS_H */

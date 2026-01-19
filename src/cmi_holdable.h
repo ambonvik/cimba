@@ -10,11 +10,10 @@
  * There are no `cmi_holdable_create()` or `cmi_holdable_destroy()` functions,
  * since this class only will appear as an intermediate virtual class between
  * `cmi_resourcebase` and the specific resource types, never on its own.
-
  */
 
 /*
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025 - 26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +34,7 @@
 #include <stdint.h>
 
 #include "cmb_process.h"
+
 #include "cmi_resourcebase.h"
 
 struct cmi_holdable;

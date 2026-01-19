@@ -25,14 +25,14 @@
 #include "cmi_memutils.h"
 
 /*
- * coroutine_main : A dummy coroutine to keep track of the main stack
+ * coroutine_main - A dummy coroutine to keep track of the main stack
  * pointer in context switches. No stack allocated, but pointers into the
  * normal system stack to simplify transfers back there.
  */
 static CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_main = NULL;
 
 /*
- * coroutine_current : The currently executing coroutine, if any.
+ * coroutine_current - The currently executing coroutine, if any.
  * Initially NULL before any coroutines have been created, then the current
  * coroutine (including main when it has the CPU).
  */
@@ -88,7 +88,7 @@ void *cmi_coroutine_exit_value(const struct cmi_coroutine *cp)
 extern void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom);
 
 /*
- * create_main : Helper function to set up the dummy main coroutine
+ * create_main - Helper function to set up the dummy main coroutine
  */
 static void create_main(void)
 {
@@ -115,7 +115,7 @@ static void create_main(void)
 }
 
 /*
- * cmi_coroutine_create : Create a coroutine object.
+ * cmi_coroutine_create - Create a coroutine object.
  */
 struct cmi_coroutine *cmi_coroutine_create(void)
 {
@@ -159,7 +159,7 @@ void cmi_coroutine_initialize(struct cmi_coroutine *cp,
 }
 
 /*
- * cmi_coroutine_reset : Reset the coroutine to the initial state.
+ * cmi_coroutine_reset - Reset the coroutine to the initial state.
  * Can be restarted from the beginning by calling cmi_coroutine_start.
  */
 void cmi_coroutine_reset(struct cmi_coroutine *cp)
@@ -173,7 +173,7 @@ void cmi_coroutine_reset(struct cmi_coroutine *cp)
 }
 
 /*
- * cmi_coroutine_terminate : Reset the coroutine to a newly created state.
+ * cmi_coroutine_terminate - Reset the coroutine to a newly created state.
  */
 void cmi_coroutine_terminate(struct cmi_coroutine *cp)
 {
@@ -188,7 +188,7 @@ void cmi_coroutine_terminate(struct cmi_coroutine *cp)
 }
 
 /*
- * cmi_coroutine_destroy : Free memory allocated for a coroutine and its stack.
+ * cmi_coroutine_destroy - Free memory allocated for a coroutine and its stack.
  * The given coroutine cannot be main or the currently executing coroutine.
  */
 void cmi_coroutine_destroy(struct cmi_coroutine *cp)
@@ -203,7 +203,7 @@ void cmi_coroutine_destroy(struct cmi_coroutine *cp)
 
 
 /*
- * cmi_coroutine_start : Load the given function and argument into the given
+ * cmi_coroutine_start - Load the given function and argument into the given
  * coroutine stack and launch it by transferring control into it.
  * Note that restarting a finished coroutine with the original function and
  * context is allowed, but trying to restart a running coroutine is an error.
@@ -237,7 +237,7 @@ void *cmi_coroutine_start(struct cmi_coroutine *cp, void *msg)
 }
 
 /*
- * cmi_coroutine_exit : End the currently executing coroutine, storing its
+ * cmi_coroutine_exit - End the currently executing coroutine, storing its
  * return value in the coroutine struct. Cannot be the main coroutine.
  *
  * Note that just returning from a coroutine function will be redirected by
@@ -259,7 +259,7 @@ void cmi_coroutine_exit(void *retval)
 }
 
 /*
- * cmi_coroutine_stop : End some coroutine. Equivalent to
+ * cmi_coroutine_stop - End some coroutine. Equivalent to
  * cmi_coroutine_exit(NULL) if called on itself.
  */
 void cmi_coroutine_stop(struct cmi_coroutine *cp, void *retval)
@@ -278,7 +278,7 @@ void cmi_coroutine_stop(struct cmi_coroutine *cp, void *retval)
 }
 
 /*
- * cmi_coroutine_transfer : Symmetric (and general) coroutine pattern,
+ * cmi_coroutine_transfer - Symmetric (and general) coroutine pattern,
  * transferring control to whatever coroutine is given, with arg as the
  * value to be returned from the other side of the transfer call.
  *

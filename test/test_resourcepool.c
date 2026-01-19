@@ -59,9 +59,6 @@ static void end_sim_evt(void *subject, void *object)
     for (unsigned ui = 0; ui < NUM_CATS; ui++) {
         cmb_process_stop(tstexp->cats[ui], NULL);
     }
-
-    /* To be sure that we got everything */
-    cmb_event_queue_clear();
 }
 
 void *mousefunc(struct cmb_process *me, void *ctx)
@@ -86,7 +83,10 @@ void *mousefunc(struct cmb_process *me, void *ctx)
         cmb_logger_user(stdout, USERFLAG1, "Acquire returned signal %" PRIi64, sig);
         if (sig == CMB_PROCESS_SUCCESS) {
             amount_held += amount_req;
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+            const uint64_t calc_held = cmb_resourcepool_held_by_process(sp, me);
+            cmb_logger_user(stdout, USERFLAG1, "Own calc amount %" PRIu64 " library calc %" PRIu64,
+                            amount_held, calc_held);
+            cmb_assert_debug(calc_held == amount_held);
             cmb_logger_user(stdout,
                             USERFLAG1,
                             "Success, new amount held: %" PRIu64,
@@ -171,7 +171,11 @@ void *ratfunc(struct cmb_process *me, void *ctx)
         cmb_logger_user(stdout, USERFLAG1,
                         "Own calc amount %" PRIu64 ", library calc %" PRIu64,
                         amount_held, cmb_resourcepool_held_by_process(sp, me));
-        cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        uint64_t calc_held = cmb_resourcepool_held_by_process(sp, me);
+        cmb_logger_user(stdout, USERFLAG1, "Reported %" PRIu64 " own calc %" PRIu64,
+                        calc_held, amount_held);
+        cmb_assert_debug(calc_held == amount_held);
+
         const uint64_t amount_req = cmb_random_dice(1, 10);
         cmb_logger_user(stdout, USERFLAG1, "Preempting %" PRIu64, amount_req);
         int64_t sig = cmb_resourcepool_preempt(sp, amount_req);
@@ -179,7 +183,10 @@ void *ratfunc(struct cmb_process *me, void *ctx)
 
         if (sig == CMB_PROCESS_SUCCESS) {
             amount_held += amount_req;
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+            calc_held = cmb_resourcepool_held_by_process(sp, me);
+            cmb_logger_user(stdout, USERFLAG1, "Own calc amount %" PRIu64 " library calc %" PRIu64,
+                            amount_held, calc_held);
+            cmb_assert_debug(calc_held == amount_held);
             cmb_logger_user(stdout,
                             USERFLAG1,
                             "Holding, amount held: %" PRIu64,
@@ -280,7 +287,7 @@ void test_pool(void)
     cmb_random_initialize(seed);
     printf("seed: 0x%" PRIx64 "\n", seed);
 
-    cmb_logger_flags_off(CMB_LOGGER_INFO);
+    // cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_event_queue_initialize(0.0);
 
     printf("Create a pool\n");

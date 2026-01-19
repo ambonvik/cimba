@@ -39,7 +39,7 @@
 #include "cmi_memutils.h"
 
 /* Additional cookie value for the predefined memory pools */
-#define CMI_MAGIC_COOKIE 0x123456789abcdef0u
+#define CMI_THREAD_STATIC 0x057A71C0057A71C0u
 
 /*
  * A memory pool for reusable objects of a particular size.
@@ -54,12 +54,6 @@ struct cmi_mempool {
     void **chunk_list;
     void *next_obj;
 };
-
-/* Pre-defined memory pools for generic 8-, 16-, 32-, and 64-byte objects  */
-extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_8b;
-extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_16b;
-extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_32b;
-extern CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_64b;
 
 /*
  * Allocate memory for a cmi_mempool struct, not yet for the objects to
@@ -109,7 +103,7 @@ static inline void *cmi_mempool_alloc(struct cmi_mempool *mp)
     cmb_assert_release(mp != NULL);
     /* Allow for the first call to the predefined memory pools to be initialized */
     cmb_assert_release((mp->cookie == CMI_INITIALIZED)
-                       || (mp->cookie == CMI_MAGIC_COOKIE));
+                       || (mp->cookie == CMI_THREAD_STATIC));
 
     if (mp->next_obj == NULL) {
         /* Pool empty, refill it, initialize first if needed */
@@ -119,6 +113,7 @@ static inline void *cmi_mempool_alloc(struct cmi_mempool *mp)
     void *op = mp->next_obj;
     cmb_assert_debug(op != NULL);
     mp->next_obj = *(void **)op;
+    cmi_memset(op, 0, mp->obj_sz);
 
     return op;
 }

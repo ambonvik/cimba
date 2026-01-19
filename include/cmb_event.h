@@ -214,12 +214,11 @@ extern double cmb_event_time(uint64_t handle);
 extern int64_t cmb_event_priority(uint64_t handle);
 
 /**
- * @brief  Remove event from event queue. The event is assumed
-*         to be in the event queue, error if not. Call `cmb_event_is_scheduled`
- *        first if not sure.
+ * @brief  Remove event from event queue.
  * @param handle The `handle` of some event in the event queue.
+ * @return `true` if the event was found, `false` if not.
  */
-extern void cmb_event_cancel(uint64_t handle);
+extern bool cmb_event_cancel(uint64_t handle);
 
 /**
  * @brief  Reschedules event at index to another (absolute) time. The event is

@@ -29,7 +29,7 @@
 #include "cmi_memutils.h"
 
 /*
- * cmb_buffer_create : Allocate memory for a buffer object.
+ * cmb_buffer_create - Allocate memory for a buffer object.
  */
 struct cmb_buffer *cmb_buffer_create(void)
 {
@@ -41,7 +41,7 @@ struct cmb_buffer *cmb_buffer_create(void)
 }
 
 /*
- * cmb_buffer_initialize : Make an allocated buffer object ready for use.
+ * cmb_buffer_initialize - Make an allocated buffer object ready for use.
  */
 void cmb_buffer_initialize(struct cmb_buffer *bp,
                            const char *name,
@@ -64,7 +64,7 @@ void cmb_buffer_initialize(struct cmb_buffer *bp,
 }
 
 /*
- * cmb_buffer_terminate : Un-initializes a buffer object.
+ * cmb_buffer_terminate - Un-initializes a buffer object.
  */
 void cmb_buffer_terminate(struct cmb_buffer *bp)
 {
@@ -80,7 +80,7 @@ void cmb_buffer_terminate(struct cmb_buffer *bp)
 }
 
 /*
- * cmb_buffer_destroy : Deallocates memory for a buffer object.
+ * cmb_buffer_destroy - Deallocates memory for a buffer object.
  */
 void cmb_buffer_destroy(struct cmb_buffer *bp)
 {
@@ -91,7 +91,7 @@ void cmb_buffer_destroy(struct cmb_buffer *bp)
 }
 
 /*
- * buffer_has_content : pre-packaged demand function for a cmb_buffer, allowing
+ * buffer_has_content - pre-packaged demand function for a cmb_buffer, allowing
  * the getting process to grab some whenever there is something to grab,
  */
 static bool buffer_has_content(const struct cmi_resourcebase *rbp,
@@ -109,7 +109,7 @@ static bool buffer_has_content(const struct cmi_resourcebase *rbp,
 }
 
 /*
- * buffer_has_space : pre-packaged demand function for a cmb_buffer, allowing
+ * buffer_has_space - pre-packaged demand function for a cmb_buffer, allowing
  * the putting process to stuff in some whenever there is space.
  */
 static bool buffer_has_space(const struct cmi_resourcebase *rbp,
@@ -179,7 +179,7 @@ void cmb_buffer_print_report(struct cmb_buffer *bp, FILE *fp) {
 }
 
 /*
- * cmb_buffer_get : Request and, if necessary, wait for an amount of the
+ * cmb_buffer_get - Request and, if necessary, wait for an amount of the
  * buffer resource.
  *
  * Note that the amount argument is a pointer to where the amount is stored.
@@ -214,7 +214,6 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
             cmb_logger_info(stdout,
                             "Success, %" PRIu64 " was available, got %" PRIu64,
                             rem_claim, *amntp);
-            rem_claim = 0u;
 
             cmb_assert_debug(bp->level <= bp->capacity);
             cmb_resourceguard_signal(&(bp->rear_guard));
@@ -265,15 +264,15 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 }
 
 /*
- * cmb_buffer_put : Put an amount of the resource into the buffer, if necessary
- * waiting for free space. Putting zero amount cannot be right.
+ * cmb_buffer_put - Put a non-zero amount of the resource into the buffer,
+ * waiting for free space if necessary.
  *
  * Note that the amount argument is a pointer to where the amount is stored.
  * The return value CMB_PROCESS_NORMAL (0) indicates that all went well and
- * the value *amount now equals zero.
+ * the value *amntp now equals zero.
  *
  * If the call was interrupted for some reason, it will be partially fulfilled,
- * and *amount will be the quantity remaining when interrupted. The return
+ * and *amntp will be the quantity remaining when interrupted. The return
  * value is the interrupt signal received, some value other than
  * CMB_PROCESS_NORMAL.
  */
@@ -299,7 +298,6 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
             cmb_logger_info(stdout,
                             "Success, found room for %" PRIu64 ", has %" PRIu64 " remaining",
                             rem_claim, *amntp);
-            rem_claim = 0u;
 
             cmb_assert_debug(bp->level <= bp->capacity);
             cmb_resourceguard_signal(&(bp->front_guard));

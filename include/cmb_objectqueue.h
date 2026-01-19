@@ -42,6 +42,7 @@
 
 #include "cmb_assert.h"
 #include "cmb_resourceguard.h"
+#include "cmb_timeseries.h"
 
 #include "cmi_resourcebase.h"
 
@@ -83,7 +84,7 @@ extern struct cmb_objectqueue *cmb_objectqueue_create(void);
  *
  * @memberof cmb_objectqueue
  * @param oqp Pointer to a `cmb_objectqueue`
- * @param name Its identifying name string
+ * @param name The identifying name string.
  * @param capacity Its maximum size, possibly `CMB_OBJECTQUEUE_UNLIMITED` for unlimited.
  */
 extern void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,

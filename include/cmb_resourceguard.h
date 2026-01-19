@@ -35,7 +35,7 @@
 #include "cmb_process.h"
 
 #include "cmi_hashheap.h"
-#include "cmi_list.h"
+#include "cmi_slist.h"
 
 /**
  * @brief The gatekeeper class for resources a process can wait for. It is
@@ -46,7 +46,7 @@
 struct cmb_resourceguard {
     struct cmi_hashheap priority_queue;         /**< The base hashheap class */
     struct cmi_resourcebase *guarded_resource;  /**< The resource it guards */
-    struct cmi_list_tag *observers;           /**< Any other resource guards observing this one */
+    struct cmi_slist_head observers;            /**< Any other resource guards observing this one */
 };
 
 /**
@@ -175,6 +175,6 @@ extern void cmb_resourceguard_register(struct cmb_resourceguard *rgp,
  * @return `true` if the observer was registered, `false` if not.
  */
 extern bool cmb_resourceguard_unregister(struct cmb_resourceguard *rgp,
-                                         struct cmb_resourceguard *obs);
+                                         const struct cmb_resourceguard *obs);
 
 #endif /* CIMBA_CMB_RESOURCEGUARD_H */

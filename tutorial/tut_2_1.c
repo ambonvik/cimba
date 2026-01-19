@@ -25,7 +25,7 @@
 #define USERFLAG1 0x00000001
 #define USERFLAG2 0x00000002
 
-/* Our simulateed world consists of these entities. */
+/* Our simulated world consists of these entities. */
 struct simulation {
     /* Environmental processes */
     struct cmb_process *weather;
@@ -49,7 +49,7 @@ struct simulation {
     /* A set of all active ships */
     struct cmi_hashheap *active_ships;
     /* A list of departed ships  */
-    struct cmi_list_tag *departed_ships;
+    struct cmi_slist_head *departed_ships;
 
     /* Data collector for local use in this instance */
     struct cmb_dataset *time_in_system[2];
@@ -101,6 +101,7 @@ struct ship {
     unsigned tugs_needed;
     double max_wind;
     double min_depth;
+    struct cmi_slist_head listhead;
 };
 
 /* A process that updates the weather once per hour */
@@ -279,7 +280,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     /* One pass process, remove ourselves from the active set */
     cmi_hashheap_remove(simp->active_ships, hndl);
     /* List ourselves as departed instead */
-    cmi_list_push(&(simp->departed_ships), shpp);
+    cmi_slist_push(simp->departed_ships, &(shpp->listhead));
     /* Inform Davy Jones that we are coming his way */
     cmb_condition_signal(simp->davyjones);
 
@@ -364,30 +365,31 @@ void *departure_proc(struct cmb_process *me, void *vctx)
     const struct context *ctxp = vctx;
     struct simulation *simp = ctxp->sim;
     const struct trial *trlp = ctxp->trl;
-    struct cmi_list_tag **dep_head = &(simp->departed_ships);
+    struct cmi_slist_head *dep_head = simp->departed_ships;
 
     while (true) {
         /* We do not need to loop here, since this is the only process waiting */
         cmb_condition_wait(simp->davyjones, is_departed, vctx);
 
         /* There is one, collect its exit value */
-        struct ship *shpp = cmi_list_pop(dep_head);
-        double *t_sys_p = cmb_process_exit_value((struct cmb_process *)shpp);
+        struct cmi_slist_head *shead = cmi_slist_pop(dep_head);
+        struct ship *shp = cmi_container_of(shead, struct ship, listhead);
+        double *t_sys_p = cmb_process_exit_value((struct cmb_process *)shp);
         cmb_assert_debug(t_sys_p != NULL);
         cmb_logger_user(stdout, USERFLAG1,
                         "Recycling %s, time in system %f",
-                        ((struct cmb_process *)shpp)->name,
+                        ((struct cmb_process *)shp)->name,
                         *t_sys_p);
 
         if (cmb_time() > trlp->warmup_time) {
             /* Add it to the statistics */
-            cmb_dataset_add(simp->time_in_system[shpp->size], *t_sys_p);
+            cmb_dataset_add(simp->time_in_system[shp->size], *t_sys_p);
         }
 
         /* Frees internally allocated memory, but not the object itself */
-        cmb_process_terminate((struct cmb_process *)shpp);
+        cmb_process_terminate((struct cmb_process *)shp);
         /* We malloc'ed it, call free() directly instead of cmb_process_destroy() */
-        free(shpp);
+        free(shp);
         /* The exit value was malloc'ed in the ship process, free it as well */
         free(t_sys_p);
     }
@@ -512,7 +514,8 @@ void run_trial(void *vtrl)
     /* Create the collections of active and departed ships */
     sim.active_ships = cmi_hashheap_create();
     cmi_hashheap_initialize(sim.active_ships, 3u, NULL);
-    sim.departed_ships = NULL;
+    sim.departed_ships = cmi_slist_create();
+    cmi_slist_initialize(sim.departed_ships);
 
     /* Schedule the simulation control events */
     double t = trlp->warmup_time;

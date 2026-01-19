@@ -39,11 +39,19 @@
 #include "cmi_memutils.h"
 
 /*
- * struct queue_tag : A tag for the singly linked list that is a queue.
+ * struct queue_tag - A tag for the singly linked list that is a queue.
+ * We need a circular list here and will not use the cmi_slist implementation.
  */
 struct queue_tag {
     struct queue_tag *next;
     void *object;
+};
+
+CMB_THREAD_LOCAL struct cmi_mempool objectqueue_tags = {
+    CMI_THREAD_STATIC,
+    sizeof(struct queue_tag),
+    256u,
+    0u, 0u, 0u, NULL, NULL
 };
 
 struct cmb_objectqueue *cmb_objectqueue_create(void)
@@ -85,7 +93,7 @@ void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
     while (oqp->queue_head != NULL) {
         struct queue_tag *tag = oqp->queue_head;
         oqp->queue_head = tag->next;
-        cmi_mempool_free(&cmi_mempool_32b, tag);
+        cmi_mempool_free(&objectqueue_tags, tag);
     }
 
     oqp->length = 0u;
@@ -108,7 +116,7 @@ void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp)
 }
 
 /*
- * has_content : pre-packaged demand function for a cmb_objectqueue, allowing
+ * has_content - pre-packaged demand function for a cmb_objectqueue, allowing
  * the getting process to grab some whenever there is something to grab.
  */
 static bool has_content(const struct cmi_resourcebase *rbp,
@@ -126,7 +134,7 @@ static bool has_content(const struct cmi_resourcebase *rbp,
 }
 
 /*
- * has_space : pre-packaged demand function for a cmb_objectqueue, allowing
+ * has_space - pre-packaged demand function for a cmb_objectqueue, allowing
  * the putting process to stuff in some whenever there is space.
  */
 static bool has_space(const struct cmi_resourcebase *rbp,
@@ -226,7 +234,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
             cmb_logger_info(stdout, "Success, got %p", *objectloc);
             tag->next = NULL;
             tag->object = NULL;
-            cmi_mempool_free(&cmi_mempool_32b, tag);
+            cmi_mempool_free(&objectqueue_tags, tag);
 
             cmb_resourceguard_signal(&(oqp->rear_guard));
 
@@ -267,7 +275,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
         cmb_assert_debug(oqp->length <= oqp->capacity);
         if (oqp->length < oqp->capacity) {
             /* There is space */
-            struct queue_tag *tag = cmi_mempool_alloc(&cmi_mempool_32b);
+            struct queue_tag *tag = cmi_mempool_alloc(&objectqueue_tags);
             tag->object = *objectloc;
             tag->next = NULL;
 

@@ -21,7 +21,6 @@
  * limitations under the License.
  */
 
-#include <float.h>
 #include <stdio.h>
 
 #include "cmb_logger.h"

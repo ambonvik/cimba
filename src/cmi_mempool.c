@@ -7,7 +7,7 @@
  * store the address of the next object. In addition, a separate array keeps
  * track of the allocated areas to be able to free them all at the end.
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,39 +25,22 @@
 #include <stdio.h>
 
 #include "cmi_mempool.h"
+#include "cmi_slist.h"
 
 /* Initial size of the memory chunk list as such */
 #define CHUNK_LIST_SIZE 64u
 
-/*
- * Conveniently predefined memory pools for 8-, 16-, 32-, and 64-bit objects.
- * Pre-store arguments to initialize call, zero-initialize the rest to be
- * calculated with proper values by cmi_mempool_initialize() when and if needed.
- * The CMI_MAGIC_COOKIE informs other functions that the pool is not yet
- * properly initialized, enabling cmi_mempool_expand() to do that automagically
- * without an explicit initialization call from the user code. But it needs to
- * know what arguments it should feed to cmi_mempool_initialize(), and here
- * they are.
- */
-CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_8b = { CMI_MAGIC_COOKIE,
-                                                        8u,
-                                                        512u,
-                                                        0u, 0u, 0u, NULL, NULL };
-CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_16b = { CMI_MAGIC_COOKIE,
-                                                        16u,
-                                                        256u,
-                                                        0u, 0u, 0u, NULL, NULL };
-CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_32b = { CMI_MAGIC_COOKIE,
-                                                        32u,
-                                                        128u,
-                                                        0u, 0u, 0u, NULL, NULL };
-CMB_THREAD_LOCAL struct cmi_mempool cmi_mempool_64b = { CMI_MAGIC_COOKIE,
-                                                        64u,
-                                                        64u,
-                                                        0u, 0u, 0u, NULL, NULL };
+/* List entry for keeping track of all thread local pools */
+struct static_pools_tag {
+    struct cmi_mempool *pool;
+    struct cmi_slist_head head;
+};
+
+/* The list of all thread local pools */
+CMB_THREAD_LOCAL struct cmi_slist_head static_pools = { NULL };
 
 /*
- * cmi_mempool_create : Allocate memory for a (zeroed) memory pool object.
+ * cmi_mempool_create - Allocate memory for a (zeroed) memory pool object.
  */
 struct cmi_mempool *cmi_mempool_create(void)
 {
@@ -69,17 +52,17 @@ struct cmi_mempool *cmi_mempool_create(void)
 }
 
 /*
- * cmi_mempool_initialize : Set up a memory pool for objects of size obj_sz bytes.
+ * cmi_mempool_initialize - Set up a memory pool for objects of size obj_sz bytes.
  * chunk_list keeps track of the allocated memory to be able to free it later.
  * The chunk_list resizes as needed, starting from CHUNK_LIST_SIZE defined above.
  * next_obj points to the first available object in the pool, NULL if empty.
  *
- * We will be allocating memory aligned to page size. The allocator will require
- * the total amount of memory to be a multiple of the page size. We calculate
- * and store both the chunk size in bytes (the smallest multiple of page sizes
- * that provides space for at least the requested number of objects) and the
- * maximum number of objects that fits in that memory size (allowing for l
- * leftovers if the object size is not a divisor of page size).
+ * We allocate memory aligned to page size. The allocator requires the total
+ * amount of memory to be a multiple of the page size. We calculate and store
+ * both the chunk size in bytes (the smallest multiple of page sizes that
+ * provides space for at least the requested number of objects) and the maximum
+ * number of objects that fits in that memory size (allowing for leftovers if
+ * the object size is not a divisor of page size).
  *
  * We'll allocate actual object memory on the first call to cmi_mempool_alloc,
  * hence leaving the object list empty for now.
@@ -116,7 +99,7 @@ void cmi_mempool_initialize(struct cmi_mempool *mp,
 }
 
 /*
- * cmi_mempool_terminate : Free all memory allocated to the memory pool except
+ * cmi_mempool_terminate - Free all memory allocated to the memory pool except
  * the cmi_mempool object itself. All allocated objects from the pool will
  * become invalid.
  */
@@ -135,10 +118,12 @@ void cmi_mempool_terminate(struct cmi_mempool *mp)
         mp->chunk_list_cnt = 0u;
         mp->next_obj = NULL;
     }
+
+    cmb_assert_debug(mp->chunk_list == NULL);
 }
 
 /*
- * cmi_mempool_destroy : Free all memory that was allocated to the pool,
+ * cmi_mempool_destroy - Free all memory that was allocated to the pool,
  * including the mempool object itself. All application pointers to objects
  * previously allocated from this pool will become invalid.
  */
@@ -151,7 +136,7 @@ void cmi_mempool_destroy(struct cmi_mempool *mp)
 }
 
 /*
- * cmi_mempool_expand : Increase the memory pool size by the same amount as
+ * cmi_mempool_expand - Increase the memory pool size by the same amount as
  * originally allocated, obj_sz * obj_num. The allocated memory is aligned to
  * the system memory page size.
  */
@@ -159,9 +144,16 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp->next_obj == NULL);
     cmb_assert_release((mp->cookie == CMI_INITIALIZED)
-                       || (mp->cookie == CMI_MAGIC_COOKIE));
+                       || (mp->cookie == CMI_THREAD_STATIC));
 
-    if (mp->cookie == CMI_MAGIC_COOKIE) {
+    if (mp->cookie == CMI_THREAD_STATIC) {
+        /* This mempool was declared statically as a thread local for automatic
+         * initialization and termination. Add it to the list for final thread
+         * cleanup, and initialize it.
+         */
+        struct static_pools_tag *stp = cmi_malloc(sizeof(*stp));
+        stp->pool = mp;
+        cmi_slist_push(&static_pools, &(stp->head));
         cmi_mempool_initialize(mp, mp->obj_sz, mp->incr_num);
     }
 
@@ -187,26 +179,23 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
 
     /* Set the next pointer in the last object to NULL, end of the list */
     *vp = NULL;
-
     cmb_assert_debug(mp->next_obj != NULL);
 }
 
 /*
- * cmi_mempool_clanup : Function to deallocate any allocated memory in the
+ * cmi_mempool_cleanup - Function to deallocate any allocated memory in the
  * thread local pools. Call when exiting a pthread.
  */
 void cmi_mempool_cleanup(void *arg)
 {
     cmb_unused(arg);
 
-    if (cmi_mempool_16b.cookie == CMI_INITIALIZED) {
-        cmi_mempool_terminate(&cmi_mempool_16b);
+    while (!cmi_slist_is_empty(&static_pools)) {
+        struct cmi_slist_head *phead = cmi_slist_pop(&static_pools);
+        struct static_pools_tag *stp = cmi_container_of(phead,
+                                                        struct static_pools_tag,
+                                                        head);
+        cmi_mempool_terminate(stp->pool);
+        cmi_free(stp);
     }
-    if (cmi_mempool_32b.cookie == CMI_INITIALIZED) {
-        cmi_mempool_terminate(&cmi_mempool_32b);
-    }
-    if (cmi_mempool_64b.cookie == CMI_INITIALIZED) {
-        cmi_mempool_terminate(&cmi_mempool_64b);
-    }
-
-}
+ }

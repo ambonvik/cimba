@@ -64,16 +64,12 @@ void *procfunc1(struct cmb_process *me, void *ctx)
         const double dur = cmb_random_exponential(5.0);
         const int64_t sig = cmb_process_hold(dur);
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_user(stdout,
-                            USERFLAG1,
-                            "Hold returned normal signal %" PRIi64,
-                            sig);
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Hold returned normal signal %" PRIi64, sig);
         }
         else {
-            cmb_logger_user(stdout,
-                            USERFLAG1,
-                            "Hold was interrupted signal %" PRIi64,
-                            sig);
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Hold was interrupted signal %" PRIi64, sig);
         }
     }
 }
@@ -81,10 +77,7 @@ void *procfunc1(struct cmb_process *me, void *ctx)
 void *procfunc2(struct cmb_process *me, void *ctx)
 {
     struct cmb_process *tgt = (struct cmb_process *)ctx;
-    cmb_logger_user(stdout,
-                    USERFLAG1,
-                    "Running, tgt %s",
-                    cmb_process_name(tgt));
+    cmb_logger_user(stdout, USERFLAG1, "Running, tgt %s", cmb_process_name(tgt));
     const int64_t pri = cmb_process_priority(me);
     for (unsigned ui = 0u; ui < 5u; ui++) {
         const double dur = cmb_random_exponential(10.0);
@@ -107,21 +100,15 @@ void *procfunc3(struct cmb_process *me, void *ctx)
     cmb_unused(me);
 
     struct cmb_process *tgt = (struct cmb_process *)ctx;
-    cmb_logger_user(stdout,
-                    USERFLAG1,
-                    "Running, tgt %s",
-                    cmb_process_name(tgt));
+    cmb_logger_user(stdout, USERFLAG1, "Running, tgt %s", cmb_process_name(tgt));
     int64_t r = cmb_process_wait_event(cuckoo_clock_handle);
     cmb_logger_user(stdout, USERFLAG1, "Got cuckoo clock signal %" PRIi64, r);
 
     cmb_process_hold(cmb_random());
-    cmb_logger_user(stdout,
-                    USERFLAG1,
-                    "Waiting for process %s",
-                    cmb_process_name(tgt));
+    cmb_logger_user(stdout, USERFLAG1,
+                    "Waiting for process %s", cmb_process_name(tgt));
     r = cmb_process_wait_process(tgt);
-    cmb_logger_user(stdout,
-                    USERFLAG1,
+    cmb_logger_user(stdout, USERFLAG1,
                     "Tgt %s ended, we received signal %" PRIi64,
                     cmb_process_name(tgt), r);
 
@@ -154,16 +141,9 @@ int main(void)
     cmb_process_start(cpp2);
 
     printf("Creating an event and a race condition to cancel it...\n");
-    cuckoo_clock_handle = cmb_event_schedule(cuckooevtfunc,
-                                             NULL,
-                                             NULL,
-                                              cmb_random_exponential(25.0),
-                                              0);
-    cmb_event_schedule(cnclevtfunc,
-                      NULL,
-                      NULL,
-                      cmb_random_exponential(25.0),
-                      0);
+    cuckoo_clock_handle = cmb_event_schedule(cuckooevtfunc, NULL, NULL,
+                                             cmb_random_exponential(25.0), 0);
+    cmb_event_schedule(cnclevtfunc, NULL, NULL, cmb_random_exponential(25.0), 0);
 
     printf("Creating waiting processes ...\n");
     char buf[32];
@@ -171,11 +151,7 @@ int main(void)
     for (unsigned ui = 0u; ui < 3u; ui++) {
         sprintf(buf, "Waiter_%u", ui);
         cpp3 = cmb_process_create();
-        cmb_process_initialize(cpp3,
-                               buf,
-                               procfunc3,
-                               cpp2,
-                               cmb_random_dice(-5, 5));
+        cmb_process_initialize(cpp3, buf, procfunc3, cpp2, cmb_random_dice(-5, 5));
         cmb_process_start(cpp3);
     }
 

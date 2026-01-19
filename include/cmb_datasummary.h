@@ -36,7 +36,7 @@
 /**
  * @brief  A running tally of basic statistics. The `cmb_datasummary` does not
  * keep individual data values, just the summary statistics. Use `cmb_dataset`
- * instead if youneed individual values, and use `cmb_dataset_summarize` to
+ * instead if you need individual values and then `cmb_dataset_summarize` to
  * extract the summary statistics from a collected data set.
  */
 struct cmb_datasummary {

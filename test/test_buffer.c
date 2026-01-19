@@ -36,7 +36,7 @@
 
 struct simulation {
     struct cmb_process *putters[NUM_PUTTERS];
-    struct cmb_process *getters[NUM_PUTTERS];
+    struct cmb_process *getters[NUM_GETTERS];
     struct cmb_process *nuisance;
     struct cmb_buffer *buf;
 };
@@ -56,9 +56,6 @@ static void end_sim_evt(void *subject, void *object)
     }
 
     cmb_process_stop(thesim->nuisance, NULL);
-
-    /* Make sure that we got everything */
-    cmb_event_queue_clear();
 }
 
 void *putterfunc(struct cmb_process *me, void *vctx)
@@ -80,9 +77,7 @@ void *putterfunc(struct cmb_process *me, void *vctx)
 
         const uint64_t n = cmb_random_dice(1, 15);
         uint64_t m = n;
-        cmb_logger_user(stdout,
-                        USERFLAG1,
-                        "Putting %" PRIu64 " into %s...",
+        cmb_logger_user(stdout, USERFLAG1, "Putting %" PRIu64 " into %s...",
                         n, cmb_buffer_get_name(bp));
 
         sig = cmb_buffer_put(bp, &m);
@@ -91,10 +86,9 @@ void *putterfunc(struct cmb_process *me, void *vctx)
             cmb_logger_user(stdout, USERFLAG1, "Put %" PRIu64 " succeeded", n);
         }
         else {
-            cmb_logger_user(stdout,
-                            USERFLAG1,
-                            "Put returned signal %" PRIi64 ", got %" PRIu64 " instead of %" PRIu64,
-                            sig, m, n);
+            cmb_logger_user(stdout, USERFLAG1,
+                         "Put returned signal %" PRIi64 ", got %" PRIu64 " instead of %" PRIu64,
+                         sig, m, n);
         }
     }
 }
@@ -118,9 +112,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
         }
 
         const uint64_t n = cmb_random_dice(1, 15);
-        cmb_logger_user(stdout,
-                        USERFLAG1,
-                        "Getting %" PRIu64 " from %s...",
+        cmb_logger_user(stdout, USERFLAG1, "Getting %" PRIu64 " from %s...",
                         n, cmb_buffer_get_name(bp));
 
         uint64_t m = n;
@@ -130,8 +122,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout, USERFLAG1, "Get %" PRIu64 " succeeded", n);
         }
         else {
-            cmb_logger_user(stdout,
-                            USERFLAG1,
+            cmb_logger_user(stdout, USERFLAG1,
                             "Get returned signal %" PRIi64 ", got %" PRIi64 " instead of %" PRIu64,
                             sig, m, n);
         }
@@ -183,8 +174,11 @@ void test_queue(const double duration)
         thesim->putters[ui] = cmb_process_create();
         snprintf(scratchpad, sizeof(scratchpad), "Putter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(thesim->putters[ui], scratchpad, putterfunc, thesim->buf,
-            pri);
+        cmb_process_initialize(thesim->putters[ui],
+                               scratchpad,
+                               putterfunc,
+                               thesim->buf,
+                               pri);
         cmb_process_start(thesim->putters[ui]);
     }
 
@@ -193,8 +187,11 @@ void test_queue(const double duration)
         thesim->getters[ui] = cmb_process_create();
         snprintf(scratchpad, sizeof(scratchpad), "Getter_%u", ui + 1u);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_process_initialize(thesim->getters[ui], scratchpad, getterfunc, thesim->buf,
-            pri);
+        cmb_process_initialize(thesim->getters[ui],
+                               scratchpad,
+                               getterfunc,
+                               thesim->buf,
+                               pri);
         cmb_process_start(thesim->getters[ui]);
     }
 
@@ -215,8 +212,10 @@ void test_queue(const double duration)
 
     printf("Clean up\n");
     for (unsigned ui = 0; ui < 3; ui++) {
-        cmb_process_terminate(thesim->getters[ui]);
+        cmb_process_terminate(thesim->putters[ui]);
         cmb_process_destroy(thesim->putters[ui]);
+        cmb_process_terminate(thesim->getters[ui]);
+        cmb_process_destroy(thesim->getters[ui]);
     }
 
     cmb_process_terminate(thesim->nuisance);

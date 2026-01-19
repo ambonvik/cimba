@@ -30,6 +30,7 @@
 
 #include "cmb_assert.h"
 #include "cmb_resourceguard.h"
+#include "cmb_timeseries.h"
 
 #include "cmi_hashheap.h"
 #include "cmi_resourcebase.h"
@@ -70,7 +71,7 @@ extern struct cmb_priorityqueue *cmb_priorityqueue_create(void);
  *
  * @memberof cmb_priorityqueue
  * @param pqp Pointer to a `cmb_priorityqueue`
- * @param name Its identifying name string
+ * @param name The identifying name string
  * @param capacity Its maximum size, possibly `CMB_UNLIMITED`
  */
 extern void cmb_priorityqueue_initialize(struct cmb_priorityqueue *pqp,
@@ -131,11 +132,36 @@ extern int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp,
  * @param pqp Pointer to an object queue
  * @param objectloc Pointer to the location where the object is stored.
  * @param priority The object priority, higher goes before lower
+ * @param handleloc Pointer to where to store the object queue handle. If NULL,
+ *                  the handle is not saved.
  * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
  */
 extern int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
                                      void **objectloc,
-                                     int64_t priority);
+                                     int64_t priority,
+                                     uint64_t *handleloc);
+
+
+static inline bool cmb_priorityqueue_cancel(struct cmb_priorityqueue *pqp,
+                                            const uint64_t handle)
+{
+    cmb_assert_release(pqp != NULL);
+
+    struct cmi_hashheap *hp = &(pqp->queue);
+    const bool found = cmi_hashheap_remove(hp, handle);
+
+    return found;
+}
+
+static inline void cmb_priorityqueue_reprioritize(const struct cmb_priorityqueue *pqp,
+                                                  const uint64_t handle,
+                                                  const int64_t priority)
+{
+    cmb_assert_release(pqp != NULL);
+
+    const struct cmi_hashheap *hp = &(pqp->queue);
+    cmi_hashheap_reprioritize(hp, handle, 0.0, priority);
+}
 
 /**
  * @brief Returns name of queue as `const char *`.

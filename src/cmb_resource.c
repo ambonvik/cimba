@@ -3,7 +3,7 @@
  * preempt methods. Can only be held by one process at a time. Assigned to
  * waiting processes in priority order, then FIFO tie-breaker order.
 *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,10 +23,12 @@
 #include "cmb_logger.h"
 #include "cmb_resource.h"
 
+#include "cmi_holdable.h"
 #include "cmi_memutils.h"
+#include "cmi_process.h"
 
 /*
- * cmb_resource_create : Allocate memory for a resource object.
+ * cmb_resource_create - Allocate memory for a resource object.
  */
 struct cmb_resource *cmb_resource_create(void)
 {
@@ -40,7 +42,7 @@ struct cmb_resource *cmb_resource_create(void)
 static void record_sample(struct cmb_resource *rp);
 
 /*
- * resource_drop_holder : force a holder process to drop the resource
+ * resource_drop_holder - force a holder process to drop the resource
  */
 static void resource_drop_holder(struct cmi_holdable *hrp,
                  const struct cmb_process *pp,
@@ -59,7 +61,7 @@ static void resource_drop_holder(struct cmi_holdable *hrp,
 }
 
 /*
- * cmb_resource_initialize : Make an allocated resource object ready for use.
+ * cmb_resource_initialize - Make an allocated resource object ready for use.
  */
 #define HOLDER_INIT_EXP 3u
 
@@ -79,7 +81,7 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
 }
 
 /*
- * cmb_resource_terminate : Un-initializes a resource object.
+ * cmb_resource_terminate - Un-initializes a resource object.
  */
 void cmb_resource_terminate(struct cmb_resource *rp)
 {
@@ -95,7 +97,7 @@ void cmb_resource_terminate(struct cmb_resource *rp)
 }
 
 /*
- * cmb_resource_destroy : Deallocates memory for a resource object.
+ * cmb_resource_destroy - Deallocates memory for a resource object.
  */
 void cmb_resource_destroy(struct cmb_resource *rp)
 {
@@ -162,7 +164,7 @@ void cmb_resource_print_report(struct cmb_resource *rp, FILE *fp) {
 }
 
 /*
- * is_available : pre-packaged demand function for a cmb_resource
+ * is_available - pre-packaged demand function for a cmb_resource
  */
 static bool is_available(const struct cmi_resourcebase *rbp,
                          const struct cmb_process *pp,
@@ -181,8 +183,12 @@ static bool is_available(const struct cmi_resourcebase *rbp,
 static void resource_grab(struct cmb_resource *rp, struct cmb_process *pp)
 {
     rp->holder = pp;
-    struct cmb_holdable *hrp = (struct cmb_holdable *)rp;
-    cmi_list_push32(&(pp->resources_listhead), 0.0, 0u, hrp);
+    struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
+    struct cmi_process_holdable *php = cmi_mempool_alloc(&cmi_process_holdabletags);
+    php->res = hrp;
+    php->handle = 0u;
+    php->amount = 0u;
+    cmi_slist_push(&(pp->resources), &(php->listhead));
 }
 
 int64_t cmb_resource_acquire(struct cmb_resource *rp)
@@ -224,7 +230,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
 }
 
 /*
- * cmb_resource_release : Release a resource.
+ * cmb_resource_release - Release a resource.
  */
 void cmb_resource_release(struct cmb_resource *rp) {
     cmb_assert_release(rp != NULL);
@@ -233,7 +239,7 @@ void cmb_resource_release(struct cmb_resource *rp) {
     struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
     struct cmb_process *pp = cmb_process_current();
     cmb_assert_debug(pp != NULL);
-    cmi_list_remove32(&(pp->resources_listhead), hrp);
+    cmi_process_remove_holdable(pp, hrp);
 
     cmb_assert_debug(rp->holder == pp);
     rp->holder = NULL;
@@ -245,18 +251,16 @@ void cmb_resource_release(struct cmb_resource *rp) {
 }
 
 /*
- * resrc_premwu_evt : The event handler that actually resumes the process
- * coroutine after being scheduled by cmb_resource_preempt
+ * resource_wakeup_event_preempt - The event handler that actually resumes the
+ * process coroutine after being scheduled by cmb_resource_preempt
  */
-static void resrc_premwu_evt(void *vp, void *arg)
+static void resource_wakeup_event_preempt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *pp = (struct cmb_process *)vp;
-    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64 " wait type %d",
-                pp->name, (int64_t)arg, pp->waitsfor.type);
-    /* Should be holding the resource, not waiting to get it */
-    cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_CLOCK);
+    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64,
+                pp->name, (int64_t)arg);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
@@ -284,10 +288,11 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
         ret = CMB_PROCESS_SUCCESS;
     }
     else if (myprio >= victim->priority) {
-        /* Kick it out. No record_sample needed, remains occupied. */
-        cmi_list_remove32(&(victim->resources_listhead), hrp);
+        /* Kick it out. No record_sample needed, the resource remains occupied. */
+        cmi_process_remove_holdable(victim, hrp);
+        cmi_process_cancel_awaiteds(pp);
         rp->holder = NULL;
-        (void)cmb_event_schedule(resrc_premwu_evt,
+        (void)cmb_event_schedule(resource_wakeup_event_preempt,
                                  (void *)victim,
                                  (void *)CMB_PROCESS_PREEMPTED,
                                  cmb_time(),

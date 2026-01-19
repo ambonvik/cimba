@@ -31,14 +31,13 @@
 #include "cmb_priorityqueue.h"
 #include "cmb_process.h"
 
-#include "cmi_mempool.h"
 #include "cmi_memutils.h"
 
 /* The initial heap size will be 2^INITIAL_QUEUE_SIZE */
 #define INITIAL_QUEUE_SIZE 3u
 
 /*
- * compare_func : Test if heap_tag *a should go before *b. If so, return true.
+ * compare_func - Test if heap_tag *a should go before *b. If so, return true.
  * Order by ikey (priority) only.
  */
 static bool compare_func(const struct cmi_heap_tag *a, const struct cmi_heap_tag *b)
@@ -95,7 +94,7 @@ void cmb_priorityqueue_destroy(struct cmb_priorityqueue *pqp)
 }
 
 /*
- * has_content : pre-packaged demand function for a cmb_priorityqueue, allowing
+ * has_content - pre-packaged demand function for a cmb_priorityqueue, allowing
  * the getting process to grab some whenever there is something to grab.
  */
 static bool has_content(const struct cmi_resourcebase *rbp,
@@ -113,7 +112,7 @@ static bool has_content(const struct cmi_resourcebase *rbp,
 }
 
 /*
- * has_space : pre-packaged demand function for a cmb_priorityqueue, allowing
+ * has_space - pre-packaged demand function for a cmb_priorityqueue, allowing
  * the putting process to stuff in some whenever there is space.
  */
 static bool has_space(const struct cmi_resourcebase *rbp,
@@ -231,7 +230,10 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
     }
 }
 
-int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp, void **objectloc, const int64_t priority)
+int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
+                              void **objectloc,
+                              const int64_t priority,
+                              uint64_t *handleloc)
 {
     cmb_assert_release(pqp != NULL);
     cmb_assert_release(objectloc != NULL);
@@ -244,7 +246,14 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp, void **objectloc, c
         cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
         if (pqp->queue.heap_count < pqp->capacity) {
             /* There is space */
-            (void)cmi_hashheap_enqueue(&(pqp->queue), *objectloc, NULL, NULL, NULL, 0.0, priority);
+            const uint64_t handle = cmi_hashheap_enqueue(&(pqp->queue),
+                                                         *objectloc,
+                                                         NULL, NULL, NULL, 0.0,
+                                                         priority);
+            if (handleloc != NULL) {
+                *handleloc = handle;
+            }
+
             record_sample(pqp);
             cmb_logger_info(stdout, "Success, put %p", *objectloc);
             cmb_resourceguard_signal(&(pqp->front_guard));
@@ -271,4 +280,3 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp, void **objectloc, c
         }
     }
 }
-

@@ -95,24 +95,13 @@ static inline void *cmi_memset(void* restrict ptr, const int c, const size_t n)
 }
 
 /*
- * cmi_is_power_of_two : Predicate helper function
+ * cmi_is_power_of_two - Predicate helper function
  */
 static inline bool cmi_is_power_of_two(const size_t n)
 {
     /* A power of two has only one bit set */
     return (n == 0u) ? false : (n & (n - 1)) == 0u;
 }
-
-/*
- * cmi_offset_of : Offset of a struct member from the object address
- */
-#define cmi_offset_of(type, member) ((size_t)&(((type *)0)->member))
-
-/*
- * cmi_container_of : Find the pointer to struct object given address of a member
- */
-#define cmi_container_of(ptr, type, member) \
-                        ((type *)((char *)(ptr) - cmi_offset_of(type, member)))
 
 /* System-dependent utility functions in src/arch/cmi_memutils_*.c */
 extern size_t cmi_pagesize(void);

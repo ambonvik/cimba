@@ -36,9 +36,16 @@
 
 struct simulation {
     struct cmb_process *putters[NUM_PUTTERS];
-    struct cmb_process *getters[NUM_PUTTERS];
+    struct cmb_process *getters[NUM_GETTERS];
     struct cmb_process *nuisance;
     struct cmb_objectqueue *queue;
+};
+
+CMB_THREAD_LOCAL struct cmi_mempool objectpool = {
+    CMI_THREAD_STATIC,
+    8u,
+    512u,
+    0u, 0u, 0u, NULL, NULL
 };
 
 static void end_sim_evt(void *subject, void *object)
@@ -56,9 +63,6 @@ static void end_sim_evt(void *subject, void *object)
     }
 
     cmb_process_stop(texp->nuisance, NULL);
-
-    /* Make sure that we got everything */
-    cmb_event_queue_clear();
 }
 
 void *putterfunc(struct cmb_process *me, void *vctx)
@@ -78,12 +82,9 @@ void *putterfunc(struct cmb_process *me, void *vctx)
             cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
         }
 
-        void *object = cmi_mempool_alloc(&cmi_mempool_8b);
-        cmb_logger_user(stdout,
-                        USERFLAG1,
-                        "Putting object %p into %s...",
-                        object,
-                        cmb_objectqueue_name(qp));
+        void *object = cmi_mempool_alloc(&objectpool);
+        cmb_logger_user(stdout, USERFLAG1, "Putting object %p into %s...",
+                        object, cmb_objectqueue_name(qp));
 
         sig = cmb_objectqueue_put(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
@@ -91,7 +92,7 @@ void *putterfunc(struct cmb_process *me, void *vctx)
         }
         else {
             cmb_logger_user(stdout, USERFLAG1, "Put returned signal %" PRIi64, sig);
-            cmi_mempool_free(&cmi_mempool_8b, object);
+            cmi_mempool_free(&objectpool, object);
         }
     }
 }
@@ -114,15 +115,12 @@ void *getterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
         }
 
-        cmb_logger_user(stdout,
-                        USERFLAG1,
-                        "Getting object from %s...",
-                        cmb_objectqueue_name(qp));
+        cmb_logger_user(stdout, USERFLAG1,"Getting object from %s...", cmb_objectqueue_name(qp));
         void *object = NULL;
         sig = cmb_objectqueue_get(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Get succeeded");
-            cmi_mempool_free(&cmi_mempool_8b, object);
+            cmi_mempool_free(&objectpool, object);
         }
         else {
             cmb_logger_user(stdout, USERFLAG1, "Get returned signal %" PRIi64, sig);
@@ -146,11 +144,8 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
         const uint16_t vic = cmb_random_dice(0, (long)(nproc - 1u));
         const int64_t sig = cmb_random_dice(1, 10);
         const int64_t pri = cmb_random_dice(-5, 5);
-        cmb_logger_user(stdout,
-                        USERFLAG1,
-                        "Interrupting %s with signal %" PRIi64,
-                        tgt[vic]->name,
-                        sig);
+        cmb_logger_user(stdout, USERFLAG1, "Interrupting %s with signal %" PRIi64,
+                        tgt[vic]->name, sig);
         cmb_process_interrupt(tgt[vic], sig, pri);
     }
 }

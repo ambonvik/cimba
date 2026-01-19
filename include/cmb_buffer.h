@@ -35,9 +35,11 @@
 
 #include <stdint.h>
 
-#include "cmi_resourcebase.h"
 #include "cmb_assert.h"
 #include "cmb_resourceguard.h"
+#include "cmb_timeseries.h"
+
+#include "cmi_resourcebase.h"
 
 /**
  * @brief Unlimited buffer size

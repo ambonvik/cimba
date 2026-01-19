@@ -19,7 +19,6 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <time.h>
 
 #include "cmb_event.h"
 #include "cmb_random.h"

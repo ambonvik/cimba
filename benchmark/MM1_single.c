@@ -20,13 +20,19 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <time.h>
 
 #include <cimba.h>
 
 #define NUM_OBJECTS 1000000u
 #define ARRIVAL_RATE 0.9
 #define SERVICE_RATE 1.0
+
+CMB_THREAD_LOCAL struct cmi_mempool objectpool = {
+    CMI_THREAD_STATIC,
+    sizeof(void *),
+    512u,
+    0u, 0u, 0u, NULL, NULL
+};
 
 struct simulation {
     struct cmb_process *arrival;
@@ -56,7 +62,7 @@ void *arrivalfunc(struct cmb_process *me, void *vctx)
     for (uint64_t ui = 0; ui < NUM_OBJECTS; ui++) {
         const double t_hld = cmb_random_exponential(mean_hld);
         cmb_process_hold(t_hld);
-        void *object = cmi_mempool_alloc(&cmi_mempool_8b);
+        void *object = cmi_mempool_alloc(&objectpool);
         double *dblp = object;
         *dblp = cmb_time();
         cmb_objectqueue_put(qp, &object);
@@ -81,7 +87,7 @@ void *servicefunc(struct cmb_process *me, void *vctx)
         cmb_process_hold(t_srv);
         *sum += cmb_time() - *dblp;
         *cnt += 1u;
-        cmi_mempool_free(&cmi_mempool_8b, object);
+        cmi_mempool_free(&objectpool, object);
     }
 }
 

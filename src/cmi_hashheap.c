@@ -36,7 +36,7 @@
 #include "cmi_memutils.h"
 
 /*
- * hash_handle : Fibonacci hash function.
+ * hash_handle - Fibonacci hash function.
  *
  * The "magic number" is approx 2^64 / phi, the golden ratio.
  * The right shift maps to the hash map size, twice the heap size.
@@ -49,7 +49,7 @@ uint64_t hash_handle(const struct cmi_hashheap *hp, const uint64_t handle)
 }
 
 /*
- * hash_find_handle : Find the heap index of a given handle, zero if not found.
+ * hash_find_handle - Find the heap index of a given handle, zero if not found.
  * Uses a bitmap with all ones in the first positions to wrap around fast,
  * instead of using the modulo operator. In effect, simulates overflow in an
  * unsigned integer of (heap_exp_cur + 1) bits.
@@ -85,7 +85,7 @@ uint64_t hash_find_handle(const struct cmi_hashheap *hp, const uint64_t handle)
 }
 
 /*
- * hash_find_slot : Find the first free hash map slot for the given handle
+ * hash_find_slot - Find the first free hash map slot for the given handle
  */
 uint64_t hash_find_slot(const struct cmi_hashheap *hp, const uint64_t handle)
 {
@@ -138,7 +138,7 @@ void hash_rehash(const struct cmi_hashheap *hp,
     }
 }
 
-/* heap_up : Bubble a tag at index k upwards into its right place */
+/* heap_up - Bubble a tag at index k upwards into its right place */
 static void heap_up(const struct cmi_hashheap *hp, uint64_t k)
 {
     cmb_assert_debug(hp != NULL);
@@ -172,7 +172,7 @@ static void heap_up(const struct cmi_hashheap *hp, uint64_t k)
     hash[khash].heap_index = k;
 }
 
-/* heap_down : Bubble a tag at index k downwards into its right place */
+/* heap_down - Bubble a tag at index k downwards into its right place */
 static void heap_down(const struct cmi_hashheap *hp, uint64_t k)
 {
     cmb_assert_debug(hp != NULL);
@@ -275,7 +275,7 @@ struct cmi_hashheap *cmi_hashheap_create(void)
 }
 
 /*
- * default_order_check : Test if heap_tag *a should go before *b. If so, return true.
+ * default_order_check - Test if heap_tag *a should go before *b. If so, return true.
  * Order by dkey only, only provided as a default convenience function.
  */
 static bool default_order_check(const struct cmi_heap_tag *a,
@@ -288,7 +288,7 @@ static bool default_order_check(const struct cmi_heap_tag *a,
 }
 
 /*
- * cmi_hashheap_initialize : Initialize hashheap for use.
+ * cmi_hashheap_initialize - Initialize hashheap for use.
  *
  * Allocates a contiguous memory array aligned to an integer number of memory
  * pages for efficiency.
@@ -332,7 +332,7 @@ void cmi_hashheap_initialize(struct cmi_hashheap *hp,
 }
 
 /*
- * cmi_hashheap_clear : Flush out the hashheap. Does not reset the item counter
+ * cmi_hashheap_clear - Flush out the hashheap. Does not reset the item counter
  * for issuing new handles, does not free space, does not shrink the heap to its
  * initial size, just empties it.
  */
@@ -363,7 +363,7 @@ void cmi_hashheap_reset(struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_terminate : Deallocate the internal structures
+ * cmi_hashheap_terminate - Deallocate the internal structures
  */
 void cmi_hashheap_terminate(struct cmi_hashheap *hp)
 {
@@ -377,7 +377,7 @@ void cmi_hashheap_terminate(struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_destroy : Clean up, deallocating space.
+ * cmi_hashheap_destroy - Clean up, deallocating space.
  */
 void cmi_hashheap_destroy(struct cmi_hashheap *hp)
 {
@@ -388,7 +388,7 @@ void cmi_hashheap_destroy(struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_enqueue : Insert item in queue, return unique event handle.
+ * cmi_hashheap_enqueue - Insert item in queue, return unique event handle.
  * Resizes hashheap if necessary.
  */
 uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
@@ -442,7 +442,7 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
 }
 
 /*
- * cmi_hashheap_dequeue : Remove and return the next item.
+ * cmi_hashheap_dequeue - Remove and return the next item.
  *
  * The next event is always in position 1, while position 0 is a working space
  * for the heap. Temporarily saves the next item to the workspace at the end of
@@ -490,7 +490,7 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_remove : Remove the given entry and reshuffle the heap
+ * cmi_hashheap_remove - Remove the given entry and reshuffle the heap
  */
 bool cmi_hashheap_remove(struct cmi_hashheap *hp, const uint64_t handle)
 {
@@ -541,7 +541,7 @@ bool cmi_hashheap_remove(struct cmi_hashheap *hp, const uint64_t handle)
 }
 
 /*
- * cmi_hashheap_is_enqueued : Is the given item currently in the queue?
+ * cmi_hashheap_is_enqueued - Is the given item currently in the queue?
  */
 bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp, const uint64_t handle)
 {
@@ -560,7 +560,7 @@ bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp, const uint64_t hand
 }
 
 /*
- * cmi_hashheap_item : Return a pointer to the current location of the item
+ * cmi_hashheap_item - Return a pointer to the current location of the item
  */
 void **cmi_hashheap_item(const struct cmi_hashheap *hp, const uint64_t handle)
 {
@@ -577,7 +577,7 @@ void **cmi_hashheap_item(const struct cmi_hashheap *hp, const uint64_t handle)
 
 
 /*
- * cmi_hashheap_dkey/ikey/ukey : Get the dkey/ikey/ukey for the given item.
+ * cmi_hashheap_dkey/ikey/ukey - Get the dkey/ikey/ukey for the given item.
  */
 double cmi_hashheap_dkey(const struct cmi_hashheap *hp,
                              const uint64_t handle)
@@ -643,7 +643,7 @@ void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
 }
 
 /*
- * item_match : Wildcard search helper function to get the condition
+ * item_match - Wildcard search helper function to get the condition
  * out of the next three functions.
  */
 static bool item_match(const struct cmi_heap_tag *htp,
@@ -666,7 +666,7 @@ static bool item_match(const struct cmi_heap_tag *htp,
 }
 
 /*
- * cmi_hashheap_find : Locate a specific event, using CMB_ANY_ITEM as a
+ * cmi_hashheap_find - Locate a specific event, using CMB_ANY_ITEM as a
  * wildcard in the respective positions. Returns the handle of the event, or
  * zero if none is found. Simple linear search from the start of the heap.
  */
@@ -690,7 +690,7 @@ uint64_t cmi_hashheap_pattern_find(const struct cmi_hashheap *hp,
 }
 
 /*
- * cmi_hashheap_pattern_count : Count matching items using CMB_ANY_ITEM as a
+ * cmi_hashheap_pattern_count - Count matching items using CMB_ANY_ITEM as a
  * wildcard. Returns the number of matching items, possibly zero.
  */
 uint64_t cmi_hashheap_pattern_count(const struct cmi_hashheap *hp,
@@ -713,7 +713,7 @@ uint64_t cmi_hashheap_pattern_count(const struct cmi_hashheap *hp,
 }
 
 /*
- * cmi_hashheap_pattern_cancel : Cancel all matching items.
+ * cmi_hashheap_pattern_cancel - Cancel all matching items.
  * Two-pass approach: Allocate temporary storage for the list of
  * matching handles in the first pass, then cancel these in the
  * second pass. Avoids any possible issues caused by modification
@@ -758,7 +758,7 @@ uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
 }
 
 /*
- * cmi_hashheap_print : Print content of event heap, useful for debugging
+ * cmi_hashheap_print - Print content of event heap, useful for debugging
  */
 void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
 {

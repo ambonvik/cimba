@@ -33,9 +33,16 @@
 #define NUM_PUTTERS 3u
 #define NUM_GETTERS 3u
 
+CMB_THREAD_LOCAL struct cmi_mempool objectpool = {
+    CMI_THREAD_STATIC,
+    sizeof(void *),
+    512u,
+    0u, 0u, 0u, NULL, NULL
+};
+
 struct simulation {
     struct cmb_process *putters[NUM_PUTTERS];
-    struct cmb_process *getters[NUM_PUTTERS];
+    struct cmb_process *getters[NUM_GETTERS];
     struct cmb_process *nuisance;
     struct cmb_priorityqueue *queue;
 };
@@ -55,9 +62,6 @@ static void end_sim_evt(void *subject, void *object)
     }
 
     cmb_process_stop(texp->nuisance, NULL);
-
-    /* Make sure that we got everything */
-    cmb_event_queue_clear();
 }
 
 void *putterfunc(struct cmb_process *me, void *vctx)
@@ -77,20 +81,20 @@ void *putterfunc(struct cmb_process *me, void *vctx)
             cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
         }
 
-        void *object = cmi_mempool_alloc(&cmi_mempool_8b);
+        void *object = cmi_mempool_alloc(&objectpool);
         cmb_logger_user(stdout,
                         USERFLAG1,
                         "Putting object %p priority %" PRIi64 " into %s...",
                         object, pri,
                         cmb_priorityqueue_name(qp));
-
-        sig = cmb_priorityqueue_put(qp, &object, pri);
+        uint64_t handle;
+        sig = cmb_priorityqueue_put(qp, &object, pri, &handle);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Put succeeded");
         }
         else {
             cmb_logger_user(stdout, USERFLAG1, "Put returned signal %" PRIi64, sig);
-            cmi_mempool_free(&cmi_mempool_8b, object);
+            cmi_mempool_free(&objectpool, object);
         }
     }
 }
@@ -121,7 +125,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
         sig = cmb_priorityqueue_get(qp, &object);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Get succeeded");
-            cmi_mempool_free(&cmi_mempool_8b, object);
+            cmi_mempool_free(&objectpool, object);
         }
         else {
             cmb_logger_user(stdout, USERFLAG1, "Get returned signal %" PRIi64, sig);

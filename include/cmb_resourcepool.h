@@ -1,29 +1,29 @@
 /**
  * @file cmb_resourcepool.h
- * @brief A counting semaphore that supports acquire, release, and preempt in
- *        specific amounts against a fixed resource capacity, where a process
+ * @brief A counting semaphore that supports acquire(), release(), and preempt()
+ *        in specific amounts against a fixed resource capacity, where a process
  *        also can acquire more of a resource it already holds some amount of,
  *        or release parts of its holding. Several processes can be holding
  *        parts of the resource capacity at the same time, possibly also
  *        different amounts.
  *
- * The `cmb_resourcepool` adds numeric values for capacity and usage to the
+ * The resource pool adds numeric values for capacity and usage to the
  * simple `cmb_resource`. These values are unsigned integers to avoid any
  * rounding issues from floating-point calculations, both faster and higher
  * resolution (if scaled properly to 64-bit range).
  *
- * It assigns amounts to processes in a greedy fashion, where the acquiring
+ * It assigns requested amounts to processes in a greedy fashion. The acquiring
  * process will first grab whatever amount is available, then wait for some more
- * to become available, and repeat until the requested amount is acquired, and
+ * to become available, repeat until the requested amount is acquired, and
  * it eventually returns from the call.
  *
- * Preempt is similar to acquire, except that the preempting process also will
- * grab resources from any lower-priority processes holding some.
+ * Preemption is similar to acquisition, except that the preempting process also
+ * will grab resources from any lower-priority processes holding some.
  *
  * The holders list is now a hashheap, since we may need to handle many separate
  * processes acquiring, holding, releasing, and preempting various amounts of
  * the resource capacity. The hashheap is sorted to keep the holder most likely
- * to be preempted at the front, i.e., lowest priority and last in.
+ * to be preempted at the front, i.e., the lowest priority and last in.
  */
 
 /*
@@ -48,12 +48,13 @@
 #include <stdint.h>
 
 #include "cmb_resourceguard.h"
+#include "cmb_timeseries.h"
 
 #include "cmi_holdable.h"
 
 /**
- * @brief A counting semaphore that supports acquire, release, and preempt in
- *        specific amounts against a fixed resource capacity, where a process
+ * @brief A counting semaphore that supports acquire(), release(), and preempt()
+ *        in specific amounts against a fixed resource capacity, where a process
  *        also can acquire more of a resource it already holds some amount of,
  *        or release parts of its holding. Several processes can be holding
  *        parts of the resource capacity at the same time, possibly also
@@ -114,33 +115,33 @@ extern void cmb_resourcepool_destroy(struct cmb_resourcepool *rsp);
  * @param pp Pointer to a `cmb_process`
  * @return The amount from this resource pool that is held by the process.
  */
-extern uint64_t cmb_resourcepool_held_by_process(struct cmb_resourcepool *rsp,
-                                                  struct cmb_process *pp);
+extern uint64_t cmb_resourcepool_held_by_process(const struct cmb_resourcepool *rsp,
+                                                 const struct cmb_process *pp);
 
 /**
  * @brief Request and, if necessary, wait for an amount of the resource pool.
  *        The calling process may already hold some and try to increase its
- *        holding with this call, or to obtain its first helping.
+ *        holding with this call, or to acquire its first helping.
  *
- * It will either get the required amount and return `CMB_PROCESS_SUCCESS`,
+ * It will either get the required req_amount and return `CMB_PROCESS_SUCCESS`,
  * be preempted and return `CMB_PROCESS_PREEMPTED`, or be interrupted and return
  * some other value. If it is preempted, the process lost everything it had and
  * returns empty-handed. If interrupted by any other signal, it returns with the
- * same amount as it had at the beginning of the call.
+ * same req_amount as it had at the beginning of the call.
  *
- * Only the signal is returned, not the amount obtained or held. The calling
+ * Only the signal is returned, not the req_amount obtained or held. The calling
  * process needs to keep track of this itself based on the return signal values.
  * In particular, do not assume that the process has received the requested
- * amount when it returns.
+ * req_amount when it returns.
  *
  * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
- * @param amount The requested amount.
+ * @param req_amount The requested amount.
  * @return `CMB_PROCESS_SUCCESS` if successful, otherwise the signal received
  *         when preempted or interrupted.
  */
 extern int64_t cmb_resourcepool_acquire(struct cmb_resourcepool *rsp,
-                                         uint64_t amount);
+                                        uint64_t req_amount);
 
 /**
  * @brief Preempt the current holders and grab the amount, starting from the
@@ -151,17 +152,17 @@ extern int64_t cmb_resourcepool_acquire(struct cmb_resourcepool *rsp,
  *        acts like `cmb_resourcepool_acquire()`.
  *
  * As for `cmb_resourcepool_acquire()`, it can either return with the requested
- * amount, an unchanged amount (interrupted), or nothing at all (preempted). This
- * function does not return the amount received or held, only the signal value.
+ * req_amount, an unchanged req_amount (interrupted), or nothing at all (preempted). This
+ * function does not return the req_amount received or held, only the signal value.
  *
  * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
- * @param amount The requested amount.
+ * @param req_amount The requested amount.
  * @return `CMB_PROCESS_SUCCESS` if successful, otherwise the signal received
  *         when preempted or interrupted.
  */
 extern int64_t cmb_resourcepool_preempt(struct cmb_resourcepool *rsp,
-                                         uint64_t amount);
+                                         uint64_t req_amount);
 
 /**
  * @brief Release an amount of the resource back to the pool, not necessarily
@@ -170,10 +171,10 @@ extern int64_t cmb_resourcepool_preempt(struct cmb_resourcepool *rsp,
  *
  * @memberof cmb_resourcepool
  * @param rsp Pointer to a resource pool.
- * @param amount The requested amount.
+ * @param rel_amount The requested amount.
  */
 extern void cmb_resourcepool_release(struct cmb_resourcepool *rsp,
-                                      uint64_t amount);
+                                      uint64_t rel_amount);
 
 /**
  * @brief Returns name of pool as const char *.

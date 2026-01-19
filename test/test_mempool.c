@@ -24,25 +24,24 @@
 
 #include "test.h"
 
+CMB_THREAD_LOCAL struct cmi_mempool mempool_32b = {
+    CMI_THREAD_STATIC,
+    32u,
+    128u,
+    0u, 0u, 0u, NULL, NULL
+};
+
 int main(void)
 {
     cmi_test_print_line("=");
-    printf("Testing built-in memory pools\n");
+    printf("Testing automatic memory pools\n");
 
-    printf("cmi_mempool_alloc(&cmi_mempool_32b): ... ");
-    void *vp = cmi_mempool_alloc(&cmi_mempool_32b);
+    printf("cmi_mempool_alloc(&mempool_32b): ... ");
+    void *vp = cmi_mempool_alloc(&mempool_32b);
     printf("got %p\n", vp);
 
-    printf("cmi_mempool_free(&cmi_mempool_32b): ... ");
-    cmi_mempool_free(&cmi_mempool_32b, vp);
-    printf("done\n");
-
-    printf("cmi_mempool_alloc(&cmi_mempool_64b): ... ");
-    vp = cmi_mempool_alloc(&cmi_mempool_64b);
-    printf("got %p\n", vp);
-
-    printf("cmi_mempool_free(&cmi_mempool_64b): ... ");
-    cmi_mempool_free(&cmi_mempool_64b, vp);
+    printf("cmi_mempool_free(&mempool_32b): ... ");
+    cmi_mempool_free(&mempool_32b, vp);
     printf("done\n");
 
     cmi_test_print_line("-");

@@ -23,7 +23,7 @@
 
 #ifndef NASSERT
 /*
- * cmi_assert_failed : Report and abort in case of assert triggered.
+ * cmi_assert_failed - Report and abort in case of assert triggered.
  *
  * Key advice: Place a debugger breakpoint right here. You will thank me later.
  */

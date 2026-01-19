@@ -28,6 +28,7 @@
 
 #include "cmb_process.h"
 #include "cmb_resourceguard.h"
+#include "cmb_timeseries.h"
 
 #include "cmi_holdable.h"
 
@@ -118,7 +119,7 @@ extern int64_t cmb_resource_preempt(struct cmb_resource *rp);
  * @param rp Pointer to an initialized resource object.
  * @return The name of the process as a null-terminated text string.
  */
-static inline const char *cmb_resource_name(struct cmb_resource *rp)
+static inline const char *cmb_resource_name(const struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
 
@@ -135,7 +136,7 @@ static inline const char *cmb_resource_name(struct cmb_resource *rp)
  * @param rp Pointer to resource
  * @return The number of units in use, 0 or 1
  */
-static inline uint64_t cmb_resource_in_use(struct cmb_resource *rp)
+static inline uint64_t cmb_resource_in_use(const struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
@@ -150,7 +151,7 @@ static inline uint64_t cmb_resource_in_use(struct cmb_resource *rp)
  * @param rp Pointer to resource
  * @return The number of units not in use, 0 or 1
  */
-static inline uint64_t cmb_resource_available(struct cmb_resource *rp)
+static inline uint64_t cmb_resource_available(const struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
@@ -168,8 +169,8 @@ static inline uint64_t cmb_resource_available(struct cmb_resource *rp)
  *
  * @return One if the process holds the resource, zero otherwise.
  */
-static inline uint64_t cmb_resource_held_by_process(struct cmb_resource *rp,
-                                                    struct cmb_process *pp) {
+static inline uint64_t cmb_resource_held_by_process(const struct cmb_resource *rp,
+                                                    const struct cmb_process *pp) {
     cmb_assert_debug(rp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
 

@@ -34,11 +34,6 @@
 
 #include <stdint.h>
 
-#include "cmb_process.h"
-#include "cmb_timeseries.h"
-
-#include "cmi_memutils.h"
-
 /**
  * @brief Maximum length of a resource name, anything longer will be truncated
  */

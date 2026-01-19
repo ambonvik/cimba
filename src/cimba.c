@@ -41,7 +41,7 @@ static cimba_trial_func *cmg_trial_func;
 static uint64_t cmg_total_trials;
 
 /*
- * cimba_version : Return the version string as const char *
+ * cimba_version - Return the version string as const char *
  */
 const char *cimba_version(void)
 {
@@ -49,7 +49,7 @@ const char *cimba_version(void)
 }
 
 /*
- * worker_thread_func : The function passed to pthread_create. It finds the next
+ * worker_thread_func - The function passed to pthread_create. It finds the next
  * available trial from the experiment array, executes it, and repeats. If no
  * more trials are waiting, it exits. An atomic uint64_t is used to track the
  * number of remaining trials.
@@ -90,7 +90,7 @@ static void *worker_thread_func(void *arg)
 }
 
 /*
- * cimba_run_experiment : The main simulation executive function. Initiates the
+ * cimba_run_experiment - The main simulation executive function. Initiates the
  * worker threads and waits for them to finish. That's all.
  */
 void cimba_run_experiment(void *your_experiment_array,

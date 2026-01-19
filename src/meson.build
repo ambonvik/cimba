@@ -34,11 +34,11 @@ install_headers(
     'cmi_dataset.h',
     'cmi_hashheap.h',
     'cmi_holdable.h',
-    'cmi_list.h',
+    'cmi_slist.h',
     'cmi_mempool.h',
     'cmi_memutils.h',
-    'cmi_resourcebase.h',
-    'cmi_waitable.h'
+    'cmi_process.h',
+    'cmi_resourcebase.h'
 )
 
 # Platform and operating system dependent source code

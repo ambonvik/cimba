@@ -1,5 +1,5 @@
 /*
-* cmb_condition.c : A condition variable class that allows a process to wait for an
+* cmb_condition.c - A condition variable class that allows a process to wait for an
  *        arbitrary condition to become true and be reactivated at that point.
  *        It does not assign any resource, just signals that the condition is
  *        fulfilled. The application provides the demand predicate function to
@@ -24,6 +24,7 @@
 #include "cmb_logger.h"
 
 #include "cmi_memutils.h"
+#include "cmi_process.h"
 
 struct cmb_condition *cmb_condition_create(void)
 {
@@ -78,16 +79,21 @@ int64_t cmb_condition_wait(struct cmb_condition *cvp,
 }
 
 /*
- * cond_waitwu_evt : The event that actually resumes the process coroutine
+ * wakeup_event_condition - The event that actually resumes the process coroutine
  */
-static void cond_waitwu_evt(void *vp, void *arg)
+static void wakeup_event_condition(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *pp = (struct cmb_process *)vp;
-    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64 " wait type %d",
-            pp->name, (int64_t)arg, pp->waitsfor.type);
-    cmb_assert_debug(pp->waitsfor.type == CMI_WAITABLE_RESOURCE);
+    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64, pp->name, (int64_t)arg);
+    cmb_assert_debug(!cmi_slist_is_empty(&(pp->awaits)));
+
+    /* Cannot be waiting for more than one at a time */
+    const bool found = cmi_process_remove_awaitable(pp,
+                                                 CMI_PROCESS_AWAITABLE_RESOURCE,
+                                                 NULL, 0u);
+    cmb_assert_debug(found == true);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
@@ -143,7 +149,7 @@ bool cmb_condition_signal(struct cmb_condition *cvp)
             tmp[cnt++] = htp->handle;
             const double time = cmb_time();
             const int64_t priority = cmb_process_priority(pp);
-            (void)cmb_event_schedule(cond_waitwu_evt, pp,
+            (void)cmb_event_schedule(wakeup_event_condition, pp,
                                      (void *)CMB_PROCESS_SUCCESS,
                                      time, priority);
         }

@@ -1,10 +1,10 @@
 /*
-* tutorial/tut_2_0.c
+* tutorial/tut_4_1.c
  *
- * An empty shell for a single-threaded simulation model, as a starting point
- * for development and debugging before parallelizing the production version.
+ * M/G/n model with balking, reneging, and jockeying customer behaviors.
+ * Single-threaded development version.
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,10 +23,12 @@
 #include <stdio.h>
 
 /*
- * Bit masks to distinguish between two types of user-defined logging messages.
+ * Bit masks to distinguish between types of user-defined logging messages.
  */
-#define USERFLAG1 0x00000001
-#define USERFLAG2 0x00000002
+#define LOGFLAG_ARRIVAL     0x00000001
+#define LOGFLAG_CUSTOMER    0x00000002
+#define LOGFLAG_SERVICE     0x00000004
+#define LOGFLAG_SIMULATION  0x00000008
 
 /*
  * Our simulated world consists of these entities.

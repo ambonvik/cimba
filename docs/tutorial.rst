@@ -3,7 +3,7 @@
 Tutorial: Modeling with Cimba
 =============================
 
-Our first simulation - M/M/1 queue
+Our first simulation - A M/M/1 queue
 ------------------------------------
 
 In this section, we will walk through the development of a simple model from
@@ -38,6 +38,7 @@ Let us start with the arrival and service processes. The code can be very simple
      void *arrival(struct cmb_process *me, void *ctx)
     {
         struct cmb_buffer *bp = ctx;
+
         while (true) {
             double t_ia = cmb_random_exponential(1.0 / 0.75);
             cmb_process_hold(t_ia);
@@ -51,6 +52,7 @@ Let us start with the arrival and service processes. The code can be very simple
      void *service(struct cmb_process *me, void *ctx)
      {
          struct cmb_buffer *bp = ctx;
+
          while (true) {
              uint64_t m = 1;
              cmb_buffer_get(bp, &m);
@@ -96,7 +98,6 @@ afterwards. Let us try this:
     {
         const uint64_t seed = cmb_random_hwseed();
         cmb_random_initialize(seed);
-
         cmb_event_queue_initialize(0.0);
 
         struct cmb_buffer *que = cmb_buffer_create();
@@ -262,7 +263,6 @@ and schedule an ``end_sim`` event before executing the event queue:
     {
         const uint64_t seed = cmb_random_hwseed();
         cmb_random_initialize(seed);
-
         cmb_event_queue_initialize(0.0);
 
         struct simulation sim = {};
@@ -409,6 +409,7 @@ format strings and arguments:
     void end_sim(void *subject, void *object)
     {
         struct simulation *sim = object;
+
         cmb_logger_user(stdout, USERFLAG1, "--- Game Over ---");
         cmb_process_stop(sim->arr, NULL);
         cmb_process_stop(sim->srv, NULL);
@@ -417,6 +418,7 @@ format strings and arguments:
     void *arrival(struct cmb_process *me, void *ctx)
     {
         struct cmb_buffer *bp = ctx;
+
         while (true) {
             double t_ia = cmb_random_exponential(1.0 / 0.75);
             cmb_logger_user(stdout, USERFLAG1, "Holds for %f time units", t_ia);
@@ -430,6 +432,7 @@ format strings and arguments:
     void *service(struct cmb_process *me, void *ctx)
     {
         struct cmb_buffer *bp = ctx;
+
         while (true) {
             uint64_t m = 1;
             cmb_logger_user(stdout, USERFLAG1, "Gets one from the queue");
@@ -604,8 +607,8 @@ macro:
     void end_sim(void *subject, void *object)
     {
         cmb_unused(subject);
-
         struct simulation *sim = object;
+
         cmb_logger_user(stdout, USERFLAG1, "--- Game Over ---");
         cmb_process_stop(sim->arr, NULL);
         cmb_process_stop(sim->srv, NULL);
@@ -709,8 +712,8 @@ We also need a pair of events to turn data recording on and off at specified tim
     static void start_rec(void *subject, void *object)
     {
         cmb_unused(subject);
-
         const struct context *ctx = object;
+
         const struct simulation *sim = ctx->sim;
         cmb_buffer_start_recording(sim->que);
     }
@@ -718,8 +721,8 @@ We also need a pair of events to turn data recording on and off at specified tim
     static void stop_rec(void *subject, void *object)
     {
         cmb_unused(subject);
-
         const struct context *ctx = object;
+
         const struct simulation *sim = ctx->sim;
         cmb_buffer_stop_recording(sim->que);
     }
@@ -1001,8 +1004,8 @@ functionally the same as our final ``tutorial\tut_1_6.c`` but with additional in
 explanatory comments.
 
 
-Our second simulation - LNG tanker harbor
--------------------------------------------
+A LNG tanker harbor with condition variables
+--------------------------------------------
 
 Once upon a time, a harbor simulation with tugs puttering about was the author's
 first exposure to Simula67, coroutines, and object-oriented programming. The
@@ -1279,10 +1282,10 @@ the same signature as for the ``cmb_process``. It can look like this:
     {
         cmb_assert_debug(me != NULL);
         cmb_assert_debug(vctx != NULL);
-
-        /* Unpack some convenient shortcut names */
         struct ship *shpp = (struct ship *)me;
         const struct context *ctxp = vctx;
+
+        /* Unpack some convenient shortcut names */
         struct simulation *simp = ctxp->sim;
         struct cmb_condition *hbmp = simp->harbormaster;
         const struct trial *trlp = ctxp->trl;
@@ -1431,8 +1434,8 @@ We next write the arrival process generating ships:
     {
         cmb_unused(me);
         cmb_assert_debug(vctx != NULL);
-
         const struct context *ctxp = vctx;
+
         const struct trial *trlp = ctxp->trl;
         const double mean = 1.0 / trlp->arrival_rate;
         const double p_large = trlp->percent_large;
@@ -1548,8 +1551,8 @@ to do something. Here, we use our new destructor functions:
     {
         cmb_unused(me);
         cmb_assert_debug(vctx != NULL);
-
         const struct context *ctxp = vctx;
+
         struct simulation *simp = ctxp->sim;
         const struct trial *trlp = ctxp->trl;
         struct cmi_list_tag **dep_head = &(simp->departed_ships);
@@ -1858,8 +1861,8 @@ that user applications can build derived classes from Cimba parent classes using
 single inheritance. For example, the ``ship`` class in this tutorial was derived
 from a ``cmb_process`` which in turn is derived from a ``cmi_coroutine``.
 
-Our third simulation - When the Cat is Away...
-----------------------------------------------
+Interruptions and Preemptions: When the Cat is Away...
+------------------------------------------------------
 
 In our third tutorial, we will introduce additional process interactions where
 the active process is acting directly on some other process. We will
@@ -2239,7 +2242,45 @@ This completes our third tutorial, demonstrating how to use direct process
 interactions like ``cmb_process_interrupt()`` and ``cmb_resourcepool_preempt()``.
 We have mentioned, but not demonstrated ``cmb_process_wait_process()``
 and ``cmb_process_wait_event()``. We encourage you to look up these in the
-API reference documentation next. Any remaining question may best be answered by
-reading the relevant source code.
+API reference documentation next.
 
-We hope you will find Cimba useful for your own modeling needs.
+Queuing with Balking, Reneging, and Jockeying
+---------------------------------------------
+
+In our first simulation, we modeled a M/M/1 queue as a simple buffer with just a
+numeric value for the queue length. This was sufficient to calculate queue length
+statistics. We extended this in our benchmarking case, benchmark/MM1_simple.c
+and benchmark/MM1_multi.c, where the customers were modeled as discrete objects
+containing their own arrival times to compute statistics for the time each customer
+spent in the system. In both cases, our simulated results were well aligned with
+known queuing theory formulas.
+
+We now extend this to a more realistic but analytically intractable case, where the
+customers are active, opinionated agents in their own right. Since the active entities
+in Cimba are the ``cmb_processes``, that requires each customer to be represented as a
+process or a class derived from the process, just like our ships in the harbor example.
+The customers generated by the arrival process will make their own decisions on whether to
+join the queue or not (balking), leave midway (reneging), or switch to another queue that
+seems to be moving faster (jockeying). Or patiently wait until they get served and
+leave for new adventures.
+
+The use case is to model an entertainment park with guests wanting to use various
+attractions, where the park operator wants us to analyze ways of influencing customer
+behavior. Each customer will have a randomized "patience" property, and we will try to
+influence this by techniques like shielding parts of the queue from view, arranging
+small sideshows to keep waiting customers amused, and so on. We will not make a very
+detailed model of customer behavior, but we note that we could even embed an AI
+model of customer behavior running on CUDA kernels to make the customer objects truly
+intelligent agents in our simulated world. (The author once implemented a nonlinear
+resource allocation model in Simscript II.5 to represent a human commander's decision
+making in a simulated war.) Here, we are mainly concerned with demonstrating how to build
+the simulation framework, not the detailed agentic behaviors.
+
+In the LNG harbor example, we had one process (arrivals) create and start other
+processes (ships) or a third process (departures) recycle the ships. In Cimba with its
+stackful coroutines as first-order objects, this is not difficult to do, just a natural
+way of expressing the model. We will follow the same pattern here. We will then scale it
+up to something on the order of a full day at a large entertainment park, with thousands
+of customers and dozens of attractions with associated queues, before parallelizing it
+on all CPU cores.
+

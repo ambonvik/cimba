@@ -50,7 +50,7 @@ struct simulation {
     struct cmb_condition *harbormaster;
     struct cmb_condition *davyjones;
     struct cmi_hashheap *active_ships;
-    struct cmi_list_tag *departed_ships;
+    struct cmi_slist_head *departed_ships;
  };
 
 /* The current sea and weather state */
@@ -85,6 +85,7 @@ struct ship {
     double min_depth;
     unsigned tugs;
     enum ship_size size;
+    struct cmi_slist_head listhead;
 };
 
 /* The entire context for our simulation run */
@@ -267,7 +268,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     /* One pass process, remove ourselves from the active set */
     cmi_hashheap_remove(sim->active_ships, hndl);
     /* List ourselves as departed instead */
-    cmi_list_push(&(sim->departed_ships), shp);
+    cmi_slist_push(sim->departed_ships, &(shp->listhead));
     /* Inform Davy Jones that we are coming his way */
     cmb_condition_signal(sim->davyjones);
 
@@ -361,9 +362,9 @@ void *departure_proc(struct cmb_process *me, void *vctx)
     cmb_assert_debug(vctx != NULL);
 
     const struct context *ctx = vctx;
-    struct simulation *sim = ctx->sim;
+    const struct simulation *sim = ctx->sim;
     const struct trial *trl = ctx->trial;
-    struct cmi_list_tag **dep_head = &(sim->departed_ships);
+    struct cmi_slist_head *dep_head = sim->departed_ships;
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
@@ -371,7 +372,8 @@ void *departure_proc(struct cmb_process *me, void *vctx)
         cmb_condition_wait(sim->davyjones, is_departed, vctx);
 
         /* Got one, collect its exit value */
-        struct ship *shp = cmi_list_pop(dep_head);
+        struct cmi_slist_head *shead = cmi_slist_pop(dep_head);
+        struct ship *shp = cmi_container_of(shead, struct ship, listhead);
         double *t_sys_p = cmb_process_exit_value((struct cmb_process *)shp);
         cmb_assert_debug(t_sys_p != NULL);
         cmb_logger_user(stdout, USERFLAG1,
@@ -426,8 +428,6 @@ void end_sim_evt(void *subject, void *object)
         cmb_process_terminate((struct cmb_process *)shp);
         free(shp);
     }
-
-    cmb_event_queue_clear();
 }
 
 /* For now, set params here instead of in an external experiment array */
@@ -511,7 +511,8 @@ void test_condition(void)
     /* Create the collections of active and departed ships */
     sim.active_ships = cmi_hashheap_create();
     cmi_hashheap_initialize(sim.active_ships, 3u, NULL);
-    sim.departed_ships = NULL;
+    sim.departed_ships = cmi_slist_create();
+    cmi_slist_initialize(sim.departed_ships);
 
     /* Schedule the end event at a fixed time a hundred years from now. */
     (void)cmb_event_schedule(end_sim_evt, &sim, NULL, 24.0 * 7 * 52 * 100, 0);

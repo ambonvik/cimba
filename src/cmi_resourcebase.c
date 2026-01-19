@@ -18,10 +18,13 @@
  * limitations under the License.
  */
 
+#include "cmb_assert.h"
+#include "cmb_process.h"
+
 #include "cmi_resourcebase.h"
 
 /*
- * cmi_resourcebase_initialize : Make an already allocated resource core
+ * cmi_resourcebase_initialize - Make an already allocated resource core
  * object ready for use with a given capacity.
  */
 void cmi_resourcebase_initialize(struct cmi_resourcebase *rbp,
@@ -34,7 +37,7 @@ void cmi_resourcebase_initialize(struct cmi_resourcebase *rbp,
 }
 
 /*
- * cmi_resourcebase_terminate : Un-initializes a resource base object.
+ * cmi_resourcebase_terminate - Un-initializes a resource base object.
  */
 void cmi_resourcebase_terminate(struct cmi_resourcebase *rbp)
 {
@@ -44,7 +47,7 @@ void cmi_resourcebase_terminate(struct cmi_resourcebase *rbp)
 }
 
 /*
- * cmb_resource_set_name : Change the resource name.
+ * cmb_resource_set_name - Change the resource name.
  *
  * The name is contained in a fixed size buffer and will be truncated if it is
  * too long to fit into the buffer, leaving one char for the \0 at the end.
