@@ -41,8 +41,8 @@ struct simulation {
 };
 
 struct trial {
-    double arr_rate;
-    double srv_rate;
+    double arr_mean;
+    double srv_mean;
     uint64_t obj_cnt;
     double sum_wait;
     double avg_wait;
@@ -58,7 +58,7 @@ void *arrivalfunc(struct cmb_process *me, void *vctx)
     cmb_unused(me);
     const struct context *ctx = vctx;
     struct cmb_objectqueue *qp = ctx->sim->queue;
-    const double mean_hld = 1.0 / ctx->trl->arr_rate;
+    const double mean_hld = ctx->trl->arr_mean;
     for (uint64_t ui = 0; ui < NUM_OBJECTS; ui++) {
         const double t_hld = cmb_random_exponential(mean_hld);
         cmb_process_hold(t_hld);
@@ -76,7 +76,7 @@ void *servicefunc(struct cmb_process *me, void *vctx)
     cmb_unused(me);
     const struct context *ctx = vctx;
     struct cmb_objectqueue *qp = ctx->sim->queue;
-    const double mean_srv = 1.0 / ctx->trl->srv_rate;
+    const double mean_srv = ctx->trl->srv_mean;
     uint64_t *cnt = &(ctx->trl->obj_cnt);
     double *sum = &(ctx->trl->sum_wait);
     while (true) {
@@ -127,15 +127,15 @@ void run_trial(void *vtrl)
 int main(void)
 {
     struct trial *trl = malloc(sizeof(*trl));
-    trl->arr_rate = ARRIVAL_RATE;
-    trl->srv_rate = SERVICE_RATE;
+    trl->arr_mean = 1.0 / ARRIVAL_RATE;
+    trl->srv_mean = 1.0 / SERVICE_RATE;
     trl->obj_cnt = 0u;
     trl->sum_wait = 0.0;
     run_trial(trl);
 
     printf("Average system time %f (expected %f)\n",
             trl->sum_wait / (double)trl->obj_cnt,
-            1.0 / (1.0 - trl->arr_rate));
+            1.0 / (SERVICE_RATE - ARRIVAL_RATE));
 
     return 0;
 }
