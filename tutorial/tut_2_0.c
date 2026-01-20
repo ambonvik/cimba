@@ -125,7 +125,7 @@ void run_trial(void *vtrl)
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     // cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
-    trl->seed_used = cmb_random_get_hwseed();
+    trl->seed_used = cmb_random_hwseed();
     cmb_random_initialize(trl->seed_used);
 
     /*
