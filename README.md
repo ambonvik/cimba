@@ -66,10 +66,10 @@ It is a general-purpose discrete event simulation library, in the spirit of a
 * military command and control systems,
 * and quite a few more application domains.
 
-See the tutorial examples at [tut_1_7.c](tutorial/tut_1_7.c), 
-[tut_2_2.c](tutorial/tut_2_2.c), and [tut_3_1.c](tutorial/tut_3_1.c) for illustrations of model expressiveness. 
-For direct comparison, you will find the same scenario modeled in both Cimba and 
-SimPy in the benchmark directory.
+See the [tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html) for 
+illustrations of model expressiveness. 
+For direct comparison, you will also find the same scenario modeled in both Cimba and 
+SimPy in the [benchmark](benchmark) directory.
 
 If you look under the hood, you will also find reusable internal components
 like stackful coroutines doing their own thing on thread-safe cactus stacks,
@@ -237,7 +237,7 @@ service process variability. For each variability level, it tries
 five system utilization levels. There are ten replications for each parameter 
 combination, in total 4 * 5 * 10 = 200 trials. Each trial lasts for one million 
 time units, where the average service time always is 1.0 time units. This entire 
-simulation runs in about 1.4 seconds on an AMD Threadripper 3970X with Arch Linux 
+simulation runs in about 1.5 seconds on an AMD Threadripper 3970X with Arch Linux 
 and produces the chart below. 
 
 ![M/G/1 queue](images/MG1%20example.png)
