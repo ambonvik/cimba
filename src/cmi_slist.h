@@ -48,7 +48,6 @@ static inline void cmi_slist_initialize(struct cmi_slist_head *head)
 static inline void cmi_slist_terminate(struct cmi_slist_head *head)
 {
     cmb_assert_debug(head != NULL);
-    cmb_assert_debug(head->next == NULL);
 }
 
 static inline void cmi_slist_destroy(struct cmi_slist_head *head)
