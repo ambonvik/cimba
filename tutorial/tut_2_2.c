@@ -298,7 +298,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     cmb_logger_user(stdout, USERFLAG1, "%s arrives", me->name);
     const double t_arr = cmb_time();
     const uint64_t hndl = cmi_hashheap_enqueue(simp->active_ships, shpp,
-                                               NULL, NULL, NULL, t_arr, 0u);
+                                               NULL, NULL, NULL, 0u, t_arr, 0u);
 
     /* Wait for suitable conditions to dock */
     while (!is_ready_to_dock(NULL, me, ctxp)) {
