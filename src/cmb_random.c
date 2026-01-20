@@ -615,7 +615,6 @@ unsigned cmb_random_poisson(const double r)
 /*
  * Non-uniform discrete distribution, simple cdf inversion method.
  */
-#ifndef NASSERT
 static double sum_tolerance = 1.0e-3;
 static bool sums_to_one(const unsigned n, const double p[n])
 {
@@ -626,7 +625,6 @@ static bool sums_to_one(const unsigned n, const double p[n])
 
     return (fabs(sum - 1.0) <= sum_tolerance) ? true : false;
 }
-#endif /* ifndef NASSERT */
 
 unsigned cmb_random_loaded_dice(const unsigned n, const double *pa)
 {

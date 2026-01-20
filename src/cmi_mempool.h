@@ -35,7 +35,6 @@
 
 #include "cmb_assert.h"
 
-#include "cmi_config.h"
 #include "cmi_memutils.h"
 
 /* Additional cookie value for the predefined memory pools */

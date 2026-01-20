@@ -31,7 +31,6 @@
 #include "cmi_process.h"
 #include "cmi_slist.h"
 
-
 /*
  * sim_time - The simulation clock. It can be initiated to start from a
  * negative value, but it can only increase once initiated, never go back.

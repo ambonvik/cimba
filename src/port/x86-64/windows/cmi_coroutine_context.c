@@ -81,9 +81,8 @@ extern void *cmi_coroutine_stacklimit(void);
 /* Bit pattern for last 64 bits of valid stack. */
 #define CMI_STACK_LIMIT_UNTOUCHED 0xFA151F1AB1Eull
 
-#ifndef NASSERT
- /* Stack sanity check, Win64-specific */
- bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
+/* Stack sanity check, Win64-specific */
+bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
 {
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
@@ -109,9 +108,7 @@ extern void *cmi_coroutine_stacklimit(void);
     }
 
     return true;
- }
-
-#endif /* NASSERT */
+}
 
 void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 {

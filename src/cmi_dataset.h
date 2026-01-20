@@ -28,12 +28,12 @@
 
 extern void cmi_dataset_swap(double *a, double *b);
 extern void cmi_dataset_expand(struct cmb_dataset *dsp);
-#ifndef NASSERT
-    extern bool cmi_dataset_is_sorted(uint64_t un, const double arr[un]);
-    extern bool cmi_dataset_is_max_heap(uint64_t un,
-                                        double const arr[un],
-                                        uint64_t uroot);
-#endif
+
+extern bool cmi_dataset_is_sorted(uint64_t un, const double arr[un]);
+extern bool cmi_dataset_is_max_heap(uint64_t un,
+                                    double const arr[un],
+                                    uint64_t uroot);
+
 
 /*
  * Histogram data structure. Note that the bins are real-valued (not integer) to

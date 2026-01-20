@@ -133,7 +133,6 @@ void cmi_dataset_swap(double *a, double *b)
     *b = tmp;
 }
 
-#ifndef NASSERT
 /* Code only used for checking invariants */
 bool cmi_dataset_is_sorted(const uint64_t un, const double arr[un])
 {
@@ -192,7 +191,6 @@ bool cmi_dataset_is_max_heap(const uint64_t un,
     return true;
 }
 
-#endif /* ifndef NASSERT */
 
 /* Establish max heap condition in the dataset array starting from uroot */
 static void dataset_heapify(const uint64_t un,

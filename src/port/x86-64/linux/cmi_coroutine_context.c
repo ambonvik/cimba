@@ -101,7 +101,6 @@ void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
 /* Bit pattern for last 64 bits of valid stack. */
 #define CMI_STACK_LIMIT_UNTOUCHED UINT64_C(0xFA151F1AB1E)
 
-#ifndef NASSERT
  /* Stack sanity check, Linux SysV-specific, see
   *   https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf  */
  bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
@@ -130,8 +129,6 @@ void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
 
     return true;
  }
-
-#endif /* NASSERT */
 
 void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 {
