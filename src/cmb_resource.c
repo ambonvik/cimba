@@ -45,13 +45,11 @@ static void record_sample(struct cmb_resource *rp);
  * resource_drop_holder - force a holder process to drop the resource
  */
 static void resource_drop_holder(struct cmi_holdable *hrp,
-                 const struct cmb_process *pp,
-                 const uint64_t handle)
+                                 const struct cmb_process *pp)
 {
     cmb_assert_release(hrp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)hrp)->cookie == CMI_INITIALIZED);
     cmb_assert_release(pp != NULL);
-    cmb_unused(handle);
 
     struct cmb_resource *rp = (struct cmb_resource *)hrp;
     cmb_assert_debug(rp->holder == pp);
@@ -74,6 +72,7 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
     cmb_resourceguard_initialize(&(rp->guard), &(rp->core.base));
 
     rp->core.drop = resource_drop_holder;
+    rp->core.reprio = NULL;
     rp->holder = NULL;
 
     rp->is_recording = false;
@@ -88,7 +87,7 @@ void cmb_resource_terminate(struct cmb_resource *rp)
     cmb_assert_release(rp != NULL);
 
     if (rp->holder != NULL) {
-        resource_drop_holder(&(rp->core), rp->holder, 0u);
+        resource_drop_holder(&(rp->core), rp->holder);
     }
 
     cmb_timeseries_terminate(&(rp->history));
@@ -108,7 +107,7 @@ void cmb_resource_destroy(struct cmb_resource *rp)
 static void record_sample(struct cmb_resource *rp) {
     cmb_assert_release(rp != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     if (rp->is_recording) {
         struct cmb_timeseries *ts = &(rp->history);
@@ -186,8 +185,6 @@ static void resource_grab(struct cmb_resource *rp, struct cmb_process *pp)
     struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
     struct cmi_process_holdable *php = cmi_mempool_alloc(&cmi_process_holdabletags);
     php->res = hrp;
-    php->handle = 0u;
-    php->amount = 0u;
     cmi_slist_push(&(pp->resources), &(php->listhead));
 }
 

@@ -102,7 +102,7 @@ static inline void *cmi_mempool_alloc(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp != NULL);
     /* Allow for the first call to the predefined memory pools to be initialized */
-    cmb_assert_release((mp->cookie == CMI_INITIALIZED)
+    cmb_assert_debug((mp->cookie == CMI_INITIALIZED)
                        || (mp->cookie == CMI_THREAD_STATIC));
 
     if (mp->next_obj == NULL) {
@@ -113,7 +113,6 @@ static inline void *cmi_mempool_alloc(struct cmi_mempool *mp)
     void *op = mp->next_obj;
     cmb_assert_debug(op != NULL);
     mp->next_obj = *(void **)op;
-    cmi_memset(op, 0, mp->obj_sz);
 
     return op;
 }

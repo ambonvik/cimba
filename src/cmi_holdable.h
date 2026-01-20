@@ -52,8 +52,7 @@ struct cmi_holdable;
  * can look it up in its hash map for efficiency, zero if not applicable.
  */
 typedef void (cmi_holdable_drop_func)(struct cmi_holdable *hrp,
-                                      const struct cmb_process *pp,
-                                      uint64_t handle);
+                                      const struct cmb_process *pp);
 
 /**
  * @brief Function prototype for reshuffling a resource holders' list if a
@@ -67,7 +66,7 @@ typedef void (cmi_holdable_drop_func)(struct cmi_holdable *hrp,
  * call `(*reprio)` for each resource it holds and get the correct handling.
  */
 typedef void (cmi_holdable_reprio_func)(struct cmi_holdable *hrp,
-                                        uint64_t handle,
+                                        const struct cmb_process *pp,
                                         int64_t pri);
 
 /**

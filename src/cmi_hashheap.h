@@ -5,9 +5,10 @@
  * dequeue, peek, and cancel operations, plus item search functions.
  *
  * Each item in the priority queue is a tuple of (up to) four 64-bit payload
- * values. The item is uniquely identified by a 64-bit non-zero handle returned
- * when it is enqueued. An item can be cancelled or reprioritized with reference
- * to this handle. Handles are not reused during the lifetime of the hashheap.
+ * values. The item is uniquely identified by a 64-bit non-zero key. If a
+ * key (key value) is provided at enqueue, that key will be used. If not,
+ * a key is generated and returned when it is enqueued. An item can be
+ * cancelled or reprioritized with reference to this key.
  *
  * An item in the queue has (up to) two priority keys for determining the
  * sorting order; one double and one signed 64-bit integer. The semantics are
@@ -15,7 +16,7 @@
  * to items a and b, and returns a bool indicating if a should precede b in the
  * priority order. The compare function can use any other properties as well.
  * For example, in the main event queue, the priority keys would be reactivation
- * time (double), priority (integer), and the sequential event handle. A pointer
+ * time (double), priority (integer), and the sequential event key. A pointer
  * to the appropriate compare function is stored in the hashheap control
  * structure.
  *
@@ -46,7 +47,7 @@
 /*
  * struct cmi_heap_tag - The record to store an item in the priority queue.
  * These tags only exist as members of the event queue array, never alone.
- * The handle is a unique event identifier, the hash_index a reference to where
+ * The key is a unique event identifier, the hash_index a reference to where
  * in the hash map it is located. The item is a 4-tuple of 64-bit values, here
  * represented as void*, but could be used for any other 64-bit value depending
  * on application needs (see cmb_event.c for an example).
@@ -54,11 +55,11 @@
  * Note that the heap tag is 8 * 8 = 64 bytes large.
  */
 struct cmi_heap_tag {
-    uint64_t handle;
+    uint64_t key;
     uint64_t hash_index;
     void *item[4];
-    double dkey;
-    int64_t ikey;
+    double dsortkey;
+    int64_t isortkey;
 };
 
 /*
@@ -70,13 +71,13 @@ typedef bool (cmi_heap_compare_func)(const struct cmi_heap_tag *a,
                                      const struct cmi_heap_tag *b);
 
 /*
- * struct cmi_hash_tag - Hash mapping from event handle to heap position.
+ * struct cmi_hash_tag - Hash mapping from event key to heap position.
  * Heap index value zero indicates a tombstone, event is no longer in the heap.
  *
  * Note that the hashtag is 2 * 8 = 16 bytes large.
  */
 struct cmi_hash_tag {
-    uint64_t handle;
+    uint64_t key;
     uint64_t heap_index;
 };
 
@@ -96,7 +97,7 @@ struct cmi_hash_tag {
  * and hash_size are the allocated number of slots, where hash_size is twice the
  * heap_size once initialized (an invariant).
  *
- * item_counter is a running count of all items seen, used to assign new handles
+ * item_counter is a running count of all items seen, used to assign new keys
  * valid for this hashheap only.
  */
 
@@ -128,7 +129,7 @@ extern struct cmi_hashheap *cmi_hashheap_create(void);
  * cmp is the application-defined compare function for this hashheap, taking
  * pointers to two heap tags and returning true if the first should go before
  * the second, using whatever consideration is appropriate for the usage. If
- * NULL, we will sort in an increasing `dkey` order.
+ * NULL, we will sort in an increasing `dsortkey` order.
  */
 extern void cmi_hashheap_initialize(struct cmi_hashheap *hp,
                                     uint16_t hexp,
@@ -137,7 +138,7 @@ extern void cmi_hashheap_initialize(struct cmi_hashheap *hp,
 /*
  * cmi_hashheap_clear - Empties the hash heap.
  * Does not shrink the heap to the initial size, continues at the size it has.
- * Does not reset the item counter for issuing new handles, continues series.
+ * Does not reset the item counter for issuing new keys, continues series.
  */
 extern void cmi_hashheap_clear(struct cmi_hashheap *hp);
 
@@ -161,18 +162,19 @@ extern void cmi_hashheap_destroy(struct cmi_hashheap *hp);
 
 /*
  * cmi_hashheap_enqueue: Insert an item (pl1, pl2, pl3, pl4) into the priority
- * queue using the priority keys dkey and ikey. The exact meaning is application
- * defined, depending on the heap compare function provided.
- *
- * Returns the handle to the new item, handle > 0.
+ * queue using the priority keys dsortkey and isortkey. The exact meaning is
+ * application defined, depending on the heap compare function provided.
+ * If the hashkey is zero, an internal key will be generated, otherwise the one
+ * given will be used. Returns the key to the new item, key > 0.
  */
 extern uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
                                      void *pl1,
                                      void *pl2,
                                      void *pl3,
                                      void *pl4,
-                                     double dkey,
-                                     int64_t ikey);
+                                     uint64_t hashkey,
+                                     double dsortkey,
+                                     int64_t isortkey);
 
 /*
  * cmi_hashheap_dequeue - Removes the highest priority item from the queue
@@ -190,16 +192,6 @@ static inline uint64_t cmi_hashheap_count(const struct cmi_hashheap *hp)
     cmb_assert_release(hp != NULL);
 
     return hp->heap_count;
-}
-
-/*
- * cmi_hashheap_last_handle - Returns the number of items ever enqueued.
- */
-static inline uint64_t cmi_hashheap_last_handle(const struct cmi_hashheap *hp)
-{
-    cmb_assert_release(hp != NULL);
-
-    return hp->item_counter;
 }
 
 /*
@@ -229,7 +221,7 @@ static inline void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_peek_dkey/ikey - Returns the dkey/ikey of the first item.
+ * cmi_hashheap_peek_dkey/isortkey - Returns the dsortkey/isortkey of the first item.
  *
  * These functions have no good way to return an out-of-band error value, will
  * fire an assert instead if called on an empty hashheap. Check first.
@@ -242,7 +234,7 @@ static inline double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp)
 
     const struct cmi_heap_tag *first = &(hp->heap[1]);
 
-    return first->dkey;
+    return first->dsortkey;
 }
 
 static inline int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
@@ -253,7 +245,7 @@ static inline int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
 
     const struct cmi_heap_tag *first = &(hp->heap[1]);
 
-    return first->ikey;
+    return first->isortkey;
 }
 
 /*
@@ -261,55 +253,72 @@ static inline int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
  * found (and removed), false if not found (already removed). Either way,
  * the item will not be in the queue at the end of this call.
  */
-extern bool cmi_hashheap_remove(struct cmi_hashheap *hp, uint64_t handle);
+extern bool cmi_hashheap_remove(struct cmi_hashheap *hp, uint64_t hashkey);
 
 /*
  * cmi_hashheap_cancel - Syntactic sugar for cmi_hashheap_remove
  */
-static inline bool cmi_hashheap_cancel(struct cmi_hashheap *hp, const uint64_t handle)
+static inline bool cmi_hashheap_cancel(struct cmi_hashheap *hp, const uint64_t hashkey)
 {
-    return cmi_hashheap_remove(hp, handle);
+    return cmi_hashheap_remove(hp, hashkey);
 }
+
+/*
+ * cmi_hash_find_index - look up the heap index for a given hash hashkey. Internal use only.
+ */
+extern uint64_t cmi_hash_find_index(const struct cmi_hashheap *hp, uint64_t hashkey);
 
 /*
  * cmi_hashheap_is_enqueued - Is the given item currently in the queue?
  */
-extern bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp, uint64_t handle);
+static inline bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp,
+                                            const uint64_t hashkey)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_debug(hashkey != 0u);
+
+    if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
+        return false;
+    }
+    else {
+        return (cmi_hash_find_index(hp, hashkey) != 0u);
+    }
+}
 
 /*
  * cmi_hashheap_item - Return a pointer to the current location of the item
- * associated with the given handle. Note that the location is volatile and will
+ * associated with the given hashkey. Note that the location is volatile and will
  * be overwritten in the next enqueue/dequeue operation, but the item value will
- * continue to be associated with the handle also when moved to a different
+ * continue to be associated with the hashkey also when moved to a different
  * location. This function can be used to manipulate the contents of an item, but
  * this needs to be done atomically. Do not expect the item to be in the same
  * location later, retrieve it again before each use.
  */
-extern void **cmi_hashheap_item(const struct cmi_hashheap *hp, uint64_t handle);
+extern void **cmi_hashheap_item(const struct cmi_hashheap *hp, uint64_t hashkey);
 
 /*
- * cmi_hashheap_dkey/ikey - Get the dkey/ikey for the given item.
+ * cmi_hashheap_dkey/isortkey - Get the dsortkey/isortkey for the given item.
  * Precondition: The item is in the priority queue, otherwise it is an error.
- * If in doubt, call cmi_hashheap_is_enqueued(handle) first to verify.
+ * If in doubt, call cmi_hashheap_is_enqueued(hashkey) first to verify.
  */
-extern double cmi_hashheap_dkey(const struct cmi_hashheap *hp, uint64_t handle);
-extern int64_t cmi_hashheap_ikey(const struct cmi_hashheap *hp, uint64_t handle);
+extern double cmi_hashheap_dkey(const struct cmi_hashheap *hp, uint64_t hashkey);
+extern int64_t cmi_hashheap_ikey(const struct cmi_hashheap *hp, uint64_t hashkey);
 
 /*
  * cmi_hashheap_reprioritize - Changes one or more of the prioritization keys.
  * Precondition: The event is in the event queue.
  */
 extern void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
-                                      uint64_t handle,
-                                      double dkey,
-                                      int64_t ikey);
+                                      uint64_t hashkey,
+                                      double dsortkey,
+                                      int64_t isortkey);
 
 /*
  * cmi_hashheap_pattern_find - Search the priority queue for an item with values
- * matching the given pattern and return its handle if one exists in the queue,
+ * matching the given pattern and return its hashkey if one exists in the queue,
  * i.e. (item[0] == val1) && (item[1] == val2) && (item[2] == val3) && (item[3] == val4).
  *
- * Returns zero if no match. The value zero is not a valid handle, since handles
+ * Returns zero if no match. The value zero is not a valid hashkey, since hashkeys
  * start from one, hence an out-of-band-value here.
  * The item value arguments to be matched can be NULL.
  * CMI_ANY_ITEM is a wildcard, matching any item value.

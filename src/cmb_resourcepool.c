@@ -20,7 +20,8 @@
  * The holders list is now a hashheap, since we may need to handle many separate
  * processes acquiring, holding, releasing, and preempting various amounts of
  * the resource capacity. The hashheap is sorted to keep the holder most likely
- * to be preempted at the front, i.e. lowest priority and last in.
+ * to be preempted at the front, i.e. lowest priority and last in. The hashheap
+ * uses the process pointer (memory address) as its key to get O(1) access.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
@@ -51,7 +52,6 @@
 struct pool_item {
     struct cmb_process *holder;
     uint64_t amount;
-    void *padding[2];
 };
 
 /*
@@ -59,16 +59,16 @@ struct pool_item {
  */
 struct cmb_resourcepool *cmb_resourcepool_create(void)
 {
-    struct cmb_resourcepool *sp = cmi_malloc(sizeof(*sp));
-    cmi_memset(sp, 0, sizeof(*sp));
-    ((struct cmi_resourcebase *)sp)->cookie = CMI_UNINITIALIZED;
+    struct cmb_resourcepool *rpp = cmi_malloc(sizeof(*rpp));
+    cmi_memset(rpp, 0, sizeof(*rpp));
+    ((struct cmi_resourcebase *)rpp)->cookie = CMI_UNINITIALIZED;
 
-    return sp;
+    return rpp;
 }
 
 /*
  * holder_queue_check - Test if heap_tag *a should go before *b. If so, return
- * true. Ranking lower priority (dkey) before higher, then LIFO based on handle
+ * true. Ranking lower priority (dsortkey) before higher, then LIFO based on handle
  * value. Used to identify the most likely victim for resource preemption, hence
  * opposite order of the waiting room.
  */
@@ -79,11 +79,11 @@ static bool holder_queue_check(const struct cmi_heap_tag *a,
     cmb_assert_debug(b != NULL);
 
     bool ret = false;
-    if (a->ikey < b->ikey) {
+    if (a->isortkey < b->isortkey) {
         ret = true;
     }
-    else if (a->ikey == b->ikey) {
-        if (a->handle > b->handle) {
+    else if (a->isortkey == b->isortkey) {
+        if (a->key > b->key) {
             ret = true;
         }
     }
@@ -93,44 +93,47 @@ static bool holder_queue_check(const struct cmi_heap_tag *a,
 
 /*
  * resourcepool_drop_holder - forcibly eject a holder process without resuming it.
+ * Instantiates the cmi_holdable method.
  */
-static void resourcepool_drop_holder(struct cmi_holdable *rbp,
-                                     const struct cmb_process *pp,
-                                     const uint64_t handle)
+static void resourcepool_drop_holder(struct cmi_holdable *rhp,
+                                     const struct cmb_process *pp)
 {
-    cmb_assert_release(rbp != NULL);
+    cmb_assert_release(rhp != NULL);
     cmb_assert_release(pp != NULL);
-    cmb_assert_release(handle != 0u);
 
-    struct cmb_resourcepool *sp = (struct cmb_resourcepool *)rbp;
-    struct cmi_hashheap *hp = &(sp->holders);
-    const struct pool_item *pi = (struct pool_item *)cmi_hashheap_item(hp, handle);
-    cmb_assert_debug(pi->holder == pp);
-    cmb_assert_debug(pi->amount > 0u);
-    cmb_assert_debug(pi->amount <= sp->in_use);
+    struct cmb_resourcepool *rpp = (struct cmb_resourcepool *)rhp;
+    cmb_assert_debug(rpp->in_use <= rpp->capacity);
+    struct cmi_hashheap *hhp = &(rpp->holders);
+    const uint64_t key = (uint64_t)pp;
+    const uint64_t heapidx = cmi_hash_find_index(hhp, key);
 
-    const bool ret = cmi_hashheap_cancel(hp, handle);
-    cmb_assert_debug(ret == true);
-
-    sp->in_use -= pi->amount;
-    cmb_assert_debug(sp->in_use < sp->capacity);
-    cmb_resourceguard_signal(&(sp->guard));
+    if (heapidx != 0u) {
+        const struct pool_item *pi = (struct pool_item *)(hhp->heap[heapidx].item);
+        cmb_assert_debug(pi->holder == pp);
+        cmb_assert_debug(pi->amount > 0u);
+        cmb_assert_debug(pi->amount <= rpp->in_use);
+        rpp->in_use -= pi->amount;
+        const bool ret = cmi_hashheap_cancel(hhp, key);
+        cmb_assert_debug(ret == true);
+        cmb_resourceguard_signal(&(rpp->guard));
+    }
 }
 
 /*
- * reprioritize_holder - handle changed priority for one of the holders.
+ * reprioritize_holder - key changed priority for one of the holders.
+ * Instantiates the cmi_holdable method.
  */
-static void reprioritize_holder(struct cmi_holdable *rbp,
-                                const uint64_t handle,
+static void reprioritize_holder(struct cmi_holdable *rhp,
+                                const struct cmb_process *pp,
                                 const int64_t pri)
 {
-    cmb_assert_release(rbp != NULL);
-    cmb_assert_release(handle != 0u);
+    cmb_assert_release(rhp != NULL);
+    cmb_assert_release(pp != NULL);
 
-    const struct cmb_resourcepool *sp = (struct cmb_resourcepool *)rbp;
+    const struct cmb_resourcepool *sp = (struct cmb_resourcepool *)rhp;
     const struct cmi_hashheap *hp = &(sp->holders);
-    const double dkey = cmi_hashheap_dkey(hp, handle);
-    cmi_hashheap_reprioritize(hp, handle, dkey, pri);
+    const uint64_t key = (uint64_t)pp;
+    cmi_hashheap_reprioritize(hp, key, 0.0, pri);
 }
 
 /*
@@ -138,59 +141,59 @@ static void reprioritize_holder(struct cmi_holdable *rbp,
  */
 #define HOLDERS_INIT_EXP 3u
 
-void cmb_resourcepool_initialize(struct cmb_resourcepool *rsp,
+void cmb_resourcepool_initialize(struct cmb_resourcepool *rpp,
                                   const char *name,
                                   const uint64_t capacity)
 {
-    cmb_assert_release(rsp != NULL);
+    cmb_assert_release(rpp != NULL);
     cmb_assert_release(name != NULL);
     cmb_assert_release(capacity > 0u);
 
-    cmi_holdable_initialize(&(rsp->core), name);
-    rsp->core.drop = resourcepool_drop_holder;
-    rsp->core.reprio = reprioritize_holder;
+    cmi_holdable_initialize(&(rpp->core), name);
+    rpp->core.drop = resourcepool_drop_holder;
+    rpp->core.reprio = reprioritize_holder;
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
-    cmb_resourceguard_initialize(&(rsp->guard), rbp);
-    cmi_hashheap_initialize(&(rsp->holders),
+    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rpp;
+    cmb_resourceguard_initialize(&(rpp->guard), rbp);
+    cmi_hashheap_initialize(&(rpp->holders),
                             HOLDERS_INIT_EXP,
                             holder_queue_check);
 
-    rsp->capacity = capacity;
-    rsp->in_use = 0u;
+    rpp->capacity = capacity;
+    rpp->in_use = 0u;
 
-    rsp->is_recording = false;
-    cmb_timeseries_initialize(&(rsp->history));
+    rpp->is_recording = false;
+    cmb_timeseries_initialize(&(rpp->history));
 }
 
 /*
  * cmb_resourcepool_terminate - Un-initializes a pool object.
  */
-void cmb_resourcepool_terminate(struct cmb_resourcepool *rsp)
+void cmb_resourcepool_terminate(struct cmb_resourcepool *rpp)
 {
-    cmb_assert_release(rsp != NULL);
+    cmb_assert_release(rpp != NULL);
 
-    cmb_timeseries_terminate(&(rsp->history));
-    cmi_hashheap_terminate(&(rsp->holders));
-    cmb_resourceguard_terminate(&(rsp->guard));
-    cmi_holdable_terminate(&(rsp->core));
+    cmb_timeseries_terminate(&(rpp->history));
+    cmi_hashheap_terminate(&(rpp->holders));
+    cmb_resourceguard_terminate(&(rpp->guard));
+    cmi_holdable_terminate(&(rpp->core));
 }
 
 /*
  * cmb_resourcepool_destroy - Deallocates memory for a pool object.
  */
-void cmb_resourcepool_destroy(struct cmb_resourcepool *rsp)
+void cmb_resourcepool_destroy(struct cmb_resourcepool *rpp)
 {
-    cmb_assert_release(rsp != NULL);
+    cmb_assert_release(rpp != NULL);
 
-    cmb_resourcepool_terminate(rsp);
-    cmi_free(rsp);
+    cmb_resourcepool_terminate(rpp);
+    cmi_free(rpp);
 }
 
 /*
  * is_available - pre-packaged demand function for a cmb_resourcepool,
  * allowing the requesting process to grab some whenever there is something
- * to grab.
+ * to grab. Instantiates the resource base method.
  */
 static bool is_available(const struct cmi_resourcebase *rbp,
                          const struct cmb_process *pp,
@@ -201,26 +204,32 @@ static bool is_available(const struct cmi_resourcebase *rbp,
     cmb_unused(pp);
     cmb_unused(ctx);
 
-    const struct cmb_resourcepool *rsp = (struct cmb_resourcepool *)rbp;
-    const uint64_t avail = rsp->capacity - rsp->in_use;
+    const struct cmb_resourcepool *rpp = (struct cmb_resourcepool *)rbp;
+    const uint64_t avail = rpp->capacity - rpp->in_use;
 
     return (avail > 0u);
 }
 
+/*
+ * reset_holder - set held amount, e.g. for rollback in an interrupted acquire.
+ * Assumes that the holder is in the hashheap.
+ */
 static uint64_t reset_holder(const struct cmi_hashheap *hp,
-                             const uint64_t holder_handle,
+                             const struct cmb_process *pp,
                              const uint64_t amount)
 {
     cmb_assert_release(hp != NULL);
-    cmb_assert_release(holder_handle != 0u);
+    cmb_assert_release(pp != NULL);
     cmb_assert_release(amount > 0u);
 
-    struct pool_item *pi = (struct pool_item *)cmi_hashheap_item(hp, holder_handle);
+    const uint64_t key = (uint64_t)pp;
+    struct pool_item *pi = (struct pool_item *)cmi_hashheap_item(hp, key);
+    cmb_assert_debug(pi != NULL);
+    cmb_assert_debug(pi->holder == pp);
+
     const uint64_t old_amt = pi->amount;
     cmb_assert_debug(old_amt >= amount);
-
     pi->amount = amount;
-
     const uint64_t surplus = old_amt - amount;
     cmb_assert_debug(surplus <= old_amt);
 
@@ -285,126 +294,72 @@ void cmb_resourcepool_print_report(struct cmb_resourcepool *rsp, FILE *fp) {
     cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(rsp->capacity + 1u));
 }
 
-static uint64_t find_handle(const struct cmi_slist_head *rlst,
-                            const struct cmi_holdable *hrp)
-{
-    cmb_assert_release(rlst != NULL);
-    cmb_assert_release(hrp != NULL);
-
-    while (rlst->next != NULL) {
-        const struct cmi_process_holdable *hp = cmi_container_of(rlst->next,
-                                                    struct cmi_process_holdable,
-                                                    listhead);
-        if (hp->res == hrp) {
-            return hp->handle;
-        }
-
-        rlst = rlst->next;
-    }
-
-    return 0u;
-}
-
-static uint64_t amount_held(const struct cmb_resourcepool *rsp, const uint64_t handle)
-{
-    cmb_assert_debug(rsp != NULL);
-    cmb_assert_debug(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
-    cmb_assert_debug(handle != 0u);
-
-    const struct cmi_hashheap *hp = &(rsp->holders);
-    const struct pool_item *pi = (struct pool_item *)cmi_hashheap_item(hp, handle);
-
-    return pi->amount;
-}
-
-uint64_t cmb_resourcepool_held_by_process(const struct cmb_resourcepool *rsp,
+uint64_t cmb_resourcepool_held_by_process(const struct cmb_resourcepool *rpp,
                                           const struct cmb_process *pp)
 {
-    cmb_assert_release(rsp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
-    cmb_assert_release(pp != NULL);
+    cmb_assert_release(rpp != NULL);
+    cmb_assert_debug(pp != NULL);
 
-    uint64_t ret = 0u;
-    const struct cmi_holdable *hrp = (struct cmi_holdable *)rsp;
-    const struct cmi_slist_head *rlst = &(pp->resources);
-    const uint64_t handle = find_handle(rlst, hrp);
-    if (handle != 0u) {
-        ret = amount_held(rsp, handle);
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rpp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+
+    const uint64_t key = (uint64_t)pp;
+    const struct cmi_hashheap *hhp = &(rpp->holders);
+    const uint64_t heapidx = cmi_hash_find_index(hhp, key);
+    if (heapidx != 0u) {
+        const struct pool_item *pi = (struct pool_item *)(hhp->heap[heapidx].item);
+        return pi->amount;
     }
-
-    return ret;
+    else {
+        return 0u;
+    }
 }
 
-static uint64_t add_new_holder(struct cmi_hashheap *hp,
-                               const struct cmb_process *pp,
-                               const uint64_t amount)
+static uint64_t sum_holder_items(const struct cmi_hashheap *hhp)
 {
-    cmb_assert_release(hp != NULL);
-    cmb_assert_release(amount > 0u);
-
-    const uint64_t new_handle = cmi_hashheap_enqueue(hp, (void *)pp,
-                                                     (void *)amount,
-                                                     NULL, NULL,
-                                                     cmb_time(),
-                                                     pp->priority);
-    cmb_assert_debug(new_handle != 0u);
-
-    return new_handle;
-}
-
-static void add_to_holder(const struct cmi_hashheap *hp,
-                          const uint64_t holder_handle,
-                          const uint64_t amount)
-{
-    cmb_assert_release(hp != NULL);
-    cmb_assert_release(holder_handle != 0u);
-    cmb_assert_release(amount > 0u);
-
-    struct pool_item *pi = (struct pool_item *)cmi_hashheap_item(hp, holder_handle);
-    pi->amount += amount;
-}
-
-static uint64_t sum_holder_items(const struct cmi_hashheap *hp)
-{
-    cmb_assert_release(hp != NULL);
+    cmb_assert_release(hhp != NULL);
 
     uint64_t sum = 0u;
-    for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
-        const struct cmi_heap_tag *htp = &(hp->heap[ui]);
+    for (uint64_t ui = 1u; ui <= hhp->heap_count; ui++) {
+        const struct cmi_heap_tag *htp = &(hhp->heap[ui]);
         sum += (uint64_t)(htp->item[1]);
     }
 
     return sum;
 }
 
-static uint64_t update_record(struct cmb_resourcepool *pool,
-                              struct cmb_process *proc,
-                              uint64_t proc_handle,
-                              const uint64_t amount)
+static void update_record(struct cmb_resourcepool *rpp,
+                          struct cmb_process *pp,
+                          const uint64_t amount)
 {
-    cmb_assert_release(pool != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)pool)->cookie == CMI_INITIALIZED);
-    cmb_assert_release(proc != NULL);
+    cmb_assert_release(rpp != NULL);
+    cmb_assert_release(pp != NULL);
     cmb_assert_release(amount > 0u);
 
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rpp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
-    if (proc_handle != 0u) {
+    const uint64_t key = (uint64_t)pp;
+    struct cmi_hashheap *hhp = &(rpp->holders);
+    const uint64_t heapidx = cmi_hash_find_index(hhp, key);
+    if (heapidx != 0u) {
         /* Must hold some already, add to the existing entry */
-        add_to_holder(&(pool->holders), proc_handle, amount);
+        struct pool_item *pi = (struct pool_item *)(hhp->heap[heapidx].item);
+        pi->amount += amount;
     }
     else {
-        /* Not held already, create a new holder entry for the process */
-        proc_handle = add_new_holder(&(pool->holders), proc, amount);
-
         /* Add this resource pool to the list of resources held by the process */
         struct cmi_process_holdable *hp = cmi_mempool_alloc(&cmi_process_holdabletags);
-        hp->res = (struct cmi_holdable *)pool;
-        hp->handle = proc_handle;
-        hp->amount = amount;
-        cmi_slist_push(&(proc->resources), &(hp->listhead));
-    }
+        hp->res = (struct cmi_holdable *)rpp;
+        cmi_slist_push(&(pp->resources), &(hp->listhead));
 
-    return proc_handle;
+        /* Not held already, create a new resource pool holder entry for the process */
+        const uint64_t new_key = cmi_hashheap_enqueue(hhp,
+                                                     (void *)pp, (void *)amount,
+                                                     NULL, NULL,
+                                                     key, 0.0, pp->priority);
+        cmb_assert_debug(new_key == key);
+    }
 }
 
 /*
@@ -412,30 +367,30 @@ static uint64_t update_record(struct cmb_resourcepool *pool,
  * for a req_amount of the pool resource. The calling process may already hold
  * some and try to increase its holding or acquire its first helping.
  */
-int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rp,
+int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rpp,
                                const uint64_t req_amount,
                                const bool preempt)
 {
-    cmb_assert_release(rp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(rpp != NULL);
     cmb_assert_release(req_amount > 0u);
-    cmb_assert_debug(rp->in_use <= rp->capacity);
+    cmb_assert_debug(rpp->in_use <= rpp->capacity);
 
     struct cmb_process *caller = cmb_process_current();
 
     /* Does the caller already hold some? */
     uint64_t initially_held = 0u;
-    struct cmi_hashheap *hhp = &(rp->holders);
-    const struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
-    uint64_t caller_hdle = find_handle(&(caller->resources), hrp);
-
-    if (caller_hdle != 0u) {
+    struct cmi_hashheap *hhp = &(rpp->holders);
+    const uint64_t key = (uint64_t)caller;
+    const uint64_t heapidx = cmi_hash_find_index(hhp, key);
+    if (heapidx != 0u) {
         /* It does. Note the amount in case we need to roll back to here */
-        initially_held = amount_held(rp, caller_hdle);
+        initially_held = (uint64_t)(hhp->heap[heapidx].item[1]);
     }
 
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rpp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_logger_info(stdout, "Has %" PRIu64 ", requests %" PRIu64 " from %s",
-                    initially_held, req_amount, hrp->base.name);
+                    initially_held, req_amount, rbp->name);
 
     /*
      * Greedy approach, first grab what is available, then preempt from lower
@@ -444,37 +399,37 @@ int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rp,
      */
     uint64_t rem_claim = req_amount;
     while (true) {
-        const uint64_t available = rp->capacity - rp->in_use;
+        const uint64_t available = rpp->capacity - rpp->in_use;
 
         /* First, take anything that is available already */
         if (available >= rem_claim) {
             /* Grab what we need */
-            rp->in_use += rem_claim;
-            cmb_assert_debug(rp->in_use <= rp->capacity);
-            record_sample(rp);
-            (void)update_record(rp, caller, caller_hdle, rem_claim);
+            rpp->in_use += rem_claim;
+            cmb_assert_debug(rpp->in_use <= rpp->capacity);
+            record_sample(rpp);
+            update_record(rpp, caller, rem_claim);
 
-            cmb_assert_debug(rp->in_use <= rp->capacity);
-            cmb_assert_debug(sum_holder_items(hhp) == rp->in_use);
+            cmb_assert_debug(rpp->in_use <= rpp->capacity);
+            cmb_assert_debug(sum_holder_items(hhp) == rpp->in_use);
             cmb_logger_info(stdout,
                             "Success, %" PRIu64 " was already available",
                             rem_claim);
 
             /* In case someone else can use the leftovers */
-            cmb_resourceguard_signal(&(rp->guard));
+            cmb_resourceguard_signal(&(rpp->guard));
 
             return CMB_PROCESS_SUCCESS;
         }
         else if (available > 0u) {
             /* Grab what is there */
-            rp->in_use += available;
-            cmb_assert_debug(rp->in_use <= rp->capacity);
-            record_sample(rp);
+            rpp->in_use += available;
+            cmb_assert_debug(rpp->in_use <= rpp->capacity);
+            record_sample(rpp);
             rem_claim -= available;
-            caller_hdle = update_record(rp, caller, caller_hdle, available);
+            update_record(rpp, caller, available);
 
-            cmb_assert_debug(rp->in_use <= rp->capacity);
-            cmb_assert_debug(sum_holder_items(hhp) == rp->in_use);
+            cmb_assert_debug(rpp->in_use <= rpp->capacity);
+            cmb_assert_debug(sum_holder_items(hhp) == rpp->in_use);
             cmb_logger_info(stdout,
                             "Found %" PRIu64 " available, still wants %" PRIu64,
                             available,  rem_claim);
@@ -487,13 +442,14 @@ int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rp,
             while (!cmi_hashheap_is_empty(hhp)
                    && cmi_hashheap_peek_ikey(hhp) < caller->priority) {
                 /* There is one, pull it off the holders' hashheap */
-                void **item = cmi_hashheap_dequeue(hhp);
-                struct cmb_process *victim = (struct cmb_process *)item[0];
-                const uint64_t loot = (uint64_t) item[1];
+                const struct pool_item *pi = (struct pool_item *)cmi_hashheap_dequeue(hhp);
+                struct cmb_process *victim = pi->holder;
+                const uint64_t loot = pi->amount;
                 cmb_assert_debug(loot > 0u);
-                cmb_assert_debug(loot <= rp->in_use);
+                cmb_assert_debug(loot <= rpp->in_use);
 
                 /* Remove the resource from the victim's resource list */
+                const struct cmi_holdable *hrp = (struct cmi_holdable *)rpp;
                 const bool found = cmi_process_remove_holdable(victim, hrp);
                 cmb_assert_debug(found == true);
 
@@ -502,32 +458,32 @@ int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rp,
 
                  /* Split the loot */
                 if (loot < rem_claim) {
-                    /* Take it all. */
-                    caller_hdle = update_record(rp, caller, caller_hdle, loot);
+                    /* Add everything to our own holding */
+                    update_record(rpp, caller, loot);
                     rem_claim -= loot;
 
                     /* The quantity in use is unchanged, just changes hands. */
-                    cmb_assert_debug(rp->in_use <= rp->capacity);
-                    cmb_assert_debug(sum_holder_items(hhp) == rp->in_use);
+                    cmb_assert_debug(rpp->in_use <= rpp->capacity);
+                    cmb_assert_debug(sum_holder_items(hhp) == rpp->in_use);
                     cmb_logger_info(stdout,
                                     "Got %" PRIu64 " from %s, still needs %" PRIu64 "",
                                     loot, victim->name, rem_claim);
                 }
                 else {
-                    /* Take what we need, put back the rest */
-                    (void)update_record(rp, caller, caller_hdle, rem_claim);
+                    /* You take what you need, and you leave the rest */
+                    update_record(rpp, caller, rem_claim);
                     const uint64_t surplus = loot - rem_claim;
-                    rp->in_use -= surplus;
-                    cmb_assert_debug(rp->in_use <= rp->capacity);
-                    record_sample(rp);
+                    rpp->in_use -= surplus;
+                    cmb_assert_debug(rpp->in_use <= rpp->capacity);
+                    record_sample(rpp);
 
-                    cmb_assert_debug(sum_holder_items(hhp) == rp->in_use);
+                    cmb_assert_debug(sum_holder_items(hhp) == rpp->in_use);
                     cmb_logger_info(stdout,
                                     "Success, got %" PRIu64 " from %s, put back %" PRIu64,
                                     loot, victim->name, surplus);
 
                     /* In case someone else can use the leftovers */
-                    cmb_resourceguard_signal(&(rp->guard));
+                    cmb_resourceguard_signal(&(rpp->guard));
 
                     return CMB_PROCESS_SUCCESS;
                 }
@@ -540,7 +496,7 @@ int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rp,
 
         /* Wait at the front door until some more becomes available  */
         cmb_assert_debug(rem_claim > 0u);
-        const int64_t sig = cmb_resourceguard_wait(&(rp->guard), is_available, NULL);
+        const int64_t sig = cmb_resourceguard_wait(&(rpp->guard), is_available, NULL);
         if (sig == CMB_PROCESS_PREEMPTED) {
             /* Got thrown out instead, unwind. */
             cmb_logger_info(stdout, "Preempted, returning empty-handed");
@@ -553,31 +509,32 @@ int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rp,
                             sig);
             if (initially_held > 0u) {
                 /* Put back the difference. It had some, there should be a record */
-                cmb_assert_debug(caller_hdle != 0u);
-                const uint64_t surplus = reset_holder(hhp, caller_hdle, initially_held);
-                rp->in_use -= surplus;
-                cmb_assert_debug(rp->in_use <= rp->capacity);
-                record_sample(rp);
+                const uint64_t surplus = reset_holder(hhp, caller, initially_held);
+                rpp->in_use -= surplus;
+                cmb_assert_debug(rpp->in_use <= rpp->capacity);
+                record_sample(rpp);
 
-                cmb_resourceguard_signal(&(rp->guard));
+                cmb_resourceguard_signal(&(rpp->guard));
             }
             else {
                 /* Had nothing, put back all. */
-                const uint64_t holds_now = cmb_resourcepool_held_by_process(rp, caller);
-                rp->in_use -= holds_now;
-                cmb_assert_debug(rp->in_use <= rp->capacity);
-                record_sample(rp);
+                const uint64_t holds_now = cmb_resourcepool_held_by_process(rpp, caller);
+                rpp->in_use -= holds_now;
+                cmb_assert_debug(rpp->in_use <= rpp->capacity);
+                record_sample(rpp);
 
                 /* There may be a record created during this call, delete it */
-                const bool found = cmi_process_remove_holdable(caller, hrp);
+                const struct cmi_holdable *hrp = (struct cmi_holdable *)rpp;
+                bool found = cmi_hashheap_cancel(hhp, key);
                 if (found == true) {
-                    cmb_assert_debug(caller_hdle != 0u);
-                    cmi_hashheap_cancel(hhp, caller_hdle);
+                    /* A record existed, so there is an entry on the caller */
+                    found = cmi_process_remove_holdable(caller, hrp);
+                    cmb_assert_debug(found == true);
                 }
             }
 
-            cmb_assert_debug(rp->in_use <= rp->capacity);
-            cmb_assert_debug(sum_holder_items(hhp) == rp->in_use);
+            cmb_assert_debug(rpp->in_use <= rpp->capacity);
+            cmb_assert_debug(sum_holder_items(hhp) == rpp->in_use);
 
             return sig;
         }
@@ -585,23 +542,25 @@ int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rp,
 }
 
 
-int64_t cmb_resourcepool_acquire(struct cmb_resourcepool *rsp, const uint64_t req_amount)
+int64_t cmb_resourcepool_acquire(struct cmb_resourcepool *rpp,
+                                 const uint64_t req_amount)
 {
-    cmb_assert_release(rsp != NULL);
+    cmb_assert_release(rpp != NULL);
     cmb_assert_release(req_amount > 0u);
-    cmb_assert_release(req_amount <= rsp->capacity);
+    cmb_assert_release(req_amount <= rpp->capacity);
 
-    return cmi_pool_acquire_inner(rsp, req_amount, false);
+    return cmi_pool_acquire_inner(rpp, req_amount, false);
 }
 
 
-int64_t cmb_resourcepool_preempt(struct cmb_resourcepool *rsp, const uint64_t req_amount)
+int64_t cmb_resourcepool_preempt(struct cmb_resourcepool *rpp,
+                                 const uint64_t req_amount)
 {
-    cmb_assert_release(rsp != NULL);
+    cmb_assert_release(rpp != NULL);
     cmb_assert_release(req_amount > 0u);
-    cmb_assert_release(req_amount <= rsp->capacity);
+    cmb_assert_release(req_amount <= rpp->capacity);
 
-    return cmi_pool_acquire_inner(rsp, req_amount, true);
+    return cmi_pool_acquire_inner(rpp, req_amount, true);
 }
 
 
@@ -609,32 +568,33 @@ int64_t cmb_resourcepool_preempt(struct cmb_resourcepool *rsp, const uint64_t re
  * cmb_resourcepool_release - Release rel_amount of the resource, not necessarily
  * everything that the calling process holds.
  */
-void cmb_resourcepool_release(struct cmb_resourcepool *rsp, const uint64_t rel_amount)
+void cmb_resourcepool_release(struct cmb_resourcepool *rpp, const uint64_t rel_amount)
 {
-    cmb_assert_release(rsp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(rpp != NULL);
     cmb_assert_release(rel_amount > 0u);
-    cmb_assert_release(rsp->in_use >= rel_amount);
-    cmb_assert_release(rel_amount <= rsp->capacity);
+    cmb_assert_release(rpp->in_use >= rel_amount);
+    cmb_assert_release(rel_amount <= rpp->capacity);
+
+    const struct cmi_holdable *hrp = (struct cmi_holdable *)rpp;
+    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rpp;
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     struct cmb_process *pp = cmb_process_current();
     cmb_assert_debug(pp != NULL);
+    const uint64_t key = (uint64_t)pp;
 
-    struct cmi_holdable *hrp = (struct cmi_holdable *)rsp;
-    const uint64_t caller_handle = find_handle(&(pp->resources), hrp);
-    cmb_assert_debug(caller_handle != 0u);
-
-    struct pool_item *pi = (struct pool_item *)cmi_hashheap_item(&(rsp->holders), caller_handle);
+    const struct cmi_hashheap *hhp = &(rpp->holders);
+    struct pool_item *pi = (struct pool_item *)cmi_hashheap_item(hhp, key);
     cmb_assert_debug(pi->holder == pp);
     cmb_logger_info(stdout,
                     "Has %" PRIu64 ", releasing %" PRIu64 ", total in use %" PRIu64,
-                    pi->amount, rel_amount, rsp->in_use);
+                    pi->amount, rel_amount, rpp->in_use);
     cmb_assert_debug(pi->amount >= rel_amount);
-    cmb_assert_debug(pi->amount <= rsp->in_use);
+    cmb_assert_debug(pi->amount <= rpp->in_use);
 
     if (pi->amount == rel_amount) {
-        /* All we had, delete the record from the resource */
-        bool found = cmi_hashheap_cancel(&(rsp->holders), caller_handle);
+        /* Release all we have, delete the record from the resource */
+        bool found = cmi_hashheap_cancel(&(rpp->holders), key);
         cmb_assert_debug(found == true);
 
         /* ...and from the process */
@@ -646,12 +606,12 @@ void cmb_resourcepool_release(struct cmb_resourcepool *rsp, const uint64_t rel_a
         pi->amount -= rel_amount;
     }
 
-    /* Put it back and pling the front desk bell */
-    rsp->in_use -= rel_amount;
-    cmb_assert_debug(rsp->in_use <= rsp->capacity);
-    record_sample(rsp);
+    /* Put it back and ring the front desk bell */
+    rpp->in_use -= rel_amount;
+    cmb_assert_debug(rpp->in_use <= rpp->capacity);
+    record_sample(rpp);
     cmb_logger_info(stdout, "Released %" PRIu64 " of %s", rel_amount, hrp->base.name);
 
-    struct cmb_resourceguard *rgp = &(rsp->guard);
+    struct cmb_resourceguard *rgp = &(rpp->guard);
     cmb_resourceguard_signal(rgp);
 }

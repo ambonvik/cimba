@@ -66,7 +66,7 @@ CMB_THREAD_LOCAL struct cmi_mempool observer_tagpool = {
 
 /*
  * guard_queue_check - Test if heap_tag *a should go before *b. If so, return true.
- * Ranking higher priority (dkey) before lower, then FIFO based on handle value.
+ * Ranking higher priority (dsortkey) before lower, then FIFO based on handle value.
  */
 static bool guard_queue_check(const struct cmi_heap_tag *a,
                               const struct cmi_heap_tag *b)
@@ -75,11 +75,11 @@ static bool guard_queue_check(const struct cmi_heap_tag *a,
     cmb_assert_debug(b != NULL);
 
     bool ret = false;
-    if (a->ikey > b->ikey) {
+    if (a->isortkey > b->isortkey) {
         ret = true;
     }
-    else if (a->ikey == b->ikey) {
-        if (a->handle < b->handle) {
+    else if (a->isortkey == b->isortkey) {
+        if (a->key < b->key) {
             ret = true;
         }
     }
@@ -133,14 +133,16 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
 
     const double entry_time = cmb_time();
     const int64_t priority = cmb_process_priority(pp);
-    const uint64_t handle = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
-                                                 (void *)pp,
-                                                 (void *)demand,
-                                                 (void *)ctx,
-                                                 NULL,
-                                                 entry_time,
-                                                 priority);
-    cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_RESOURCE, rgp, handle);
+    const uint64_t key = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
+                                              (void *)pp,
+                                              (void *)demand,
+                                              (void *)ctx,
+                                              NULL,
+                                              (uint64_t)pp,
+                                              entry_time,
+                                              priority);
+    cmb_assert_debug(key == (uint64_t)pp);
+    cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_RESOURCE, rgp);
     cmb_logger_info(stdout, "Waits for %s", rgp->guarded_resource->name);
 
     /* Yield to the dispatcher, collect the return signal value when resumed */
@@ -148,11 +150,11 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
 
     /* Back here, possibly much later. Return the signal that resumed us. */
     if (sig != CMB_PROCESS_SUCCESS) {
-        cmi_hashheap_cancel((struct cmi_hashheap *)rgp, handle);
+        cmi_hashheap_cancel((struct cmi_hashheap *)rgp, key);
     }
 
-    cmb_assert_debug(!cmi_hashheap_is_enqueued((struct cmi_hashheap *)rgp, handle));
-    cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_RESOURCE, rgp, handle);
+    cmb_assert_debug(!cmi_hashheap_is_enqueued((struct cmi_hashheap *)rgp, key));
+    cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_RESOURCE, rgp);
 
     return sig;
 }
@@ -236,26 +238,6 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
     return ret;
 }
 
-static uint64_t find_handle(const struct cmb_process *pp,
-                            const struct cmb_resourceguard *rgp)
-{
-    cmb_assert_release(pp != NULL);
-    cmb_assert_release(rgp != NULL);
-
-    const struct cmi_slist_head *ahead = &(pp->awaits);
-    while (ahead->next != NULL) {
-        const struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
-                                                   struct cmi_process_awaitable,
-                                                   listhead);
-        if (awp->ptr == rgp) {
-            return awp->handle;
-        }
-        ahead = ahead->next;
-    }
-
-    return 0u;
-}
-
 /*
  * cmb_resourceguard_cancel - Remove this process from the priority queue and
  * schedule a wakeup event with a CMB_PROCESS_CANCELLED signal.
@@ -269,9 +251,9 @@ bool cmb_resourceguard_cancel(struct cmb_resourceguard *rgp,
 
     bool ret = false;
     struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
-    const uint64_t handle = find_handle(pp, rgp);
-    if (handle != 0u) {
-        (void)cmi_hashheap_cancel(hp, handle);
+    const uint64_t key = (uint64_t)pp;
+    if (cmi_hashheap_is_enqueued(hp, key)) {
+        (void)cmi_hashheap_cancel(hp, key);
         const double time = cmb_time();
         const int64_t priority = cmb_process_priority(pp);
         (void)cmb_event_schedule(wakeup_event_resource, pp,
@@ -295,9 +277,9 @@ bool cmb_resourceguard_remove(struct cmb_resourceguard *rgp,
 
     bool ret = false;
     struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
-    const uint64_t handle = find_handle(pp, rgp);
-    if (handle != 0u) {
-        (void)cmi_hashheap_cancel(hp, handle);
+    const uint64_t key = (uint64_t)pp;
+    if (cmi_hashheap_is_enqueued(hp, key)) {
+        (void)cmi_hashheap_cancel(hp, key);
         ret = true;
     }
 

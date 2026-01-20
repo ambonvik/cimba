@@ -38,14 +38,14 @@
 
 /*
  * compare_func - Test if heap_tag *a should go before *b. If so, return true.
- * Order by ikey (priority) only.
+ * Order by isortkey (priority) only.
  */
 static bool compare_func(const struct cmi_heap_tag *a, const struct cmi_heap_tag *b)
 {
     cmb_assert_debug(a != NULL);
     cmb_assert_debug(b != NULL);
 
-    return (a->ikey > b->ikey);
+    return (a->isortkey > b->isortkey);
 }
 
 struct cmb_priorityqueue *cmb_priorityqueue_create(void)
@@ -248,8 +248,8 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
             /* There is space */
             const uint64_t handle = cmi_hashheap_enqueue(&(pqp->queue),
                                                          *objectloc,
-                                                         NULL, NULL, NULL, 0.0,
-                                                         priority);
+                                                         NULL, NULL, NULL,
+                                                         0u, 0.0, priority);
             if (handleloc != NULL) {
                 *handleloc = handle;
             }

@@ -1,7 +1,7 @@
 /*
 * Test script for the combined binary heap / hash map structure.
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@
 /*
  * Test if heap_tag *a should go before *b. If so, return true.
  * Default heap compare function, corresponds to the event queue order, where
- * dkey = reactivation time, ikey = priority, ukey = not used, uses handle FIFO.
+ * dsortkey = reactivation time, isortkey = priority, ukey = not used, uses key FIFO.
  */
 static bool heap_order_check(const struct cmi_heap_tag *a,
                              const struct cmi_heap_tag *b)
@@ -37,15 +37,15 @@ static bool heap_order_check(const struct cmi_heap_tag *a,
     cmb_assert_debug(b != NULL);
 
     bool ret = false;
-    if (a->dkey < b->dkey) {
+    if (a->dsortkey < b->dsortkey) {
         ret = true;
     }
-    else if (a->dkey == b->dkey) {
-        if (a->ikey > b->ikey) {
+    else if (a->dsortkey == b->dsortkey) {
+        if (a->isortkey > b->isortkey) {
             ret = true;
         }
-        else if (a->ikey == b->ikey) {
-            if (a->handle < b->handle) {
+        else if (a->isortkey == b->isortkey) {
+            if (a->key < b->key) {
                 ret = true;
             }
         }
@@ -72,8 +72,8 @@ int main(void)
     printf("Initializing hash heap: cmi_hashheap_initialize ...\n");
     cmi_hashheap_initialize(hhp, 3u, heap_order_check);
     printf("Adding an item: cmi_hashheap_enqueue ... ");
-    uint64_t handle = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, NULL, 1.0, 1);
-    printf("returned handle %" PRIu64 "\n", handle);
+    uint64_t key = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, NULL, 0u, 1.0, 1);
+    printf("returned key %" PRIu64 "\n", key);
     printf("Peekaboo: cmi_hashheap_peek ... \n");
     (void)cmi_hashheap_peek_item(hhp);
     printf("Pulling out an item: cmi_hashheap_dequeue ... \n");
@@ -90,7 +90,7 @@ int main(void)
     for (unsigned ui = 0; ui < 5; ui++) {
         const double d = cmb_random();
         const int64_t i = cmb_random_dice(0, 1000);
-        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, NULL, d, i);
+        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, NULL, 0u, d, i);
     }
 
     cmi_hashheap_print(hhp, stdout);
@@ -104,7 +104,7 @@ int main(void)
     for (unsigned ui = 0; ui < 10; ui++) {
         const double d = cmb_random();
         const int64_t i = cmb_random_dice(0, 1000);
-        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, NULL, d, i);
+        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, NULL, 0u, d, i);
     }
 
     printf("We now have %" PRIu64 " items\n", cmi_hashheap_count(hhp));

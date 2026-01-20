@@ -69,7 +69,7 @@ double cmb_time(void)
 /*
  * heap_order_check - Test if heap_tag *a should go before *b. If so, return true.
  * Prioritization corresponds to the event queue order, where lower reactivation
- * times (dkey) go before higher, if equal, then higher priority (ikey) before
+ * times (dsortkey) go before higher, if equal, then higher priority (isortkey) before
  * lower, and if that also equal, FIFO order based on handle value.
  */
 static bool heap_order_check(const struct cmi_heap_tag *a,
@@ -79,15 +79,15 @@ static bool heap_order_check(const struct cmi_heap_tag *a,
     cmb_assert_debug(b != NULL);
 
     bool ret = false;
-    if (a->dkey < b->dkey) {
+    if (a->dsortkey < b->dsortkey) {
         ret = true;
     }
-    else if (a->dkey == b->dkey) {
-        if (a->ikey > b->ikey) {
+    else if (a->dsortkey == b->dsortkey) {
+        if (a->isortkey > b->isortkey) {
             ret = true;
         }
-        else if (a->ikey == b->ikey) {
-            if (a->handle < b->handle) {
+        else if (a->isortkey == b->isortkey) {
+            if (a->key < b->key) {
                 ret = true;
             }
         }
@@ -145,14 +145,6 @@ extern uint64_t cmb_event_queue_count(void)
 }
 
 /*
- * cmb_event_queue_total_count - Returns the number of events ever scheduled.
- */
-uint64_t cmb_event_queue_total_count(void)
-{
-    return cmi_hashheap_last_handle(event_queue);
-}
-
-/*
  * cmb_event_schedule - Insert the event in the event queue as indicated by
  * activation time t and priority p, return a unique event handle.
  * Resizes hashheap if necessary.
@@ -171,6 +163,7 @@ uint64_t cmb_event_schedule(cmb_event_func *action,
                                 subject,
                                 object,
                                 NULL,
+                                0u,
                                 time,
                                 priority);
 }
@@ -219,7 +212,7 @@ static void wakeup_event_event(void *vp, void *arg)
 
     const bool found = cmi_process_remove_awaitable(pp,
                                                     CMI_PROCESS_AWAITABLE_EVENT,
-                                                    NULL, 0u);
+                                                    NULL);
     cmb_assert_debug(found == true);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
@@ -335,7 +328,7 @@ void cmb_event_reschedule(const uint64_t handle, const double time)
     cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
     cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
 
-    /* Do not change the priority ikey */
+    /* Do not change the priority isortkey */
     const int64_t pri = cmi_hashheap_ikey(event_queue, handle);
 
     cmi_hashheap_reprioritize(event_queue, handle, time, pri);
@@ -426,7 +419,7 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
                && ((subject == htp->item[1]) || (subject == CMB_ANY_SUBJECT))
                && ((object == htp->item[2]) || (object == CMB_ANY_OBJECT))) {
              /* Matched, note it on the list */
-            tmp[cnt++] = htp->handle;
+            tmp[cnt++] = htp->key;
         }
     }
 
@@ -451,10 +444,10 @@ void cmb_event_queue_print(FILE *fp)
     for (uint64_t ui = 1u; ui <= hcnt; ui++) {
         const struct cmi_heap_tag *htp = &(event_queue->heap[ui]);
         fprintf(fp,
-                "time %#8.4g prio %" PRIi64 ": handle %" PRIu64 " %p %p %p %p\n",
-                htp->dkey,
-                htp->ikey,
-                htp->handle,
+                "time %#8.4g prio %" PRIi64 ": key %" PRIu64 " %p %p %p %p\n",
+                htp->dsortkey,
+                htp->isortkey,
+                htp->key,
                 htp->item[0],
                 htp->item[1],
                 htp->item[2],
@@ -467,29 +460,29 @@ void cmb_event_queue_print(FILE *fp)
 /*
  * Register a waiting process at the event in its current location
  */
-void cmi_event_add_waiter(const uint64_t handle, struct cmb_process *pp)
+void cmi_event_add_waiter(const uint64_t key, struct cmb_process *pp)
 {
     cmb_assert_release(event_queue != NULL);
     cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
-    cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
+    cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, key));
 
     struct cmi_process_waiter *tag = cmi_mempool_alloc(&cmi_process_waitertags);
     tag->proc = pp;
 
-    struct event_peek *tmp = (struct event_peek *)cmi_hashheap_item(event_queue, handle);
+    struct event_peek *tmp = (struct event_peek *)cmi_hashheap_item(event_queue, key);
     cmi_slist_push(&(tmp->waiters), &(tag->listhead));
 }
 
 /*
  * Remove a waiting process from the event in its current location
  */
-bool cmi_event_remove_waiter(const uint64_t handle, const struct cmb_process *pp)
+bool cmi_event_remove_waiter(const uint64_t key, const struct cmb_process *pp)
 {
     cmb_assert_release(event_queue != NULL);
     cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
-    cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
+    cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, key));
 
-    struct event_peek *tmp = (struct event_peek *)cmi_hashheap_item(event_queue, handle);
+    struct event_peek *tmp = (struct event_peek *)cmi_hashheap_item(event_queue, key);
     struct cmi_slist_head *whead = &(tmp->waiters);
     while (whead->next != NULL) {
         struct cmi_process_waiter *pw = cmi_container_of(whead->next,

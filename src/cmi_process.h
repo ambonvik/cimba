@@ -39,8 +39,8 @@ enum cmi_process_awaitable_type {
  */
 struct cmi_process_awaitable {
     enum cmi_process_awaitable_type type;
-    void *ptr;
-    uint64_t handle;
+    union { void *ptr; uint64_t handle; };
+    void *padding;
     struct cmi_slist_head listhead;
 };
 
@@ -48,13 +48,11 @@ extern CMB_THREAD_LOCAL struct cmi_mempool cmi_process_awaitabletags;
 
 extern void cmi_process_add_awaitable(struct cmb_process *pp,
                                       enum cmi_process_awaitable_type type,
-                                      void *awaitable,
-                                      uint64_t handle);
+                                      void *awaitable);
 
 extern bool cmi_process_remove_awaitable(struct cmb_process *pp,
                                          enum cmi_process_awaitable_type type,
-                                         const void *awaitable,
-                                         uint64_t handle);
+                                         const void *awaitable);
 
 extern void cmi_process_cancel_awaiteds(struct cmb_process *pp);
 
@@ -63,8 +61,6 @@ extern void cmi_process_cancel_awaiteds(struct cmb_process *pp);
  */
 struct cmi_process_holdable {
     struct cmi_holdable *res;
-    uint64_t handle;
-    uint64_t amount;
     struct cmi_slist_head listhead;
 };
 

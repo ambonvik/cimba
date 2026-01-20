@@ -188,15 +188,14 @@ void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
         }
         else if (awp->type == CMI_PROCESS_AWAITABLE_RESOURCE) {
             /* Waiting for some resource, reshuffle resource guard queue */
-            cmb_assert_debug(awp->handle != UINT64_C(0));
+            cmb_assert_debug(awp->ptr != NULL);
             struct cmb_resourceguard *rgp = awp->ptr;
             const struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
-            const double dkey = cmi_hashheap_dkey(hp, awp->handle);
-            cmi_hashheap_reprioritize(hp, awp->handle, dkey, pri);
-        }
-        else {
-            /* Something else, not a priority queue */
-            cmb_assert_debug(awp->handle == UINT64_C(0));
+            /* Resource guard hashkeys are process addresses */
+            const uint64_t key = (uint64_t)pp;
+            /* Do not change the other priority key, queue entry time */
+            const double etime = cmi_hashheap_dkey(hp, key);
+            cmi_hashheap_reprioritize(hp, key, etime, pri);
         }
 
         ahead = ahead->next;
@@ -208,8 +207,10 @@ void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
                                                     struct cmi_process_holdable,
                                                     listhead);
         cmb_assert_debug(hrp != NULL);
-        if (hrp->handle != UINT64_C(0)) {
-            (*(hrp->res->reprio))(hrp->res, hrp->handle, pri);
+        cmb_assert_debug(hrp->res != NULL);
+        if (hrp->res->reprio != NULL) {
+            /* It has a reprioritization function, use it */
+            (*(hrp->res->reprio))(hrp->res, pp, pri);
         }
 
         rhead = rhead->next;
@@ -238,37 +239,38 @@ void *cmb_process_exit_value(const struct cmb_process *pp)
 
 void cmi_process_add_awaitable(struct  cmb_process *pp,
                                const enum cmi_process_awaitable_type type,
-                               void *awaitable,
-                               const uint64_t handle)
+                               void *awaitable)
 {
     cmb_assert_debug(pp != NULL);
 
-    cmb_logger_info(stdout, "Adding awaitable %p %" PRIu64 " type %d", awaitable, handle, type);
+    cmb_logger_info(stdout, "Adding awaitable %p type %d", awaitable, type);
     struct cmi_process_awaitable *awp = cmi_mempool_alloc(&cmi_process_awaitabletags);
     awp->type = type;
     awp->ptr = awaitable;
-    awp->handle = handle;
 
     struct cmi_slist_head *head = &(pp->awaits);
     cmi_slist_push(head, &(awp->listhead));
 }
 
+/*
+ * cmi_process_remove_awaitable - remove an item from the awaitable list.
+ * Will remove the first (assumed only) event of that type if the last
+ * argument is NULL.
+ */
 bool cmi_process_remove_awaitable(struct cmb_process *pp,
                                   const enum cmi_process_awaitable_type type,
-                                  const void *awaitable,
-                                  const uint64_t handle)
+                                  const void *awaitable)
 {
     cmb_assert_debug(pp != NULL);
 
-    cmb_logger_info(stdout, "Removing awaitable %p %" PRIu64 " type %d", awaitable, handle, type);
+    cmb_logger_info(stdout, "Removing awaitable %p type %d", awaitable, type);
     struct cmi_slist_head *ahead = &(pp->awaits);
     while (ahead->next != NULL) {
         struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
                                                   struct cmi_process_awaitable,
                                                   listhead);
         if ((awp->type == type)
-            && ((awaitable == NULL) || (awp->ptr == awaitable))
-            && ((handle == 0u) || (awp->handle == handle))) {
+            && ((awaitable == NULL) || (awp->ptr == awaitable))) {
             (void)cmi_slist_pop(ahead);
             cmi_mempool_free(&cmi_process_awaitabletags, awp);
             return true;
@@ -280,8 +282,9 @@ bool cmi_process_remove_awaitable(struct cmb_process *pp,
 }
 
 /*
- * process_wakeup_event_time - The event that resumes the process after being scheduled by
- *           cmb_process_timer or cmb_process_hold
+ * process_wakeup_event_time - The event that resumes the process after being
+ * scheduled by cmb_process_timer or cmb_process_hold. Assumes that there is
+ * only one timeout event in the awaitables list.
  */
 static void process_wakeup_event_time(void *vp, void *arg)
 {
@@ -293,7 +296,7 @@ static void process_wakeup_event_time(void *vp, void *arg)
 
     const bool found = cmi_process_remove_awaitable(pp,
                                                     CMI_PROCESS_AWAITABLE_TIME,
-                                                    NULL, 0u);
+                                                    NULL);
     cmb_assert_debug(found == true);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
@@ -317,19 +320,15 @@ int64_t cmb_process_hold(const double dur)
     cmb_assert_debug(pp != NULL);
     cmb_logger_info(stdout, "Hold for %f", dur);
 
-    /* Not already holding, are we? */
-    if (!cmi_slist_is_empty(&(pp->awaits))) {
-        const struct cmi_process_awaitable *aw = cmi_container_of(pp->awaits.next, struct cmi_process_awaitable, listhead);
-        cmb_logger_warning(stdout, "Awaiting %p %" PRIu64 " type %d", aw->ptr, aw->handle, aw->type);
-    }
+    /* Cannot get here if already waiting for something. */
     cmb_assert_debug(cmi_slist_is_empty(&(pp->awaits)));
     const double t = cmb_time() + dur;
 
     /* Schedule a wakeup event and add it to our list */
     const int64_t pri = cmb_process_priority(pp);
     const uint64_t handle = cmb_event_schedule(process_wakeup_event_time, pp, NULL, t, pri);
-    cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, NULL, handle);
-    cmb_logger_info(stdout, "Scheduled timeout event %" PRIu64 " at %f", handle, t);
+    cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
+    cmb_logger_info(stdout, "Scheduled timeout event at %f", t);
 
     /* Yield to the dispatcher and collect the return signal value */
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
@@ -338,7 +337,7 @@ int64_t cmb_process_hold(const double dur)
     if (sig != CMB_PROCESS_SUCCESS) {
         /* Whatever woke us up was not the scheduled wakeup call */
         cmb_logger_info(stdout, "Woken up by signal %" PRIi64, sig);
-        cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, NULL, handle);
+        cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, NULL);
         if (cmb_event_is_scheduled(handle)) {
             cmb_event_cancel(handle);
         }
@@ -362,7 +361,7 @@ static void process_wakeup_event_process(void *vp, void *arg)
     /* Cannot be waiting for more than one process */
     const bool found = cmi_process_remove_awaitable(pp,
                                                     CMI_PROCESS_AWAITABLE_PROCESS,
-                                                    NULL, 0u);
+                                                    NULL);
     cmb_assert_debug(found == true);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
@@ -407,7 +406,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
     }
     else {
         /* Wait for it to finish, register it both here and there */
-        cmi_process_add_awaitable(me, CMI_PROCESS_AWAITABLE_PROCESS, awaited, 0u);
+        cmi_process_add_awaitable(me, CMI_PROCESS_AWAITABLE_PROCESS, awaited);
         add_waiter_tag(&(awaited->waiters), me);
 
         /* Yield to the dispatcher and collect the return signal value */
@@ -419,8 +418,8 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
 }
 
 /* Friendly functions in cmi_event.c, not part of the public interface */
-extern void cmi_event_add_waiter(uint64_t handle, struct cmb_process *pp);
-extern bool cmi_event_remove_waiter(uint64_t handle, const struct cmb_process *pp);
+extern void cmi_event_add_waiter(uint64_t key, struct cmb_process *pp);
+extern bool cmi_event_remove_waiter(uint64_t key, const struct cmb_process *pp);
 
 /*
  * cmb_process_wait_event - Wait for an event to occur.
@@ -440,7 +439,7 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     cmi_event_add_waiter(ev_handle, me);
 
     /* Add the event to our list of things to be waited for */
-    cmi_process_add_awaitable(me, CMI_PROCESS_AWAITABLE_EVENT, NULL, ev_handle);
+    cmi_process_add_awaitable(me, CMI_PROCESS_AWAITABLE_EVENT, (void *)ev_handle);
 
     /* Yield to the dispatcher and collect the return signal value */
     const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
@@ -478,12 +477,14 @@ void cmi_process_drop_resources(struct cmb_process *pp)
     struct cmi_slist_head *held = &(pp->resources);
     while (!cmi_slist_is_empty(held)) {
         struct cmi_slist_head *head = cmi_slist_pop(held);
+        cmb_assert_debug(head != NULL);
         struct cmi_process_holdable *ph = cmi_container_of(head,
                                                     struct cmi_process_holdable,
                                                     listhead);
         struct cmi_holdable *hrp = ph->res;
-        const uint64_t handle = ph->handle;
-        (*(hrp->drop))(hrp, pp, handle);
+        cmb_assert_debug(hrp != NULL);
+        cmb_assert_debug(hrp->drop != NULL);
+        (*(hrp->drop))(hrp, pp);
 
         cmi_mempool_free(&cmi_process_holdabletags, ph);
      }
@@ -556,13 +557,11 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
 
         if (pa->type == CMI_PROCESS_AWAITABLE_TIME) {
             /* Waits for some timeout (hold or timer), cancel it */
-            cmb_assert_debug(pa->ptr == NULL);
             cmb_assert_debug(pa->handle != UINT64_C(0));
             cmb_logger_info(stdout, "Cancels timeout event %" PRIu64, pa->handle);
             (void)cmb_event_cancel(pa->handle);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_RESOURCE) {
-            cmb_assert_debug(pa->handle != UINT64_C(0));
             cmb_assert_debug(pa->ptr != NULL);
             struct cmb_resourceguard *rgp = pa->ptr;
             cmb_logger_info(stdout, "Cancels resource %s", rgp->guarded_resource->name);
@@ -570,15 +569,13 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_PROCESS) {
             /* Waits for a process to end, remove ourselves from the waiter list */
-            cmb_assert_debug(pa->handle == UINT64_C(0));
-            cmb_assert_debug(pa->ptr != NULL);
+           cmb_assert_debug(pa->ptr != NULL);
             struct cmb_process *pw = (struct cmb_process *)pa->ptr;
             cmb_logger_info(stdout, "Cancels wait for process %s", pw->name);
             (void)cmi_process_remove_waiter(pw, pp);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_EVENT) {
             /* Waits for a specific event, remove ourselves from the event's list */
-            cmb_assert_debug(pa->ptr == NULL);
             cmb_assert_debug(pa->handle != UINT64_C(0));
             cmb_logger_info(stdout, "Cancels wait for event %" PRIu64, pa->handle);
             (void)cmi_event_remove_waiter(pa->handle, pp);

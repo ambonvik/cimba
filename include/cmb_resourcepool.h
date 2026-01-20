@@ -82,11 +82,11 @@ extern struct cmb_resourcepool *cmb_resourcepool_create(void);
  * @brief  Make an allocated resource pool ready for use.
  *
  * @memberof cmb_resourcepool
- * @param rsp Pointer to a resource pool.
+ * @param rpp Pointer to a resource pool.
  * @param name A null-terminated string naming the resource pool.
  * @param capacity The maximum amount that can be assigned at the same time.
  */
-extern void cmb_resourcepool_initialize(struct cmb_resourcepool *rsp,
+extern void cmb_resourcepool_initialize(struct cmb_resourcepool *rpp,
                                          const char *name,
                                          uint64_t capacity);
 
@@ -94,28 +94,28 @@ extern void cmb_resourcepool_initialize(struct cmb_resourcepool *rsp,
  * @brief  Un-initializes a resource pool.
  *
  * @memberof cmb_resourcepool
- * @param rsp Pointer to a resource pool.
+ * @param rpp Pointer to a resource pool.
  */
-extern void cmb_resourcepool_terminate(struct cmb_resourcepool *rsp);
+extern void cmb_resourcepool_terminate(struct cmb_resourcepool *rpp);
 
 /**
  * @brief Deallocates memory for a resource pool.
  *
  * @memberof cmb_resourcepool
- * @param rsp Pointer to an allocated resource pool object.
+ * @param rpp Pointer to an allocated resource pool object.
  */
-extern void cmb_resourcepool_destroy(struct cmb_resourcepool *rsp);
+extern void cmb_resourcepool_destroy(struct cmb_resourcepool *rpp);
 
 /**
  * @brief Return the amount of this pool that is currently held by the given
  *        process, possibly zero.
  *
  * @memberof cmb_resourcepool
- * @param rsp Pointer to a resource pool.
+ * @param rpp Pointer to a resource pool.
  * @param pp Pointer to a `cmb_process`
  * @return The amount from this resource pool that is held by the process.
  */
-extern uint64_t cmb_resourcepool_held_by_process(const struct cmb_resourcepool *rsp,
+extern uint64_t cmb_resourcepool_held_by_process(const struct cmb_resourcepool *rpp,
                                                  const struct cmb_process *pp);
 
 /**
@@ -135,12 +135,12 @@ extern uint64_t cmb_resourcepool_held_by_process(const struct cmb_resourcepool *
  * req_amount when it returns.
  *
  * @memberof cmb_resourcepool
- * @param rsp Pointer to a resource pool.
+ * @param rpp Pointer to a resource pool.
  * @param req_amount The requested amount.
  * @return `CMB_PROCESS_SUCCESS` if successful, otherwise the signal received
  *         when preempted or interrupted.
  */
-extern int64_t cmb_resourcepool_acquire(struct cmb_resourcepool *rsp,
+extern int64_t cmb_resourcepool_acquire(struct cmb_resourcepool *rpp,
                                         uint64_t req_amount);
 
 /**
@@ -156,12 +156,12 @@ extern int64_t cmb_resourcepool_acquire(struct cmb_resourcepool *rsp,
  * function does not return the req_amount received or held, only the signal value.
  *
  * @memberof cmb_resourcepool
- * @param rsp Pointer to a resource pool.
+ * @param rpp Pointer to a resource pool.
  * @param req_amount The requested amount.
  * @return `CMB_PROCESS_SUCCESS` if successful, otherwise the signal received
  *         when preempted or interrupted.
  */
-extern int64_t cmb_resourcepool_preempt(struct cmb_resourcepool *rsp,
+extern int64_t cmb_resourcepool_preempt(struct cmb_resourcepool *rpp,
                                          uint64_t req_amount);
 
 /**
@@ -170,10 +170,10 @@ extern int64_t cmb_resourcepool_preempt(struct cmb_resourcepool *rsp,
  *        currently holding. Always returns immediately.
  *
  * @memberof cmb_resourcepool
- * @param rsp Pointer to a resource pool.
+ * @param rpp Pointer to a resource pool.
  * @param rel_amount The requested amount.
  */
-extern void cmb_resourcepool_release(struct cmb_resourcepool *rsp,
+extern void cmb_resourcepool_release(struct cmb_resourcepool *rpp,
                                       uint64_t rel_amount);
 
 /**

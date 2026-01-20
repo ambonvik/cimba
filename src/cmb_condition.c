@@ -69,7 +69,7 @@ int64_t cmb_condition_wait(struct cmb_condition *cvp,
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)cvp;
     cmb_logger_info(stdout, "Waiting for condition %s", rbp->name);
-    int64_t sig =  cmb_resourceguard_wait(&(cvp->guard),
+    const int64_t sig =  cmb_resourceguard_wait(&(cvp->guard),
                                           (cmb_resourceguard_demand_func *)dmnd,
                                           ctx);
 
@@ -92,7 +92,7 @@ static void wakeup_event_condition(void *vp, void *arg)
     /* Cannot be waiting for more than one at a time */
     const bool found = cmi_process_remove_awaitable(pp,
                                                  CMI_PROCESS_AWAITABLE_RESOURCE,
-                                                 NULL, 0u);
+                                                 NULL);
     cmb_assert_debug(found == true);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
@@ -146,7 +146,7 @@ bool cmb_condition_signal(struct cmb_condition *cvp)
             /* Satisfied, note it on the list, schedule wakeup event */
             cmb_logger_info(stdout, "Condition %s satisfied for process %s",
                             rbp->name, pp->name);
-            tmp[cnt++] = htp->handle;
+            tmp[cnt++] = htp->key;
             const double time = cmb_time();
             const int64_t priority = cmb_process_priority(pp);
             (void)cmb_event_schedule(wakeup_event_condition, pp,
