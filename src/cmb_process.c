@@ -38,7 +38,7 @@ CMB_THREAD_LOCAL struct cmi_mempool cmi_process_awaitabletags = {
 CMB_THREAD_LOCAL struct cmi_mempool cmi_process_holdabletags = {
     CMI_THREAD_STATIC,
     sizeof(struct cmi_process_holdable),
-    128u,
+    256u,
     0u, 0u, 0u, NULL, NULL
 };
 
