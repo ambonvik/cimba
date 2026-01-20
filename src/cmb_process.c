@@ -290,8 +290,9 @@ static void process_wakeup_event_time(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
+    const int64_t sig = (int64_t)arg;
 
-    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64, pp->name, (int64_t)arg);
+    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64, pp->name, sig);
     cmb_assert_debug(!cmi_slist_is_empty(&(pp->awaits)));
 
     const bool found = cmi_process_remove_awaitable(pp,
@@ -305,6 +306,35 @@ static void process_wakeup_event_time(void *vp, void *arg)
 }
 
 /*
+ * cmb_process_timer - Set a timeout event without suspending the process
+ *
+ * Returns CMB_PROCESS_TIMEOUT when returning normally after the
+ * specified duration, something else if not.
+ */
+uint64_t cmb_process_timer(const double dur, const int64_t sig)
+{
+    cmb_assert_release(dur >= 0.0);
+
+    /* Will return NULL for the main coroutine, not a cmb_process */
+    struct cmb_process *pp = cmb_process_current();
+    cmb_assert_debug(pp != NULL);
+    cmb_logger_info(stdout, "Timeout in %f", dur);
+
+    /* Cannot get here if already waiting for something. */
+    cmb_assert_debug(cmi_slist_is_empty(&(pp->awaits)));
+    const double t = cmb_time() + dur;
+
+    /* Schedule a wakeup event and add it to our list */
+    const int64_t pri = cmb_process_priority(pp);
+    const uint64_t handle = cmb_event_schedule(process_wakeup_event_time,
+                                               pp, (void *)sig, t, pri);
+    cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
+    cmb_logger_info(stdout, "Scheduled timeout event at %f", t);
+
+    return handle;
+}
+
+/*
  * cmb_process_hold - Suspend a process for a specified duration of
  * simulated time.
  *
@@ -315,20 +345,7 @@ int64_t cmb_process_hold(const double dur)
 {
     cmb_assert_release(dur >= 0.0);
 
-    /* Will return NULL for the main coroutine, not a cmb_process */
-    struct cmb_process *pp = cmb_process_current();
-    cmb_assert_debug(pp != NULL);
-    cmb_logger_info(stdout, "Hold for %f", dur);
-
-    /* Cannot get here if already waiting for something. */
-    cmb_assert_debug(cmi_slist_is_empty(&(pp->awaits)));
-    const double t = cmb_time() + dur;
-
-    /* Schedule a wakeup event and add it to our list */
-    const int64_t pri = cmb_process_priority(pp);
-    const uint64_t handle = cmb_event_schedule(process_wakeup_event_time, pp, NULL, t, pri);
-    cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
-    cmb_logger_info(stdout, "Scheduled timeout event at %f", t);
+    const uint64_t handle = cmb_process_timer(dur, CMB_PROCESS_SUCCESS);
 
     /* Yield to the dispatcher and collect the return signal value */
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
@@ -337,6 +354,7 @@ int64_t cmb_process_hold(const double dur)
     if (sig != CMB_PROCESS_SUCCESS) {
         /* Whatever woke us up was not the scheduled wakeup call */
         cmb_logger_info(stdout, "Woken up by signal %" PRIi64, sig);
+        struct cmb_process *pp = cmb_process_current();
         cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, NULL);
         if (cmb_event_is_scheduled(handle)) {
             cmb_event_cancel(handle);

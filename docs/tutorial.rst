@@ -2279,8 +2279,7 @@ the simulation framework, not the detailed agentic behaviors.
 In the LNG harbor example, we had one process (arrivals) create and start other
 processes (ships) or a third process (departures) recycle the ships. In Cimba with its
 stackful coroutines as first-order objects, this is not difficult to do, just a natural
-way of expressing the model. We will follow the same pattern here. We will then scale it
-up to something on the order of a full day at a large entertainment park, with thousands
-of customers and dozens of attractions with associated queues, before parallelizing it
-on all CPU cores.
+way of expressing the model. We will follow the same pattern here.
+
+
 

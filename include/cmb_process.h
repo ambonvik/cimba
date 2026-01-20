@@ -233,8 +233,9 @@ static inline int64_t cmb_process_yield(void)
  * @param dur The duration to hold for, relative to the current simulation time.
  * @param sig The signal to be passed at wakeup, e.g., `CMB_PROCESS_TIMEOUT`,
  *            or something user-application defined.
+ * @return The handle of the scheduled timeout event
  */
-extern void cmb_process_timer(double dur, int64_t sig);
+extern uint64_t cmb_process_timer(double dur, int64_t sig);
 
 /**
  * @brief  Schedule a wakeup event at the current time for a yielded process. The
