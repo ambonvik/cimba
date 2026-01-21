@@ -41,6 +41,7 @@
 
 #include "cmb_assert.h"
 #include "cmb_event.h"
+#include "cmb_logger.h"
 
 #include "cmi_coroutine.h"
 #include "cmi_slist.h"
@@ -193,17 +194,6 @@ extern void cmb_process_destroy(struct cmb_process *pp);
 extern void cmb_process_start(struct cmb_process *pp);
 
 /**
- * @brief  Hold (sleep) for a specified duration of simulated time. Called from
- *         within a process.
- *
- * @memberof cmb_process
- * @param dur The duration to hold for, relative to the current simulation time.
- * @return `CMB_PROCESS_SUCCESS` if returning normally at the scheduled time,
- *        otherwise some other signal value indicating the type of interruption.
- */
-extern int64_t cmb_process_hold(double dur);
-
-/**
  * @brief  Unconditionally yield control with no fixed duration or condition.
  *
  * @memberof cmb_process
@@ -250,6 +240,40 @@ extern uint64_t cmb_process_timer(double dur, int64_t sig);
  * @param pri The priority for the interrupt event that will be scheduled.
  */
 extern void cmb_process_resume(struct cmb_process *pp, int64_t sig, int64_t pri);
+
+/** \cond */
+extern void cmi_process_hold_cleanup (uint64_t handle);
+/** \endcond */
+
+/**
+ * @brief  Hold (sleep) for a specified duration of simulated time. Called from
+ *         within a process.
+ *
+ * @memberof cmb_process
+ * @param dur The duration to hold for, relative to the current simulation time.
+ * @return `CMB_PROCESS_SUCCESS` if returning normally at the scheduled time,
+ *        otherwise some other signal value indicating the type of interruption.
+ */
+static inline int64_t cmb_process_hold(const double dur)
+{
+    cmb_assert_release(dur >= 0.0);
+
+    const uint64_t handle = cmb_process_timer(dur, CMB_PROCESS_SUCCESS);
+
+    /* Yield to the dispatcher and collect the return signal value */
+    const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
+
+    /* Back here again, possibly much later. */
+    if (sig != CMB_PROCESS_SUCCESS) {
+        /* Whatever woke us up was not the scheduled wakeup call */
+        cmb_logger_info(stdout, "Woken up by signal %" PRIi64, sig);
+        cmi_process_hold_cleanup(handle);
+    }
+
+    return sig;
+}
+
+
 
 /**
  * @brief  Wait for some other process to finish. Called from within a process.

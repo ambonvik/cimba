@@ -335,33 +335,17 @@ uint64_t cmb_process_timer(const double dur, const int64_t sig)
 }
 
 /*
- * cmb_process_hold - Suspend a process for a specified duration of
- * simulated time.
- *
- * Returns 0 (CMB_PROCESS_SUCCESS) when returning normally after the
- * specified duration, something else if not.
+ * cmi_process_hold_cleanup - internal recovery from an interrupted hold()
  */
-int64_t cmb_process_hold(const double dur)
+
+void cmi_process_hold_cleanup(uint64_t handle)
 {
-    cmb_assert_release(dur >= 0.0);
-
-    const uint64_t handle = cmb_process_timer(dur, CMB_PROCESS_SUCCESS);
-
-    /* Yield to the dispatcher and collect the return signal value */
-    const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
-
-    /* Back here again, possibly much later. */
-    if (sig != CMB_PROCESS_SUCCESS) {
-        /* Whatever woke us up was not the scheduled wakeup call */
-        cmb_logger_info(stdout, "Woken up by signal %" PRIi64, sig);
-        struct cmb_process *pp = cmb_process_current();
-        cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, NULL);
-        if (cmb_event_is_scheduled(handle)) {
-            cmb_event_cancel(handle);
-        }
+    struct cmb_process *pp = cmb_process_current();
+    cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, NULL);
+    if (cmb_event_is_scheduled(handle)) {
+        cmb_event_cancel(handle);
     }
 
-    return sig;
 }
 
 /*
