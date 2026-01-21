@@ -1,5 +1,5 @@
 /*
-* tutorial/tut_2_0.c
+* tutorial/tut_4_0.c
  *
  * An empty shell for a single-threaded simulation model, as a starting point
  * for development and debugging before parallelizing the production version.

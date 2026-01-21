@@ -1,5 +1,5 @@
 /*
-* tutorial/tut_4_1.c
+ * tutorial/tut_2_1.c
  *
  * M/G/n model with balking, reneging, and jockeying customer behaviors.
  * Single-threaded development version.

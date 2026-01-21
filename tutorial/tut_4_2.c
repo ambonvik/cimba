@@ -1,5 +1,5 @@
 /*
- * tutorial/tut_2_2.c
+ * tutorial/tut_4_2.c
  *
  * Multithreaded version of the harbor simulation.
  *
