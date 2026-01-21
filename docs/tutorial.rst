@@ -1524,11 +1524,11 @@ An empty simulation template
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Our starting point will be an empty shell from the first tutorial, giving the
-correct initial structure to the model. You will find it in ``tutorial/tut_2_0.c``.
+correct initial structure to the model. You will find it in ``tutorial/tut_4_0.c``.
 It does not do anything, so there is no point in compiling it as it is, but you
 can use it as a starting template for your own models as well.
 
-The first functional version is in ``tutorial/tut_2_1.c``. We will not repeat all
+The first functional version is in ``tutorial/tut_4_1.c``. We will not repeat all
 the code here, just point out the highlights.
 
 Processes, resources, and conditions
@@ -1968,7 +1968,7 @@ We next write the arrival process generating ships:
 The important point to remember here is to zero-initialize the ``struct ship``
 with ``memset()`` after allocating it with ``malloc()``, or equivalently,
 allocating it with ``calloc()`` instead. The ship is a ``cmb_process``, but
-we are bypassing the ``cmb_process_create()`` here and take the responsibility
+we are bypassing the ``cmb_process_create()`` here and take direct responsibility
 for the allocation step.
 
 In this example, we just did the ship allocation and initialization inline. If we were to
@@ -1976,7 +1976,7 @@ create and/or initialize ships from more than one place in the
 code, we would wrap these in proper ``ship_create()`` and ``ship_initialize()``
 functions to avoid repeating ourselves, but there is nothing that forces us to write
 pro forma constructor and destructor functions. For illustration and code style, we
-do this "properly" in the next iteration of the example, ``tutorial/tut_2_2.c``, where
+do this "properly" in the next iteration of the example, ``tutorial/tut_4_2.c``, where
 the ship class looks like this:
 
 .. code-block:: C
@@ -2306,7 +2306,7 @@ Building and running our new harbor simulation, we get output similar to this:
     Avg time in system, small ships: 10.812688
     Avg time in system, large ships: 17.341350
 
-You can find the code for this stage in ``tutorial/tut_2_1.c``.
+You can find the code for this stage in ``tutorial/tut_4_1.c``.
 
 Turning up the power
 ^^^^^^^^^^^^^^^^^^^^
@@ -2338,7 +2338,7 @@ parameter combinations, the average time in the system for small and large ships
 under each set of parameters, and tight 95 % confidence intervals based
 on our 10 replications of each parameter combination:
 
-.. image:: ../images/tut_2_2.png
+.. image:: ../images/tut_4_2.png
 
 We see that we can tell our client, the SPA, that they have enough tugs and do
 not need to dredge, but that they really should consider building one more large
