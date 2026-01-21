@@ -23,7 +23,7 @@ desired_flags = ['-Wno-pedantic',
                  '-fuse-linker-plugin',
                  '-DNDEBUG',
                  '-DNLOGINFO',
-#                 '-DNASSERT'
+                 '-DNASSERT'
 ]
 supported_flags = cc.get_supported_arguments(desired_flags)
 add_project_arguments(supported_flags, language : 'c', native : true)

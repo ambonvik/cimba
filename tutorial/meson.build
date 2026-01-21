@@ -81,9 +81,8 @@ tut_2_1 = executable('tut_2_1',
                      native : true
 )
 
-
-tut_2_2 = executable('tut_2_2',
-                     files('tut_2_2.c'),
+tut_3_1 = executable('tut_3_1',
+                     files('tut_3_1.c'),
                      include_directories : [inc_api, inc_int],
                      link_with : cimba_lib,
                      dependencies : [project_deps],
@@ -91,8 +90,17 @@ tut_2_2 = executable('tut_2_2',
                      native : true
 )
 
-tut_3_1 = executable('tut_3_1',
-                     files('tut_3_1.c'),
+tut_4_1 = executable('tut_4_1',
+                     files('tut_4_1.c'),
+                     include_directories : [inc_api, inc_int],
+                     link_with : cimba_lib,
+                     dependencies : [project_deps],
+                     install : false,
+                     native : true
+)
+
+tut_4_2 = executable('tut_4_2',
+                     files('tut_4_2.c'),
                      include_directories : [inc_api, inc_int],
                      link_with : cimba_lib,
                      dependencies : [project_deps],

@@ -1003,6 +1003,479 @@ code for each stage of development. The version ``tutorial/tut_1_7.c`` is
 functionally the same as our final ``tutorial\tut_1_6.c`` but with additional inline
 explanatory comments.
 
+For additional variations of this theme, see also ``benchmark/MM1_multi.c`` where
+the queue is modeled as a ``cmb_objectqueue`` with individual customers tracking
+their time in the system, and ``test/test_cimba.c`` modeling a M/G/1 queue with
+different utilizations and service time varibilities.
+
+cquiring, preempting, and releasing resources
+---------------------------------------------
+
+We will now introduce the Cimba methods for acquiring and releasing resources
+of various kinds. We will also show additional process interactions where
+the active process is acting directly on some other process. We will
+demonstrate these through a somewhat cartoonish example. First, some necessary
+background.
+
+Resources and Resource Pools
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Cimba provides two kinds of resources that a process can acquire, hold, and release.
+These are the ``cmb_resource`` and the ``cmb_resourcepool``. The difference is
+that the ``cmb_resource`` is a single unit that only can be held by one process
+at a time, while the ``cmb_resourcepool`` consists of several units that each
+can be held by a process. A process may hold more than one unit from the
+``cmb_resourcepool``, but there is a certain upper limit for how many units are
+available simultaneously from the pool. In computer science terms, the
+``cmb_resource`` is a *binary semaphore*, while the ``cmb_resourcepool`` is a
+*counting semaphore*.
+
+If the requested resource or number of resources is not available, the ``_acquire``
+calls will wait in a priority queue until the requested amount becomes available.
+The priority is determined by the process priority, then FIFO in the simulation
+timestamp it entered the queue, and if both are equal, in the order of process
+address in memory. (Having a clear tie-breaker rule here is important to avoid
+deadlocking, see Dijkstra's classic "Dining Philosophers".)
+
+The typical usage pattern is also the reason for the name ``cmb_process_hold()``:
+
+.. code-block:: c
+
+    cmb_resource_acquire(res);
+    cmb_process_hold(dur);
+    cmb_resource_release(res);
+
+Or:
+
+.. code-block:: c
+
+    cmb_resourcepool_acquire(respl, 6);
+    cmb_process_hold(dur);
+    cmb_resourcepool_release(respl, 3);
+    cmb_process_hold(dur);
+    cmb_resourcepool_release(respl, 3);
+
+Or even:
+
+    cmb_resourcepool_acquire(respl, 6);
+    cmb_resource_acquire(res);
+    cmb_process_hold(dur);
+    cmb_resource_release(res);
+    cmb_resourcepool_release(respl, 6);
+
+Note that there is not a timeout argument in these calls. We will show how to do this
+in the next tutorial, but will leave if until then.
+
+Preemptions and interruptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We have already explained that Cimba processes (and the coroutines they are
+derived from) execute atomically until they explicitly yield control. These
+yield (and resume) points are hidden inside functions like ``cmb_process_hold()``
+or ``cmb_resource_acquire``. Inside the call, control may (or may not) be
+passed to some other process. The call will only return when control is transferred
+back to this process. To the calling process just sitting on its own stack, it
+looks very simple, but a lot of things may be happening elsewhere in the meantime.
+
+A yielded process does not have any guarantees for what may be happening to it
+before it resumes control. Other processes may act on this process, perhaps
+stopping it outright, waking it up early, or snatching a resource away from it.
+
+To be able to tell the difference, functions like ``cmb_process_hold()`` and
+``cmb_resource_acquire()`` have an integer return value, an ``int64_t``. We have
+quietly ignored the return values in our earlier examples, but they are an
+important signalling mechanism between Cimba processes.
+
+Cimba has reserved a few possible return values for itself. Most importantly,
+``CMB_PROCESS_SUCCESS`` (numeric value 0) means a normal and successful return.
+For example, if ``cmb_process_hold()`` returns ``CMB_PROCESS_SUCCESS``, the calling
+process knows that it was woken up at the scheduled time without any shenanigans.
+
+The second most important value is ``CMB_PROCESS_PREEMPTED``. That means that a
+higher priority process just forcibly took away some resource held by this
+process. There are also ``CMB_PROCESS_INTERRUPTED``, ``CMB_PROCESS_STOPPED``,
+``CMB_PROCESS_CANCELLED``, and ``CMB_PROCESS_TIMEOUT``. These are defined as small
+negative values, leaving an enormous number of available signal values to
+application-defined meanings. In particular, all positive integers are available
+to the application for coding various interrupt signals between processes.
+
+These signal values create a rich set of direct process interactions. As an
+example, suppose some process currently holds 10 units from some resource pool.
+It then calls ``cmb_resourcepool_acquire()`` requesting 10 more units. At that
+moment, only 5 are available. The process takes these 5 and adds itself to the
+priority queue maintained by the resource guard, asking to be woken whenever some
+more is available, intending to return from its acquire call only when all 10
+units have been collected.
+
+There are now three different outcomes for the acquire call:
+
+1. All goes as expected, 5 more units eventually become available, the process
+   takes them, and returns ``CMB_PROCESS_SUCCESS``. It now holds 20 units.
+
+2. Some higher priority process calls ``cmb_resourcepool_preempt()`` and this
+   process is targeted. The higher priority process takes *all* units held by
+   the victim process. Its acquire call returns ``CMB_PROCESS_PREEMPTED``. It
+   now holds 0 units.
+
+3. Some other process calls ``cmb_process_interrupt()`` on this process. It
+   excuses itself from the resource guard priority queue and returns whatever
+   signal value was given to ``cmb_process_interrupt()``, perhaps
+   ``CMB_PROCESS_INTERRUPTED`` or some other value that has an
+   application-defined meaning. It unwinds the 5 units it collected during the
+   call and returns holding the same amount as it held before
+   calling ``cmb_resourcepool_acquire()``, 10 units.
+
+Preempt calls can themselves be preempted by higher priority processes or
+interrupted in the same way as acquire calls if the preempt was not immediately
+fulfilled and the process had to wait at the resource guard. Once there, it is
+fair game for preempts and interrupts.
+
+Another potential complexity: Suppose a process holds more than one type of
+resource, for example:
+
+.. code-block:: c
+
+    cmb_resource_acquire(rp);
+    cmb_resourcepool_acquire(rsp1, 10);
+    cmb_resourcepool_acquire(rsp2, 15);
+
+    int64_t signal = cmb_process_hold(100,0);
+
+    if (signal == CMB_PROCESS_PREEMPTED) {
+        /* ??? */
+    }
+
+In cases like this, the functions ``cmb_resource_held_by_process`` and
+``cmb_resourcepool_held_by_process()`` with a pointer to itself as the second
+argument can be useful to figure out which resource was preempted. If the caller
+does not have a pointer to itself handy (it is always the first argument to the
+process function), it can get one by calling ``cmb_process_current()``,
+returning a pointer to the currently executing process, i.e. the caller.
+
+Buffers and object queues, interrupted
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The semantics of buffers and object queues are different from the resources and
+resource pools. A process can acquire and hold a resource, making it unavailable
+for other processes until it is released. Preempting it naturally means taking
+the resource away from the process because someone else needs it more, right now.
+
+Buffers and their cousins are not like that. Once something is put in, other
+processes can get it and consume it immediately. Preempting a put or get operation
+does not have any obvious meaning. If a buffer is empty, a process get call is waiting
+at the resource guard, and a higher priority process wants to get some first, it
+just calls ``cmb_buffer_get()`` and goes first in the priority queue.
+
+However, waiting puts and gets can still be interrupted. For the ``cmb_objectqueue``
+and ``cmb_priorityqueue``, it is very simple. If the respective ``_put()`` or
+``_get()`` call returned ``CMB_PROCESS_SUCCESS`` the object was successfully
+added to the queue. If it returned anything else, it was not.
+
+The ``cmb_buffer`` is similarly intuitive. Recall from our first tutorial that
+the amount argument is given as a pointer to a variable, not as a value. As
+the put and get calls get underway, the value at this location gets updated to
+reflect the progress. If interrupted, this value indicates how much was placed
+or obtained. The call returns at this point with no attempt to roll back to the
+state at the beginning of the call. If successful, the put call will have a
+zero value in this location, the get call will have the requested amount. If not,
+it will contain some other value between zero and the requested amount.
+
+While the Cat is Away...
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is again probably easier to demonstrate with code than explain in computer
+sciencey terms how all this works.
+
+On a table, we have some pieces of cheese in a pile. There are several mice
+trying to collect the cheese and hold it for a while. Each mouse can carry
+different numbers of cheese cubes. They tend to drop it again quite fast,
+inefficient hoarders as they are. Unfortunately, there are also some
+rats, bigger and stronger than the mice. The rats will preempt the cheese from
+the mice, but only if the rat has higher priority. Otherwise, the rat will
+politely wait its turn. There is also a cat. It sleeps a lot, but when awake,
+it will select random rodents and interrupt whatever it is doing.
+
+Since we do not plan to run any statistics here, we simplify the context struct
+to just the simulation struct. We can then write something like:
+
+.. code-block:: c
+
+    /* The busy life of a mouse */
+    void *mousefunc(struct cmb_process *me, void *ctx)
+    {
+        cmb_assert_release(me != NULL);
+        cmb_assert_release(ctx != NULL);
+
+        const struct simulation *simp = ctx;
+        struct cmb_resourcepool *sp = simp->cheese;
+        uint64_t amount_held = 0u;
+
+        while (true) {
+            /* Verify that the amount matches our own calculation */
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+
+            /* Decide on a random amount to get next time and set a random priority */
+            const uint64_t amount_req = cmb_random_dice(1, 5);
+            const int64_t pri = cmb_random_dice(-10, 10);
+            cmb_process_set_priority(me, pri);
+            cmb_logger_user(stdout, USERFLAG1, "Acquiring %" PRIu64, amount_req);
+            int64_t sig = cmb_resourcepool_acquire(sp, amount_req);
+            if (sig == CMB_PROCESS_SUCCESS) {
+                /* Acquire returned successfully */
+                amount_held += amount_req;
+                cmb_logger_user(stdout, USERFLAG1, "Success, new amount held: %" PRIu64, amount_held);
+            }
+            else if (sig == CMB_PROCESS_PREEMPTED) {
+                /* The acquire call did not end well */
+                cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
+                                cmb_resourcepool_name(sp));
+                amount_held = 0u;
+            }
+            else {
+                /* Interrupted, but we still have the same amount as before */
+                cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
+            }
+
+            /* Hold on to it for a while */
+            sig = cmb_process_hold(cmb_random_exponential(1.0));
+            if (sig == CMB_PROCESS_SUCCESS) {
+                /* We still have it */
+                cmb_logger_user(stdout, USERFLAG1, "Hold returned successfully");
+            }
+            else if (sig == CMB_PROCESS_PREEMPTED) {
+                /* Somebody snatched it all away from us */
+                cmb_logger_user(stdout, USERFLAG1, "Someone stole all my %s from me!",
+                                cmb_resourcepool_name(sp));
+                amount_held = 0u;
+            }
+            else {
+                /* Interrupted while holding. Still have the cheese, though */
+                cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
+            }
+
+            /* Drop some amount */
+            if (amount_held > 1u) {
+                const uint64_t amount_rel = cmb_random_dice(1, (long)amount_held);
+                cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
+                                amount_held, amount_rel);
+                cmb_resourcepool_release(sp, amount_rel);
+                amount_held -= amount_rel;
+            }
+
+            /* Hang on a moment before trying again */
+            cmb_logger_user(stdout, USERFLAG1, "Holding, amount held: %" PRIu64, amount_held);
+            sig = cmb_process_hold(cmb_random_exponential(1.0));
+            if (sig == CMB_PROCESS_PREEMPTED) {
+                cmb_logger_user(stdout, USERFLAG1,
+                                "Someone stole the rest of my %s, signal %" PRIi64,
+                                cmb_resourcepool_name(sp), sig);
+                amount_held = 0u;
+           }
+        }
+    }
+
+The rats are pretty much the same as the mice, just a bit hungrier and stronger
+(i.e. assigning themselves somewhat higher priorities), and using
+``cmb_resourcepool_preempt()`` instead of ``_acquire()``:
+
+.. code-block:: c
+
+    /* Decide on a random amount to get next time and set a random priority */
+    const uint64_t amount_req = cmb_random_dice(3, 10);
+    const int64_t pri = cmb_random_dice(-5, 15);
+    cmb_process_set_priority(me, pri);
+    cmb_logger_user(stdout, USERFLAG1, "Preempting %" PRIu64, amount_req);
+    int64_t sig = cmb_resourcepool_preempt(sp, amount_req);
+
+The cats, on the other hand, are never interrupted and just ignore return values:
+
+.. code-block:: c
+
+    void *catfunc(struct cmb_process *me, void *ctx)
+    {
+        cmb_unused(me);
+        cmb_assert_release(ctx != NULL);
+
+        struct simulation *simp = ctx;
+        struct cmb_process **cpp = (struct cmb_process **)simp;
+        const long num = NUM_MICE + NUM_RATS;
+
+        while (true) {
+            /* Nobody interrupts a sleeping cat, disregard return value */
+            cmb_logger_user(stdout, USERFLAG1, "Zzzzz...");
+            (void)cmb_process_hold(cmb_random_exponential(5.0));
+            do {
+                cmb_logger_user(stdout, USERFLAG1, "Awake, looking for rodents");
+                (void)cmb_process_hold(cmb_random_exponential(1.0));
+                struct cmb_process *tgt = cpp[cmb_random_dice(0, num - 1)];
+                cmb_logger_user(stdout, USERFLAG1, "Chasing %s", cmb_process_name(tgt));
+
+                /* Send it a random interrupt signal */
+                const int64_t sig = (cmb_random_flip()) ?
+                                     CMB_PROCESS_INTERRUPTED :
+                                     cmb_random_dice(10, 100);
+                cmb_process_interrupt(tgt, sig, 0);
+
+                /* Flip a coin to decide whether to go back to sleep */
+            } while (cmb_random_flip());
+        }
+    }
+
+We compile and run, and get output similar to this:
+
+.. code-block:: none
+
+    [ambonvik@Threadripper cimba]$ build/tutorial/tut_3_1 | more
+    Create a pile of 20 cheese cubes
+    Create 5 mice to compete for the cheese
+    Create 2 rats trying to preempt the cheese
+    Create 1 cats chasing all the rodents
+    Schedule end event
+    Execute simulation...
+        0.0000	Cat_1	catfunc (218):  Zzzzz...
+        0.0000	Rat_2	ratfunc (151):  Preempting 4
+        0.0000	Rat_2	ratfunc (156):  Success, new amount held: 4
+        0.0000	Mouse_4	mousefunc (77):  Acquiring 1
+        0.0000	Mouse_4	mousefunc (82):  Success, new amount held: 1
+        0.0000	Rat_1	ratfunc (151):  Preempting 8
+        0.0000	Rat_1	ratfunc (156):  Success, new amount held: 8
+        0.0000	Mouse_1	mousefunc (77):  Acquiring 5
+        0.0000	Mouse_1	mousefunc (82):  Success, new amount held: 5
+        0.0000	Mouse_3	mousefunc (77):  Acquiring 2
+        0.0000	Mouse_3	mousefunc (82):  Success, new amount held: 2
+        0.0000	Mouse_5	mousefunc (77):  Acquiring 1
+        0.0000	Mouse_2	mousefunc (77):  Acquiring 3
+       0.23852	Mouse_1	mousefunc (99):  Hold returned normally
+       0.23852	Mouse_1	mousefunc (115):  Holds 5, releasing 5
+       0.23852	Mouse_1	mousefunc (122):  Holding, amount held: 0
+       0.23852	Mouse_5	mousefunc (82):  Success, new amount held: 1
+       0.23852	Mouse_2	mousefunc (82):  Success, new amount held: 3
+       0.30029	Cat_1	catfunc (221):  Awake, looking for rodents
+       0.46399	Mouse_2	mousefunc (99):  Hold returned normally
+       0.46399	Mouse_2	mousefunc (115):  Holds 3, releasing 1
+       0.46399	Mouse_2	mousefunc (122):  Holding, amount held: 2
+       0.56088	Mouse_1	mousefunc (77):  Acquiring 1
+       0.56088	Mouse_1	mousefunc (82):  Success, new amount held: 1
+       0.58910	Mouse_4	mousefunc (99):  Hold returned normally
+       0.58910	Mouse_4	mousefunc (122):  Holding, amount held: 1
+       0.73649	Mouse_5	mousefunc (99):  Hold returned normally
+       0.73649	Mouse_5	mousefunc (122):  Holding, amount held: 1
+       0.74171	Mouse_3	mousefunc (99):  Hold returned normally
+       0.74171	Mouse_3	mousefunc (115):  Holds 2, releasing 2
+       0.74171	Mouse_3	mousefunc (122):  Holding, amount held: 0
+       0.83936	Mouse_3	mousefunc (77):  Acquiring 4
+       0.89350	Mouse_5	mousefunc (77):  Acquiring 5
+        1.3408	Rat_2	ratfunc (173):  Hold returned normally
+        1.3408	Rat_2	ratfunc (189):  Holds 4, releasing 1
+        1.3408	Rat_2	ratfunc (196):  Holding, amount held: 3
+        1.3408	Mouse_3	mousefunc (82):  Success, new amount held: 4
+        1.4394	Mouse_4	mousefunc (77):  Acquiring 5
+        1.8889	Mouse_2	mousefunc (77):  Acquiring 1
+        1.8992	Mouse_3	mousefunc (99):  Hold returned normally
+        1.8992	Mouse_3	mousefunc (115):  Holds 4, releasing 4
+        1.8992	Mouse_3	mousefunc (122):  Holding, amount held: 0
+        1.9260	Mouse_1	mousefunc (99):  Hold returned normally
+        1.9260	Mouse_1	mousefunc (122):  Holding, amount held: 1
+        2.5697	Mouse_3	mousefunc (77):  Acquiring 3
+        3.1025	Mouse_1	mousefunc (77):  Acquiring 4
+        3.7215	Rat_2	ratfunc (151):  Preempting 6
+        3.7215	Mouse_4	mousefunc (86):  Preempted during acquire, all my Cheese is gone
+        3.7215	Mouse_1	mousefunc (86):  Preempted during acquire, all my Cheese is gone
+        4.2186	Mouse_1	mousefunc (99):  Hold returned normally
+        4.2186	Mouse_1	mousefunc (122):  Holding, amount held: 0
+        4.7152	Mouse_1	mousefunc (77):  Acquiring 5
+        4.8393	Cat_1	catfunc (224):  Chasing Mouse_1
+        4.8393	Cat_1	catfunc (221):  Awake, looking for rodents
+        4.8393	Mouse_1	mousefunc (92):  Interrupted by signal -2
+        5.3060	Cat_1	catfunc (224):  Chasing Mouse_4
+        5.3060	Cat_1	catfunc (221):  Awake, looking for rodents
+        5.3060	Mouse_4	mousefunc (109):  Interrupted by signal 20
+        5.3060	Mouse_4	mousefunc (122):  Holding, amount held: 0
+        5.8149	Mouse_1	mousefunc (99):  Hold returned normally
+        5.8149	Mouse_1	mousefunc (122):  Holding, amount held: 0
+        6.0788	Mouse_1	mousefunc (77):  Acquiring 4
+        6.1803	Rat_1	ratfunc (173):  Hold returned normally
+        6.1803	Rat_1	ratfunc (189):  Holds 8, releasing 3
+        6.1803	Rat_1	ratfunc (196):  Holding, amount held: 5
+
+
+...and so on. The interactions can get rather intricate, but hopefully intuitive:
+A ``cmb_resourepool_preempt()`` call will start from the lowest priority victim
+process and take *all* of its resource, but only if the victim has strictly lower
+priority than the caller. If the requested amount is not satisfied from the first
+victim, it will continue to the next lowest priority victim. If some amount is
+left over after taking everything the victim held, the resource guard is signalled
+to evaluate what process gets the remainder. If no potential victims with strictly
+lower priority than the caller process exists, the caller will join the priority
+queue and wait in line for some amount to become available.
+
+Cimba does not try to be "fair" or "optimal" in its resource allocation, just
+efficient and predictable. If the application needs different allocation rules,
+it can either adjust process priorities dynamically or create a derived class
+with a custom demand function.
+
+Real world uses
+^^^^^^^^^^^^^^^
+
+The example above was originally written as part of the Cimba unit test suite
+to ensure that the library tracking of how many units each process holds from
+the resource pool always matches the expected values calculated here. Hence all
+the ``cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));``
+statements. We wanted to make very sure that this is correct in all possible
+sequences of events, hence this frantic stress test with preemptions and
+interruptions galore.
+
+The preempt and interrupt mechanisms will be important in a range of real-world
+modeling applications, ranging from hospital emergency room triage operations to
+manufacturing job shops and machine breakdown processes.
+
+Building, validating, and parallelizing the simulation will follow the same
+pattern as in our two first tutorials, so we will not repeat that here.
+
+This completes our second tutorial, demonstrating how to use direct process
+interactions like ``cmb_process_interrupt()`` and ``cmb_resourcepool_preempt()``.
+We have mentioned, but not demonstrated ``cmb_process_wait_process()``
+and ``cmb_process_wait_event()``. We encourage you to look up these in the
+API reference documentation next.
+
+Queuing with Balking, Reneging, and Jockeying
+---------------------------------------------
+
+In our first simulation, we modeled a M/M/1 queue as a simple buffer with just a
+numeric value for the queue length. This was sufficient to calculate queue length
+statistics. We extended this in our benchmarking case, benchmark/MM1_simple.c
+and benchmark/MM1_multi.c, where the customers were modeled as discrete objects
+containing their own arrival times to compute statistics for the time each customer
+spent in the system. In both cases, our simulated results were well aligned with
+known queuing theory formulas.
+
+We now extend this to a more realistic but analytically intractable case, where the
+customers are active, opinionated agents in their own right. Since the active entities
+in Cimba are the ``cmb_processes``, that requires each customer to be represented as a
+process or a class derived from the process, just like our ships in the harbor example.
+The customers generated by the arrival process will make their own decisions on whether to
+join the queue or not (balking), leave midway (reneging), or switch to another queue that
+seems to be moving faster (jockeying). Or patiently wait until they get served and
+leave for new adventures.
+
+The use case is to model an entertainment park with guests wanting to use various
+attractions, where the park operator wants us to analyze ways of influencing customer
+behavior. Each customer will have a randomized "patience" property, and we will try to
+influence this by techniques like shielding parts of the queue from view, arranging
+small sideshows to keep waiting customers amused, and so on. We will not make a very
+detailed model of customer behavior, but we note that we could even embed an AI
+model of customer behavior running on CUDA kernels to make the customer objects truly
+intelligent agents in our simulated world. (The author once implemented a nonlinear
+resource allocation model in Simscript II.5 to represent a human commander's decision
+making in a simulated war.) Here, we are mainly concerned with demonstrating how to build
+the simulation framework, not the detailed agentic behaviors.
+
+
+
+
+
+
+
 
 A LNG tanker harbor with condition variables
 --------------------------------------------
@@ -1860,426 +2333,4 @@ to wait for arbitrary combinations of conditions. Along the way, we demonstrated
 that user applications can build derived classes from Cimba parent classes using
 single inheritance. For example, the ``ship`` class in this tutorial was derived
 from a ``cmb_process`` which in turn is derived from a ``cmi_coroutine``.
-
-Interruptions and Preemptions: When the Cat is Away...
-------------------------------------------------------
-
-In our third tutorial, we will introduce additional process interactions where
-the active process is acting directly on some other process. We will
-demonstrate these through a somewhat cartoonish example. First, some necessary
-background.
-
-Interrupts, preempts, and return values
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-We have already explained that Cimba processes (and the coroutines they are
-derived from) execute atomically until they explicitly yield control. These
-yield (and resume) points are hidden inside functions like ``cmb_process_hold()``
-or ``cmb_resource_acquire``. Inside the call, control may (or may not) be
-passed to some other process. The call will only return when control is transferred
-back to this process. To the calling process just sitting on its own stack, it looks very
-simple, but a lot of things may be happening elsewhere in the meantime.
-
-A yielded process does not have any guarantees for what may be happening to it
-before it resumes control. Other processes may act on this process, perhaps
-stopping it outright, waking it up early, or snatching a resource away from it.
-
-To be able to tell the difference, functions like ``cmb_process_hold()`` and
-``cmb_resource_acquire()`` have an integer return value, an ``int64_t``. We have
-quietly ignored the return values in our earlier examples, but they are an
-important signalling mechanism between Cimba processes.
-
-Cimba has reserved a few possible return values for itself. Most importantly,
-``CMB_PROCESS_SUCCESS`` (numeric value 0) means a normal and successful return.
-For example, if ``cmb_process_hold()`` returns ``CMB_PROCESS_SUCCESS``, the calling
-process knows that it was woken up at the scheduled time without any shenanigans.
-
-The second most important value is ``CMB_PROCESS_PREEMPTED``. That means that a
-higher priority process just forcibly took away some resource held by this
-process. There are also ``CMB_PROCESS_INTERRUPTED``, ``CMB_PROCESS_STOPPED``,
-and ``CMB_PROCESS_CANCELLED``. These are defined as small negative values,
-leaving an enormous number of available signal values to application-defined
-meanings. In particular, all positive integers are available to the application
-for coding various interrupt signals between processes.
-
-These signal values create a rich set of direct process interactions. As an
-example, suppose some process currently holds 10 units from some resource pool.
-It then calls ``cmb_resourcepool_acquire()`` requesting 10 more units. At that
-moment, only 5 are available. The process takes these 5 and adds itself to the
-priority queue maintained by the resource guard, asking to be woken whenever some
-more is available, intending to return from its acquire call only when all 10
-units have been collected.
-
-There are now three different outcomes for the acquire call:
-
-1. All goes as expected, 5 more units eventually become available, the process
-   takes them, and returns ``CMB_PROCESS_SUCCESS``. It now holds 20 units.
-
-2. Some higher priority process calls ``cmb_resourcepool_preempt()`` and this
-   process is targeted. The higher priority process takes *all* units held by
-   the victim process. Its acquire call returns ``CMB_PROCESS_PREEMPTED``. It
-   now holds 0 units.
-
-3. Some other process calls ``cmb_process_interrupt()`` on this process. It
-   excuses itself from the resource guard priority queue and returns whatever
-   signal value was given to ``cmb_process_interrupt()``, perhaps
-   ``CMB_PROCESS_INTERRUPTED`` or some other value that has an
-   application-defined meaning. It unwinds the 5 units it collected during the
-   call and returns holding the same amount as it held before
-   calling ``cmb_resourcepool_acquire()``, 10 units.
-
-Preempt calls can themselves be preempted by higher priority processes or
-interrupted in the same way as acquire calls if the preempt was not immediately
-fulfilled and the process had to wait at the resource guard. Once there, it is
-fair game for preempts and interrupts.
-
-Another potential complexity: Suppose a process holds more than one type of
-resource, for example:
-
-.. code-block:: c
-
-    cmb_resource_acquire(rp);
-    cmb_resourcepool_acquire(rsp1, 10);
-    cmb_resourcepool_acquire(rsp2, 15);
-
-    int64_t signal = cmb_process_hold(100,0);
-
-    if (signal == CMB_PROCESS_PREEMPTED) {
-        /* ??? */
-    }
-
-In cases like this, the functions ``cmb_resource_held_by_process`` and
-``cmb_resourcepool_held_by_process()`` with a pointer to itself as the second
-argument can be useful to figure out which resource was preempted. If the caller
-does not have a pointer to itself handy (it is always the first argument to the
-process function), it can get one by calling ``cmb_process_current()``,
-returning a pointer to the currently executing process, i.e. the caller.
-
-Buffers and object queues, interrupted
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The semantics of buffers and object queues are different from the resources and
-resource pools. A process can acquire and hold a resource, making it unavailable
-for other processes until it is released. Preempting it naturally means taking
-the resource away from the process because someone else needs it more, right now.
-
-Buffers and their cousins are not like that. Once something is put in, other
-processes can get it and consume it immediately. Preempting a put or get operation
-does not have any obvious meaning. If a buffer is empty, a process get call is waiting
-at the resource guard, and a higher priority process wants to get some first, it
-just calls ``cmb_buffer_get()`` and goes first in the priority queue.
-
-However, waiting puts and gets can still be interrupted. For the ``cmb_objectqueue``
-and ``cmb_priorityqueue``, it is very simple. If the respective ``_put()`` or ``_get()``
-call returned ``CMB_PROCESS_SUCCESS`` the object was successfully added to the queue.
-If it returned anything else, it was not.
-
-The ``cmb_buffer`` is similarly intuitive. Recall from our first tutorial that
-the amount argument is given as a pointer to a variable, not as a value. As
-the put and get calls get underway, the value at this location gets updated to
-reflect the progress. If interrupted, this value indicates how much was placed
-or obtained. The call returns at this point with no attempt to roll back to the
-state at the beginning of the call. If successful, the put call will have a
-zero value in this location, the get call will have the requested amount. If not,
-there will be some other value between zero and the requested amount.
-
-...the Mice will Play
-^^^^^^^^^^^^^^^^^^^^^
-
-It is again probably easier to demonstrate with code than explain in computer
-sciencey terms how all this works.
-
-On a table, we have some pieces of cheese in a pile. There are several mice
-trying to collect the cheese and hold it for a while. Each mouse can carry
-different numbers of cheese cubes. They tend to drop it again quite fast,
-inefficient hoarders as they are. Unfortunately, there are also some
-rats, bigger and stronger than the mice. The rats will preempt the cheese from
-the mice, but only if the rat has higher priority. Otherwise, the rat will
-politely wait its turn. There is also a cat. It sleeps a lot, but when awake,
-it will select random rodents and interrupt whatever it is doing.
-
-Since we do not plan to run any statistics here, we simplify the context struct
-to just the simulation struct. We can then write something like:
-
-.. code-block:: c
-
-    /* The busy life of a mouse */
-    void *mousefunc(struct cmb_process *me, void *ctx)
-    {
-        cmb_assert_release(me != NULL);
-        cmb_assert_release(ctx != NULL);
-
-        const struct simulation *simp = ctx;
-        struct cmb_resourcepool *sp = simp->cheese;
-        uint64_t amount_held = 0u;
-
-        while (true) {
-            /* Verify that the amount matches our own calculation */
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-
-            /* Decide on a random amount to get next time and set a random priority */
-            const uint64_t amount_req = cmb_random_dice(1, 5);
-            const int64_t pri = cmb_random_dice(-10, 10);
-            cmb_process_set_priority(me, pri);
-            cmb_logger_user(stdout, USERFLAG1, "Acquiring %" PRIu64, amount_req);
-            int64_t sig = cmb_resourcepool_acquire(sp, amount_req);
-            if (sig == CMB_PROCESS_SUCCESS) {
-                /* Acquire returned successfully */
-                amount_held += amount_req;
-                cmb_logger_user(stdout, USERFLAG1, "Success, new amount held: %" PRIu64, amount_held);
-            }
-            else if (sig == CMB_PROCESS_PREEMPTED) {
-                /* The acquire call did not end well */
-                cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
-                                cmb_resourcepool_name(sp));
-                amount_held = 0u;
-            }
-            else {
-                /* Interrupted, but we still have the same amount as before */
-                cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
-            }
-
-            /* Hold on to it for a while */
-            sig = cmb_process_hold(cmb_random_exponential(1.0));
-            if (sig == CMB_PROCESS_SUCCESS) {
-                /* We still have it */
-                cmb_logger_user(stdout, USERFLAG1, "Hold returned successfully");
-            }
-            else if (sig == CMB_PROCESS_PREEMPTED) {
-                /* Somebody snatched it all away from us */
-                cmb_logger_user(stdout, USERFLAG1, "Someone stole all my %s from me!",
-                                cmb_resourcepool_name(sp));
-                amount_held = 0u;
-            }
-            else {
-                /* Interrupted while holding. Still have the cheese, though */
-                cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
-            }
-
-            /* Drop some amount */
-            if (amount_held > 1u) {
-                const uint64_t amount_rel = cmb_random_dice(1, (long)amount_held);
-                cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
-                                amount_held, amount_rel);
-                cmb_resourcepool_release(sp, amount_rel);
-                amount_held -= amount_rel;
-            }
-
-            /* Hang on a moment before trying again */
-            cmb_logger_user(stdout, USERFLAG1, "Holding, amount held: %" PRIu64, amount_held);
-            sig = cmb_process_hold(cmb_random_exponential(1.0));
-            if (sig == CMB_PROCESS_PREEMPTED) {
-                cmb_logger_user(stdout, USERFLAG1,
-                                "Someone stole the rest of my %s, signal %" PRIi64,
-                                cmb_resourcepool_name(sp), sig);
-                amount_held = 0u;
-           }
-        }
-    }
-
-The rats are pretty much the same as the mice, just a bit hungrier and stronger
-(i.e. assigning themselves somewhat higher priorities), and using
-``cmb_resourcepool_preempt()`` instead of ``_acquire()``:
-
-.. code-block:: c
-
-    /* Decide on a random amount to get next time and set a random priority */
-    const uint64_t amount_req = cmb_random_dice(3, 10);
-    const int64_t pri = cmb_random_dice(-5, 15);
-    cmb_process_set_priority(me, pri);
-    cmb_logger_user(stdout, USERFLAG1, "Preempting %" PRIu64, amount_req);
-    int64_t sig = cmb_resourcepool_preempt(sp, amount_req);
-
-The cats, on the other hand, are never interrupted and just ignore return values:
-
-.. code-block:: c
-
-    void *catfunc(struct cmb_process *me, void *ctx)
-    {
-        cmb_unused(me);
-        cmb_assert_release(ctx != NULL);
-
-        struct simulation *simp = ctx;
-        struct cmb_process **cpp = (struct cmb_process **)simp;
-        const long num = NUM_MICE + NUM_RATS;
-
-        while (true) {
-            /* Nobody interrupts a sleeping cat, disregard return value */
-            cmb_logger_user(stdout, USERFLAG1, "Zzzzz...");
-            (void)cmb_process_hold(cmb_random_exponential(5.0));
-            do {
-                cmb_logger_user(stdout, USERFLAG1, "Awake, looking for rodents");
-                (void)cmb_process_hold(cmb_random_exponential(1.0));
-                struct cmb_process *tgt = cpp[cmb_random_dice(0, num - 1)];
-                cmb_logger_user(stdout, USERFLAG1, "Chasing %s", cmb_process_name(tgt));
-
-                /* Send it a random interrupt signal */
-                const int64_t sig = (cmb_random_flip()) ?
-                                     CMB_PROCESS_INTERRUPTED :
-                                     cmb_random_dice(10, 100);
-                cmb_process_interrupt(tgt, sig, 0);
-
-                /* Flip a coin to decide whether to go back to sleep */
-            } while (cmb_random_flip());
-        }
-    }
-
-We compile and run, and get output similar to this:
-
-.. code-block:: none
-
-    [ambonvik@Threadripper cimba]$ build/tutorial/tut_3_1 | more
-    Create a pile of 20 cheese cubes
-    Create 5 mice to compete for the cheese
-    Create 2 rats trying to preempt the cheese
-    Create 1 cats chasing all the rodents
-    Schedule end event
-    Execute simulation...
-        0.0000	Cat_1	catfunc (218):  Zzzzz...
-        0.0000	Rat_2	ratfunc (151):  Preempting 4
-        0.0000	Rat_2	ratfunc (156):  Success, new amount held: 4
-        0.0000	Mouse_4	mousefunc (77):  Acquiring 1
-        0.0000	Mouse_4	mousefunc (82):  Success, new amount held: 1
-        0.0000	Rat_1	ratfunc (151):  Preempting 8
-        0.0000	Rat_1	ratfunc (156):  Success, new amount held: 8
-        0.0000	Mouse_1	mousefunc (77):  Acquiring 5
-        0.0000	Mouse_1	mousefunc (82):  Success, new amount held: 5
-        0.0000	Mouse_3	mousefunc (77):  Acquiring 2
-        0.0000	Mouse_3	mousefunc (82):  Success, new amount held: 2
-        0.0000	Mouse_5	mousefunc (77):  Acquiring 1
-        0.0000	Mouse_2	mousefunc (77):  Acquiring 3
-       0.23852	Mouse_1	mousefunc (99):  Hold returned normally
-       0.23852	Mouse_1	mousefunc (115):  Holds 5, releasing 5
-       0.23852	Mouse_1	mousefunc (122):  Holding, amount held: 0
-       0.23852	Mouse_5	mousefunc (82):  Success, new amount held: 1
-       0.23852	Mouse_2	mousefunc (82):  Success, new amount held: 3
-       0.30029	Cat_1	catfunc (221):  Awake, looking for rodents
-       0.46399	Mouse_2	mousefunc (99):  Hold returned normally
-       0.46399	Mouse_2	mousefunc (115):  Holds 3, releasing 1
-       0.46399	Mouse_2	mousefunc (122):  Holding, amount held: 2
-       0.56088	Mouse_1	mousefunc (77):  Acquiring 1
-       0.56088	Mouse_1	mousefunc (82):  Success, new amount held: 1
-       0.58910	Mouse_4	mousefunc (99):  Hold returned normally
-       0.58910	Mouse_4	mousefunc (122):  Holding, amount held: 1
-       0.73649	Mouse_5	mousefunc (99):  Hold returned normally
-       0.73649	Mouse_5	mousefunc (122):  Holding, amount held: 1
-       0.74171	Mouse_3	mousefunc (99):  Hold returned normally
-       0.74171	Mouse_3	mousefunc (115):  Holds 2, releasing 2
-       0.74171	Mouse_3	mousefunc (122):  Holding, amount held: 0
-       0.83936	Mouse_3	mousefunc (77):  Acquiring 4
-       0.89350	Mouse_5	mousefunc (77):  Acquiring 5
-        1.3408	Rat_2	ratfunc (173):  Hold returned normally
-        1.3408	Rat_2	ratfunc (189):  Holds 4, releasing 1
-        1.3408	Rat_2	ratfunc (196):  Holding, amount held: 3
-        1.3408	Mouse_3	mousefunc (82):  Success, new amount held: 4
-        1.4394	Mouse_4	mousefunc (77):  Acquiring 5
-        1.8889	Mouse_2	mousefunc (77):  Acquiring 1
-        1.8992	Mouse_3	mousefunc (99):  Hold returned normally
-        1.8992	Mouse_3	mousefunc (115):  Holds 4, releasing 4
-        1.8992	Mouse_3	mousefunc (122):  Holding, amount held: 0
-        1.9260	Mouse_1	mousefunc (99):  Hold returned normally
-        1.9260	Mouse_1	mousefunc (122):  Holding, amount held: 1
-        2.5697	Mouse_3	mousefunc (77):  Acquiring 3
-        3.1025	Mouse_1	mousefunc (77):  Acquiring 4
-        3.7215	Rat_2	ratfunc (151):  Preempting 6
-        3.7215	Mouse_4	mousefunc (86):  Preempted during acquire, all my Cheese is gone
-        3.7215	Mouse_1	mousefunc (86):  Preempted during acquire, all my Cheese is gone
-        4.2186	Mouse_1	mousefunc (99):  Hold returned normally
-        4.2186	Mouse_1	mousefunc (122):  Holding, amount held: 0
-        4.7152	Mouse_1	mousefunc (77):  Acquiring 5
-        4.8393	Cat_1	catfunc (224):  Chasing Mouse_1
-        4.8393	Cat_1	catfunc (221):  Awake, looking for rodents
-        4.8393	Mouse_1	mousefunc (92):  Interrupted by signal -2
-        5.3060	Cat_1	catfunc (224):  Chasing Mouse_4
-        5.3060	Cat_1	catfunc (221):  Awake, looking for rodents
-        5.3060	Mouse_4	mousefunc (109):  Interrupted by signal 20
-        5.3060	Mouse_4	mousefunc (122):  Holding, amount held: 0
-        5.8149	Mouse_1	mousefunc (99):  Hold returned normally
-        5.8149	Mouse_1	mousefunc (122):  Holding, amount held: 0
-        6.0788	Mouse_1	mousefunc (77):  Acquiring 4
-        6.1803	Rat_1	ratfunc (173):  Hold returned normally
-        6.1803	Rat_1	ratfunc (189):  Holds 8, releasing 3
-        6.1803	Rat_1	ratfunc (196):  Holding, amount held: 5
-
-
-...and so on. The interactions can get rather intricate, but hopefully intuitive:
-A ``cmb_resourepool_preempt()`` call will start from the lowest priority victim
-process and take *all* of its resource, but only if the victim has strictly lower
-priority than the caller. If the requested amount is not satisfied from the first
-victim, it will continue to the next lowest priority victim. If some amount is
-left over after taking everything the victim held, the resource guard is signalled
-to evaluate what process gets the remainder. If no potential victims with strictly
-lower priority than the caller process exists, the caller will join the priority
-queue and wait in line for some amount to become available.
-
-Cimba does not try to be "fair" or "optimal" in its resource allocation, just
-efficient and predictable. If the application needs different allocation rules,
-it can either adjust process priorities dynamically or create a derived class
-with a custom demand function.
-
-Real world uses
-^^^^^^^^^^^^^^^
-
-The example above was originally written as part of the Cimba unit test suite,
-to ensure that the library tracking of how many units each process holds from
-the resource pool always matches the expected values calculated here. Hence all
-the ``cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));``
-statements. We wanted to make very sure that this is correct in all possible
-sequences of events, hence this frantic stress test with preemptions and
-interruptions galore.
-
-The preempt and interrupt mechanisms will be important in a range of real-world
-modeling applications, ranging from hospital emergency room triage operations to
-manufacturing job shops and machine breakdown processes. Together with hold,
-acquire/release, put/get, the condition variables, and the ability for processes
-to wait for specific events and for other processes to finish, Cimba provides a
-comprehensive set of process interactions.
-
-Building, validating, and parallelizing the simulation will follow the same
-pattern as in our two first tutorials, so we will not repeat that here.
-
-This completes our third tutorial, demonstrating how to use direct process
-interactions like ``cmb_process_interrupt()`` and ``cmb_resourcepool_preempt()``.
-We have mentioned, but not demonstrated ``cmb_process_wait_process()``
-and ``cmb_process_wait_event()``. We encourage you to look up these in the
-API reference documentation next.
-
-Queuing with Balking, Reneging, and Jockeying
----------------------------------------------
-
-In our first simulation, we modeled a M/M/1 queue as a simple buffer with just a
-numeric value for the queue length. This was sufficient to calculate queue length
-statistics. We extended this in our benchmarking case, benchmark/MM1_simple.c
-and benchmark/MM1_multi.c, where the customers were modeled as discrete objects
-containing their own arrival times to compute statistics for the time each customer
-spent in the system. In both cases, our simulated results were well aligned with
-known queuing theory formulas.
-
-We now extend this to a more realistic but analytically intractable case, where the
-customers are active, opinionated agents in their own right. Since the active entities
-in Cimba are the ``cmb_processes``, that requires each customer to be represented as a
-process or a class derived from the process, just like our ships in the harbor example.
-The customers generated by the arrival process will make their own decisions on whether to
-join the queue or not (balking), leave midway (reneging), or switch to another queue that
-seems to be moving faster (jockeying). Or patiently wait until they get served and
-leave for new adventures.
-
-The use case is to model an entertainment park with guests wanting to use various
-attractions, where the park operator wants us to analyze ways of influencing customer
-behavior. Each customer will have a randomized "patience" property, and we will try to
-influence this by techniques like shielding parts of the queue from view, arranging
-small sideshows to keep waiting customers amused, and so on. We will not make a very
-detailed model of customer behavior, but we note that we could even embed an AI
-model of customer behavior running on CUDA kernels to make the customer objects truly
-intelligent agents in our simulated world. (The author once implemented a nonlinear
-resource allocation model in Simscript II.5 to represent a human commander's decision
-making in a simulated war.) Here, we are mainly concerned with demonstrating how to build
-the simulation framework, not the detailed agentic behaviors.
-
-In the LNG harbor example, we had one process (arrivals) create and start other
-processes (ships) or a third process (departures) recycle the ships. In Cimba with its
-stackful coroutines as first-order objects, this is not difficult to do, just a natural
-way of expressing the model. We will follow the same pattern here.
-
-
 
