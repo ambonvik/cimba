@@ -3,7 +3,7 @@
 Tutorial: Modeling with Cimba
 =============================
 
-Our first simulation - A M/M/1 queue
+Our first simulation - a M/M/1 queue
 ------------------------------------
 
 In this section, we will walk through the development of a simple model from
@@ -1008,8 +1008,8 @@ the queue is modeled as a ``cmb_objectqueue`` with individual customers tracking
 their time in the system, and ``test/test_cimba.c`` modeling a M/G/1 queue with
 different utilizations and service time varibilities.
 
-cquiring, preempting, and releasing resources
----------------------------------------------
+Acquiring, preempting, and releasing resources
+----------------------------------------------
 
 We will now introduce the Cimba methods for acquiring and releasing resources
 of various kinds. We will also show additional process interactions where
@@ -1017,7 +1017,7 @@ the active process is acting directly on some other process. We will
 demonstrate these through a somewhat cartoonish example. First, some necessary
 background.
 
-Resources and Resource Pools
+Resources and resource pools
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Cimba provides two kinds of resources that a process can acquire, hold, and release.
@@ -1199,7 +1199,7 @@ state at the beginning of the call. If successful, the put call will return
 will have the requested amount. If interrupted, it will return something else and
 the amount variable will contain some other value between zero and the requested amount.
 
-While the Cat is Away...
+While the cat is away...
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 It is again probably easier to demonstrate with code than explain in computer
@@ -1457,7 +1457,7 @@ and ``cmb_resourcepool_preempt()``. We also have mentioned, but not demonstrated
 ``cmb_process_wait_process()`` and ``cmb_process_wait_event()``. We encourage
 you to look up these in the API reference documentation next.
 
-Queuing with Balking, Reneging, and Jockeying
+Queuing with balking, reneging, and jockeying
 ---------------------------------------------
 
 In our first simulation, we modeled a M/M/1 queue as a simple buffer with just a
