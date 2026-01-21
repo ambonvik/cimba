@@ -1032,10 +1032,10 @@ available simultaneously from the pool. In computer science terms, the
 
 If the requested resource or number of resources is not available, the ``_acquire``
 calls will wait in a priority queue until the requested amount becomes available.
-The priority is determined by the process priority, then FIFO in the simulation
-timestamp it entered the queue, and if both are equal, in the order of process
-address in memory. (Having a clear tie-breaker rule here is important to avoid
-deadlocking, see Dijkstra's classic "Dining Philosophers".)
+The ordering is determined first by the process priority, then FIFO based on the
+simulation timestamp when it entered the queue. Changing a process' priority with
+``cmp_process_set_priority()`` will also have effect on any priority queues it may
+be waiting in, with no need to explicitly reorder the queue from the application.
 
 The typical usage pattern is also the reason for the name ``cmb_process_hold()``:
 
@@ -1063,8 +1063,25 @@ Or even:
     cmb_resource_release(res);
     cmb_resourcepool_release(respl, 6);
 
-Note that there is not a timeout argument in these calls. We will show how to do this
-in the next tutorial, but will leave if until then.
+Note that there is no timeout argument in these calls. We will show how to do this
+in the next tutorial, but will leave it until then.
+
+Note also that there are some differences between the ``_acquire()``/``_release()`` pairs
+and the similar ``_get()``/``_put()`` pairs for buffers and queues. Suppose that you
+have a ``cmb_objectqueue`` of maximal size 10. It is still possible to call
+``cmb_objectqueue_put (oqp, 100)``. The call just puts in 10 to begin with, waits for
+someone to get one or more of them, and then keeps refilling the queue until all 100 are
+put in. The call only returns at that point (unless interrupted, which we will discuss in
+a moment).  Similarly, ``cmb_objectqueue_get(oqp, 100)`` works as expected.
+
+Resources and resource pools are not like that. Requesting more from a resource pool
+than its maximum is an error. If we have a resource pool with maximum size 10, 5 of
+which already are in use, it is fine to call ``cmb_resourcepool_acquire(rp, 10)``. The
+call just waits until all 10 are available, accumulating its holding whenever some
+become available until it has all, and then returns. On the other hand, calling
+``cmb_resourcepool_acquire(rp, 11)`` will not work. It is not a meaningful call, so
+Cimba will do the most helpful thing it can: Trip an `assert()` and crash your program
+on the spot, encouraging you to find and fix the error.
 
 Preemptions and interruptions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1094,20 +1111,21 @@ process knows that it was woken up at the scheduled time without any shenanigans
 The second most important value is ``CMB_PROCESS_PREEMPTED``. That means that a
 higher priority process just forcibly took away some resource held by this
 process. There are also ``CMB_PROCESS_INTERRUPTED``, ``CMB_PROCESS_STOPPED``,
-``CMB_PROCESS_CANCELLED``, and ``CMB_PROCESS_TIMEOUT``. These are defined as small
-negative values, leaving an enormous number of available signal values to
-application-defined meanings. In particular, all positive integers are available
-to the application for coding various interrupt signals between processes.
+``CMB_PROCESS_CANCELLED``, and ``CMB_PROCESS_TIMEOUT``. These predefined signals
+are all defined as small negative values, leaving an enormous number of available
+signal values to application-defined meanings. In particular, all positive
+integers are available to the application for coding various interrupt signals
+between processes.
 
 These signal values create a rich set of direct process interactions. As an
 example, suppose some process currently holds 10 units from some resource pool.
 It then calls ``cmb_resourcepool_acquire()`` requesting 10 more units. At that
 moment, only 5 are available. The process takes these 5 and adds itself to the
-priority queue maintained by the resource guard, asking to be woken whenever some
-more is available, intending to return from its acquire call only when all 10
-units have been collected.
+priority queue maintained by the resource guard before yielding. In effect, it asks
+to be woken up whenever some more is available, intending to return from its
+acquire call only when all 10 units have been collected.
 
-There are now three different outcomes for the acquire call:
+There are now three different outcomes for the ``_acquire()`` call:
 
 1. All goes as expected, 5 more units eventually become available, the process
    takes them, and returns ``CMB_PROCESS_SUCCESS``. It now holds 20 units.
@@ -1160,7 +1178,7 @@ resource pools. A process can acquire and hold a resource, making it unavailable
 for other processes until it is released. Preempting it naturally means taking
 the resource away from the process because someone else needs it more, right now.
 
-Buffers and their cousins are not like that. Once something is put in, other
+Buffers and their cousins act differently. Once something is put in, other
 processes can get it and consume it immediately. Preempting a put or get operation
 does not have any obvious meaning. If a buffer is empty, a process get call is waiting
 at the resource guard, and a higher priority process wants to get some first, it
@@ -1172,13 +1190,14 @@ and ``cmb_priorityqueue``, it is very simple. If the respective ``_put()`` or
 added to the queue. If it returned anything else, it was not.
 
 The ``cmb_buffer`` is similarly intuitive. Recall from our first tutorial that
-the amount argument is given as a pointer to a variable, not as a value. As
-the put and get calls get underway, the value at this location gets updated to
+the ``amount`` argument is given as a pointer to a variable, not as a value. As
+the put and get calls get underway, the value at this location is updated to
 reflect the progress. If interrupted, this value indicates how much was placed
 or obtained. The call returns at this point with no attempt to roll back to the
-state at the beginning of the call. If successful, the put call will have a
-zero value in this location, the get call will have the requested amount. If not,
-it will contain some other value between zero and the requested amount.
+state at the beginning of the call. If successful, the put call will return
+``CMB_PROCESS_SUCCESS`` and have a zero value in this location. Similarly, the get call
+will have the requested amount. If interrupted, it will return something else and
+the amount variable will contain some other value between zero and the requested amount.
 
 While the Cat is Away...
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1432,11 +1451,11 @@ manufacturing job shops and machine breakdown processes.
 Building, validating, and parallelizing the simulation will follow the same
 pattern as in our two first tutorials, so we will not repeat that here.
 
-This completes our second tutorial, demonstrating how to use direct process
-interactions like ``cmb_process_interrupt()`` and ``cmb_resourcepool_preempt()``.
-We have mentioned, but not demonstrated ``cmb_process_wait_process()``
-and ``cmb_process_wait_event()``. We encourage you to look up these in the
-API reference documentation next.
+This completes our second tutorial, demonstrating how to "``_acquire)`` and ``_release
+()`` resources, and to use direct process interactions like ``cmb_process_interrupt()``
+and ``cmb_resourcepool_preempt()``. We also have mentioned, but not demonstrated
+``cmb_process_wait_process()`` and ``cmb_process_wait_event()``. We encourage
+you to look up these in the API reference documentation next.
 
 Queuing with Balking, Reneging, and Jockeying
 ---------------------------------------------
