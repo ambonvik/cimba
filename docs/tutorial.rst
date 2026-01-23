@@ -1538,23 +1538,24 @@ is an important distinction. We can write kernel-like code like this:
     }
 
 
-or even like this, remembering that it does not matter if we have nested calls in Cimba
-since it is based on stackful coroutines:
+or even like this, remembering that it does not matter if we have nested function calls
+in Cimba since it is based on stackful coroutines, and that we have defined
+``CMB_PROCESS_SUCCESS`` as the numeric value zero:
 
 .. code-block:: c
 
     int64_t my_function(void)
     {
         int64_t sig = cmb_resource_acquire(thing1);
-        if (sig != CMB_PROCESS_SUCCESS) goto bailout;
+        if (sig) goto bailout;
         int64_t sig = cmb_resource_acquire(thing2);
-        if (sig != CMB_PROCESS_SUCCESS) goto cleanup1;
+        if (sig) goto cleanup1;
         cmb_process_hold(cmb_random_gamma(2.0, 2.0));
-        if (sig != CMB_PROCESS_SUCCESS) goto cleanup2;
+        if (sig) goto cleanup2;
         int64_t sig = cmb_priorityqueue_get(cat);
-        if (sig != CMB_PROCESS_SUCCESS) goto cleanup3;
+        if (sig) goto cleanup3;
         cmb_process_hold(cmb_random_gamma(2.0, 2.0));
-        if (sig != CMB_PROCESS_SUCCESS) goto cleanup3;
+        if (sig) goto cleanup3;
         return sig;
 
         cleanup3:
@@ -1581,20 +1582,25 @@ since it is based on stackful coroutines:
 
 
 In some cases, we may want to have multiple timers set. The function
-``cmb_process_add_timer()`` sets another without clearing any existing timers. For
+``cmb_process_add_timer()`` sets another timer without clearing any existing timers. For
 example:
 
 .. code-block:: c
 
+    #define SIG_GRUMPINESS 17
+    #define SIG_OPEN_REBELLION 42
+
+    /* ... */
+
     struct cmb_process *me = cmb_process_current();
     uint64_t hdl1 = cmb_process_set_timer(me, 0.5 * patience, SIG_GRUMPINESS);
-    uint64_t hdl2 = cmb_process_add_timer(me, patience, SIG_REBELLION);
+    uint64_t hdl2 = cmb_process_add_timer(me, patience, SIG_OPEN_REBELLION);
 
     while ((int64_t sig = cmb_resource_acquire(something)) != CMB_PROCESS_SUCCESS) {
         if (sig == SIG_GRUMPINESS) {
             /* Express our impatience to management */
             int64_t pri = cmb_process_priority(me);
-            cmb_process_set_priority(pri + 1);
+            cmb_process_set_priority(me, pri + 1);
         }
         else {
             /* Hopeless case */
