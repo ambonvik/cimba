@@ -454,7 +454,7 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
  * always in position 1, positions 1 to heap_count are the actual events, and
  * position heap_count + 1 is the working space.
  *
- * Note that this space will be overwritten by the next dequeue call, not a
+ * Note that this space will be overwritten by the next call to dequeue, not a
  * valid pointer for very long.
  */
 void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
