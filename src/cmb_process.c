@@ -281,10 +281,33 @@ bool cmi_process_remove_awaitable(struct cmb_process *pp,
     return false;
 }
 
+int64_t cmb_process_hold(const double dur)
+{
+    cmb_assert_release(dur >= 0.0);
+
+    /* Set ourselves a wakeup call, leaving any previous timers in place */
+    struct cmb_process *pp = cmb_process_current();
+    cmb_assert_debug(pp != NULL);
+    const uint64_t handle = cmb_process_add_timer(pp, dur, CMB_PROCESS_SUCCESS);
+
+    /* Yield to the dispatcher and collect the return signal value when back */
+    const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
+
+    /* Back here again, possibly much later. */
+    if (sig != CMB_PROCESS_SUCCESS) {
+        /* Whatever woke us up was not the scheduled wakeup call, cancel it */
+        cmb_logger_info(stdout, "Woken up by signal %" PRIi64, sig);
+        cmb_process_cancel_timer(pp, handle);
+        // cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
+    }
+
+    return sig;
+}
+
 /*
  * process_wakeup_event_time - The event that resumes the process after being
- * scheduled by cmb_process_timer or cmb_process_hold. Assumes that there is
- * only one timeout event in the awaitables list.
+ * scheduled by cmb_process_set_timer or cmb_process_hold. Does not clear any
+ * other timers set for the process.
  */
 static void process_wakeup_event_time(void *vp, void *arg)
 {
@@ -294,10 +317,10 @@ static void process_wakeup_event_time(void *vp, void *arg)
 
     cmb_logger_info(stdout, "Wakes %s signal %" PRIi64, pp->name, sig);
     cmb_assert_debug(!cmi_slist_is_empty(&(pp->awaits)));
-
+    const uint64_t thisevent = cmb_event_current();
     const bool found = cmi_process_remove_awaitable(pp,
                                                     CMI_PROCESS_AWAITABLE_TIME,
-                                                    NULL);
+                                                    (void *)thisevent);
     cmb_assert_debug(found == true);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
@@ -306,28 +329,24 @@ static void process_wakeup_event_time(void *vp, void *arg)
 }
 
 /*
- * cmb_process_timer - Set a timeout event without suspending the process
+ * cmb_process_add_timer - Set a timeout event without suspending the process
  *
  * Returns CMB_PROCESS_TIMEOUT when returning normally after the
  * specified duration, something else if not.
  */
-uint64_t cmb_process_timer(const double dur, const int64_t sig)
+uint64_t cmb_process_add_timer(struct cmb_process *pp,
+                               const double dur,
+                               const int64_t sig)
 {
+    cmb_assert_release(pp != NULL);
     cmb_assert_release(dur >= 0.0);
 
-    /* Will return NULL for the main coroutine, not a cmb_process */
-    struct cmb_process *pp = cmb_process_current();
-    cmb_assert_debug(pp != NULL);
-    cmb_logger_info(stdout, "Timeout in %f", dur);
-
-    /* Cannot get here if already waiting for something. */
-    cmb_assert_debug(cmi_slist_is_empty(&(pp->awaits)));
-    const double t = cmb_time() + dur;
-
-    /* Schedule a wakeup event and add it to our list */
+   /* Schedule a wakeup event and add it to our list */
     const int64_t pri = cmb_process_priority(pp);
+    const double t = cmb_time() + dur;
     const uint64_t handle = cmb_event_schedule(process_wakeup_event_time,
                                                pp, (void *)sig, t, pri);
+
     cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
     cmb_logger_info(stdout, "Scheduled timeout event at %f", t);
 
@@ -335,17 +354,48 @@ uint64_t cmb_process_timer(const double dur, const int64_t sig)
 }
 
 /*
- * cmi_process_hold_cleanup - internal recovery from an interrupted hold()
+ * cmb_process_cancel_timer - cancel a specific timer and remove it from awaitables
  */
-
-void cmi_process_hold_cleanup(uint64_t handle)
+bool cmb_process_cancel_timer(struct cmb_process *pp, const uint64_t handle)
 {
-    struct cmb_process *pp = cmb_process_current();
-    cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, NULL);
-    if (cmb_event_is_scheduled(handle)) {
-        cmb_event_cancel(handle);
-    }
+    cmb_assert_release(pp != NULL);
 
+    cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
+    const bool ret = cmb_event_cancel(handle);
+
+    return ret;
+}
+
+/*
+ * cmb_process_clear_timers - clear all timers set for this process
+ */
+void cmb_process_clear_timers(struct cmb_process *pp)
+{
+    cmb_assert_debug(pp != NULL);
+
+    struct cmi_slist_head *awaits = &(pp->awaits);
+    while (!cmi_slist_is_empty(awaits)) {
+        struct cmi_slist_head *head = awaits->next;
+        struct cmi_process_awaitable *pa = cmi_container_of(head,
+                                                      struct cmi_process_awaitable,
+                                                      listhead);
+
+        if (pa->type == CMI_PROCESS_AWAITABLE_TIME) {
+            /* Recycle the tag */
+            cmi_slist_pop(awaits);
+            cmi_mempool_free(&cmi_process_awaitabletags, pa);
+
+            /* Cancel the corresponding wakeup event */
+            cmb_assert_debug(pa->handle != UINT64_C(0));
+            cmb_logger_info(stdout, "Cancels timeout event %" PRIu64, pa->handle);
+            const bool found = cmb_event_cancel(pa->handle);
+            cmb_assert_debug(found);
+        }
+        else {
+            /* Skip to next */
+            awaits = awaits->next;
+        }
+   }
 }
 
 /*

@@ -194,6 +194,23 @@ extern void cmb_process_destroy(struct cmb_process *pp);
 extern void cmb_process_start(struct cmb_process *pp);
 
 /**
+ * @brief  Return a pointer to the currently executing process, i.e., the calling
+ * process itself.
+ *
+ * @memberof cmb_process
+ * @return Pointer to the currently executing process, `NULL` if called from
+ * outside a named process, such as the main process that executes the event
+ * dispatcher.
+ */
+static inline struct cmb_process *cmb_process_current(void)
+{
+    const struct cmi_coroutine *cp = cmi_coroutine_current();
+    const struct cmi_coroutine *mp = cmi_coroutine_main();
+
+    return (cp == mp) ? NULL : (struct cmb_process *)cp;
+}
+
+/**
  * @brief  Unconditionally yield control with no fixed duration or condition.
  *
  * @memberof cmb_process
@@ -202,7 +219,7 @@ extern void cmb_process_start(struct cmb_process *pp);
  */
 static inline int64_t cmb_process_yield(void)
 {
-    struct cmb_process *pp = (struct cmb_process *)cmi_coroutine_current();
+    const struct cmb_process *pp = (struct cmb_process *)cmi_coroutine_current();
     cmb_assert_release(pp != (struct cmb_process *)cmi_coroutine_main());
 
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
@@ -211,26 +228,62 @@ static inline int64_t cmb_process_yield(void)
 }
 
 /**
- * @brief  Set a timer to resume ourselves with signal sig in time dur.
- *
- * Calling
- *  cmb_process_timer(5.0, CMB_PROCESS_SUCCESS);
- *  cmb_process_yield();
- * is exactly the same as calling
- *  cmb_process_hold(5.0);
+ * @brief  Clear all timers set for this process.
  *
  * @memberof cmb_process
- * @param dur The duration to hold for, relative to the current simulation time.
- * @param sig The signal to be passed at wakeup, e.g., `CMB_PROCESS_TIMEOUT`,
- *            or something user-application defined.
+ * @param pp    Pointer to a cmb_process, usually the calling process itself.
+ */
+extern void cmb_process_clear_timers(struct cmb_process *pp);
+
+/**
+ * @brief  Set an additional timer to resume ourselves with signal sig in time dur.
+ *         Does not clear any previous timers set for this process.
+ *
+ * @memberof cmb_process
+ * @param pp    Pointer to a cmb_process, usually the calling process itself.
+ * @param dur   The duration to hold for, relative to the current simulation time.
+ * @param sig   The signal to be passed at wakeup, e.g., `CMB_PROCESS_TIMEOUT`,
+ *              or something user-application defined.
  * @return The handle of the scheduled timeout event
  */
-extern uint64_t cmb_process_timer(double dur, int64_t sig);
+extern uint64_t cmb_process_add_timer(struct cmb_process *pp, double dur, int64_t sig);
+
+/**
+ * @brief  Set a timer to resume a process with signal sig in time dur.
+ *         Clears any previous timers set for this process.
+ *
+ * @memberof cmb_process
+ * @param pp    Pointer to a cmb_process, usually the calling process itself.
+ * @param dur   The duration to hold for, relative to the current simulation time.
+ * @param sig   The signal to be passed at wakeup, e.g., `CMB_PROCESS_TIMEOUT`,
+ *              or something user-application defined.
+ * @return The handle of the scheduled timeout event
+ */
+static inline uint64_t cmb_process_set_timer(struct cmb_process *pp, const double dur, const int64_t sig)
+{
+    cmb_assert_release(pp != NULL);
+    cmb_assert_release(dur >= 0.0);
+
+    cmb_process_clear_timers(pp);
+    const uint64_t handle = cmb_process_add_timer(pp, dur, sig);
+
+    return handle;
+}
+
+/**
+ * @brief  Cancel a specific timer set for this process.
+ *
+ * @memberof cmb_process
+ * @param pp     Pointer to a cmb_process, usually the calling process itself.
+ * @param handle The handle of a previously scheduled timeout.
+ * @return True if the timer is found, false if not.
+ */
+extern bool cmb_process_cancel_timer(struct cmb_process *pp, uint64_t handle);
 
 /**
  * @brief  Schedule a wakeup event at the current time for a yielded process. The
  *         processes are asymmetric coroutines and only the dispatcher can call
- *         `cmi_coroutine_resume()`. Hence an event to make the dispatcher do that.
+ *         `cmi_coroutine_resume()`. Hence, an event to make the dispatcher do that.
  *         If the target process was waiting for something else, this call works
  *         like `cmb_process_interrupt()`.
  *
@@ -241,10 +294,6 @@ extern uint64_t cmb_process_timer(double dur, int64_t sig);
  */
 extern void cmb_process_resume(struct cmb_process *pp, int64_t sig, int64_t pri);
 
-/** \cond */
-extern void cmi_process_hold_cleanup (uint64_t handle);
-/** \endcond */
-
 /**
  * @brief  Hold (sleep) for a specified duration of simulated time. Called from
  *         within a process.
@@ -254,26 +303,7 @@ extern void cmi_process_hold_cleanup (uint64_t handle);
  * @return `CMB_PROCESS_SUCCESS` if returning normally at the scheduled time,
  *        otherwise some other signal value indicating the type of interruption.
  */
-static inline int64_t cmb_process_hold(const double dur)
-{
-    cmb_assert_release(dur >= 0.0);
-
-    const uint64_t handle = cmb_process_timer(dur, CMB_PROCESS_SUCCESS);
-
-    /* Yield to the dispatcher and collect the return signal value */
-    const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
-
-    /* Back here again, possibly much later. */
-    if (sig != CMB_PROCESS_SUCCESS) {
-        /* Whatever woke us up was not the scheduled wakeup call */
-        cmb_logger_info(stdout, "Woken up by signal %" PRIi64, sig);
-        cmi_process_hold_cleanup(handle);
-    }
-
-    return sig;
-}
-
-
+extern int64_t cmb_process_hold(const double dur);
 
 /**
  * @brief  Wait for some other process to finish. Called from within a process.
@@ -313,7 +343,8 @@ extern void cmb_process_exit(void *retval);
 /**
  * @brief  Interrupt a holding process, passing the non-zero signal value `sig`,
  *         which will appear as return value from whatever the target process
- *         was doing when it was interrupted.
+ *         was doing when it was interrupted. Clears all timers set for the
+ *         process.
  *
  * The signal cannot be `CMB_PROCESS_SUCCESS`, since that would appear as a
  * normal, non-interrupted return.
@@ -462,23 +493,5 @@ static inline enum cmb_process_state cmb_process_status(const struct cmb_process
  * @param pp Pointer to a process.
  */
 extern void *cmb_process_exit_value(const struct cmb_process *pp);
-
-/**
- * @brief  Return a pointer to the currently executing process, i.e., the calling
- * process itself.
- *
- * @memberof cmb_process
- * @return Pointer to the currently executing process, `NULL` if called from
- * outside a named process, such as the main process that executes the event
- * dispatcher.
- */
-static inline struct cmb_process *cmb_process_current(void)
-{
-    const struct cmi_coroutine *cp = cmi_coroutine_current();
-    const struct cmi_coroutine *mp = cmi_coroutine_main();
-
-    return (cp == mp) ? NULL : (struct cmb_process *)cp;
-}
-
 
 #endif /* CIMBA_CMB_PROCESS_H */
