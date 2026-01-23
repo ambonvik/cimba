@@ -69,7 +69,7 @@ double cmb_time(void)
  * heap_order_check - Test if heap_tag *a should go before *b. If so, return true.
  * Prioritization corresponds to the event queue order, where lower reactivation
  * times (dsortkey) go before higher, if equal, then higher priority (isortkey) before
- * lower, and if that also equal, FIFO order based on handle value.
+ * lower, and if that also is equal, FIFO order based on handle value.
  */
 static bool heap_order_check(const struct cmi_heap_tag *a,
                              const struct cmi_heap_tag *b)
@@ -77,22 +77,25 @@ static bool heap_order_check(const struct cmi_heap_tag *a,
     cmb_assert_debug(a != NULL);
     cmb_assert_debug(b != NULL);
 
-    bool ret = false;
     if (a->dsortkey < b->dsortkey) {
-        ret = true;
+        return true;
     }
-    else if (a->dsortkey == b->dsortkey) {
-        if (a->isortkey > b->isortkey) {
-            ret = true;
-        }
-        else if (a->isortkey == b->isortkey) {
-            if (a->key < b->key) {
-                ret = true;
-            }
-        }
+    if (a->dsortkey > b->dsortkey) {
+        return false;
     }
 
-    return ret;
+    if (a->isortkey > b->isortkey) {
+        return true;
+    }
+    if (a->isortkey < b->isortkey) {
+        return false;
+    }
+
+    if (a->key < b->key) {
+        return true;
+    }
+
+    return false;
 }
 
 /*
@@ -260,11 +263,13 @@ bool cmb_event_execute_next(void)
         return false;
     }
 
-    /* Advance clock to time of the next event */
-    sim_time = cmi_hashheap_peek_dkey(event_queue);
-
     /* Pull off the next event and decode it */
     struct event_peek *tmp = (struct event_peek *)cmi_hashheap_dequeue(event_queue);
+
+    /* Advance clock to time of the next event */
+    const double new_time = event_queue->heap[0].dsortkey;
+    cmb_assert_debug(new_time >= sim_time);
+    sim_time = new_time;
 
     /* Schedule wakeup events for any processes waiting for this to happen */
     if (!cmi_slist_is_empty(&(tmp->waiters))) {
