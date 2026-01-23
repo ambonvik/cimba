@@ -7,7 +7,7 @@ In this section, we will explain the background for Cimba and some of
 the key design choices that are made in it. We start with a brief history that is
 necessary background for the project goals.
 
-Project History and Goals
+Project history and goals
 -------------------------
 
 Cimba 3.0.0 was released on GitHub as public beta in late 2025, but as the version number
@@ -80,7 +80,7 @@ The goals for Cimba 3.0 are quite similar to those for earlier versions:
 
 I believe that Cimba 3.0 meets these goals and hope you will agree.
 
-Coroutines Revisited
+Coroutines revisited
 --------------------
 
 It is well known that the Simula programming language introduced object-oriented
@@ -142,7 +142,7 @@ coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
 coroutines, or even as a mix of those paradigms by mixing asymmetric yield/resume pairs
 with symmetric transfers.(Debugging such a program may become rather confusing, though.)
 
-Cimba Processes Are Asymmetric Coroutines
+Cimba processes are asymmetric coroutines
 -----------------------------------------
 
 Our basic coroutines are a bit *too* general and powerful for simulation modeling. We use
@@ -239,7 +239,7 @@ been paying attention, there is something else we need to address first: We just
 *"inheriting all properties and methods from the coroutine class"*, but we also just
 said "C17" and "assembly".
 
-Object-Oriented Programming. In C and Assembly.
+Object-oriented programming. In C and assembly.
 -----------------------------------------------
 
 Object-oriented programming is a way of structuring program design, not necessarily a
@@ -379,7 +379,7 @@ derived from ``cmi_resourcebase``. If the process needs to drop the resource in 
 hurry, there is a polymorphic function (really just a pointer to the appropriate
 function) for how to handle that for a particular kind of resource.
 
-Events and the Event Queue
+Events and the event queue
 --------------------------
 
 The most fundamental property of a discrete event simulation is that state only
@@ -440,7 +440,7 @@ air war. When some plane in the simulation gets shot down, all its scheduled fut
 events should be cancelled. In Cimba, this can be done by a simple call like
 ``cmb_event_pattern_cancel(CMB_ANY_ACTION, my_airplane, CMB_ANY_OBJECT);``
 
-The Hash-Heap - A Binary Heap Meets a Hash Map
+The hash-heap - a binary heap meets a hash map
 ----------------------------------------------
 
 Since the basic discrete event simulation algorithm is all about inserting and
@@ -489,7 +489,7 @@ doubling). This way, the entire structure will fit well inside a 2K CPU L1 cache
 it has to outgrow the cache. We do not want to penalize the performance of small
 simulation models for the ability to run very large ones.
 
-Resources, Resource Guards, Demands and Conditions
+Resources, resource guards, demands and conditions
 --------------------------------------------------
 
 Many simulations involve active processes competing for some scarce resource. Cimba
@@ -540,7 +540,7 @@ pre-packaged for the common resource types and exposed for the ``cmb_condition``
 Cimba a very powerful and expressive simulation tool. There may also be a weak pun here
 somewhere on the C++ ``promise`` keyword: Cimba processes do not promise. They *demand*.
 
-Error Handling: The Loud Crashing Noise
+Error handling: The loud crashing noise
 ---------------------------------------
 
 Cimba error handling is intentionally draconian. It will not try to "handle" errors
@@ -648,7 +648,7 @@ without a single comment in the code. We are not about to prove total correctnes
 strict C.A.R. Hoare sense, but the function shown above does constitute a logical
 `Hoare triple <https://en.wikipedia.org/wiki/Hoare_logic#Hoare_triple>`_.
 
-Logging Flags and Bit Masks
+Logging flags and bit masks
 ---------------------------
 
 As explained in the tutorial, the key concept for the logger is the logger flags; a bit
@@ -741,7 +741,7 @@ are bit masks, so your logging flags should be ``0x00000001``, ``0x00000002``,
 ``0x00000004``, ``0x00000008``, ``0x00000010``, and so on for single bits turned off
 and on.
 
-Pseudo-Random Number Generators and Distributions
+Pseudo-random number generators and distributions
 -------------------------------------------------
 
 Cimba has a few specific requirements to its pseudo-random number generators as well. For
@@ -926,7 +926,7 @@ and destroyed with ``cmb_random_alias_destroy()``. (In this case, we have bundle
 allocation and initialization steps into a single ``_create()`` function, and the
 termination and deallocation steps into the ``_destroy()`` function.)
 
-Data Sets and Summaries
+Data sets and summaries
 -----------------------
 
 As we saw in the previous section, Cimba provides a simple set of statistics utilities
@@ -1344,14 +1344,14 @@ data analyst's Jupyter notebook, while Cimba is better for larger, more complex,
 more long-lived models where software engineering, maintainability, and efficiency become
 important.
 
-How About the Name 'Cimba'?
+How about the name 'Cimba'?
 ---------------------------
 
 Very simple. This is a simulation library in C, the author's initials are 'AMB', 'simba'
 means 'lion' in Swahili, and it is a little-known fact that real lions actually eat python
 snakes for breakfast. Of course it had to be named Cimba.
 
-If in Doubt, Read the Source Code
+If in doubt, read the source code
 ---------------------------------
 
 Please read the source code if something seems unclear. It is written to be
