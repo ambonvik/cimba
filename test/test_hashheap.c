@@ -72,7 +72,7 @@ int main(void)
     printf("Initializing hash heap: cmi_hashheap_initialize ...\n");
     cmi_hashheap_initialize(hhp, 3u, heap_order_check);
     printf("Adding an item: cmi_hashheap_enqueue ... ");
-    uint64_t key = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, NULL, 0u, 1.0, 1);
+    const uint64_t key = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, NULL, 0u, 1.0, 1);
     printf("returned key %" PRIu64 "\n", key);
     printf("Peekaboo: cmi_hashheap_peek ... \n");
     (void)cmi_hashheap_peek_item(hhp);
