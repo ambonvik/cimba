@@ -1508,6 +1508,7 @@ The timer is a property of the process, not of the following ``_acquire()`` call
 is an important distinction. We can write kernel-like code like this:
 
 .. code-block:: c
+
     int64_t my_function(double patience)
     {
         struct cmb_process *me = cmb_process_current();
@@ -1541,6 +1542,7 @@ or even like this, remembering that it does not matter if we have nested calls i
 since it is based on stackful coroutines:
 
 .. code-block:: c
+
     int64_t my_function(void)
     {
         int64_t sig = cmb_resource_acquire(thing1);
