@@ -1057,6 +1057,8 @@ Or:
 
 Or even:
 
+.. code-block:: c
+
     cmb_resourcepool_acquire(respl, 6);
     cmb_resource_acquire(res);
     cmb_process_hold(dur);
@@ -1230,9 +1232,6 @@ to just the simulation struct. We can then write something like:
         uint64_t amount_held = 0u;
 
         while (true) {
-            /* Verify that the amount matches our own calculation */
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-
             /* Decide on a random amount to get next time and set a random priority */
             const uint64_t amount_req = cmb_random_dice(1, 5);
             const int64_t pri = cmb_random_dice(-10, 10);
@@ -1438,9 +1437,8 @@ Real world uses
 
 The example above was originally written as part of the Cimba unit test suite
 to ensure that the library tracking of how many units each process holds from
-the resource pool always matches the expected values calculated here. Hence all
-the ``cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));``
-statements. We wanted to make very sure that this is correct in all possible
+the resource pool always matches the expected values calculated here.
+We wanted to make very sure that this is correct in all possible
 sequences of events, hence this frantic stress test with preemptions and
 interruptions galore.
 
@@ -1451,11 +1449,12 @@ manufacturing job shops and machine breakdown processes.
 Building, validating, and parallelizing the simulation will follow the same
 pattern as in our two first tutorials, so we will not repeat that here.
 
-This completes our second tutorial, demonstrating how to "``_acquire)`` and ``_release
-()`` resources, and to use direct process interactions like ``cmb_process_interrupt()``
-and ``cmb_resourcepool_preempt()``. We also have mentioned, but not demonstrated
-``cmb_process_wait_process()`` and ``cmb_process_wait_event()``. We encourage
-you to look up these in the API reference documentation next.
+This completes our second tutorial, demonstrating how to "``_acquire()`` and
+``_release()`` resources, and to use direct process interactions like
+``cmb_process_interrupt()`` and ``cmb_resourcepool_preempt()``.
+We also have mentioned, but not demonstrated ``cmb_process_wait_process()``
+and ``cmb_process_wait_event()``. We encourage you to look up these in the API
+reference documentation next.
 
 Queuing with balking, reneging, and jockeying
 ---------------------------------------------
@@ -1620,11 +1619,12 @@ essential *rightness* made a lasting impression. Building a 21st century version
 will be our final Cimba tutorial.
 
 In our first tutorial, the active processes interacted through a ``cmb_buffer`` with
-``put`` and ``get`` methods. We will now introduce other process interactions through
+``put`` and ``get`` methods. We have also discussed other process interactions through
 ``cmb_resource`` and ``cmb_resourcepool`` with their ``acquire``, ``hold``, and ``release``
-semantics, and the extremely powerful ``cmb_condition`` that allows arbitrarily
-complex ``wait`` calls. We will also show how to create a derived "class" of ships
-from our ``cmb_process`` class, itself derived from the ``cmi_coroutine`` class.
+semantics. We will now introduce the extremely powerful ``cmb_condition`` that
+allows arbitrarilycomplex ``wait`` calls. We will also show how to create a derived
+"class" of ships from our ``cmb_process`` class, itself derived from the
+``cmi_coroutine`` class.
 
 Since a simulation model only should be built in order to answer some specific
 question or set of questions, we will assume that our Simulated Port Authority
