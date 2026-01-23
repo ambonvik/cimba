@@ -251,9 +251,8 @@ void wake_event_waiters(struct cmi_slist_head *waiters,
 /*
  * cmb_event_execute_next - Remove and execute the next event, update the clock.
  * cmi_hashheap_dequeue returns a pointer to the current location of the event.
- * This location is at the end of the heap and will be overwritten by the first
- * addition to the heap, such as scheduling a wakeup event. Copy the values to
- * local variables before executing the event.
+ * This location is a temporary space, will be overwritten by the next event.
+ * Execution must be atomic until the event is executed.
  */
 bool cmb_event_execute_next(void)
 {
@@ -265,21 +264,21 @@ bool cmb_event_execute_next(void)
     sim_time = cmi_hashheap_peek_dkey(event_queue);
 
     /* Pull off the next event and decode it */
-    struct event_peek tmp = *(struct event_peek *)cmi_hashheap_dequeue(event_queue);
+    struct event_peek *tmp = (struct event_peek *)cmi_hashheap_dequeue(event_queue);
 
     /* Schedule wakeup events for any processes waiting for this to happen */
-    if (!cmi_slist_is_empty(&(tmp.waiters))) {
-        wake_event_waiters(&(tmp.waiters), CMB_PROCESS_SUCCESS);
+    if (!cmi_slist_is_empty(&(tmp->waiters))) {
+        wake_event_waiters(&(tmp->waiters), CMB_PROCESS_SUCCESS);
     }
 
     /* Execute the event */
-    (*tmp.action)(tmp.subject, tmp.object);
+    (*tmp->action)(tmp->subject, tmp->object);
 
     return true;
 }
 
 /*
- * cmb_event_queue_execute - Executes event queue until empty.
+ * cmb_event_queue_execute - Execute event queue until empty.
  * Schedule an event containing cmb_event_queue_clear to terminate the
  * simulation at the correct time or other conditions.
  */
@@ -291,6 +290,18 @@ void cmb_event_queue_execute(void)
     while (cmb_event_execute_next()) { }
 
     cmb_logger_info(stdout, "No more events in queue");
+}
+
+/*
+ * cmb_event_current - Return the handle of the current (most recently dequeued)
+ * event, zero if no events have occurred.
+ */
+uint64_t cmb_event_current(void)
+{
+    cmb_assert_release(event_queue != NULL);
+    cmb_assert_debug(event_queue->heap != NULL);
+
+    return event_queue->heap[0].key;
 }
 
 /*

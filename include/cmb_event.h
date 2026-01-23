@@ -29,10 +29,10 @@
  * same activation time and the same priority, they will be executed according
  * to first in first out (FIFO) order.
  *
- * When scheduled, an event key will be assigned and returned. This is
+ * When scheduled, an event handle will be assigned and returned. This is
  * a unique event identifier and can be used as a reference for later
  * cancelling, rescheduling, or reprioritizing the event. Behind the scene,
- * the event queue is implemented as a hashheap where the event key is a key
+ * the event queue is implemented as a hashheap where the event handle is a key
  * in the hash map and the event's current location in the heap is the hash map
  * value. This gives O(1) cancellations and reschedules with no need to search
  * the entire heap to find a future event. The details of the data structure
@@ -153,7 +153,7 @@ extern uint64_t cmb_event_queue_count(void);
  *                higher priority will happen before events with lower if
  *                scheduled at the same time. If both are equal, they will occur
  *                in FIFO sequence.
- * @return        The unique key of the scheduled event, to be used as a
+ * @return        The unique handle of the scheduled event, to be used as a
  *                reference for any rescheduling or cancellation of this event.
  */
 extern uint64_t cmb_event_schedule(cmb_event_func *action,
@@ -182,54 +182,61 @@ extern bool cmb_event_execute_next(void);
 extern void cmb_event_queue_execute(void);
 
 /**
+ * @brief Returns the handle of the currently or most recently executed event.
+ *
+ * @return Handle of the most recently executed event, zero if none.
+ */
+extern uint64_t cmb_event_current(void);
+
+/**
  * @brief Is the given event currently in the event queue?
- * @param key The key of some event.
+ * @param handle The handle of some event.
  * @return `true` if the event is scheduled in the event queue, `false` if not.
  */
-extern bool cmb_event_is_scheduled(uint64_t key);
+extern bool cmb_event_is_scheduled(uint64_t handle);
 
 /**
  * @brief Get the currently scheduled time for an event. The event is assumed
  *        to be in the event queue, error if not. Call `cmb_event_is_scheduled`
  *        first if not sure.
- * @param key The `key` of some event in the event queue.
+ * @param handle The `handle` of some event in the event queue.
  * @return The scheduled activation time for the event.
  */
-extern double cmb_event_time(uint64_t key);
+extern double cmb_event_time(uint64_t handle);
 
 /**
  * @brief Get the current priority for an event. The event is assumed
 *         to be in the event queue, error if not. Call `cmb_event_is_scheduled`
  *        first if not sure.
- * @param key The `key` of some event in the event queue.
+ * @param handle The `handle` of some event in the event queue.
  * @return The priority for the event.
  */
-extern int64_t cmb_event_priority(uint64_t key);
+extern int64_t cmb_event_priority(uint64_t handle);
 
 /**
  * @brief  Remove event from event queue.
- * @param key The `key` of some event in the event queue.
+ * @param handle The `handle` of some event in the event queue.
  * @return `true` if the event was found, `false` if not.
  */
-extern bool cmb_event_cancel(uint64_t key);
+extern bool cmb_event_cancel(uint64_t handle);
 
 /**
  * @brief  Reschedules event at index to another (absolute) time. The event is
 *          assumed to be in the event queue, error if not. Call
 *         `cmb_event_is_scheduled` first if not sure.
- * @param key The `key` of some event in the event queue.
+ * @param handle The `handle` of some event in the event queue.
  * @param time The new scheduled time of the event.
  */
-extern void cmb_event_reschedule(uint64_t key, double time);
+extern void cmb_event_reschedule(uint64_t handle, double time);
 
 /**
 * @brief  Reprioritizes event to another priority level. The event is
 *         assumed to be in the event queue, error if not. Call
 *         `cmb_event_is_scheduled` first if not sure.
- * @param key The `key` of some event in the event queue.
+ * @param handle The `handle` of some event in the event queue.
  * @param priority The new priority of the event.
  */
-extern void cmb_event_reprioritize(uint64_t key, int64_t priority);
+extern void cmb_event_reprioritize(uint64_t handle, int64_t priority);
 
 /**
  * @brief Wildcard pattern that matches any `cmb_event_func` (action) when searching
@@ -249,7 +256,7 @@ extern void cmb_event_reprioritize(uint64_t key, int64_t priority);
 
 /**
  * @brief Search in the event list for an event matching the given pattern
- *        and return its key if one exists in the queue. Return zero if no
+ *        and return its handle if one exists in the queue. Return zero if no
  *        match. `CMB_ANY_*` are wildcards, matching any value in its position.
  *
  * Will start the search from the beginning of the event queue each time,
@@ -262,7 +269,7 @@ extern void cmb_event_reprioritize(uint64_t key, int64_t priority);
  * @param subject Pointer to the subject to find, or `CMB_ANY_SUBJECT`
  * @param object  Pointer to the object to find, or `CMB_ANY_OBJECT`
  *
- * @return The key of an event matching the search pattern, zero if none.
+ * @return The handle of an event matching the search pattern, zero if none.
  */
 extern uint64_t cmb_event_pattern_find(cmb_event_func *action,
                                const void *subject,
