@@ -1536,6 +1536,7 @@ is an important distinction. We can write kernel-like code like this:
             return sig;
     }
 
+
 or even like this, remembering that it does not matter if we have nested calls in Cimba
 since it is based on stackful coroutines:
 
@@ -1564,6 +1565,7 @@ since it is based on stackful coroutines:
             return sig;
     }
 
+
     /* In some other function */
     struct cmb_process *me = cmb_process_current();
     uint64_t handle = cmb_process_set_timer(me, patience, CMB_PROCESS_TIMEOUT);
@@ -1574,6 +1576,7 @@ since it is based on stackful coroutines:
     else {
         /* We don't, do something else */
     }
+
 
 In some cases, we may want to have multiple timers set. The function
 ``cmb_process_add_timer()`` sets another without clearing any existing timers. For
