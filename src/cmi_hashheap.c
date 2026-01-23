@@ -145,16 +145,17 @@ static void heap_up(const struct cmi_hashheap *hp, uint64_t k)
     cmb_assert_debug(hp->heap != NULL);
     cmb_assert_debug(k <= hp->heap_count);
 
-    /* Place a working copy at index 0 */
+    /* Place a working copy at index iwc */
+    const uint64_t iwc = hp->heap_count + 1u;
     struct cmi_heap_tag *heap = hp->heap;
     struct cmi_hash_tag * hash = hp->hash_map;
     cmi_heap_compare_func *compare = hp->heap_compare;
-    heap[0] = heap[k];
+    heap[iwc] = heap[k];
 
     /* A binary tree, parent node at k / 2 */
     uint64_t l;
     while ((l = (k >> 1)) > 0) {
-        if ((*compare)(&(heap[0]), &(heap[l]))) {
+        if ((*compare)(&(heap[iwc]), &(heap[l]))) {
             /* Our candidate event goes before the one at l, swap them */
             heap[k] = heap[l];
             const uint64_t khash = heap[k].hash_index;
@@ -167,7 +168,7 @@ static void heap_up(const struct cmi_hashheap *hp, uint64_t k)
     }
 
     /* Copy the candidate into its correct slot */
-    heap[k] = heap[0];
+    heap[k] = heap[iwc];
     const uint64_t khash = heap[k].hash_index;
     hash[khash].heap_index = k;
 }
@@ -179,14 +180,15 @@ static void heap_down(const struct cmi_hashheap *hp, uint64_t k)
     cmb_assert_debug(hp->heap != NULL);
     cmb_assert_debug(k <= hp->heap_count);
 
-    /* Place a working copy at index 0 */
+    /* Place a working copy at index iwc */
+    const uint64_t iwc = hp->heap_count + 1u;
     struct cmi_heap_tag *heap = hp->heap;
     struct cmi_hash_tag *hash = hp->hash_map;
     cmi_heap_compare_func * const compare = hp->heap_compare;
-    heap[0] = heap[k];
+    heap[iwc] = heap[k];
 
     /* Binary heap, children at 2x and 2x + 1 */
-    uint64_t j = (hp->heap_count >> 1);
+    const uint64_t j = (hp->heap_count >> 1);
     while (k <= j) {
         uint64_t l = k << 1;
         const uint64_t r = l + 1;
@@ -194,7 +196,7 @@ static void heap_down(const struct cmi_hashheap *hp, uint64_t k)
             l = r;
         }
 
-        if ((*compare)(&(heap[0]), &(heap[l]))) {
+        if ((*compare)(&(heap[iwc]), &(heap[l]))) {
             break;
         }
 
@@ -206,7 +208,7 @@ static void heap_down(const struct cmi_hashheap *hp, uint64_t k)
     }
 
     /* Copy the event into its correct position */
-    heap[k] = heap[0];
+    heap[k] = heap[iwc];
     const uint64_t khash = heap[k].hash_index;
     hash[khash].heap_index = k;
 }
@@ -448,11 +450,11 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
 /*
  * cmi_hashheap_dequeue - Remove and return the next item.
  *
- * The next event is always in position 1, while position 0 is a working space
- * for the heap. Temporarily saves the next item to the workspace at the end of
- * the list before returning it to ensure a consistent heap and hash on return.
+ * Temporarily saves the event to location 0 of the heap. The next event is
+ * always in position 1, positions 1 to heap_count are the actual events, and
+ * position heap_count + 1 is the working space.
  *
- * Note that this space will be overwritten by the next enqueue call, not a
+ * Note that this space will be overwritten by the next dequeue call, not a
  * valid pointer for very long.
  */
 void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
@@ -465,8 +467,8 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
         return NULL;
     }
 
-    /* Copy the event to the working space at the end of the heap. */
-    const uint64_t tmp = heapcnt + 1u;
+    /* Copy the event to the working space at index 0. */
+    const uint64_t tmp = 0u;
     struct cmi_heap_tag *heap = hp->heap;
     struct cmi_hash_tag *hash = hp->hash_map;
     heap[tmp] = heap[1u];
