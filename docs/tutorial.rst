@@ -728,7 +728,7 @@ We also need a pair of events to turn data recording on and off at specified tim
     }
 
 As the last refactoring step before we parallelize, we move the simulation driver
-code from ``main()`` to a separate function, say ``run_MM1_trial()``, and call it from
+code from ``main()`` to a separate function ``run_MM1_trial()`` and call it from
 ``main()``. For reasons that soon will be evident, its argument is a single pointer
 to void, even if we immediately cast this to our ``struct trial *`` once inside the
 function. We remove the call to ``cmb_buffer_report()``, calculate the average
@@ -780,12 +780,12 @@ hard or trivially simple. The hard way to do it is to try to parallelize a
 single simulation run. This is near impossible, since the outcome of each event
 may influence all future events in complex and model-dependent ways.
 
-The easy way is to realize that we never do a *single* simulation run. We want to
+The easy way is to realize that we rarely do a *single* simulation run. We want to
 run *many* to generate statistically significant answers to questions and/or to test
 many parameter combinations, perhaps in a full factorial experimental design.
-Even if we could answer a question by a single
-very long run, we may get a better understanding by splitting it into many shorter runs
-to not just get an average, but also a sense of the variability of our results.
+Even if we could answer a question by a single very long run, we may get a better
+understanding by splitting it into many shorter runs to not just get an average, but
+also a sense of the variability of our results.
 
 When we do multiple replications of a simulation, these are by design intended to be
 independent, identically distributed trials. Multiple parameter combinations are
@@ -1479,19 +1479,123 @@ leave for new adventures.
 
 The use case is to model an entertainment park with guests wanting to use various
 attractions, where the park operator wants us to analyze ways of influencing customer
-behavior. Each customer will have a randomized "patience" property, and we will try to
-influence this by techniques like shielding parts of the queue from view, arranging
-small sideshows to keep waiting customers amused, and so on. We will not make a very
-detailed model of customer behavior, but we note that we could even embed an AI
-model of customer behavior running on CUDA kernels to make the customer objects truly
-intelligent agents in our simulated world. (The author once implemented a nonlinear
-resource allocation model in Simscript II.5 to represent a human commander's decision
-making in a simulated war.) Here, we are mainly concerned with demonstrating how to build
-the simulation framework, not the detailed agentic behaviors.
+behavior. The overall metric is the time spent in the park per visitor.
 
+To model this, we introduce additional ``cmb_process`` methods: The process can
+schedule a future timeout event for itself by calling ``cmb_process_set_timer()``. When
+the timer event occurs, the process will be interrupted from whatever it is doing with
+whatever signal the timer was set to send, with ``CMB_PROCESS_TIMEOUT`` as a predefined
+possibility. By setting a timeout before some ``_acquire()``, ``_get()``,
+or ``_wait()`` call, the process can abort the wait when patience runs out:
 
+.. code-block:: c
 
+    struct cmb_process *me = cmb_process_current();
+    uint64_t handle = cmb_process_set_timer(me, patience, CMB_PROCESS_TIMEOUT);
+    int64_t sig = cmb_resource_acquire(something);
+    if (sig == CMB_PROCESS_SUCCESS) {
+        /* Normal return, we have the resource, cancel the timeout */
+        cmb_process_cancel_timer(pp, handle);
+    }
+    else if (sig == CMB_PROCESS_TIMEOUT) {
+        /* It went off */
+    }
+    else {
+        /* We were preempted or interrupted by someone else */
+    }
 
+The timer is a property of the process, not of the following ``_acquire()`` call. This
+is an important distinction. We can write kernel-like code like this:
+
+.. code-block:: c
+    int64_t my_function(double patience)
+    {
+        struct cmb_process *me = cmb_process_current();
+        uint64_t handle = cmb_process_set_timer(me, patience, CMB_PROCESS_TIMEOUT);
+
+        int64_t sig = cmb_resource_acquire(thing1);
+        if (sig != CMB_PROCESS_SUCCESS) goto bailout;
+        int64_t sig = cmb_resource_acquire(thing2);
+        if (sig != CMB_PROCESS_SUCCESS) goto cleanup1;
+        cmb_process_hold(cmb_random_gamma(2.0, 2.0));
+        if (sig != CMB_PROCESS_SUCCESS) goto cleanup2;
+        int64_t sig = cmb_priorityqueue_get(cat);
+        if (sig != CMB_PROCESS_SUCCESS) goto cleanup3;
+        cmb_process_hold(cmb_random_gamma(2.0, 2.0));
+        if (sig != CMB_PROCESS_SUCCESS) goto cleanup3;
+
+        cmb_process_cancel_timer(pp, handle);
+
+        cleanup3:
+            cmb_resource_release(cat);
+        cleanup2:
+            cmb_resource_release(thing2);
+        cleanup1:
+            cmb_resource_release(thing1);
+        bailout:
+            return sig;
+    }
+
+or even like this, remembering that it does not matter if we have nested calls in Cimba
+since it is based on stackful coroutines:
+
+.. code-block:: c
+    int64_t my_function(void)
+    {
+        int64_t sig = cmb_resource_acquire(thing1);
+        if (sig != CMB_PROCESS_SUCCESS) goto bailout;
+        int64_t sig = cmb_resource_acquire(thing2);
+        if (sig != CMB_PROCESS_SUCCESS) goto cleanup1;
+        cmb_process_hold(cmb_random_gamma(2.0, 2.0));
+        if (sig != CMB_PROCESS_SUCCESS) goto cleanup2;
+        int64_t sig = cmb_priorityqueue_get(cat);
+        if (sig != CMB_PROCESS_SUCCESS) goto cleanup3;
+        cmb_process_hold(cmb_random_gamma(2.0, 2.0));
+        if (sig != CMB_PROCESS_SUCCESS) goto cleanup3;
+        return sig;
+
+        cleanup3:
+            cmb_resource_release(cat);
+        cleanup2:
+            cmb_resource_release(thing2);
+        cleanup1:
+            cmb_resource_release(thing1);
+        bailout:
+            return sig;
+    }
+
+    /* In some other function */
+    struct cmb_process *me = cmb_process_current();
+    uint64_t handle = cmb_process_set_timer(me, patience, CMB_PROCESS_TIMEOUT);
+    int64_t sig = my_function();
+    if (sig == CMB_PROCESS_SUCCESS) {
+        cmb_process_cancel_timer(pp, handle);
+        /* We have the resources, do something */
+    else {
+        /* We don't, do something else */
+    }
+
+In some cases, we may want to have multiple timers set. The function
+``cmb_process_add_timer()`` sets another without clearing any existing timers. For
+example:
+
+.. code-block:: c
+
+    struct cmb_process *me = cmb_process_current();
+    uint64_t hdl1 = cmb_process_set_timer(me, 0.5 * patience, SIG_GRUMPINESS);
+    uint64_t hdl2 = cmb_process_add_timer(me, patience, SIG_REBELLION);
+
+    while ((int64_t sig = cmb_resource_acquire(something)) != CMB_PROCESS_SUCCESS) {
+        if (sig == SIG_GRUMPINESS) {
+            /* Express our impatience to management */
+            int64_t pri = cmb_process_priority(me);
+            cmb_process_set_priority(pri + 1);
+        }
+        else {
+            /* Hopeless case */
+            break;
+        }
+    }
 
 
 
@@ -1656,8 +1760,8 @@ only that:
    by whatever process changes the state. In a discrete event simulation, state
    only changes due to some event, and no polling is needed between events.
 
-Resources, resourcepools, and condition variables
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Resources and condition variables
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To understand the general ``cmb_condition`` class, it may be helpful to start
 with the ``cmb_resource`` as a special case.
@@ -1674,11 +1778,11 @@ saying to the guard "wake me up when this becomes true".
 For a ``cmb_resource``, the demand function is internal and pre-defined, evaluating
 to ``true`` if the resource is available. When some other process releases the
 resource, the guard is signaled, the predicate evaluates to ``true``, and the
-highest priority waiting process gets the resource, returning successfully from
+highest priority waiting process gets the resource and returns successfully from
 its ``cmb_resource_acquire()`` call as the new holder of the resource.
 
 Similarly, the ``cmb_resourcepool`` is a counting semaphore, where there is a
-certain number of resource items, and a process can acquire and release more
+certain number of resource items and a process can acquire and release more
 than one unit at a time. Again, if not enough is available, the process files its
 demand with the guard and waits. This demand function is also internal and
 pre-defined.
@@ -1687,7 +1791,7 @@ The ``cmb_condition`` exposes the resource guard and demand mechanism to the use
 application. It does not provide any particular resource object, but lets a
 process wait until an arbitrary condition is satisfied. The demand function may
 even be different for each waiting process. The condition will evaluate them in
-turn, and will schedule a wakeup event at the current time for every waiting process
+turn, and will schedule a wakeup event at the current time for *every* waiting process
 whose demand function evaluates to ``true``. What to do next is up to the user
 application.
 
@@ -1702,7 +1806,7 @@ resource guard gets signaled, the ``cmb_condition`` will also be signaled.
 
 The ``cmb_condition`` is still a passive object, not an active process. It only
 responds to calls from the active processes, such as ``cmb_condition_wait()`` and
-``cmb_condition_signal()``.
+``cmb_condition_signal()``. If not signaled from a process, it does nothing.
 
 Armed with this knowledge, we can now define the demand predicate function for
 a ship requesting permission from the harbormaster to dock:
@@ -1900,8 +2004,8 @@ On the other hand, this is not safe at all:
         }
 
         /* Do NOT do this: Hold and/or request a resource not part of the condition
-         * predicate, yielding execution to other processes that may invalidate our
-         * condition before we act on it. */
+         * predicate, the yielding execution to other processes that may invalidate
+         * our condition before we act on it. */
         cmb_resource_acquire(simp->comms);
         cmb_process_hold(cmb_random_gamma(5.0, 0.01));
         cmb_resource_release(simp->comms);
@@ -1965,11 +2069,14 @@ We next write the arrival process generating ships:
         }
     }
 
-The important point to remember here is to zero-initialize the ``struct ship``
-with ``memset()`` after allocating it with ``malloc()``, or equivalently,
-allocating it with ``calloc()`` instead. The ship is a ``cmb_process``, but
-we are bypassing the ``cmb_process_create()`` here and take direct responsibility
-for the allocation step.
+As we see, Cimba processes can create other processes as needed. These simply become
+additional asymmetric coroutines executing on their own stacks with no special handling
+needed.
+
+The important point to remember here is to zero-initialize the derived ``struct ship``
+class instanes with ``memset()`` after allocating it with ``malloc()``. The ship is a
+``cmb_process``, but we are bypassing the ``cmb_process_create()`` here and take direct
+responsibility for the allocation step.
 
 In this example, we just did the ship allocation and initialization inline. If we were to
 create and/or initialize ships from more than one place in the
@@ -2312,7 +2419,7 @@ Turning up the power
 ^^^^^^^^^^^^^^^^^^^^
 
 We still find it fascinating to see our simulated ships and tugs scurrying about, but our client,
-the Simulated Port Authority, reminds us that next year's budget is soon due and they would
+the Simulated Port Authority, reminds us that next year's budget is due and they would
 prefer getting answers to their questions soon. And, by the way, could we add scenarios where
 traffic increases by 10 % and 25 % above today's baseline levels?
 
@@ -2346,10 +2453,13 @@ berth, especially if traffic is expected to increase. However, building more tha
 one does not make much sense even at the highest traffic scenario. The SPA should
 rather consider building another one or two small berths next.
 
-This concludes our second tutorial. We have introduced ``cmb_resource``,
-``cmb_resourcepool``, and the very powerful ``cmb_condition`` allowing processes
-to wait for arbitrary combinations of conditions. Along the way, we demonstrated
-that user applications can build derived classes from Cimba parent classes using
-single inheritance. For example, the ``ship`` class in this tutorial was derived
-from a ``cmb_process`` which in turn is derived from a ``cmi_coroutine``.
+This concludes our second tutorial. We have introduced the very powerful
+``cmb_condition`` allowing processes to wait for arbitrary combinations of conditions.
+Along the way, we demonstrated that user applications can build derived classes from
+Cimba parent classes using single inheritance. For example, the ``ship`` class in this
+tutorial was derived from a ``cmb_process`` which in turn is derived from a
+``cmi_coroutine``.
+
+For a more in-depth discussion of how various parts of Cimba work and why they were
+built that way, consider reading the Background section next.
 
