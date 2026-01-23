@@ -93,16 +93,28 @@ int main(void)
         printf("not found???\n");
     }
 
+    cmi_test_print_line("-");
+    cmb_event_queue_print(stdout);
+    cmi_test_print_line("-");
+
     printf("\nWildcard search, searching for test action events with subject %p, any object\n", subjects[2]);
     while ((handle = cmb_event_pattern_find(test_action, (void *)subjects[2], CMB_ANY_OBJECT))) {
         printf("\tcanceling %" PRIu64 "\n", handle);
         cmb_event_cancel(handle);
     }
 
+    cmi_test_print_line("-");
+    cmb_event_queue_print(stdout);
+    cmi_test_print_line("-");
+
     printf("\nScheduling new events with subject %p\n", subjects[2]);
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[0], 20.0, 1);
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[1], 20.0, 1);
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[2], 20.0, 1);
+
+    cmi_test_print_line("-");
+    cmb_event_queue_print(stdout);
+    cmi_test_print_line("-");
 
     printf("\nRescheduling and reprioritizing two events with subject %p\n", subjects[2]);
     handle = cmb_event_pattern_find(test_action, (void *)subjects[2], (void *)objects[0]);
@@ -110,18 +122,34 @@ int main(void)
     handle = cmb_event_pattern_find(test_action, (void *)subjects[2], (void *)objects[1]);
     cmb_event_reprioritize(handle, 3);
 
+    cmi_test_print_line("-");
+    cmb_event_queue_print(stdout);
+    cmi_test_print_line("-");
+
     printf("\nWildcard search, counting events with subject %p, any object\n", subjects[1]);
     uint64_t cnt = cmb_event_pattern_count(CMB_ANY_ACTION, subjects[1], CMB_ANY_OBJECT);
     printf("Found %" PRIu64 " events\n", cnt);
+
+    cmi_test_print_line("-");
+    cmb_event_queue_print(stdout);
+    cmi_test_print_line("-");
 
     printf("\nWildcard search, cancelling any events with subject %p, any object\n", subjects[1]);
     cnt = cmb_event_pattern_cancel(CMB_ANY_ACTION, subjects[1], CMB_ANY_OBJECT);
     printf("Cancelled %" PRIu64 " events\n", cnt);
     cmi_test_print_line("-");
 
+    cmi_test_print_line("-");
+    cmb_event_queue_print(stdout);
+    cmi_test_print_line("-");
+
     printf("\nExecuting the simulation, starting time %#g\n", cmb_time());
     printf("Time:\t\tType:\tAction: \t\tSubject:\t\tObject:\n");
     cmb_event_queue_execute();
+
+    cmi_test_print_line("-");
+    cmb_event_queue_print(stdout);
+    cmi_test_print_line("-");
 
     cmb_event_queue_terminate();
     cmi_test_print_line("=");

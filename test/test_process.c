@@ -126,7 +126,7 @@ int main(void)
     cmi_test_print_line("*");
     printf("****************************   Testing processes   *****************************\n");
     cmi_test_print_line("*");
-    printf("seed: %" PRIi64 "\n", seed);
+    printf("seed: 0x%" PRIx64 "\n", seed);
     printf("cmb_event_queue_initialize ...\n");
     cmb_event_queue_initialize(0.0);
     printf("cmb_process_create ...\n");
@@ -154,6 +154,10 @@ int main(void)
         cmb_process_initialize(cpp3, buf, procfunc3, cpp2, cmb_random_dice(-5, 5));
         cmb_process_start(cpp3);
     }
+
+    cmi_test_print_line("-");
+    cmb_event_queue_print(stdout);
+    cmi_test_print_line("-");
 
     printf("cmb_event_queue_execute ...\n");
     cmb_event_queue_execute();
