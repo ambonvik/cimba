@@ -29,18 +29,16 @@ It is powerful, fast, reliable, and free.
 * *Powerful*: Cimba provides a comprehensive toolkit for well-engineered discrete event
   simulation models, including very large ones.
 
-    * Cimba supports both process- and event-based simulation world views, and
-      combinations of the two.
-
     * Cimba processes are full asymmetric stackful coroutines. It is possible to pass
       control between processes at any depth of the call stack, not just in a single
       generator function. This enables well-structured coding of arbitrarily large
       simulation models.
 
     * Cimba provides pre-packaged process interaction mechanisms like resources,
-      resource pools, buffers, object queues, priority queues, and even condition
-      variables where your simulated process can wait for arbitrarily complex conditions -
-      anything you can express as a function returning a binary true or false result.
+      resource pools, buffers, object queues, priority queues, timeouts, and even
+      condition variables where your simulated process can wait for arbitrarily complex
+      conditions - anything you can express as a function returning a binary true or
+      false result.
 
     * Cimba includes powerful logging and data collection features that makes it easy
       to get a model running and understand what is happening inside it.
@@ -62,7 +60,14 @@ It is powerful, fast, reliable, and free.
   .. image:: ../images/Speed_test_AMD_3970x.png
 
 * *Reliable*: Cimba is well engineered, self-contained open source. There is no mystery to
-  the results you get. Each simulated world sits inside its own thread.
+  the results you get. The code is written with liberal use of assertions to enforce
+  preconditions, invariants, and postconditions in each function. The assertions act as
+  self-enforcing documentation on expected inputs and outputs from the functions. About
+  7 % of all code lines are asssertions.
+
+  There are unit tests for each module. Running the unit test battery in debug mode (all
+  assertions active) verifies correct operation in great detail. You can do that by the
+  one-liner ``meson test -C build" from the terminal command line.
 
 * *Free*: Cimba should fit well into the budget of most research groups.
 

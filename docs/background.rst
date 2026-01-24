@@ -648,6 +648,10 @@ without a single comment in the code. We are not about to prove total correctnes
 strict C.A.R. Hoare sense, but the function shown above does constitute a logical
 `Hoare triple <https://en.wikipedia.org/wiki/Hoare_logic#Hoare_triple>`_.
 
+For empirical data on the relationship between assertions and code quality, see,
+e.g., https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2006-54.pdf
+or https://www.cs.ucdavis.edu/~filkov/papers/assert-main.pdf
+
 Logging flags and bit masks
 ---------------------------
 

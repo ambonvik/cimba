@@ -1071,7 +1071,7 @@ in the next tutorial, but will leave it until then.
 Note also that there are some differences between the ``_acquire()``/``_release()`` pairs
 and the similar ``_get()``/``_put()`` pairs for buffers and queues. Suppose that you
 have a ``cmb_objectqueue`` of maximal size 10. It is still possible to call
-``cmb_objectqueue_put (oqp, 100)``. The call just puts in 10 to begin with, waits for
+``cmb_objectqueue_put(oqp, 100)``. The call just puts in 10 to begin with, waits for
 someone to get one or more of them, and then keeps refilling the queue until all 100 are
 put in. The call only returns at that point (unless interrupted, which we will discuss in
 a moment).  Similarly, ``cmb_objectqueue_get(oqp, 100)`` works as expected.
@@ -1610,6 +1610,11 @@ example:
         }
     }
 
+Customers derived from cmb_process
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The object-oriented paradigm is very natural for simulation modeling, and was first
+developed for this purpose in Simula67. 
 
 Alias sampling probabilities
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

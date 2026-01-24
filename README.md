@@ -4,8 +4,7 @@
 
 ### What is it?
 A fast discrete event simulation library written in C and assembly for
-both Linux and Windows, providing process- and event-oriented simulated world views 
-combined with multithreaded coarse-trained parallelism for high performance on modern CPUs. 
+both Linux and Windows, providing multithreaded parallelism for high performance on modern CPUs. 
 Initially only for x86-64 architectures, ARM and Apple Silicon are planned next.
 
 The chart below shows the number of simulated events processed per second of wall 
@@ -31,17 +30,14 @@ It is fast, powerful, reliable, and free.
 
 * *Powerful*: Cimba provides a comprehensive toolkit for discrete event simulation:
 
-  * Support for both process- and event-based simulation world views, and 
-    combinations of the two.
-
   * Processes implemented as full, asymmetric stackful coroutines. A simulated process can
     yield and resume control from any level of a function call stack, allowing 
     well-structured coding of arbitrarily large simulation models.
   
   * Pre-packaged process interaction mechanisms like resources, resource pools, buffers, 
-    object queues, priority queues, and even condition variables where your simulated 
-    processes can wait for arbitrarily complex conditions to become true – anything 
-    you can express as a function returning a binary true or false result.
+    object queues, priority queues, timeouts, and even condition variables where your 
+    simulated processes can wait for arbitrarily complex conditions to become true –  
+    anything you can express as a function returning a binary true or false result.
 
   * A wide range of fast, high-quality random number generators, both
     of academically important and more empirically oriented types.
@@ -50,7 +46,14 @@ It is fast, powerful, reliable, and free.
     to get a model running and understand what is happening inside it.
 
 * *Reliable*: Cimba is well-engineered open source. There is no
-  mystery to the results you get. Each simulated world sits inside its own thread.
+  mystery to the results you get. The code is written with liberal use of assertions 
+  to enforce preconditions, invariants, and postconditions in each function. The 
+  assertions act as self-enforcing documentation on expected inputs to and outputs from 
+  the Cimba functions. About 7 % of all code lines are asssertions, a very high density.
+
+  There are unit tests for each module. Running the unit test battery in debug mode (all
+  assertions active) verifies the correct operation in great detail. You can do that by the
+  one-liner ``meson test -C build" from the terminal command line.
 
 * *Free*: Cimba should fit well into the budget of most research groups.
 
