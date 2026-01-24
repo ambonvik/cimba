@@ -1476,9 +1476,12 @@ join the queue or not (balking), leave midway (reneging), or switch to another q
 seems to be moving faster (jockeying). Or patiently wait until they get served and then
 leave for new adventures.
 
-The use case is to model an entertainment park with guests wanting to use various
+The use case is to model an amusement park with guests wanting to use various
 attractions, where the park operator wants us to analyze ways of influencing customer
 behavior. The overall metric is the time spent in the park per visitor.
+
+Setting and clearing timers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To model this, we introduce additional ``cmb_process`` methods: The process can
 schedule a future timeout event for itself by calling ``cmb_process_set_timer()``. When
@@ -1551,14 +1554,14 @@ in Cimba since it is based on stackful coroutines, and that we have defined
         if (sig) goto cleanup1;
         cmb_process_hold(cmb_random_gamma(2.0, 2.0));
         if (sig) goto cleanup2;
-        int64_t sig = cmb_priorityqueue_get(cat);
+        int64_t sig = cmb_resourcepool_acquire(cat, 1);
         if (sig) goto cleanup3;
         cmb_process_hold(cmb_random_gamma(2.0, 2.0));
         if (sig) goto cleanup3;
         return sig;
 
         cleanup3:
-            cmb_resource_release(cat);
+            cmb_resourcepool_release(cat, 1);
         cleanup2:
             cmb_resource_release(thing2);
         cleanup1:
@@ -1608,6 +1611,26 @@ example:
     }
 
 
+Alias sampling probabilities
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We will model the amusement park attractions as nodes in a fully-connected network.
+Node 0 will be the exit, while nodes 1 through *n* are the attractions. Each node has
+one or more priority queues for waiting customers. For each node *i*, there is a certain
+probability that the customer goes to attraction *j* next, including the possibilities of
+exiting the park and of taking another go on the same attraction. This can be
+represented as a matrix of transition probabilities *p(i, j)*.
+
+However, the obvious sampling algorithm is rather slow for large *n*: Generate a random
+number *x* in *[0, 1]*. Starting *j* from 0, add *p(i, j)* until the sum is greater
+than *x*. The current *j* is then the selected value. (This is implemented in Cimba as
+the function ``cmb_random_loaded_dice()``.)
+
+Instead, we will use a particularly clever O(1) algorithm known as Vose alias sampling.
+It requires us to pre-compute a lookup table that we will store with each node by
+calling ``cmb_random_alias_create()``. We can then sample it as often as needed by
+calling ``cmb_random_alias_sample()``, and clean it up when no longer needed by calling
+``cmb_random_alias_destroy()``.
 
 
 A LNG tanker harbor with condition variables
@@ -2200,7 +2223,7 @@ Our simulation driver function ``run_trial()`` does in principle the same as in 
 first tutorial: Sets up the simulated world, runs the simulation, collects the
 results, and cleans up everything after itself. There are more objects involved
 this time, so we will not reproduce the entire function here, just call your
-attention to these two sections:
+attention to two sections. The first one is this:
 
 .. code-block:: c
 
@@ -2219,10 +2242,10 @@ than possibly acting on the previous hour's data.
 
 As an efficiency optimization, we can now also remove the ``cmb_condition_signal()``
 call from the weather process, since we know that the harbormaster will be
-signalled by the tide process immediately thereafter, saving one set of demand
+signaled by the tide process immediately thereafter, saving one set of demand
 recalculations per simulated hour.
 
-This is where the resource guard observer/signal forwarding becomes useful:
+The second is where the resource guard observer/signal forwarding becomes useful:
 
 .. code-block:: c
 
@@ -2429,12 +2452,12 @@ You can find the code for this stage in ``tutorial/tut_4_1.c``.
 Turning up the power
 ^^^^^^^^^^^^^^^^^^^^
 
-We still find it fascinating to see our simulated ships and tugs scurrying about, but our client,
-the Simulated Port Authority, reminds us that next year's budget is due and they would
-prefer getting answers to their questions soon. And, by the way, could we add scenarios where
-traffic increases by 10 % and 25 % above today's baseline levels?
+We still find it fascinating to see our simulated ships and tugs scurrying about, but our
+client, the Simulated Port Authority, reminds us that next year's budget is due and they
+would prefer getting answers to their questions soon. And, by the way, could we add
+scenarios where traffic increases by 10 % and 25 % above today's baseline levels?
 
-Time to fire up our computing power.
+Time to fire up more computing power.
 
 Setting up our experiment, we believe that the factors depth, number of tugs, and number
 of small and large berths are largely independent. We can probably vary one at a time
@@ -2464,7 +2487,7 @@ berth, especially if traffic is expected to increase. However, building more tha
 one does not make much sense even at the highest traffic scenario. The SPA should
 rather consider building another one or two small berths next.
 
-This concludes our second tutorial. We have introduced the very powerful
+This concludes our final tutorial. We have introduced the very powerful
 ``cmb_condition`` allowing processes to wait for arbitrary combinations of conditions.
 Along the way, we demonstrated that user applications can build derived classes from
 Cimba parent classes using single inheritance. For example, the ``ship`` class in this
