@@ -1,10 +1,9 @@
 /*
  * tutorial/tut_2_1.c
  *
- * M/G/n model with balking, reneging, and jockeying customer behaviors.
- * Single-threaded development version.
+ * Demonstrating interrupt and preempt process interactions
  *
- * Copyright (c) Asbjørn M. Bonvik 2025-26.
+ * Copyright (c) Asbjørn M. Bonvik 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,166 +19,308 @@
  */
 
 #include <cimba.h>
+#include <inttypes.h>
 #include <stdio.h>
+#include <stdint.h>
 
-/*
- * Bit masks to distinguish between types of user-defined logging messages.
- */
-#define LOGFLAG_ARRIVAL     0x00000001
-#define LOGFLAG_CUSTOMER    0x00000002
-#define LOGFLAG_SERVICE     0x00000004
-#define LOGFLAG_SIMULATION  0x00000008
+#define USERFLAG1 0x00000001
 
-/*
- * Our simulated world consists of these entities.
- */
+#define NUM_MICE 5u
+#define NUM_RATS 2u
+#define NUM_CATS 1u
+
+#define CHEESE_AMOUNT 20u
+
 struct simulation {
-    /* TODO: Pointers to entities in your simulated world go here */
+    struct cmb_process *mice[NUM_MICE];
+    struct cmb_process *rats[NUM_RATS];
+    struct cmb_process *cats[NUM_CATS];
+    struct cmb_resourcepool *cheese;
 };
 
-/* Variables describing the state of the environment around our entities */
-struct environment {
-    /* TODO: Place your environment state variables here */
-};
-
-/*
- * A single trial is defined by these parameters and generates these results.
- */
-struct trial {
-    /* TODO: Add your parameters here */
-    double warmup_time;
-    double duration;
-    /* TODO: Place your results here */
-    uint64_t seed_used;
-};
-
-/*
- * The context for our simulation consists of the simulation entities, the
- * trial parameters, and the requested trial results.
- */
-struct context {
-    struct simulation *sim;
-    struct environment *env;
-    struct trial *trl;
-};
-
-/*
- * Event to close down the simulation.
- */
-void end_sim(void *subject, void *object)
+static void end_sim_evt(void *subject, void *object)
 {
     cmb_unused(subject);
+    cmb_assert_release(object != NULL);
 
-    const struct context *ctx = object;
-    const struct simulation *sim = ctx->sim;
-    cmb_logger_user(stdout, LOGFLAG_SIMULATION, "--- Game Over ---");
-
-    /* TODO: Stop all your simulated processes here */
+    const struct simulation *simp = object;
+    cmb_logger_user(stdout, USERFLAG1, "===> end_sim: game over <===");
+    for (unsigned ui = 0; ui < NUM_MICE; ui++) {
+        cmb_process_stop(simp->mice[ui], NULL);
+    }
+    for (unsigned ui = 0; ui < NUM_RATS; ui++) {
+        cmb_process_stop(simp->rats[ui], NULL);
+    }
+    for (unsigned ui = 0; ui < NUM_CATS; ui++) {
+        cmb_process_stop(simp->cats[ui], NULL);
+    }
 }
 
-/*
- * Event to turn on data recording
- */
-static void start_rec(void *subject, void *object)
+/* The busy life of a mouse */
+void *mousefunc(struct cmb_process *me, void *ctx)
 {
-    cmb_unused(subject);
+    cmb_assert_release(me != NULL);
+    cmb_assert_release(ctx != NULL);
 
-    const struct context *ctx = object;
-    const struct simulation *sim = ctx->sim;
+    const struct simulation *simp = ctx;
+    struct cmb_resourcepool *sp = simp->cheese;
+    uint64_t amount_held = 0u;
 
-    /* TODO: Turn on data recording for relevant entities here */
+    while (true) {
+        /* Verify that the amount matches our own calculation */
+        cmb_logger_user(stdout, USERFLAG1, "Amount held: %" PRIu64, amount_held);
+        cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+
+        /* Decide on a random amount to get next time and set a random priority */
+        const uint64_t amount_req = cmb_random_dice(1, 5);
+        const int64_t pri = cmb_random_dice(-10, 10);
+        cmb_process_set_priority(me, pri);
+        cmb_logger_user(stdout, USERFLAG1, "Acquiring %" PRIu64, amount_req);
+        int64_t sig = cmb_resourcepool_acquire(sp, amount_req);
+        if (sig == CMB_PROCESS_SUCCESS) {
+            /* Acquire returned successfully */
+            amount_held += amount_req;
+            cmb_logger_user(stdout, USERFLAG1, "Success, new amount held: %" PRIu64, amount_held);
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        }
+        else if (sig == CMB_PROCESS_PREEMPTED) {
+            /* The acquire() call did not end well */
+            amount_held = 0u;
+            cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
+                            cmb_resourcepool_get_name(sp));
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        }
+        else {
+            /* Interrupted, but we still have the same amount as before */
+            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        }
+
+        /* Hold on to it for a while */
+        sig = cmb_process_hold(cmb_random_exponential(1.0));
+        if (sig == CMB_PROCESS_SUCCESS) {
+            /* We still have it */
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned normally");
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+       }
+        else if (sig == CMB_PROCESS_PREEMPTED) {
+            /* Somebody snatched it all away from us */
+            amount_held = 0u;
+            cmb_logger_user(stdout, USERFLAG1, "Someone stole all my %s from me!",
+                            cmb_resourcepool_get_name(sp));
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        }
+        else {
+            /* Interrupted while holding. Still have the cheese, though */
+            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+       }
+
+        /* Drop some amount */
+        if (amount_held > 1u) {
+            const uint64_t amount_rel = cmb_random_dice(1, (long)amount_held);
+            cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
+                            amount_held, amount_rel);
+            cmb_resourcepool_release(sp, amount_rel);
+            amount_held -= amount_rel;
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+       }
+
+        /* Hang on a moment before trying again */
+        cmb_logger_user(stdout, USERFLAG1, "Holding, amount held: %" PRIu64, amount_held);
+        sig = cmb_process_hold(cmb_random_exponential(1.0));
+        if (sig == CMB_PROCESS_PREEMPTED) {
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Someone stole the rest of my %s, signal %" PRIi64,
+                            cmb_resourcepool_get_name(sp), sig);
+            amount_held = 0u;
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+       }
+    }
 }
 
-/*
- * Event to turn off data recording
- */
-static void stop_rec(void *subject, void *object)
+/* The rat is very similar to the mouse, but preempts instead of acquiring */
+void *ratfunc(struct cmb_process *me, void *ctx)
 {
-    cmb_unused(subject);
+    cmb_unused(me);
+    cmb_assert_release(ctx != NULL);
 
-    const struct context *ctx = object;
-    const struct simulation *sim = ctx->sim;
+    const struct simulation *simp = ctx;
+    struct cmb_resourcepool *sp = simp->cheese;
+    uint64_t amount_held = 0u;
 
-    /* TODO: Turn off data recording for relevant entities here */
+    while (true) {
+        /* Verify that the amount matches our own calculation */
+        cmb_logger_user(stdout, USERFLAG1, "Amount held: %" PRIu64, amount_held);
+        cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+
+        /* Decide on a random amount to get next time and set a random priority */
+        const uint64_t amount_req = cmb_random_dice(3, 10);
+        const int64_t pri = cmb_random_dice(-5, 15);
+        cmb_process_set_priority(me, pri);
+        cmb_logger_user(stdout, USERFLAG1, "Preempting %" PRIu64, amount_req);
+        int64_t sig = cmb_resourcepool_preempt(sp, amount_req);
+        if (sig == CMB_PROCESS_SUCCESS) {
+            /* Acquire returned successfully */
+            amount_held += amount_req;
+            cmb_logger_user(stdout, USERFLAG1, "Success, new amount held: %" PRIu64, amount_held);
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        }
+        else if (sig == CMB_PROCESS_PREEMPTED) {
+            /* The acquire() call did not end well */
+            amount_held = 0u;
+            cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
+                            cmb_resourcepool_get_name(sp));
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        }
+        else {
+            /* Interrupted, but we still have the same amount as before */
+            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+       }
+
+        /* Hold on to it for a while */
+        sig = cmb_process_hold(cmb_random_exponential(1.0));
+        if (sig == CMB_PROCESS_SUCCESS) {
+            /* We still have it */
+            cmb_logger_user(stdout, USERFLAG1, "Hold returned normally");
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        }
+        else if (sig == CMB_PROCESS_PREEMPTED) {
+            /* Somebody snatched it all away from us */
+            amount_held = 0u;
+            cmb_logger_user(stdout, USERFLAG1, "Someone stole all my %s from me!",
+                            cmb_resourcepool_get_name(sp));
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        }
+        else {
+            /* Interrupted while holding. Still have the cheese, though */
+            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        }
+
+        /* Drop some amount */
+        if (amount_held > 1u) {
+            const uint64_t amount_rel = cmb_random_dice(1, (long)amount_held);
+            cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
+                            amount_held, amount_rel);
+            cmb_resourcepool_release(sp, amount_rel);
+            amount_held -= amount_rel;
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        }
+
+        /* Hang on a moment before trying again */
+        cmb_logger_user(stdout, USERFLAG1, "Holding, amount held: %" PRIu64, amount_held);
+        sig = cmb_process_hold(cmb_random_exponential(1.0));
+        if (sig == CMB_PROCESS_PREEMPTED) {
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Someone stole the rest of my %s, signal %" PRIi64,
+                            cmb_resourcepool_get_name(sp), sig);
+            amount_held = 0u;
+            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+       }
+    }
 }
 
+void *catfunc(struct cmb_process *me, void *ctx)
+{
+    cmb_unused(me);
+    cmb_assert_release(ctx != NULL);
 
-/*
- * TODO: Define functions for your other events and processes here
- */
+    struct simulation *simp = ctx;
+    struct cmb_process **cpp = (struct cmb_process **)simp;
+    const long num = NUM_MICE + NUM_RATS;
 
-/*
- * The simulation driver function to execute one trial
- */
+    while (true) {
+        /* Nobody interrupts a sleeping cat, disregard return value */
+        cmb_logger_user(stdout, USERFLAG1, "Zzzzz...");
+        (void)cmb_process_hold(cmb_random_exponential(5.0));
+        do {
+            cmb_logger_user(stdout, USERFLAG1, "Awake, looking for rodents");
+            (void)cmb_process_hold(cmb_random_exponential(1.0));
+            struct cmb_process *tgt = cpp[cmb_random_dice(0, num - 1)];
+            cmb_logger_user(stdout, USERFLAG1, "Chasing %s", cmb_process_name(tgt));
+
+            /* Send it a random interrupt signal */
+            const int64_t sig = (cmb_random_flip()) ?
+                                 CMB_PROCESS_INTERRUPTED :
+                                 cmb_random_dice(10, 100);
+            cmb_process_interrupt(tgt, sig, 0);
+
+            /* Flip a coin to decide whether to go back to sleep */
+        } while (cmb_random_flip());
+    }
+}
+
 void run_trial(void *vtrl)
 {
-    cmb_assert_release(vtrl != NULL);
-    struct trial *trl = vtrl;
+    cmb_unused(vtrl);
 
-    /* Using local variables, since it will only be used before this function exits */
-    struct context ctx = {};
-    struct simulation sim = {};
-    ctx.sim = &sim;
-    ctx.trl = trl;
+    struct simulation *simp = cmi_malloc(sizeof(*simp));
+    cmi_memset(simp, 0, sizeof(*simp));
 
-    /* Set up our trial housekeeping */
+    const uint64_t seed = cmb_random_hwseed();
+    cmb_random_initialize(seed);
     cmb_logger_flags_off(CMB_LOGGER_INFO);
-    // cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
-    trl->seed_used = cmb_random_hwseed();
-    cmb_random_initialize(trl->seed_used);
 
-    /*
-     * TODO: Create, initialize, and start your simulated entities here
-     */
+    printf("Create a pile of %d cheese cubes\n", CHEESE_AMOUNT);
+    simp->cheese = cmb_resourcepool_create();
+    cmb_resourcepool_initialize(simp->cheese, "Cheese", CHEESE_AMOUNT);
 
-    /* Schedule the simulation control events */
-    double t = trl->warmup_time;
-    cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
-    t += trl->duration;
-    cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
-    /* Set a large negative priority for the stop event to ensure normal events go first */
-    cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
+    char scratchpad[32];
+    printf("Create %d mice to compete for the cheese\n", NUM_MICE);
+    for (unsigned ui = 0; ui < NUM_MICE; ui++) {
+        simp->mice[ui] = cmb_process_create();
+        snprintf(scratchpad, sizeof(scratchpad), "Mouse_%u", ui + 1u);
+        const int64_t pri = cmb_random_dice(-5, 5);
+        cmb_process_initialize(simp->mice[ui], scratchpad, mousefunc, simp, pri);
+        cmb_process_start(simp->mice[ui]);
+    }
 
-    /* Run this trial */
+    printf("Create %d rats trying to preempt the cheese\n", NUM_RATS);
+    for (unsigned ui = 0; ui < NUM_RATS; ui++) {
+        simp->rats[ui] = cmb_process_create();
+        snprintf(scratchpad, sizeof(scratchpad), "Rat_%u", ui + 1u);
+        const int64_t pri = cmb_random_dice(-5, 5);
+        cmb_process_initialize(simp->rats[ui], scratchpad, ratfunc, simp, pri);
+        cmb_process_start(simp->rats[ui]);
+    }
+
+    printf("Create %d cats chasing all the rodents\n", NUM_CATS);
+    for (unsigned ui = 0; ui < NUM_CATS; ui++) {
+        simp->cats[ui] = cmb_process_create();
+        snprintf(scratchpad, sizeof(scratchpad), "Cat_%u", ui + 1u);
+        const int64_t pri = cmb_random_dice(-5, 5);
+        cmb_process_initialize(simp->cats[ui], scratchpad, catfunc, simp, pri);
+        cmb_process_start(simp->cats[ui]);
+    }
+
+    printf("Schedule end event\n");
+    (void)cmb_event_schedule(end_sim_evt, NULL, simp, 100000.0, 0);
+
+    printf("Execute simulation...\n");
     cmb_event_queue_execute();
 
-    /*
-     * TODO: Collect your statistics here
-     */
+    printf("Clean up\n");
+    struct cmb_process **cpp = (struct cmb_process **) simp;
+    for (unsigned ui = 0; ui < NUM_MICE + NUM_RATS + NUM_CATS; ui++) {
+        cmb_process_terminate(cpp[ui]);
+        cmb_process_destroy(cpp[ui]);
+    }
 
-    /*
-     * TODO: Terminate and destroy your simulated entities here,
-     * one _terminate for each _initialize, one _destroy for each _create
-     */
-
-    /* Final housekeeping to leave everything as we found it */
+    cmb_resourcepool_terminate(simp->cheese);
+    cmb_resourcepool_destroy(simp->cheese);
     cmb_event_queue_terminate();
     cmb_random_terminate();
 
+    free(simp);
 }
 
-/*
- * Temporary function to load trial test data for the single-threaded development version.
- */
-void load_params(struct trial *trlp)
-{
-    cmb_assert_release(trlp != NULL);
 
-    /*
-     * TODO: Fill in your trial test data here
-     */
-}
-
-/*
- * The minimal single-threaded main function
- */
 int main(void)
 {
-    struct trial trl = {};
-    load_params(&trl);
-
-    run_trial(&trl);
+    run_trial(NULL);
 
     return 0;
 }
