@@ -719,12 +719,12 @@ struct cmb_random_alias *cmb_random_alias_create(const unsigned n,
     }
 
     while (idxl > 0) {
-        unsigned g = large[--idxl];
+        const unsigned g = large[--idxl];
         alp->uprob[g] = UINT64_MAX;
     }
 
     while (idxs > 0) {
-        unsigned l = small[--idxs];
+        const unsigned l = small[--idxs];
         alp->uprob[l] = UINT64_MAX;
     }
 
