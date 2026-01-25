@@ -77,7 +77,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
                          amount_held, cmb_resourcepool_held_by_process(sp, me));
         cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
         const uint64_t amount_req = cmb_random_dice(1, 10);
-        (void)cmb_process_set_priority(me, cmb_random_dice(-10, 10));
+        (void)cmb_process_priority_set(me, cmb_random_dice(-10, 10));
         cmb_logger_user(stdout, USERFLAG1, "Acquiring %" PRIu64, amount_req);
         int64_t sig = cmb_resourcepool_acquire(sp, amount_req);
         cmb_logger_user(stdout, USERFLAG1, "Acquire returned signal %" PRIi64, sig);
