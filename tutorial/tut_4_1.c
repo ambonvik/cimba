@@ -315,9 +315,6 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
          * directly instead of calling cmb_process_create() */
         struct ship *shpp = malloc(sizeof(struct ship));
 
-        /* Remember to zero-initialize it if malloc'ing on your own! */
-        memset(shpp, 0, sizeof(struct ship));
-
         /* We started the ship size enum from 0 to match array indexes. If we
          * had more size classes, we could use cmb_random_dice(0, n) instead. */
         shpp->size = cmb_random_bernoulli(p_large);

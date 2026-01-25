@@ -133,7 +133,7 @@ struct ship {
 struct ship *ship_create(void)
 {
     struct ship *shpp = malloc(sizeof(struct ship));
-    memset(shpp, 0, sizeof(struct ship));
+    cmb_assert_release(shpp != NULL);
 
     return shpp;
 }
