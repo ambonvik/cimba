@@ -74,7 +74,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
         /* Decide on a random amount to get next time and set a random priority */
         const uint64_t amount_req = cmb_random_dice(1, 5);
         const int64_t pri = cmb_random_dice(-10, 10);
-        cmb_process_set_priority(me, pri);
+        cmb_process_priority_set(me, pri);
         cmb_logger_user(stdout, USERFLAG1, "Acquiring %" PRIu64, amount_req);
         int64_t sig = cmb_resourcepool_acquire(sp, amount_req);
         if (sig == CMB_PROCESS_SUCCESS) {
@@ -157,7 +157,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
         /* Decide on a random amount to get next time and set a random priority */
         const uint64_t amount_req = cmb_random_dice(3, 10);
         const int64_t pri = cmb_random_dice(-5, 15);
-        cmb_process_set_priority(me, pri);
+        cmb_process_priority_set(me, pri);
         cmb_logger_user(stdout, USERFLAG1, "Preempting %" PRIu64, amount_req);
         int64_t sig = cmb_resourcepool_preempt(sp, amount_req);
         if (sig == CMB_PROCESS_SUCCESS) {
