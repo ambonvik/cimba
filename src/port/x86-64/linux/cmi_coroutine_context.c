@@ -82,7 +82,7 @@ void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
  *
  * Here, we set up a context with the launcher/trampoline function as the
  * "return" address and register values that prepare for launching the
- * coroutine function cr_foo(coro, arg) on first transfer, and for calling
+ * coroutine function cr_function(coro, arg) on first transfer, and for calling
  * cmb_coroutine_exit to catch its exit value if the coroutine function ever
  * returns.
  *
@@ -91,7 +91,7 @@ void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
  *  - cp_>stack_base points to the top of the stack area (high address).
  *  - cp->stack_pointer stores the current stack pointer between transfers.
  *
- * We will preload the address of the coroutine function cr_foo(cp, arg) in R12,
+ * We will preload the address of the coroutine function cr_function(cp, arg) in R12,
  * the coroutine pointer cp in R13, and the void *arg in R14. We will also
  * store the address of cmb_coroutine_exit in R15 before the first transfer into
  * the new coroutine, to be called with the return value from the coroutine
@@ -179,7 +179,7 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 
     /* Place address of coroutine function in R12 */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)(cp->cr_foo);
+    *(uint64_t *)stkptr = (uintptr_t)(cp->cr_function);
 
     /* Place address of coroutine struct in R13 */
     stkptr -= 8u;
