@@ -78,7 +78,7 @@ void cmb_process_initialize(struct cmb_process *pp,
                        (cmi_coroutine_exit_func *)cmb_process_exit,
                        CMB_PROCESS_STACK_SIZE);
 
-    (void)cmb_process_set_name(pp, name);
+    (void)cmb_process_name_set(pp, name);
     pp->priority = priority;
 
     cmi_slist_initialize(&pp->awaits);
@@ -145,13 +145,13 @@ void cmb_process_start(struct cmb_process *pp)
 }
 
 /*
- * cmb_process_set_name - Change the process name, returning a const char *
+ * cmb_process_name_set - Change the process name, returning a const char *
  * to the new name.
  *
  * Note that the name is contained in a fixed size buffer and may be truncated
  * if too long to fit into the buffer.
  */
-void cmb_process_set_name(struct cmb_process *cp, const char *name)
+void cmb_process_name_set(struct cmb_process *cp, const char *name)
 {
     cmb_assert_release(cp != NULL);
     cmb_assert_release(name != NULL);
@@ -160,14 +160,7 @@ void cmb_process_set_name(struct cmb_process *cp, const char *name)
     cmb_assert_release(r >= 0);
 }
 
-void cmb_process_set_context(struct cmb_process *pp, void *context)
-{
-    cmb_assert_release(pp != NULL);
-
-    cmi_coroutine_set_context((struct cmi_coroutine *)pp, context);
-}
-
-void cmb_process_set_priority(struct cmb_process *pp, const int64_t pri)
+void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
 {
     cmb_assert_release(pp != NULL);
 
@@ -288,7 +281,7 @@ int64_t cmb_process_hold(const double dur)
     /* Set ourselves a wakeup call, leaving any previous timers in place */
     struct cmb_process *pp = cmb_process_current();
     cmb_assert_debug(pp != NULL);
-    const uint64_t handle = cmb_process_add_timer(pp, dur, CMB_PROCESS_SUCCESS);
+    const uint64_t handle = cmb_process_timer_add(pp, dur, CMB_PROCESS_SUCCESS);
 
     /* Yield to the dispatcher and collect the return signal value when back */
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
@@ -297,7 +290,7 @@ int64_t cmb_process_hold(const double dur)
     if (sig != CMB_PROCESS_SUCCESS) {
         /* Whatever woke us up was not the scheduled wakeup call, cancel it */
         cmb_logger_info(stdout, "Woken up by signal %" PRIi64, sig);
-        cmb_process_cancel_timer(pp, handle);
+        cmb_process_timer_cancel(pp, handle);
         // cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
     }
 
@@ -306,7 +299,7 @@ int64_t cmb_process_hold(const double dur)
 
 /*
  * process_wakeup_event_time - The event that resumes the process after being
- * scheduled by cmb_process_set_timer or cmb_process_hold. Does not clear any
+ * scheduled by cmb_process_timer_set or cmb_process_hold. Does not clear any
  * other timers set for the process.
  */
 static void process_wakeup_event_time(void *vp, void *arg)
@@ -329,12 +322,12 @@ static void process_wakeup_event_time(void *vp, void *arg)
 }
 
 /*
- * cmb_process_add_timer - Set a timeout event without suspending the process
+ * cmb_process_timer_add - Set a timeout event without suspending the process
  *
  * Returns CMB_PROCESS_TIMEOUT when returning normally after the
  * specified duration, something else if not.
  */
-uint64_t cmb_process_add_timer(struct cmb_process *pp,
+uint64_t cmb_process_timer_add(struct cmb_process *pp,
                                const double dur,
                                const int64_t sig)
 {
@@ -354,9 +347,9 @@ uint64_t cmb_process_add_timer(struct cmb_process *pp,
 }
 
 /*
- * cmb_process_cancel_timer - cancel a specific timer and remove it from awaitables
+ * cmb_process_timer_cancel - cancel a specific timer and remove it from awaitables
  */
-bool cmb_process_cancel_timer(struct cmb_process *pp, const uint64_t handle)
+bool cmb_process_timer_cancel(struct cmb_process *pp, const uint64_t handle)
 {
     cmb_assert_release(pp != NULL);
 
@@ -367,9 +360,9 @@ bool cmb_process_cancel_timer(struct cmb_process *pp, const uint64_t handle)
 }
 
 /*
- * cmb_process_clear_timers - clear all timers set for this process
+ * cmb_process_timers_clear - clear all timers set for this process
  */
-void cmb_process_clear_timers(struct cmb_process *pp)
+void cmb_process_timers_clear(struct cmb_process *pp)
 {
     cmb_assert_debug(pp != NULL);
 

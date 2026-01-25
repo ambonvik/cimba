@@ -41,7 +41,6 @@
 
 #include "cmb_assert.h"
 #include "cmb_event.h"
-#include "cmb_logger.h"
 
 #include "cmi_coroutine.h"
 #include "cmi_slist.h"
@@ -233,7 +232,7 @@ static inline int64_t cmb_process_yield(void)
  * @memberof cmb_process
  * @param pp    Pointer to a cmb_process, usually the calling process itself.
  */
-extern void cmb_process_clear_timers(struct cmb_process *pp);
+extern void cmb_process_timers_clear(struct cmb_process *pp);
 
 /**
  * @brief  Set an additional timer to resume ourselves with signal sig in time dur.
@@ -246,7 +245,7 @@ extern void cmb_process_clear_timers(struct cmb_process *pp);
  *              or something user-application defined.
  * @return The handle of the scheduled timeout event
  */
-extern uint64_t cmb_process_add_timer(struct cmb_process *pp, double dur, int64_t sig);
+extern uint64_t cmb_process_timer_add(struct cmb_process *pp, double dur, int64_t sig);
 
 /**
  * @brief  Set a timer to resume a process with signal sig in time dur.
@@ -259,13 +258,13 @@ extern uint64_t cmb_process_add_timer(struct cmb_process *pp, double dur, int64_
  *              or something user-application defined.
  * @return The handle of the scheduled timeout event
  */
-static inline uint64_t cmb_process_set_timer(struct cmb_process *pp, const double dur, const int64_t sig)
+static inline uint64_t cmb_process_timer_set(struct cmb_process *pp, const double dur, const int64_t sig)
 {
     cmb_assert_release(pp != NULL);
     cmb_assert_release(dur >= 0.0);
 
-    cmb_process_clear_timers(pp);
-    const uint64_t handle = cmb_process_add_timer(pp, dur, sig);
+    cmb_process_timers_clear(pp);
+    const uint64_t handle = cmb_process_timer_add(pp, dur, sig);
 
     return handle;
 }
@@ -278,7 +277,7 @@ static inline uint64_t cmb_process_set_timer(struct cmb_process *pp, const doubl
  * @param handle The handle of a previously scheduled timeout.
  * @return True if the timer is found, false if not.
  */
-extern bool cmb_process_cancel_timer(struct cmb_process *pp, uint64_t handle);
+extern bool cmb_process_timer_cancel(struct cmb_process *pp, uint64_t handle);
 
 /**
  * @brief  Schedule a wakeup event at the current time for a yielded process. The
@@ -303,7 +302,7 @@ extern void cmb_process_resume(struct cmb_process *pp, int64_t sig, int64_t pri)
  * @return `CMB_PROCESS_SUCCESS` if returning normally at the scheduled time,
  *        otherwise some other signal value indicating the type of interruption.
  */
-extern int64_t cmb_process_hold(const double dur);
+extern int64_t cmb_process_hold(double dur);
 
 /**
  * @brief  Wait for some other process to finish. Called from within a process.
@@ -387,7 +386,7 @@ extern void cmb_process_stop(struct cmb_process *tgt, void *retval);
  * @brief  Return the process name as a `const char *`, since it is kept in a
  * fixed size buffer and should not be changed directly.
  *
- * If the name for some reason needs to be changed, use `cmb_process_set_name`
+ * If the name for some reason needs to be changed, use `cmb_process_name_set`
  * to do it safely, not by modifying through this pointer.
  *
  * @memberof cmb_process
@@ -411,7 +410,7 @@ static inline const char *cmb_process_name(const struct cmb_process *pp)
  * @param pp Pointer to a process.
  * @param name Null terminated string for the process name.
  */
-extern void cmb_process_set_name(struct cmb_process *pp,
+extern void cmb_process_name_set(struct cmb_process *pp,
                                  const char *name);
 
 /**
@@ -428,21 +427,6 @@ static inline void *cmb_process_context(const struct cmb_process *pp)
 
     return cmi_coroutine_context((struct cmi_coroutine *)pp);
 }
-
-/**
- * @brief  Replace the process context with something else.
- *
- * The intended use is for cases where the context is not ready when the process
- * is initialized, e.g., because it will contain a pointer to some object that
- * has not been created yet.
- *
- * @memberof cmb_process
- * @param pp Pointer to a process.
- * @param context The second argument to the process function, after the pointer
- *                 to the process itself. The content and meaning are user
- *                 application defined.
- */
-extern void cmb_process_set_context(struct cmb_process *pp, void *context);
 
 /**
  * @brief  Get the current priority for the process.
@@ -465,7 +449,7 @@ static inline int64_t cmb_process_priority(const struct cmb_process *pp)
  * @param pp Pointer to a process.
  * @param pri The new priority value.
  */
-extern void cmb_process_set_priority(struct cmb_process *pp, int64_t pri);
+extern void cmb_process_priority_set(struct cmb_process *pp, int64_t pri);
 
 /**
  * @brief  Get the current status of the process
