@@ -31,6 +31,61 @@
 #define LOGFLAG_SIMULATION  0x00000008
 
 /*
+ * Hard-coding the park structure for this tutorial only. Should be an input file.
+ */
+#define NUM_ATTRACTIONS 9
+
+const double transition_probs[NUM_ATTRACTIONS + 1][NUM_ATTRACTIONS + 1] = {
+    { 0.30, 0.20, 0.20, 0.10, 0.05, 0.05, 0.00, 0.00, 0.00, 0.10 },
+    { 0.00, 0.30, 0.20, 0.20, 0.10, 0.05, 0.05, 0.00, 0.00, 0.10 },
+    { 0.10, 0.05, 0.20, 0.20, 0.15, 0.05, 0.05, 0.05, 0.05, 0.10 },
+    { 0.05, 0.10, 0.05, 0.20, 0.20, 0.10, 0.05, 0.05, 0.05, 0.15 },
+    { 0.05, 0.10, 0.10, 0.05, 0.20, 0.15, 0.10, 0.05, 0.05, 0.15 },
+    { 0.05, 0.05, 0.05, 0.05, 0.00, 0.20, 0.20, 0.10, 0.10, 0.20 },
+    { 0.05, 0.05, 0.05, 0.10, 0.05, 0.00, 0.30, 0.10, 0.10, 0.20 },
+    { 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.20, 0.20, 0.25 },
+    { 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.10, 0.00, 0.30, 0.30 },
+    { 0.00, 0.00, 0.00, 0.05, 0.05, 0.10, 0.10, 0.20, 0.00, 0.30 }
+};
+
+const unsigned num_queues[NUM_ATTRACTIONS] =
+    { 1, 1, 1, 5, 1, 1, 1, 1 };
+
+const unsigned num_servers[NUM_ATTRACTIONS] =
+    { 1, 3, 1, 5, 1, 1, 1, 1 };
+
+const unsigned batch_sizes[NUM_ATTRACTIONS] =
+    { 1, 5, 5, 1, 1, 10, 8, 1 };
+
+const double min_durations[NUM_ATTRACTIONS] =
+    { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
+
+const double mode_durations[NUM_ATTRACTIONS] =
+    { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+
+const double max_durations[NUM_ATTRACTIONS] =
+    { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+
+struct attraction {
+    /* One or more priority queues for arriving customers */
+    /* One or more service processes */
+    unsigned batch_size;
+    double mean_duration, stddev_duration;
+    struct cmb_random_alias *quo_vadis;
+};
+
+CMB_THREAD_LOCAL struct attraction park_attractions[NUM_ATTRACTIONS + 1];
+
+struct visitor {
+    struct cmb_process core;
+    double patience;
+    double entry_time;
+    unsigned current_attraction;
+    unsigned num_attractions_visited;
+};
+
+
+/*
  * Our simulated world consists of these entities.
  */
 struct simulation {
@@ -107,6 +162,15 @@ static void stop_rec(void *subject, void *object)
 /*
  * TODO: Define functions for your other events and processes here
  */
+
+/* Server process - collect a batch of visitors from the assigned queue,
+ * hold them for a while, send them off */
+
+/* Arrival process - generate new visitors */
+
+/* Visitor process - select the next attraction, wait in line if not too long,
+ * jockey if multiple queues and some other queue is shorter, renege if too
+ * long wait, repeat, depart */
 
 /*
  * The simulation driver function to execute one trial
