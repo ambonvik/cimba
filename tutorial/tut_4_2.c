@@ -77,9 +77,9 @@ struct simulation {
     struct cmb_condition *davyjones;
 
     /* A set of all active ships */
-    struct cmi_hashheap *active_ships;
+    struct cmi_hashheap active_ships;
     /* A list of departed ships  */
-    struct cmi_slist_head *departed_ships;
+    struct cmi_slist_head departed_ships;
 
     /* Data collector for local use in this instance */
     struct cmb_dataset *time_in_system[2];
@@ -297,7 +297,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     /* Note ourselves as active */
     cmb_logger_user(stdout, USERFLAG1, "%s arrives", me->name);
     const double t_arr = cmb_time();
-    const uint64_t hndl = cmi_hashheap_enqueue(simp->active_ships, shpp,
+    const uint64_t hndl = cmi_hashheap_enqueue(&(simp->active_ships), shpp,
                                                NULL, NULL, NULL, 0u, t_arr, 0u);
 
     /* Wait for suitable conditions to dock */
@@ -345,9 +345,9 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     cmb_resourcepool_release(simp->tugs, shpp->tugs_needed);
 
     /* One pass process, remove ourselves from the active set */
-    cmi_hashheap_remove(simp->active_ships, hndl);
+    cmi_hashheap_remove(&(simp->active_ships), hndl);
     /* List ourselves as departed instead */
-    cmi_slist_push(simp->departed_ships, &(shpp->listhead));
+    cmi_slist_push(&(simp->departed_ships), &(shpp->listhead));
     /* Inform Davy Jones that we are coming his way */
     cmb_condition_signal(simp->davyjones);
 
@@ -402,7 +402,7 @@ bool is_departed(const struct cmb_condition *cvp,
     const struct simulation *simp = ctxp->sim;
 
     /* Simple: One or more ships in the list of departed ships */
-    return (simp->departed_ships != NULL);
+    return cmi_slist_is_empty(&(simp->departed_ships)) ? false : true;
 }
 
 /* The departure process */
@@ -414,7 +414,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
     const struct context *ctxp = vctx;
     struct simulation *simp = ctxp->sim;
     const struct trial *trlp = ctxp->trl;
-    struct cmi_slist_head *dep_head = simp->departed_ships;
+    struct cmi_slist_head *dep_head = &(simp->departed_ships);
 
     while (true) {
         /* We do not need to loop here, since this is the only process waiting */
@@ -448,8 +448,8 @@ void end_sim(void *subject, void *object)
 {
     cmb_unused(subject);
 
-    const struct context *ctxp = object;
-    const struct simulation *simp = ctxp->sim;
+    struct context *ctxp = object;
+    struct simulation *simp = ctxp->sim;
     cmb_logger_user(stdout, USERFLAG1, "Simulation ended");
 
     cmb_process_stop(simp->weather, NULL);
@@ -458,8 +458,8 @@ void end_sim(void *subject, void *object)
     cmb_process_stop(simp->departures, NULL);
 
     /* Also stop and recycle any still active ships */
-    while (cmi_hashheap_count(simp->active_ships) > 0u) {
-        void **item = cmi_hashheap_dequeue(simp->active_ships);
+    while (cmi_hashheap_count(&(simp->active_ships)) > 0u) {
+        void **item = cmi_hashheap_dequeue(&(simp->active_ships));
         struct ship *shpp = item[0];
         cmb_process_stop((struct cmb_process *)shpp, NULL);
         cmb_process_terminate((struct cmb_process *)shpp);
@@ -562,9 +562,8 @@ void run_trial(void *vtrl)
     cmb_process_start(sim.departures);
 
     /* Create the collections of active and departed ships */
-    sim.active_ships = cmi_hashheap_create();
-    cmi_hashheap_initialize(sim.active_ships, 3u, NULL);
-    sim.departed_ships = NULL;
+    cmi_hashheap_initialize(&(sim.active_ships), 3u, NULL);
+    cmi_slist_initialize(&(sim.departed_ships));
 
     /* Schedule the simulation control events */
     double t = trlp->warmup_time;
