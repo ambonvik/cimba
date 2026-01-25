@@ -77,6 +77,7 @@ void *procfunc1(struct cmb_process *me, void *ctx)
 void *procfunc2(struct cmb_process *me, void *ctx)
 {
     struct cmb_process *tgt = (struct cmb_process *)ctx;
+
     cmb_logger_user(stdout, USERFLAG1, "Running, tgt %s", cmb_process_name(tgt));
     const int64_t pri = cmb_process_priority(me);
     for (unsigned ui = 0u; ui < 5u; ui++) {
@@ -98,8 +99,8 @@ void *procfunc2(struct cmb_process *me, void *ctx)
 void *procfunc3(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
-
     struct cmb_process *tgt = (struct cmb_process *)ctx;
+
     cmb_logger_user(stdout, USERFLAG1, "Running, tgt %s", cmb_process_name(tgt));
     int64_t r = cmb_process_wait_event(cuckoo_clock_handle);
     cmb_logger_user(stdout, USERFLAG1, "Got cuckoo clock signal %" PRIi64, r);
