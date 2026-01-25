@@ -141,7 +141,7 @@ struct cmi_coroutine {
     unsigned char *stack_limit;
     unsigned char *stack_pointer;
     enum cmi_coroutine_state status;
-    cmi_coroutine_func *cr_foo;
+    cmi_coroutine_func *cr_function;
     void *context;
     cmi_coroutine_exit_func *cr_exit;
     void *exit_value;
@@ -159,19 +159,19 @@ extern struct cmi_coroutine *cmi_coroutine_create(void);
  * memory) in this function, allowing inheritance by composition.
  *
  * The coroutine function given as the second argument will eventually be called
- * as crfoo(cp, context). The stack size should be large enough for the
+ * as crfunction(cp, context). The stack size should be large enough for the
  * functions running in the coroutine. For a simple case without deeply nested
  * function calls and many local variables, 10 kB could be enough, 24 kB
  * probably on the safe side. The program will either trigger an assert or
  * segfault if the stack is too small.
  *
- * The exit function crbar will be called when/if the coroutine returns from
- * crfoo by intercepting the return and calling crbar from assembly.
+ * The exit function crexit will be called when/if the coroutine returns from
+ * crfunction by intercepting the return and calling crexit from assembly.
  */
 extern void cmi_coroutine_initialize(struct cmi_coroutine *cp,
-                                     cmi_coroutine_func *crfoo,
+                                     cmi_coroutine_func *crfunction,
                                      void *context,
-                                     cmi_coroutine_exit_func *crbar,
+                                     cmi_coroutine_exit_func *crexit,
                                      size_t stack_size);
 
 /*
@@ -192,7 +192,7 @@ extern void cmi_coroutine_terminate(struct cmi_coroutine *cp);
 extern void cmi_coroutine_destroy(struct cmi_coroutine *cp);
 
 /*
- * cmi_coroutine_start - Launch the given coroutine, launching cr_foo(cp, context)
+ * cmi_coroutine_start - Launch the given coroutine, launching cr_function(cp, context)
  * on its own stack. This will transfer control into the new coroutine and only
  * return when that (or some other) coroutine yields / transfers back here. The
  * msg argument is a pointer to an application-defined message passed to the

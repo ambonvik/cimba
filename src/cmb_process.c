@@ -66,14 +66,14 @@ struct cmb_process *cmb_process_create(void)
  */
 void cmb_process_initialize(struct cmb_process *pp,
                                        const char *name,
-                                       cmb_process_func foo,
+                                       cmb_process_func procfunc,
                                        void *context,
                                        const int64_t priority)
 {
     cmb_assert_release(pp != NULL);
 
     cmi_coroutine_initialize((struct cmi_coroutine *)pp,
-                       (cmi_coroutine_func *)foo,
+                       (cmi_coroutine_func *)procfunc,
                        context,
                        (cmi_coroutine_exit_func *)cmb_process_exit,
                        CMB_PROCESS_STACK_SIZE);
@@ -107,14 +107,13 @@ extern void cmb_process_terminate(struct cmb_process *pp)
 }
 
 /*
- * cmb_process_destroy - Free allocated memory, including the coroutine stack
- * if still present.
+ * cmb_process_destroy - Free allocated memory for the process object itself.
+ * Call cmb_process_terminate first to ensure the coroutine stack is deallocated.
  */
 void cmb_process_destroy(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    cmb_process_terminate(pp);
     cmi_free(pp);
 }
 

@@ -77,9 +77,9 @@ struct cmi_coroutine *cmi_coroutine_create(void)
 }
 
 void cmi_coroutine_initialize(struct cmi_coroutine *cp,
-                        cmi_coroutine_func *crfoo,
+                        cmi_coroutine_func *crfunction,
                         void *context,
-                        cmi_coroutine_exit_func *crbar,
+                        cmi_coroutine_exit_func *crexit,
                         const size_t stack_size)
 {
     /* Create a dummy main coroutine if not already existing */
@@ -92,20 +92,15 @@ void cmi_coroutine_initialize(struct cmi_coroutine *cp,
     /* Initialize the coroutine struct and allocate the stack */
     cp->parent = NULL;
     cp->caller = NULL;
-    if (cp->stack == NULL) {
-        cp->stack = cmi_malloc(stack_size);
-        cp->stack_base = cp->stack + stack_size;
-        cp->stack_limit = NULL;
-        cp->stack_pointer = NULL;
-    }
-    else {
-        cmb_assert_debug(cp->stack_base == cp->stack + stack_size);
-    }
+    cp->stack = cmi_malloc(stack_size);
+    cp->stack_base = cp->stack + stack_size;
+    cp->stack_limit = NULL;
+    cp->stack_pointer = NULL;
 
     cp->status = CMI_COROUTINE_CREATED;
-    cp->cr_foo = crfoo;
+    cp->cr_function = crfunction;
     cp->context = context;
-    cp->cr_exit = crbar;
+    cp->cr_exit = crexit;
     cp->exit_value = NULL;
 }
 
@@ -132,10 +127,9 @@ void cmi_coroutine_terminate(struct cmi_coroutine *cp)
     cmb_assert_debug(cp != coroutine_main);
     cmb_assert_debug(cp != coroutine_current);
 
-    if (cp->stack != NULL) {
-        cmi_free(cp->stack);
-        cp->stack = NULL;
-    }
+    cmb_assert_debug(cp->stack != NULL);
+    cmi_free(cp->stack);
+    cp->stack = NULL;
 }
 
 /*
@@ -148,10 +142,8 @@ void cmi_coroutine_destroy(struct cmi_coroutine *cp)
     cmb_assert_debug(cp != coroutine_main);
     cmb_assert_debug(cp != coroutine_current);
 
-    cmi_coroutine_terminate(cp);
     cmi_free(cp);
 }
-
 
 /*
  * cmi_coroutine_start - Load the given function and argument into the given

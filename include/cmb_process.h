@@ -148,7 +148,7 @@ extern struct cmb_process *cmb_process_create(void);
  * @memberof cmb_process
  * @param pp Pointer to an already created process.
  * @param name Null terminated string for the process name.
- * @param foo The process function that will be executed when the process starts.
+ * @param procfunc The process function that will be executed when the process starts.
  * @param context The second argument to the process function, after the pointer
  *                 to the process itself.
  * @param priority The initial priority for the process, used in various
@@ -156,13 +156,13 @@ extern struct cmb_process *cmb_process_create(void);
  */
 extern void cmb_process_initialize(struct cmb_process *pp,
                                    const char *name,
-                                   cmb_process_func foo,
+                                   cmb_process_func procfunc,
                                    void *context,
                                    int64_t priority);
 
 /**
  * @brief Deallocate memory for the underlying coroutine stack but not for the
- * process object itself. The process exit value is still there.
+ * process object itself. In particular, the process exit value is still there.
  *
  * The process must be finished (exited, stopped, returned) before getting here.
  * Do not confuse this object destructor function with cmb_process_stop to force
@@ -174,7 +174,8 @@ extern void cmb_process_initialize(struct cmb_process *pp,
 extern void cmb_process_terminate(struct cmb_process *pp);
 
 /**
- * @brief Deallocate memory for the process struct and its underlying coroutine.
+ * @brief Deallocate memory for the process struct. Call cmb_process_terminate
+ * first to ensure the coroutine stack is deallocated.
  *
  * @memberof cmb_process
  * @param pp Pointer to an already created process.
