@@ -64,6 +64,8 @@
 #ifndef CIMBA_CMI_COROUTINE_H
 #define CIMBA_CMI_COROUTINE_H
 
+#include "cmb_assert.h"
+
 /*
  * enum cmi_coroutine_state - Possible states of a coroutine
  * Running means that it has been started and has not yet ended, not necessarily
@@ -78,6 +80,20 @@ enum cmi_coroutine_state {
 
 /* Declare that there is such a thing */
 struct cmi_coroutine;
+
+/*
+ * coroutine_main - A dummy coroutine to keep track of the main stack
+ * pointer in context switches. No stack allocated, but has pointers into the
+ * normal system stack to simplify transfers back there.
+ */
+extern CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_main;
+
+/*
+ * coroutine_current - The currently executing coroutine, if any.
+ * Initially NULL before any coroutines have been created, then the current
+ * coroutine (including main when it has the CPU).
+ */
+extern CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_current;
 
 /*
  * typedef cmi_coroutine_func - The generic coroutine function type,
@@ -225,37 +241,52 @@ extern void cmi_coroutine_exit(void *retval);
 /*
  * cmi_coroutine_status - Return the current state of the given coroutine.
  */
-extern enum cmi_coroutine_state cmi_coroutine_status(const struct cmi_coroutine *cp);
+static inline enum cmi_coroutine_state cmi_coroutine_status(const struct cmi_coroutine *cp)
+{
+    cmb_assert_release(cp != NULL);
+
+    return cp->status;
+}
 
 /*
  * cmi_coroutine_context - Return the current context pointer of the given
  * coroutine
  */
-extern void *cmi_coroutine_context(const struct cmi_coroutine *cp);
-/*
- * cmi_coroutine_set_context - Overwrite the current context pointer of the
- * given coroutine, e.g., for retrofitting context that was not available when
- * the coroutine was first created.
- */
-extern void cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context);
+static inline void *cmi_coroutine_context(const struct cmi_coroutine *cp)
+{
+    cmb_assert_release(cp != NULL);
+
+    return cp->context;
+}
 
 /*
  * cmi_coroutine_exit_value - Return the exit value of the given coroutine,
  * NULL if it has not yet returned (or if it returned NULL).
  */
-extern void *cmi_coroutine_exit_value(const struct cmi_coroutine *cp);
+static inline void *cmi_coroutine_exit_value(const struct cmi_coroutine *cp)
+{
+    cmb_assert_release(cp != NULL);
+
+    return cp->exit_value;
+}
 
 /*
  * cmi_coroutine_current - Return a pointer to the currently executing
  * coroutine, i.e., a self-pointer for where the function is called from.
  * Will return NULL if no coroutines have yet been initiated.
  */
-extern struct cmi_coroutine *cmi_coroutine_current(void);
+static inline struct cmi_coroutine *cmi_coroutine_current(void)
+{
+    return coroutine_current;
+}
 
 /*
  * cmi_coroutine_main - Return a pointer to the main coroutine, possibly
  * NULL if it has not yet been created.
  */
-extern struct cmi_coroutine *cmi_coroutine_main(void);
+static inline struct cmi_coroutine *cmi_coroutine_main(void)
+{
+    return coroutine_main;
+}
 
 #endif /* CIMBA_CMI_COROUTINE_H */

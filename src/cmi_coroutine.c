@@ -24,19 +24,9 @@
 #include "cmi_config.h"
 #include "cmi_memutils.h"
 
-/*
- * coroutine_main - A dummy coroutine to keep track of the main stack
- * pointer in context switches. No stack allocated, but pointers into the
- * normal system stack to simplify transfers back there.
- */
-static CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_main = NULL;
-
-/*
- * coroutine_current - The currently executing coroutine, if any.
- * Initially NULL before any coroutines have been created, then the current
- * coroutine (including main when it has the CPU).
- */
-static CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_current = NULL;
+/* The main and current coroutine pointers */
+CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_main = NULL;
+CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_current = NULL;
 
 /* Assembly function, see src/port/x86-64/Linux/cmi_coroutine_context_*.asm */
 extern void *cmi_coroutine_context_switch(void **old, void **new, void *ret);
@@ -44,45 +34,6 @@ extern void *cmi_coroutine_context_switch(void **old, void **new, void *ret);
 /* OS-specific C code, see src/arch/cmi_coroutine_context_*.c */
 extern bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp);
 extern void cmi_coroutine_context_init(struct cmi_coroutine *cp);
-
-/* Simple getters and putters, not inlined to avoid exposing internals */
-struct cmi_coroutine *cmi_coroutine_current(void)
-{
-    return coroutine_current;
-}
-
-struct cmi_coroutine *cmi_coroutine_main(void)
-{
-    return coroutine_main;
-}
-
-enum cmi_coroutine_state cmi_coroutine_status(const struct cmi_coroutine *cp)
-{
-    cmb_assert_release(cp != NULL);
-
-    return cp->status;
-}
-
-void *cmi_coroutine_context(const struct cmi_coroutine *cp)
-{
-    cmb_assert_release(cp != NULL);
-
-    return cp->context;
-}
-
-void cmi_coroutine_set_context(struct cmi_coroutine *cp, void *context)
-{
-    cmb_assert_release(cp != NULL);
-
-    cp->context = context;
-}
-
-void *cmi_coroutine_exit_value(const struct cmi_coroutine *cp)
-{
-    cmb_assert_release(cp != NULL);
-
-    return cp->exit_value;
-}
 
 /* System dependent, in port/x86-64/.../cmi_coroutine_context.c */
 extern void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom);
