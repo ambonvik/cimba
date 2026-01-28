@@ -65,7 +65,7 @@ void *arrivalfunc(struct cmb_process *me, void *vctx)
         void *object = cmi_mempool_alloc(&objectpool);
         double *dblp = object;
         *dblp = cmb_time();
-        cmb_objectqueue_put(qp, &object);
+        cmb_objectqueue_put(qp, object);
     }
 
     return NULL;
