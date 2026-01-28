@@ -334,7 +334,7 @@ double cmb_dataset_median(const struct cmb_dataset *dsp)
 /*
  * Calculate and print five-number summary (quantiles).
  */
-void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
+void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
                                FILE *fp,
                                const bool lead_ins)
 {
@@ -395,7 +395,7 @@ void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp)
 
 /*
  * Print a simple character-based histogram of the data.
- * The only external callable functions are cmb_dataset_print_histogram and
+ * The only external callable functions are cmb_dataset_histogram_print and
  * cmb_timeseries_print_histogram, the rest (cmi_*) are internal helper functions.
  */
 static unsigned char symbol_bar = '|';
@@ -450,7 +450,7 @@ static void data_print_line(FILE *fp,
     cmb_assert_release(r == symbol_newline);
 }
 
-struct cmi_dataset_histogram *cmi_dataset_create_histogram(const unsigned num_bins,
+struct cmi_dataset_histogram *cmi_dataset_histogram_create(const unsigned num_bins,
                                                            const double low_lim,
                                                            const double high_lim)
 {
@@ -472,7 +472,7 @@ struct cmi_dataset_histogram *cmi_dataset_create_histogram(const unsigned num_bi
  * Calculate the histogram data for a dataset,
  * weighting each x-value equally with 1.0.
  */
-void cmi_dataset_fill_histogram(struct cmi_dataset_histogram *hp,
+void cmi_dataset_histogram_fill(struct cmi_dataset_histogram *hp,
                                 const uint64_t n,
                                 const double xa[n])
 {
@@ -502,7 +502,7 @@ void cmi_dataset_fill_histogram(struct cmi_dataset_histogram *hp,
     }
 }
 
-void cmi_dataset_print_histogram(const struct cmi_dataset_histogram *hp,
+void cmi_dataset_histogram_print(const struct cmi_dataset_histogram *hp,
                                  FILE *fp)
 {
     cmb_assert_debug(hp != NULL);
@@ -534,7 +534,7 @@ void cmi_dataset_print_histogram(const struct cmi_dataset_histogram *hp,
     data_print_line(fp, symbol_thin, line_length);
 }
 
-void cmi_dataset_destroy_histogram(struct cmi_dataset_histogram *hp)
+void cmi_dataset_histogram_destroy(struct cmi_dataset_histogram *hp)
 {
     cmb_assert_release(hp != NULL);
     cmi_free(hp->hbins);
@@ -542,9 +542,9 @@ void cmi_dataset_destroy_histogram(struct cmi_dataset_histogram *hp)
 }
 
 /* The external callable function to print a histogram */
-void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
+void cmb_dataset_histogram_print(const struct cmb_dataset *dsp,
                                  FILE *fp,
-                                 const unsigned num_bins,
+                                 unsigned num_bins,
                                  double low_lim,
                                  double high_lim)
 {
@@ -566,12 +566,17 @@ void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
         high_lim = dsp->max;
     }
 
-    struct cmi_dataset_histogram *hp = NULL;
-    hp = cmi_dataset_create_histogram(num_bins, low_lim, high_lim);
-    cmi_dataset_fill_histogram(hp, dsp->count, dsp->xa);
-    cmi_dataset_print_histogram(hp, fp);
+    const unsigned datarange = (unsigned)ceil(high_lim - low_lim);
+    if (datarange < num_bins) {
+        num_bins = (datarange > 0u) ? datarange : 1u;
+    }
 
-    cmi_dataset_destroy_histogram(hp);
+    struct cmi_dataset_histogram *hp = NULL;
+    hp = cmi_dataset_histogram_create(num_bins, low_lim, high_lim);
+    cmi_dataset_histogram_fill(hp, dsp->count, dsp->xa);
+    cmi_dataset_histogram_print(hp, fp);
+
+    cmi_dataset_histogram_destroy(hp);
 }
 
 /*
@@ -696,7 +701,7 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
     }
 }
 
-static void data_print_bar(FILE *fp,
+static void data_bar_print(FILE *fp,
                            const double acfval,
                            const uint16_t max_bar_width)
 {
@@ -750,7 +755,7 @@ static void data_print_bar(FILE *fp,
     }
 }
 
-void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
+void cmb_dataset_correlogram_print(const struct cmb_dataset *dsp,
                                    FILE *fp,
                                    const unsigned n,
                                    double acf[])
@@ -788,7 +793,7 @@ void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
     for (unsigned ui = 1u; ui <= n; ui++) {
         r = fprintf(fp, "%4u  %#6.3f ", ui, acf[ui]);
         cmb_assert_release(r > 0);
-        data_print_bar(fp, acf[ui], max_bar_width);
+        data_bar_print(fp, acf[ui], max_bar_width);
         r = fprintf(fp, "\n");
         cmb_assert_release(r > 0);
     }
