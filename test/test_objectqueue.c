@@ -166,7 +166,7 @@ void test_queue(double duration)
     printf("Create a queue\n");
     quetst->queue = cmb_objectqueue_create();
     cmb_objectqueue_initialize(quetst->queue, "Queue", 10u);
-    cmb_objectqueue_start_recording(quetst->queue);
+    cmb_objectqueue_recording_start(quetst->queue);
 
     char scratchpad[32];
     printf("Create three processes feeding into the queue\n");
@@ -207,8 +207,8 @@ void test_queue(double duration)
     cmb_event_queue_execute();
 
     printf("Report statistics...\n");
-    cmb_objectqueue_stop_recording(quetst->queue);
-    cmb_objectqueue_print_report(quetst->queue, stdout);
+    cmb_objectqueue_recording_stop(quetst->queue);
+    cmb_objectqueue_report_print(quetst->queue, stdout);
 
     printf("Clean up\n");
     for (unsigned ui = 0; ui < 3; ui++) {
