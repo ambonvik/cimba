@@ -132,22 +132,16 @@ extern int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp,
  * @brief Put an object into the queue, if necessary, waiting for free
  * space.
  *
- * Note that the object argument is a pointer to where the object is stored.
- * The return value `CMB_PROCESS_SUCCESS` (0) indicates that all went well. The
- * `_put()` call does not change the value at this location. (It is passed as a
- * `void**` for symmetry with `cmb_objectqueue_get`)
- *
  * If the call was interrupted for some reason, the return value is the
  * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
  * object pointer will still be unchanged.
  *
  * @memberof cmb_objectqueue
  * @param oqp Pointer to an object queue
- * @param objectloc Pointer to the location where the object is stored.
+ * @param object Pointer to the object
  * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
  */
-extern int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp,
-                                   void **objectloc);
+extern int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void *object);
 
 /**
  * @brief Returns name of queue as `const char *`.

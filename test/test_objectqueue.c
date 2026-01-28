@@ -86,7 +86,7 @@ void *putterfunc(struct cmb_process *me, void *vctx)
         cmb_logger_user(stdout, USERFLAG1, "Putting object %p into %s...",
                         object, cmb_objectqueue_name(qp));
 
-        sig = cmb_objectqueue_put(qp, &object);
+        sig = cmb_objectqueue_put(qp, object);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Put succeeded");
         }

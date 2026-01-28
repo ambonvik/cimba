@@ -262,21 +262,21 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
     }
 }
 
-int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
+int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void *object)
 {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(objectloc != NULL);
+    cmb_assert_release(object != NULL);
 
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_logger_info(stdout, "Puts object %p into %s, length %" PRIu64,
-                    *objectloc, rbp->name, oqp->length);
+                    object, rbp->name, oqp->length);
     while (true) {
         cmb_assert_debug(oqp->length <= oqp->capacity);
         if (oqp->length < oqp->capacity) {
             /* There is space */
             struct queue_tag *tag = cmi_mempool_alloc(&objectqueue_tags);
-            tag->object = *objectloc;
+            tag->object = object;
             tag->next = NULL;
 
             if (oqp->queue_head == NULL) {
@@ -291,7 +291,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
             cmb_assert_debug(oqp->length <= oqp->capacity);
 
             record_sample(oqp);
-            cmb_logger_info(stdout, "Success, put %p", *objectloc);
+            cmb_logger_info(stdout, "Success, put %p", object);
             cmb_resourceguard_signal(&(oqp->front_guard));
 
             return CMB_PROCESS_SUCCESS;
@@ -309,7 +309,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void **objectloc)
         else {
             cmb_logger_info(stdout,
                             "Interrupted by signal %" PRIi64 ", could not put object %p into %s",
-                            sig, *objectloc, rbp->name);
+                            sig, object, rbp->name);
             cmb_assert_debug(oqp->length <= oqp->capacity);
 
             return sig;
