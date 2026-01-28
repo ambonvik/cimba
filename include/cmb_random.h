@@ -236,7 +236,7 @@ static inline double cmb_random_lognormal(const double m, const double s)
 }
 
 /**
- * @brief Logistic distribution with location `m` and scale `s`.
+ * @brief Logistic distribution on `(-oo, oo)`with location `m` and scale `s`.
  *
  * Similar to normal distribution, but with fatter tails.
  * Mean = median = mode = `m`.
@@ -468,7 +468,7 @@ static inline double cmb_random_std_beta(const double a, const double b)
  * See also https://en.wikipedia.org/wiki/Beta_distribution
  */
 static inline double cmb_random_beta(const double a, const double b,
-                              const double min, const double max)
+                                     const double min, const double max)
 {
     cmb_assert_release(a > 0.0);
     cmb_assert_release(b > 0.0);
@@ -481,14 +481,15 @@ static inline double cmb_random_beta(const double a, const double b,
 }
 
 /**
- * @brief Modified PERT distribution, a scaled and shifted beta distribution
- *        to get the mean at `m`.
+ * @brief Modified PERT distribution, a scaled and shifted beta distribution.
+ *          The mean is `(min + lambda * mode + max) / (lambda + 2)`.
  *
  * Can be used as a heuristically determined distribution where the parameters
  * are "at least min", "most likely around mode", and "not more than max".
  *
  * The additional parameter `lambda` determines the peakiness around `mode`, with
  * `lambda = 4.0` default in the standard PERT distribution `cmb_random_PERT()`.
+ *
  *
  * See also https://en.wikipedia.org/wiki/PERT_distribution
  */
@@ -498,8 +499,8 @@ extern double cmb_random_PERT_mod(double min,
                                   double lambda);
 
 /**
- * @brief PERT distribution, a scaled and shifted beta distribution
- *        to get the mean at `m`.
+ * @brief PERT distribution, a scaled and shifted beta distribution.
+ *        The mean is `(min + 4 * mode + max) / 6`.
  *
  * Can be used as a heuristically determined distribution where the parameters
  * are "at least min", "most likely around mode", and "not more than max".
@@ -507,8 +508,8 @@ extern double cmb_random_PERT_mod(double min,
  * See also https://en.wikipedia.org/wiki/PERT_distribution
  */
 static inline double cmb_random_PERT(const double min,
-                              const double mode,
-                              const double max)
+                                     const double mode,
+                                     const double max)
 {
     cmb_assert_release(min < mode);
     cmb_assert_release(mode < max);
