@@ -986,7 +986,7 @@ And, of course, if more statistical power is needed, use the ``cmb_dataset_print
 and ``cmb_timeseries_print()`` functions to write the raw data values to file, and use
 dedicated software such as *R* or *Gnuplot* to analyze and present the data.
 
-Experiments Consist of Multi-Threaded Trials
+Experiments consist of multi-threaded trials
 --------------------------------------------
 
 Finally, we return to the primary objective for Cimba: To provide multi-threaded
@@ -1213,7 +1213,7 @@ The same model would look like this in Cimba:
             void *object = cmi_mempool_alloc(&cmi_mempool_8b);
             double *dblp = object;
             *dblp = cmb_time();
-            cmb_objectqueue_put(qp, &object);
+            cmb_objectqueue_put(qp, object);
         }
 
         return NULL;
