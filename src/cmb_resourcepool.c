@@ -291,7 +291,7 @@ void cmb_resourcepool_print_report(struct cmb_resourcepool *rsp, FILE *fp) {
     cmb_wtdsummary_print(ws, fp, true);
     cmb_wtdsummary_destroy(ws);
     const unsigned nbin = (rsp->capacity > 20) ? 20 : rsp->capacity + 1;
-    cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(rsp->capacity + 1u));
+    cmb_timeseries_histogram_print(ts, fp, nbin, 0.0, (double)(rsp->capacity + 1u));
 }
 
 uint64_t cmb_resourcepool_held_by_process(const struct cmb_resourcepool *rpp,
