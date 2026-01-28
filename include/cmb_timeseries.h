@@ -231,7 +231,7 @@ extern double cmb_timeseries_median(const struct cmb_timeseries *tsp);
  * @brief Calculate and print the "five-number" summary of timeseries quantiles,
  *        weighted by duration (the holding time from one sample to the next).
  *
- * Call `cmb_dataset_print_fivenum((struct cmb_dataset *)tsp, ...)` to get
+ * Call `cmb_dataset_fivenum_print((struct cmb_dataset *)tsp, ...)` to get
  * unweighted quantiles.
  *
  * @memberof cmb_timeseries
@@ -240,7 +240,7 @@ extern double cmb_timeseries_median(const struct cmb_timeseries *tsp);
  * @param lead_ins A flag indicating whether to add explanatory text (if `true`)
  *                 or not (if `false`).
 */
-extern void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp,
+extern void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
                                          FILE *fp,
                                          bool lead_ins);
 
@@ -260,7 +260,7 @@ extern void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp,
  * @param high_lim The upper limit of the histogram bin values. Will autoscale
  *                 to actual sample value range if `low_lim == high_lim`.
  */
-extern void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp,
+extern void cmb_timeseries_histogram_print(const struct cmb_timeseries *tsp,
                                            FILE *fp,
                                            uint16_t num_bins,
                                            double low_lim,
@@ -336,14 +336,14 @@ static inline void cmb_timeseries_PACF(const struct cmb_timeseries *tsp,
  * @param acf Array of (partial) autocorrelation coefficients, if already
  *            available, size ``n + 1``.
  */
-static inline void cmb_timeseries_print_correlogram(const struct cmb_timeseries *tsp,
-                                             FILE *fp,
-                                             const uint16_t n,
-                                             double *acf)
+static inline void cmb_timeseries_correlogram_print(const struct cmb_timeseries *tsp,
+                                                    FILE *fp,
+                                                    const uint16_t n,
+                                                    double *acf)
 {
     cmb_assert_release(tsp != NULL);
 
-    cmb_dataset_print_correlogram((struct cmb_dataset *)tsp, fp, n, acf);
+    cmb_dataset_correlogram_print((struct cmb_dataset *)tsp, fp, n, acf);
 }
 
 
