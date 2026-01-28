@@ -51,18 +51,18 @@ struct cmi_dataset_histogram {
     double *hbins;
 };
 
-extern struct cmi_dataset_histogram *cmi_dataset_create_histogram(unsigned num_bins,
+extern struct cmi_dataset_histogram *cmi_dataset_histogram_create(unsigned num_bins,
                                                        double low_lim,
                                                        double high_lim);
 
-extern void cmi_dataset_fill_histogram(struct cmi_dataset_histogram *hp,
+extern void cmi_dataset_histogram_fill(struct cmi_dataset_histogram *hp,
                                        uint64_t n,
                                        const double xa[n]);
 
-extern void cmi_dataset_print_histogram(const struct cmi_dataset_histogram *hp,
+extern void cmi_dataset_histogram_print(const struct cmi_dataset_histogram *hp,
                                         FILE *fp);
 
-extern void cmi_dataset_destroy_histogram(struct cmi_dataset_histogram *hp);
+extern void cmi_dataset_histogram_destroy(struct cmi_dataset_histogram *hp);
 
 #endif /* CIMBA_CMI_DATASET_H */
 
