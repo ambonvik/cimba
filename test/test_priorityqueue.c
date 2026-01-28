@@ -174,7 +174,7 @@ void test_priorityqueue(const double duration)
     printf("Create a priority queue\n");
     quetst->queue = cmb_priorityqueue_create();
     cmb_priorityqueue_initialize(quetst->queue, "Queue", 10u);
-    cmb_priorityqueue_start_recording(quetst->queue);
+    cmb_priorityqueue_recording_start(quetst->queue);
 
     char scratchpad[32];
     printf("Create three processes feeding into the queue\n");
@@ -215,8 +215,8 @@ void test_priorityqueue(const double duration)
     cmb_event_queue_execute();
 
     printf("Report statistics...\n");
-    cmb_priorityqueue_stop_recording(quetst->queue);
-    cmb_priorityqueue_print_report(quetst->queue, stdout);
+    cmb_priorityqueue_recording_stop(quetst->queue);
+    cmb_priorityqueue_report_print(quetst->queue, stdout);
 
     printf("Clean up\n");
     for (unsigned ui = 0; ui < 3; ui++) {
