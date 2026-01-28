@@ -75,7 +75,7 @@ int main(void)
     struct cmb_timeseries *ts = cmb_buffer_history(sim.que);
     double pacf_arr[21];
     cmb_timeseries_PACF(ts, 20, pacf_arr, NULL);
-    cmb_timeseries_print_correlogram(ts, stdout, 20, pacf_arr);
+    cmb_timeseries_correlogram_print(ts, stdout, 20, pacf_arr);
 
     cmb_process_terminate(sim.srv);
     cmb_process_destroy(sim.srv);
