@@ -534,7 +534,7 @@ void test_condition(void)
             struct cmb_datasummary dsumm;
             cmb_dataset_summarize(trl.system_time[i], &dsumm);
             cmb_datasummary_print(&dsumm, stdout, true);
-            cmb_dataset_print_histogram(trl.system_time[i], stdout, 20, 0.0, 0.0);
+            cmb_dataset_histogram_print(trl.system_time[i], stdout, 20, 0.0, 0.0);
         }
     }
 
@@ -546,7 +546,7 @@ void test_condition(void)
             struct cmb_wtdsummary wsumm;
             cmb_timeseries_summarize(hist, &wsumm);
             cmb_wtdsummary_print(&wsumm, stdout, true);
-            cmb_timeseries_print_histogram(hist, stdout, 20, 0.0, 0.0);
+            cmb_timeseries_histogram_print(hist, stdout, 20, 0.0, 0.0);
         }
     }
 
@@ -557,7 +557,7 @@ void test_condition(void)
         struct cmb_wtdsummary wsumm;
         cmb_timeseries_summarize(hist, &wsumm);
         cmb_wtdsummary_print(&wsumm, stdout, true);
-        cmb_timeseries_print_histogram(hist, stdout, 20, 0.0, 0.0);
+        cmb_timeseries_histogram_print(hist, stdout, 20, 0.0, 0.0);
     }
 
     /* Clean up */
