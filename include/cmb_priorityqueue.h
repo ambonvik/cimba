@@ -119,29 +119,43 @@ extern int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp,
  * @brief Put an object into the queue, if necessary, waiting for free
  * space.
  *
- * Note that the object argument is a pointer to where the object is stored.
- * The return value `CMB_PROCESS_SUCCESS` (0) indicates that all went well. The
- * `_put()` call does not change the value at this location. (It is passed as a
- * `void**` for symmetry with `cmb_priorityqueue_get`)
- *
  * If the call was interrupted for some reason, the return value is the
  * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
  * object pointer will still be unchanged.
  *
  * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
- * @param objectloc Pointer to the location where the object is stored.
+ * @param object Pointer to the object
  * @param priority The object priority, higher goes before lower
  * @param handleloc Pointer to where to store the object queue handle. If NULL,
  *                  the handle is not saved.
  * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
  */
 extern int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
-                                     void **objectloc,
+                                     void *object,
                                      int64_t priority,
                                      uint64_t *handleloc);
 
+/**
+ * @brief Return the 1-based position of an object in the queue by priority order.
+ *
+ * @memberof cmb_priorityqueue
+ * @param pqp Pointer to an object queue
+ * @param handle The handle of the object to locate
+ * @return 1-based position in the queue, or 0 if not found
+ */
+extern uint64_t cmb_priorityqueue_position(const struct cmb_priorityqueue *pqp,
+                                           uint64_t handle);
 
+
+/**
+ * @brief Cancel an object in the queue
+ *
+ * @memberof cmb_priorityqueue
+ * @param pqp Pointer to an object queue
+ * @param handle Handle of the object to reprioritize
+ * @param priority New priority for the object
+ */
 static inline bool cmb_priorityqueue_cancel(struct cmb_priorityqueue *pqp,
                                             const uint64_t handle)
 {
@@ -153,6 +167,14 @@ static inline bool cmb_priorityqueue_cancel(struct cmb_priorityqueue *pqp,
     return found;
 }
 
+/**
+ * @brief Change the priority of an object in the queue, reshuffling as needed.
+ *
+ * @memberof cmb_priorityqueue
+ * @param pqp Pointer to an object queue
+ * @param handle Handle of the object to reprioritize
+ * @param priority New priority for the object
+ */
 static inline void cmb_priorityqueue_reprioritize(const struct cmb_priorityqueue *pqp,
                                                   const uint64_t handle,
                                                   const int64_t priority)
@@ -217,7 +239,7 @@ static inline uint64_t cmb_priorityqueue_space(struct cmb_priorityqueue *pqp)
  * @memberof cmb_priorityqueue
  * @param pqp Pointer to a object queue
  */
-extern void cmb_priorityqueue_start_recording(struct cmb_priorityqueue *pqp);
+extern void cmb_priorityqueue_recording_start(struct cmb_priorityqueue *pqp);
 
 /**
  * @brief Turn off data recording.
@@ -225,7 +247,7 @@ extern void cmb_priorityqueue_start_recording(struct cmb_priorityqueue *pqp);
  * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  */
-extern void cmb_priorityqueue_stop_recording(struct cmb_priorityqueue *pqp);
+extern void cmb_priorityqueue_recording_stop(struct cmb_priorityqueue *pqp);
 
 /**
  * @brief Get the recorded timeseries of queue lengths.
@@ -245,6 +267,6 @@ extern struct cmb_timeseries *cmb_priorityqueue_history(struct cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @param fp File pointer, possibly `stdout`.
  */
-extern void cmb_priorityqueue_print_report(struct cmb_priorityqueue *pqp, FILE *fp);
+extern void cmb_priorityqueue_report_print(struct cmb_priorityqueue *pqp, FILE *fp);
 
 #endif /* CIMBA_CMB_PRIORITYQUEUE_H */

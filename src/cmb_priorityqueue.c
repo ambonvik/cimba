@@ -38,14 +38,19 @@
 
 /*
  * compare_func - Test if heap_tag *a should go before *b. If so, return true.
- * Order by isortkey (priority) only.
+ * Order by isortkey (priority), then FIFO by key for ties.
  */
 static bool compare_func(const struct cmi_heap_tag *a, const struct cmi_heap_tag *b)
 {
     cmb_assert_debug(a != NULL);
     cmb_assert_debug(b != NULL);
 
-    return (a->isortkey > b->isortkey);
+    if (a->isortkey != b->isortkey) {
+        return (a->isortkey > b->isortkey);
+    }
+
+    /* Stable FIFO within identical priority: earlier key goes first. */
+    return (a->key < b->key);
 }
 
 struct cmb_priorityqueue *cmb_priorityqueue_create(void)
@@ -139,7 +144,7 @@ static void record_sample(struct cmb_priorityqueue *pqp) {
     }
 }
 
-void cmb_priorityqueue_start_recording(struct cmb_priorityqueue *pqp)
+void cmb_priorityqueue_recording_start(struct cmb_priorityqueue *pqp)
 {
     cmb_assert_release(pqp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
@@ -148,7 +153,7 @@ void cmb_priorityqueue_start_recording(struct cmb_priorityqueue *pqp)
     record_sample(pqp);
 }
 
-void cmb_priorityqueue_stop_recording(struct cmb_priorityqueue *pqp)
+void cmb_priorityqueue_recording_stop(struct cmb_priorityqueue *pqp)
 {
     cmb_assert_release(pqp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
@@ -165,7 +170,7 @@ struct cmb_timeseries *cmb_priorityqueue_history(struct cmb_priorityqueue *pqp)
     return &(pqp->history);
 }
 
-void cmb_priorityqueue_print_report(struct cmb_priorityqueue *pqp, FILE *fp) {
+void cmb_priorityqueue_report_print(struct cmb_priorityqueue *pqp, FILE *fp) {
     cmb_assert_release(pqp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
 
@@ -178,7 +183,7 @@ void cmb_priorityqueue_print_report(struct cmb_priorityqueue *pqp, FILE *fp) {
     cmb_wtdsummary_destroy(ws);
 
     const unsigned nbin = (pqp->capacity > 20) ? 20 : pqp->capacity + 1;
-    cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(pqp->capacity + 1u));
+    cmb_timeseries_histogram_print(ts, fp, nbin, 0.0, (double)(pqp->capacity + 1u));
 }
 
 int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
@@ -231,23 +236,22 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
 }
 
 int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
-                              void **objectloc,
+                              void *object,
                               const int64_t priority,
                               uint64_t *handleloc)
 {
     cmb_assert_release(pqp != NULL);
-    cmb_assert_release(objectloc != NULL);
 
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)pqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_logger_info(stdout, "Puts object %p priority %" PRIi64 " into %s, length %" PRIu64,
-                    *objectloc, priority, rbp->name, pqp->queue.heap_count);
+                    object, priority, rbp->name, pqp->queue.heap_count);
     while (true) {
         cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
         if (pqp->queue.heap_count < pqp->capacity) {
             /* There is space */
             const uint64_t handle = cmi_hashheap_enqueue(&(pqp->queue),
-                                                         *objectloc,
+                                                         object,
                                                          NULL, NULL, NULL,
                                                          0u, 0.0, priority);
             if (handleloc != NULL) {
@@ -255,7 +259,7 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
             }
 
             record_sample(pqp);
-            cmb_logger_info(stdout, "Success, put %p", *objectloc);
+            cmb_logger_info(stdout, "Success, put %p", object);
             cmb_resourceguard_signal(&(pqp->front_guard));
 
             return CMB_PROCESS_SUCCESS;
@@ -273,10 +277,47 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
         else {
             cmb_logger_info(stdout,
                             "Interrupted by signal %" PRIi64 ", could not put object %p into %s",
-                            sig, *objectloc, rbp->name);
+                            sig, object, rbp->name);
             cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
 
             return sig;
         }
     }
+}
+
+uint64_t cmb_priorityqueue_position(const struct cmb_priorityqueue *pqp,
+                                    const uint64_t handle)
+{
+    cmb_assert_release(pqp != NULL);
+
+    const struct cmi_hashheap *hp = &(pqp->queue);
+    if ((hp == NULL) || (hp->heap_count == 0u)) {
+        return 0u;
+    }
+
+    if (!cmi_hashheap_is_enqueued(hp, handle)) {
+        return 0u;
+    }
+
+    /* First stage: Find the target object */
+    const uint64_t tgt_idx = cmi_hash_find_index(hp, handle);
+    const struct cmi_heap_tag *target = (tgt_idx > 0u) ? &(hp->heap[tgt_idx]) : NULL;
+    if (target == NULL) {
+        /* Not found */
+        return 0u;
+    }
+
+    /* Second stage: Count objects ahead of the target */
+    uint64_t ahead = 0u;
+    for (uint64_t i = 1u; i <= hp->heap_count; ++i) {
+        const struct cmi_heap_tag *tag = &(hp->heap[i]);
+        if (tag == target) {
+            continue;
+        }
+        if (hp->heap_compare(tag, target)) {
+            ++ahead;
+        }
+    }
+
+    return ahead + 1u;
 }
