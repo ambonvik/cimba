@@ -56,17 +56,17 @@
     cmb_dataset_summarize(&ds, &dsu); \
     printf("Actual:   "); \
     cmb_datasummary_print(&dsu, stdout, LEADINS); \
-    cmb_dataset_print_histogram(&ds, stdout, 20, 0.0, 0.0)
+    cmb_dataset_histogram_print(&ds, stdout, 20, 0.0, 0.0)
 
 #define QTEST_REPORT_ACFS() \
     printf("\nAutocorrelation factors (expected 0.0):\n"); \
     double acf[ACFS + 1] = { 0.0 }; \
     cmb_dataset_ACF(&ds, ACFS, acf); \
-    cmb_dataset_print_correlogram(&ds, stdout, ACFS, acf); \
+    cmb_dataset_correlogram_print(&ds, stdout, ACFS, acf); \
     printf("\nPartial autocorrelation factors (expected 0.0):\n"); \
     double pacf[ACFS + 1] = { 0.0 }; \
     cmb_dataset_PACF(&ds, ACFS, pacf, acf); \
-    cmb_dataset_print_correlogram(&ds, stdout, ACFS, pacf)
+    cmb_dataset_correlogram_print(&ds, stdout, ACFS, pacf)
 
 #define QTEST_FINISH() \
     cmb_dataset_terminate(&ds); \
