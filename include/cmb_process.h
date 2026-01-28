@@ -228,6 +228,17 @@ static inline int64_t cmb_process_yield(void)
 }
 
 /**
+ * @brief  Schedule a wakeup event at the current time for a yielded process. The
+ *         processes are asymmetric coroutines and only the dispatcher can call
+ *         `cmi_coroutine_resume()`. Hence, an event to make the dispatcher do that.
+ *
+ * @memberof cmb_process
+ * @param pp Pointer to the target process.
+ * @param sig The signal to be passed to the target process.
+ */
+extern void cmb_process_resume(struct cmb_process *pp, int64_t sig);
+
+/**
  * @brief  Clear all timers set for this process.
  *
  * @memberof cmb_process
@@ -279,20 +290,6 @@ static inline uint64_t cmb_process_timer_set(struct cmb_process *pp, const doubl
  * @return True if the timer is found, false if not.
  */
 extern bool cmb_process_timer_cancel(struct cmb_process *pp, uint64_t handle);
-
-/**
- * @brief  Schedule a wakeup event at the current time for a yielded process. The
- *         processes are asymmetric coroutines and only the dispatcher can call
- *         `cmi_coroutine_resume()`. Hence, an event to make the dispatcher do that.
- *         If the target process was waiting for something else, this call works
- *         like `cmb_process_interrupt()`.
- *
- * @memberof cmb_process
- * @param pp Pointer to the target process.
- * @param sig The signal to be passed to the target process.
- * @param pri The priority for the interrupt event that will be scheduled.
- */
-extern void cmb_process_resume(struct cmb_process *pp, int64_t sig, int64_t pri);
 
 /**
  * @brief  Hold (sleep) for a specified duration of simulated time. Called from

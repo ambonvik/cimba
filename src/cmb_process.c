@@ -235,7 +235,6 @@ void cmi_process_add_awaitable(struct  cmb_process *pp,
 {
     cmb_assert_debug(pp != NULL);
 
-    cmb_logger_info(stdout, "Adding awaitable %p type %d", awaitable, type);
     struct cmi_process_awaitable *awp = cmi_mempool_alloc(&cmi_process_awaitabletags);
     awp->type = type;
     awp->ptr = awaitable;
@@ -255,7 +254,6 @@ bool cmi_process_remove_awaitable(struct cmb_process *pp,
 {
     cmb_assert_debug(pp != NULL);
 
-    cmb_logger_info(stdout, "Removing awaitable %p type %d", awaitable, type);
     struct cmi_slist_head *ahead = &(pp->awaits);
     while (ahead->next != NULL) {
         struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
@@ -277,6 +275,8 @@ int64_t cmb_process_hold(const double dur)
 {
     cmb_assert_release(dur >= 0.0);
 
+    cmb_logger_info(stdout, "Holding for %f time units", dur);
+
     /* Set ourselves a wakeup call, leaving any previous timers in place */
     struct cmb_process *pp = cmb_process_current();
     cmb_assert_debug(pp != NULL);
@@ -290,7 +290,7 @@ int64_t cmb_process_hold(const double dur)
         /* Whatever woke us up was not the scheduled wakeup call, cancel it */
         cmb_logger_info(stdout, "Woken up by signal %" PRIi64, sig);
         cmb_process_timer_cancel(pp, handle);
-        // cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
+        cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
     }
 
     return sig;
@@ -354,6 +354,9 @@ bool cmb_process_timer_cancel(struct cmb_process *pp, const uint64_t handle)
 
     cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
     const bool ret = cmb_event_cancel(handle);
+    if (ret == true) {
+        cmb_logger_info(stdout, "Cancelled timeout event %" PRIu64, handle);
+    }
 
     return ret;
 }
@@ -602,26 +605,22 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
         if (pa->type == CMI_PROCESS_AWAITABLE_TIME) {
             /* Waits for some timeout (hold or timer), cancel it */
             cmb_assert_debug(pa->handle != UINT64_C(0));
-            cmb_logger_info(stdout, "Cancels timeout event %" PRIu64, pa->handle);
             (void)cmb_event_cancel(pa->handle);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_RESOURCE) {
             cmb_assert_debug(pa->ptr != NULL);
             struct cmb_resourceguard *rgp = pa->ptr;
-            cmb_logger_info(stdout, "Cancels resource %s", rgp->guarded_resource->name);
             (void)cmb_resourceguard_remove(rgp, pp);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_PROCESS) {
             /* Waits for a process to end, remove ourselves from the waiter list */
            cmb_assert_debug(pa->ptr != NULL);
             struct cmb_process *pw = (struct cmb_process *)pa->ptr;
-            cmb_logger_info(stdout, "Cancels wait for process %s", pw->name);
             (void)cmi_process_remove_waiter(pw, pp);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_EVENT) {
             /* Waits for a specific event, remove ourselves from the event's list */
             cmb_assert_debug(pa->handle != UINT64_C(0));
-            cmb_logger_info(stdout, "Cancels wait for event %" PRIu64, pa->handle);
             (void)cmi_event_remove_waiter(pa->handle, pp);
         }
 
@@ -718,4 +717,31 @@ void cmb_process_stop(struct cmb_process *tgt, void *retval)
     cmi_process_cancel_awaiteds(tgt);
     cmi_process_drop_resources(tgt);
     wake_process_waiters(&(tgt->waiters), CMB_PROCESS_STOPPED);
+}
+
+/*
+ * process_resume_event - The event that actually resumes the process,
+ * since this only can be done by the dispatcher
+ */
+static void process_resume_event(void *vp, void *arg)
+{
+    cmb_assert_debug(vp != NULL);
+    struct cmb_process *pp = (struct cmb_process *)vp;
+    const int64_t sig = (int64_t)arg;
+
+    cmb_logger_info(stdout, "Resumes %s signal %" PRIi64, pp->name, sig);
+
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
+    cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
+    (void)cmi_coroutine_resume(cp, arg);
+}
+
+/*
+ * cmb_process_resume - schedule a wakeup event at the current time
+ */
+void cmb_process_resume(struct cmb_process *pp, int64_t sig)
+{
+    cmb_assert_debug(pp != NULL);
+    cmb_logger_info(stdout, "Schedules resume event for %s signal %" PRIi64, pp->name, sig);
+    (void)cmb_event_schedule(process_resume_event, pp, (void *)sig, cmb_time(), pp->priority);
 }
