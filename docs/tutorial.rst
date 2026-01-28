@@ -1070,11 +1070,13 @@ in the next tutorial, but will leave it until then.
 
 Note also that there are some differences between the ``_acquire()``/``_release()`` pairs
 and the similar ``_get()``/``_put()`` pairs for buffers and queues. Suppose that you
-have a ``cmb_objectqueue`` of maximal size 10. It is still possible to call
-``cmb_objectqueue_put(oqp, 100)``. The call just puts in 10 to begin with, waits for
+have a ``cmb_buffer`` of maximal size 10. It is still possible to call
+``cmb_buffer_put(oqp, 100)``. The call just puts in 10 to begin with, waits for
 someone to get one or more of them, and then keeps refilling the queue until all 100 are
 put in. The call only returns at that point (unless interrupted, which we will discuss in
-a moment).  Similarly, ``cmb_objectqueue_get(oqp, 100)`` works as expected.
+a moment).  Similarly, ``cmb_buffer_get(oqp, 100)`` works as expected, and trying to
+``_put()`` another item into a full ``cmb_objectqueue`` or ``cmb_priorityqueue`` just
+suspends the caller until space becomes available.
 
 Resources and resource pools are not like that. Requesting more from a resource pool
 than its maximum is an error. If we have a resource pool with maximum size 10, 5 of
@@ -2173,7 +2175,9 @@ the ship class looks like this:
 The departure process is reasonably straightforward, capturing the exit value from
 the ship process and then recycling the entire ship. A ``cmb_condition`` is used
 to know that one or more ships have departed, triggering the departure process
-to do something. Here, we use our new destructor functions:
+to do something. This does the same as using the ``cmb_objectqueue`` in the previous
+example, but demonstrates a different way of doing it (effectively the same as
+internal workings of a ``cmb_objectqueue``). We also use our new destructor functions:
 
 .. code-block:: c
 
