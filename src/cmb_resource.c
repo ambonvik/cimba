@@ -159,7 +159,7 @@ void cmb_resource_print_report(struct cmb_resource *rp, FILE *fp) {
     cmb_wtdsummary_print(ws, fp, true);
     cmb_wtdsummary_destroy(ws);
 
-    cmb_timeseries_print_histogram(ts, fp, 2u, 0.0, 1.0);
+    cmb_timeseries_histogram_print(ts, fp, 2u, 0.0, 1.0);
 }
 
 /*
