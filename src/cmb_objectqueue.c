@@ -161,7 +161,7 @@ static void record_sample(struct cmb_objectqueue *oqp) {
     }
 }
 
-void cmb_objectqueue_start_recording(struct cmb_objectqueue *oqp)
+void cmb_objectqueue_recording_start(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
@@ -170,7 +170,7 @@ void cmb_objectqueue_start_recording(struct cmb_objectqueue *oqp)
     record_sample(oqp);
 }
 
-void cmb_objectqueue_stop_recording(struct cmb_objectqueue *oqp)
+void cmb_objectqueue_recording_stop(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
@@ -187,7 +187,7 @@ struct cmb_timeseries *cmb_objectqueue_history(struct cmb_objectqueue *oqp)
     return &(oqp->history);
 }
 
-void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp) {
+void cmb_objectqueue_report_print(struct cmb_objectqueue *oqp, FILE *fp) {
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
 
@@ -200,7 +200,7 @@ void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp) {
     cmb_wtdsummary_destroy(ws);
 
     const unsigned nbin = (oqp->capacity > 20) ? 20 : oqp->capacity + 1;
-    cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(oqp->capacity + 1u));
+    cmb_timeseries_histogram_print(ts, fp, nbin, 0.0, (double)(oqp->capacity + 1u));
 }
 
 int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
@@ -265,7 +265,6 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
 int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void *object)
 {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(object != NULL);
 
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
@@ -315,5 +314,27 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void *object)
             return sig;
         }
     }
+}
+
+/* Note that NULL may be a valid object value */
+uint64_t cmb_objectqueue_position(struct cmb_objectqueue *oqp, void *object)
+{
+    cmb_assert_release(oqp != NULL);
+
+    if (oqp->queue_head == NULL || oqp->length == 0u) {
+        return 0u;
+    }
+
+    uint64_t pos = 0u;
+    const struct queue_tag *tag = oqp->queue_head;
+    while (tag != NULL) {
+        pos++;
+        if (tag->object == object) {
+            return pos;
+        }
+        tag = tag->next;
+    }
+
+    return 0u;
 }
 

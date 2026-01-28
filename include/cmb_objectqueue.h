@@ -192,12 +192,23 @@ static inline uint64_t cmb_objectqueue_space(struct cmb_objectqueue *oqp)
 }
 
 /**
+ * @brief Returns position of object in object queue
+ *
+ * @memberof cmb_objectqueue
+ * @param oqp Pointer to an object queue
+ * &param object Pointer to some object, possibly NULL
+ * @return The position of the object in the queue, zero if not found. Will return
+ *         the first match (nearest to the front of the queue) if several matches.
+ */
+extern uint64_t cmb_objectqueue_position(struct cmb_objectqueue *oqp, void *object);
+
+/**
  * @brief Turn on data recording.
  *
  * @memberof cmb_objectqueue
  * @param oqp Pointer to a object queue
  */
-extern void cmb_objectqueue_start_recording(struct cmb_objectqueue *oqp);
+extern void cmb_objectqueue_recording_start(struct cmb_objectqueue *oqp);
 
 /**
  * @brief Turn off data recording.
@@ -205,7 +216,7 @@ extern void cmb_objectqueue_start_recording(struct cmb_objectqueue *oqp);
  * @memberof cmb_objectqueue
  * @param oqp Pointer to an object queue
  */
-extern void cmb_objectqueue_stop_recording(struct cmb_objectqueue *oqp);
+extern void cmb_objectqueue_recording_stop(struct cmb_objectqueue *oqp);
 
 /**
  * @brief Get the recorded timeseries of queue lengths.
@@ -225,6 +236,6 @@ extern struct cmb_timeseries *cmb_objectqueue_history(struct cmb_objectqueue *oq
  * @param oqp Pointer to an object queue
  * @param fp File pointer, possibly `stdout`.
  */
-extern void cmb_objectqueue_print_report(struct cmb_objectqueue *oqp, FILE *fp);
+extern void cmb_objectqueue_report_print(struct cmb_objectqueue *oqp, FILE *fp);
 
 #endif /* CIMBA_CMB_OBJECTQUEUE_H */
