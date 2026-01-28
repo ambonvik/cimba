@@ -209,8 +209,8 @@ void test_dataset(void)
     printf("cmb_dataset_median:\t%#8.4g\n", cmb_dataset_median(&ds));
     cmi_test_print_line("-");
 
-    printf("Five number summary of dataset: cmb_dataset_print_fivenum ...\n");
-    cmb_dataset_print_fivenum(&ds, stdout, true);
+    printf("Five number summary of dataset: cmb_dataset_fivenum_print ...\n");
+    cmb_dataset_fivenum_print(&ds, stdout, true);
 
     printf("\nClearing the dataset; cmb_dataset_reset\n");
     cmb_dataset_reset(&ds);
@@ -227,20 +227,20 @@ void test_dataset(void)
 
     printf("Summary generated from the dataset:\n");
     cmb_datasummary_print(&dsum, stdout, true);
-    printf("\nUnweighted histogram: cmb_dataset_print_histogram\n");
-    cmb_dataset_print_histogram(&ds, stdout, 20u, 0.0, 0.0);
+    printf("\nUnweighted histogram: cmb_dataset_histogram_print\n");
+    cmb_dataset_histogram_print(&ds, stdout, 20u, 0.0, 0.0);
 
     printf("\nAutocorrelation coefficients: cmb_dataset_ACF\n");
     double acf[MAX_LAG + 1];
     cmb_dataset_ACF(&ds, MAX_LAG, acf);
-    printf("\nACF correlogram: cmb_dataset_print_correlogram\n");
-    cmb_dataset_print_correlogram(&ds, stdout, MAX_LAG, acf);
+    printf("\nACF correlogram: cmb_dataset_correlogram_print\n");
+    cmb_dataset_correlogram_print(&ds, stdout, MAX_LAG, acf);
 
     printf("\nPartial autocorrelation coefficients:cmb_dataset_PACF\n");
     double pacf[MAX_LAG + 1];
     cmb_dataset_PACF(&ds, MAX_LAG, pacf, acf);
-    printf("\nPACF correlogram: cmb_dataset_print_correlogram\n");
-    cmb_dataset_print_correlogram(&ds, stdout, MAX_LAG, pacf);
+    printf("\nPACF correlogram: cmb_dataset_correlogram_print\n");
+    cmb_dataset_correlogram_print(&ds, stdout, MAX_LAG, pacf);
     cmi_test_print_line("-");
 
     printf("\nCreating a new dataset on the heap: cmb_dataset_create\n");
@@ -259,15 +259,15 @@ void test_dataset(void)
     cmb_datasummary_reset(&dsum);
     (void)cmb_dataset_summarize(dsp, &dsum);
     cmb_datasummary_print(&dsum, stdout, true);
-    cmb_dataset_print_histogram(dsp, stdout, 20u, 0, 0);
+    cmb_dataset_histogram_print(dsp, stdout, 20u, 0, 0);
 
     printf("\nAutocorrelation coefficients:\n");
     cmb_dataset_ACF(dsp, MAX_LAG, acf);
-    cmb_dataset_print_correlogram(dsp, stdout, MAX_LAG, acf);
+    cmb_dataset_correlogram_print(dsp, stdout, MAX_LAG, acf);
 
     printf("\nPartial autocorrelation coefficients:\n");
     cmb_dataset_PACF(dsp, MAX_LAG, pacf, acf);
-    cmb_dataset_print_correlogram(dsp, stdout, MAX_LAG, pacf);
+    cmb_dataset_correlogram_print(dsp, stdout, MAX_LAG, pacf);
 
     printf("\nCleaning up: cmb_datasummary_terminate, cmb_dataset_destroy\n");
     cmb_datasummary_terminate(&dsum);
@@ -304,17 +304,17 @@ void test_timeseries(void)
     printf("cmb_timeseries_max:\t%#8.4g\n", cmb_timeseries_max(tsp));
     cmi_test_print_line("-");
 
-    printf("\nSummarizing: cmb_timeseries_summarize, cmb_wtdsummary_print, cmb_timeseries_print_fivenum ...\n");
+    printf("\nSummarizing: cmb_timeseries_summarize, cmb_wtdsummary_print, cmb_timeseries_fivenum_print ...\n");
     struct cmb_wtdsummary ws = { 0 };
     cmb_timeseries_summarize(tsp, &ws);
     cmb_wtdsummary_print(&ws, stdout, true);
-    cmb_timeseries_print_fivenum(tsp, stdout, true);
+    cmb_timeseries_fivenum_print(tsp, stdout, true);
 
     printf("\nWeighted histogram:\n");
-    cmb_timeseries_print_histogram(tsp, stdout, NUM_BINS, 0.0, 0.0);
+    cmb_timeseries_histogram_print(tsp, stdout, NUM_BINS, 0.0, 0.0);
     struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     printf("Unweighted histogram of same data:\n");
-    cmb_dataset_print_histogram(dsp, stdout, NUM_BINS, 0.0, 0.0);
+    cmb_dataset_histogram_print(dsp, stdout, NUM_BINS, 0.0, 0.0);
     cmi_test_print_line("=");
 
     printf("\nDeclaring another timeseries on the stack: cmb_timeseries_initialize\n");
@@ -378,8 +378,8 @@ void test_timeseries(void)
     cmb_timeseries_print(&ts, stdout);
 
     printf("\ncmb_dataset_median:\t%#8.4g\n", cmb_timeseries_median(&ts));
-    printf("cmb_timeseries_print_fivenum:\n");
-    cmb_timeseries_print_fivenum(&ts, stdout, true);
+    printf("cmb_timeseries_fivenum_print:\n");
+    cmb_timeseries_fivenum_print(&ts, stdout, true);
 
     printf("\nCleaning up: cmb_timeseries_terminate\n");
     cmb_timeseries_terminate(&ts);
