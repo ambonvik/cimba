@@ -533,7 +533,7 @@ void run_trial(void *vtrl)
             struct cmb_datasummary dsumm;
             cmb_dataset_summarize(sim.time_in_system[i], &dsumm);
             cmb_datasummary_print(&dsumm, stdout, true);
-            cmb_dataset_print_histogram(sim.time_in_system[i], stdout, 20, 0.0, 0.0);
+            cmb_dataset_histogram_print(sim.time_in_system[i], stdout, 20, 0.0, 0.0);
             trlp->avg_time_in_system[i] = cmb_datasummary_mean(&dsumm);
         }
     }
@@ -547,7 +547,7 @@ void run_trial(void *vtrl)
             cmb_timeseries_summarize(hist, &wsumm);
             cmb_wtdsummary_print(&wsumm, stdout, true);
             const unsigned nvals = (unsigned)cmb_wtdsummary_max(&wsumm);
-            cmb_timeseries_print_histogram(hist, stdout, nvals, 0.0, (double)nvals);
+            cmb_timeseries_histogram_print(hist, stdout, nvals, 0.0, (double)nvals);
         }
     }
 
@@ -559,7 +559,7 @@ void run_trial(void *vtrl)
         cmb_timeseries_summarize(hist, &wsumm);
         cmb_wtdsummary_print(&wsumm, stdout, true);
         const unsigned nvals = (unsigned)cmb_wtdsummary_max(&wsumm);
-        cmb_timeseries_print_histogram(hist, stdout, nvals, 0.0, (double)nvals);
+        cmb_timeseries_histogram_print(hist, stdout, nvals, 0.0, (double)nvals);
     }
 
     /* Clean up */
