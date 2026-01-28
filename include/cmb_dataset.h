@@ -216,7 +216,7 @@ extern double cmb_dataset_median(const struct cmb_dataset *dsp);
  * @param lead_ins Flag for whether to add lead-in texts or just print the
  *                 numeric values.
  */
-extern void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
+extern void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
                                       FILE *fp,
                                       bool lead_ins);
 
@@ -236,7 +236,7 @@ extern void cmb_dataset_print_fivenum(const struct cmb_dataset *dsp,
  * @param low_lim The lower limit for the bin range.
  * @param high_lim The upper limit for the bin range.
  */
-extern void cmb_dataset_print_histogram(const struct cmb_dataset *dsp,
+extern void cmb_dataset_histogram_print(const struct cmb_dataset *dsp,
                                         FILE *fp,
                                         unsigned num_bins,
                                         double low_lim,
@@ -298,7 +298,7 @@ extern void cmb_dataset_PACF(const struct cmb_dataset *dsp,
  * @param n The highest lag value to calculate.
  * @param acf The array where the acf's will be stored size ``n + 1``
  */
-extern void cmb_dataset_print_correlogram(const struct cmb_dataset *dsp,
+extern void cmb_dataset_correlogram_print(const struct cmb_dataset *dsp,
                                           FILE *fp,
                                           unsigned n,
                                           double *acf);
