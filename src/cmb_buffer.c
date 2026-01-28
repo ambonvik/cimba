@@ -175,7 +175,7 @@ void cmb_buffer_print_report(struct cmb_buffer *bp, FILE *fp) {
     cmb_wtdsummary_destroy(ws);
 
     const unsigned nbin = (bp->capacity > 20) ? 20 : bp->capacity + 1;
-    cmb_timeseries_print_histogram(ts, fp, nbin, 0.0, (double)(bp->capacity + 1u));
+    cmb_timeseries_histogram_print(ts, fp, nbin, 0.0, (double)(bp->capacity + 1u));
 }
 
 /*
