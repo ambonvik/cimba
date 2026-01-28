@@ -4,9 +4,8 @@ Cimba - Fast Multithreaded Discrete Event Simulation in C
 =========================================================
 
 Cimba is a very fast discrete event simulation library written in C and assembly for
-both Linux and Windows on x86-64 architectures, providing process- and
-event-oriented simulated worldviews combined with multithreaded coarse-trained
-parallelism for high performance on modern CPUs.
+both Linux and Windows on x86-64 architectures, providing process-oriented
+simulation combined with multithreaded parallelism for high performance on modern CPUs.
 
 Parallelizing discrete event simulation is both a very hard and a trivially simple
 problem, depending on the way you look at it. Parallelizing a single simulation
@@ -63,7 +62,7 @@ It is powerful, fast, reliable, and free.
   the results you get. The code is written with liberal use of assertions to enforce
   preconditions, invariants, and postconditions in each function. The assertions act as
   self-enforcing documentation on expected inputs and outputs from the functions. About
-  7 % of all code lines are asssertions.
+  7 % of all code lines are assertions.
 
   There are unit tests for each module. Running the unit test battery in debug mode (all
   assertions active) verifies correct operation in great detail. You can do that by the
