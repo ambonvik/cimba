@@ -211,7 +211,7 @@ void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp)
  * Calculate a histogram with time-weighed values, each x-value counted with
  * the t-value interval to the next x-value, i.e., the holding time.
  */
-static void timeseries_fill_histogram(struct cmi_dataset_histogram *hp,
+static void timeseries_histogram_fill(struct cmi_dataset_histogram *hp,
                                       const uint64_t n,
                                       const double xa[n],
                                       const double wa[n])
@@ -243,9 +243,9 @@ static void timeseries_fill_histogram(struct cmi_dataset_histogram *hp,
     }
 }
 
-void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp,
+void cmb_timeseries_histogram_print(const struct cmb_timeseries *tsp,
                                     FILE *fp,
-                                    const uint16_t num_bins,
+                                    uint16_t num_bins,
                                     double low_lim,
                                     double high_lim)
 {
@@ -256,10 +256,12 @@ void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp,
     cmb_assert_release(high_lim >= low_lim);
 
     const struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
-    if (dsp->xa == NULL) {
-        cmb_assert_debug(dsp->count == 0u);
-        cmb_assert_debug(tsp->ta == NULL);
+    if (dsp->xa == NULL || dsp->count == 0u) {
         cmb_logger_warning(fp, "No data to display in histogram");
+        return;
+    }
+    else if (dsp->count == 1u) {
+        fprintf(fp, "Not enough data to display histogram\n");
         return;
     }
 
@@ -269,12 +271,17 @@ void cmb_timeseries_print_histogram(const struct cmb_timeseries *tsp,
         high_lim = dsp->max;
     }
 
-    struct cmi_dataset_histogram *hp = NULL;
-    hp = cmi_dataset_create_histogram(num_bins, low_lim, high_lim);
-    timeseries_fill_histogram(hp, dsp->count, dsp->xa, tsp->wa);
-    cmi_dataset_print_histogram(hp, fp);
+    const unsigned datarange = (unsigned)ceil(high_lim - low_lim);
+    if (datarange < num_bins) {
+        num_bins = (datarange > 0u) ? datarange : 1u;
+    }
 
-    cmi_dataset_destroy_histogram(hp);
+    struct cmi_dataset_histogram *hp = NULL;
+    hp = cmi_dataset_histogram_create(num_bins, low_lim, high_lim);
+    timeseries_histogram_fill(hp, dsp->count, dsp->xa, tsp->wa);
+    cmi_dataset_histogram_print(hp, fp);
+
+    cmi_dataset_histogram_destroy(hp);
 }
 
 uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
@@ -457,7 +464,7 @@ double cmb_timeseries_median(const struct cmb_timeseries *tsp)
     return r;
 }
 
-void cmb_timeseries_print_fivenum(const struct cmb_timeseries *tsp,
+void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
                                   FILE *fp,
                                   const bool lead_ins)
 {
