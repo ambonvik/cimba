@@ -643,7 +643,7 @@ internal problems in Cimba and can be turned off after sufficient unit testing. 
 that, it mainly serves as trustworthy documentation: This statement is true, has been
 tested millions of times in unit testing, and you can easily verify it for yourself.
 
-It is crystal clear what valid inputs and outputs are for the function above, even
+It is clear what valid inputs and outputs are for the function above, even
 without a single comment in the code. We are not about to prove total correctness in the
 strict C.A.R. Hoare sense, but the function shown above does constitute a logical
 `Hoare triple <https://en.wikipedia.org/wiki/Hoare_logic#Hoare_triple>`_.
