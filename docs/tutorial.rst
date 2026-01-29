@@ -1483,148 +1483,376 @@ inheriting its properties and methods, and adding some more specifics.
 
 The use case is to model an amusement park with guests wanting to use various
 attractions, where the park operator wants us to analyze ways of influencing customer
-behavior. The overall metric is the time spent in the park per visitor.
+behavior. The overall metric is the time spent in the park per visitor. The time unit
+is minutes.
+
+Classes derived from cmb_process
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The object-oriented paradigm is very natural for simulation modeling, and was first
+developed for this purpose in Simula67. Obviously, C does not directly support
+object-orientation as a language feature, but is flexible enough to support an
+object-oriented programming style. We will discuss this in more detail in the
+Background section. In this tutorial we will focus on how to do it.
+
+Basically, in object-oriented C, the ``struct`` becomes the class. By placing one
+struct as the first member of another, the outer struct effectively becomes a derived
+class from the inner one. A pointer to the outer struct will point to the same address
+as the inner struct, and one can freely cast the same pointer value between the two
+types.
+
+For example, we want our server process to also contain a pointer to the queue it gets
+visitors from, the number of visitors that can board for each run of the ride, and the
+parameters of the service time distribution. We could pass this to a plain
+``cmb_process`` as part of its ``context`` initialization argument, but we can also
+create a derived ``struct server`` as a derived class from the ``struct cmb_process``:
+
+.. code-block:: c
+
+    struct server {
+        struct cmb_process core;       /* <= Note: The real thing, not a pointer */
+        struct cmb_priorityqueue *pq;
+        unsigned batch_size;
+        double dur_min, dur_mode, dur_max;
+    };
+
+It is important to note that the first member of the struct is the parent class struct
+itself, not a pointer to an object of that class. We can the define the core methods of
+the server class:
+
+.. code-block:: c
+
+    struct server *server_create(void)
+    {
+        struct server *sp = malloc(sizeof(struct server));
+        cmb_assert_release(sp != NULL);
+        return sp;
+    }
+
+    void server_initialize(struct server *sp,
+                           const char *name,
+                           struct cmb_priorityqueue *qp,
+                           const unsigned bs,
+                           const double dmin, const double dmod, const double dmax)
+    {
+        sp->pq = qp;
+        sp->batch_size = bs;
+        sp->dur_min = dmin;
+        sp->dur_mode = dmod;
+        sp->dur_max = dmax;
+
+        cmb_process_initialize(&sp->core, name, serverfunc, NULL, 0u);
+    }
+
+    void server_start(struct server *sp)
+    {
+        cmb_process_start(&sp->core);
+    }
+
+    void server_terminate(struct server *sp)
+    {
+        cmb_process_terminate(&sp->core);
+    }
+
+    void server_destroy(struct server *sp)
+    {
+        free(sp);
+    }
+
+The most important function is the server process function itself, which could look
+like this:
+
+.. code-block:: c
+
+    void *serverfunc(struct cmb_process *me, void *vctx)
+    {
+        cmb_assert_debug(me != NULL);
+        cmb_unused(vctx);
+        const struct server *sp = (struct server *)me;
+
+        while (true) {
+            /* Prepare for the next batch of visitors */
+            unsigned cnt = 0u;
+            struct visitor *batch[sp->batch_size];
+
+            /* Wait for the first visitor, then fill the ride as best possible */
+            cmb_logger_user(stdout, LOGFLAG_SERVICE, "Open for next batch");
+            do {
+                struct visitor *vip;
+                (void)cmb_priorityqueue_get(sp->pq, (void**)&(vip));
+                struct cmb_process *pp = (struct cmb_process *)vip;
+                cmb_process_timers_clear(pp);
+                cmb_logger_user(stdout, LOGFLAG_SERVICE, "Got visitor %s", cmb_process_name(pp));
+                batch[cnt++] = vip;
+            } while ((cmb_priorityqueue_length(sp->pq) > 0) && (cnt < sp->batch_size)) ;
+
+            /* Log the waiting times for this batch of visitors */
+            cmb_logger_user(stdout, LOGFLAG_SERVICE, "Has %u for %u slots", cnt, sp->batch_size);
+            for (unsigned ui = 0; ui < cnt; ui++) {
+                struct visitor *vip = batch[ui];
+                const double qt = cmb_time() - vip->last_event_time;
+                vip->waiting_time += qt;
+                vip->last_event_time = cmb_time();
+            }
+
+            /* Run the ride with these visitors on board */
+            cmb_logger_user(stdout, LOGFLAG_SERVICE, "Starting ride");
+            const double dur = cmb_random_PERT(sp->dur_min, sp->dur_mode, sp->dur_max);
+            cmb_process_hold(dur);
+            cmb_logger_user(stdout, LOGFLAG_SERVICE, "Ride finished");
+
+            /* Unload and send the visitors on their merry way */
+            for (unsigned ui = 0u; ui < cnt; ui++) {
+                struct visitor *vip = batch[ui];
+                const double rt = cmb_time() - vip->last_event_time;
+                vip->riding_time += rt;
+                vip->last_event_time = cmb_time();
+                struct cmb_process *pp = (struct cmb_process *)vip;
+                cmb_logger_user(stdout, LOGFLAG_SERVICE, "Resuming visitor %s", cmb_process_name(pp));
+                cmb_process_resume(pp, CMB_PROCESS_SUCCESS);
+            }
+        }
+    }
+
+Note that the ``serverproc`` gets a group of suspended ``visitor`` processes from the
+priority queue, loads them into the attraction, holds them for the duration of the
+ride, stores some statistics in them, before resuming them as active processes.
+
+Since our processes are asymmetric coroutines, the ``cmb_process_resume()`` call does
+not directly resume the target process (coroutine), but schedules an event that will
+make the dispatcher resume the target process (coroutine). That way, all control passes
+through the dispatcher, and all coroutines are resumed by the dispatcher only.
 
 Setting and clearing timers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To model this, we introduce additional ``cmb_process`` methods: The process can
-schedule a future timeout event for itself by calling ``cmb_process_timer_set()``. When
-the timer event occurs, the process will be interrupted from whatever it is doing with
-whatever signal the timer was set to send, with ``CMB_PROCESS_TIMEOUT`` as a predefined
-possibility. By setting a timeout before some ``_acquire()``, ``_get()``,
-or ``_wait()`` call, the process can abort the wait when patience runs out:
+Similarly, we can define the ``struct visitor`` as a derived class from the
+``cmb_process``:
 
 .. code-block:: c
 
-    struct cmb_process *me = cmb_process_current();
-    uint64_t handle = cmb_process_timer_set(me, patience, CMB_PROCESS_TIMEOUT);
-    int64_t sig = cmb_resource_acquire(something);
-    if (sig == CMB_PROCESS_SUCCESS) {
-        /* Normal return, we have the resource, cancel the timeout */
-        cmb_process_timer_cancel(pp, handle);
-    }
-    else if (sig == CMB_PROCESS_TIMEOUT) {
-        /* It went off */
-    }
-    else {
-        /* We were preempted or interrupted by someone else */
-    }
+    struct visitor {
+        struct cmb_process core;       /* <= Note: The real thing, not a pointer */
+        double patience;
+        bool goldcard;
+        double entry_time;
+        unsigned current_attraction;
+        double riding_time;
+        double waiting_time;
+        double walking_time;
+        unsigned num_attractions_visited;
+        double last_event_time;
+    };
 
-The timer is a property of the process, not of the following ``_acquire()`` call. This
-is an important distinction. We can write kernel-like code like this:
+It contains some parameters, such as its ``patience`` and whether is a priority gold
+card holder, holds some state such as the ``current_attraction``, and collects some
+history, such as the count of attractions visited and the accumulated riding, waiting,
+and walking times.
 
-.. code-block:: c
+Its creators and destructors are similar to the ``server``'s, but the process function
+brings some new features:
 
-    int64_t my_function(double patience)
+..code-block:: c
+
+    void *visitor_proc(struct cmb_process *me, void *vctx)
     {
-        struct cmb_process *me = cmb_process_current();
-        uint64_t handle = cmb_process_timer_set(me, patience, CMB_PROCESS_TIMEOUT);
+        cmb_assert_debug(me != NULL);
+        cmb_assert_debug(vctx != NULL);
 
-        int64_t sig = cmb_resource_acquire(thing1);
-        if (sig != CMB_PROCESS_SUCCESS) goto bailout;
-        int64_t sig = cmb_resource_acquire(thing2);
-        if (sig != CMB_PROCESS_SUCCESS) goto cleanup1;
-        cmb_process_hold(cmb_random_gamma(2.0, 2.0));
-        if (sig != CMB_PROCESS_SUCCESS) goto cleanup2;
-        int64_t sig = cmb_priorityqueue_get(cat);
-        if (sig != CMB_PROCESS_SUCCESS) goto cleanup3;
-        cmb_process_hold(cmb_random_gamma(2.0, 2.0));
-        if (sig != CMB_PROCESS_SUCCESS) goto cleanup3;
+        struct visitor *vip = (struct visitor *)me;
+        const struct context *ctx = vctx;
+        const struct simulation *sim = ctx->sim;
 
-        cmb_process_timer_cancel(pp, handle);
+        cmb_logger_user(stdout, LOGFLAG_VISITOR, "Started");
+        vip->current_attraction = IDX_ENTRANCE;
+        while (vip->current_attraction != IDX_EXIT) {
+            /* Select where to go next */
+            const unsigned ua = vip->current_attraction;
+            const struct attraction *ap_from = &sim->park_attractions[ua];
+            const struct cmb_random_alias *qv = ap_from->quo_vadis;
+            const unsigned nxt = cmb_random_alias_sample(qv);
+            cmb_logger_user(stdout, LOGFLAG_VISITOR, "At %u, next %u", ua, nxt);
 
-        cleanup3:
-            cmb_resource_release(cat);
-        cleanup2:
-            cmb_resource_release(thing2);
-        cleanup1:
-            cmb_resource_release(thing1);
-        bailout:
-            return sig;
+            /* Walk there */
+            const double mwt = transition_times[ua][nxt];
+            const double wt = cmb_random_PERT(0.5 * mwt, mwt, 2.0 * mwt);
+            cmb_process_hold(wt);
+            vip->walking_time += wt;
+            vip->current_attraction = nxt;
+
+            /* Join the shortest queue if several */
+            if (nxt != IDX_EXIT) {
+                const struct attraction *ap_to = &sim->park_attractions[nxt];
+                uint64_t shrtlen = UINT64_MAX;
+                unsigned shrtqi = 0u;
+                for (unsigned qi = 0u; qi < ap_to->num_queues; qi++) {
+                    struct cmb_priorityqueue *pq = ap_to->queues[qi];
+                    const unsigned len = cmb_priorityqueue_length(pq);
+                    if (len < shrtlen) {
+                        shrtlen = len;
+                        shrtqi = qi;
+                    }
+                }
+
+                cmb_logger_user(stdout, LOGFLAG_VISITOR,
+                                "At attraction %u, queue %u looks shortest (%" PRIu64 ")",
+                                ua, shrtqi, shrtlen);
+
+                /* Balking? */
+                if (shrtlen > (uint64_t)(vip->patience * balking_threshold)) {
+                    /* Too long queue, go to next instead */
+                    cmb_logger_user(stdout, LOGFLAG_VISITOR,
+                                    "Balked at attraction %u, queue %u", ua, shrtqi);
+                    continue;
+                }
+
+                /* Set two timeouts */
+                const double jt = vip->patience * jockeying_threshold;
+                cmb_process_timer_set(me, jt, TIMER_JOCKEYING);
+                const double rt = vip->patience * reneging_threshold;
+                cmb_process_timer_add(me, rt, TIMER_RENEGING);
+
+                struct cmb_priorityqueue *q = sim->park_attractions[nxt].queues[shrtqi];
+                uint64_t pq_hndl;
+                cmb_logger_user(stdout, LOGFLAG_VISITOR,
+                                "Joining queue %s", cmb_priorityqueue_name(q));
+                vip->last_event_time = cmb_time();
+                /* Not blocking, since the queue has unlimited size */
+                cmb_priorityqueue_put(q, (void *)vip, cmb_process_priority(me), &pq_hndl);
+
+                /* Suspend ourselves until we have finished both queue and ride,
+                 * trusting the server to update our waiting and riding times */
+                while (true) {
+                    const int64_t sig = cmb_process_yield();
+                    if (sig == TIMER_JOCKEYING) {
+                        cmb_logger_user(stdout, LOGFLAG_VISITOR, "Jockeying at attraction %u", ua);
+                        const unsigned in_q = shrtqi;
+                        const unsigned mypos = cmb_priorityqueue_position(q, pq_hndl);
+                        shrtlen = UINT64_MAX;
+                        shrtqi = 0u;
+                        for (unsigned qi = 0u; qi < ap_to->num_queues; qi++) {
+                            struct cmb_priorityqueue *pq = ap_to->queues[qi];
+                            const unsigned len = cmb_priorityqueue_length(pq);
+                            if (len < shrtlen) {
+                                shrtlen = len;
+                                shrtqi = qi;
+                            }
+                        }
+
+                        if (shrtlen < mypos) {
+                            cmb_logger_user(stdout, LOGFLAG_VISITOR,
+                                            "Moving from queue %u to queue %u (len %" PRIu64 ")",
+                                            in_q, shrtqi, shrtlen);
+                            const bool found = cmb_priorityqueue_cancel(q, pq_hndl);
+                            cmb_assert_debug(found == true);
+                            q = ap_to->queues[shrtqi];
+                            const int64_t pri = cmb_process_priority(me);
+                            cmb_priorityqueue_put(q, (void *)vip, pri + 1, &pq_hndl);
+                            continue;
+                        }
+                    }
+                    else if (sig == TIMER_RENEGING) {
+                        cmb_logger_user(stdout, LOGFLAG_VISITOR, "Reneging at attraction %u", ua);
+                        const bool found = cmb_priorityqueue_cancel(q, pq_hndl);
+                        cmb_assert_debug(found == true);
+                        cmb_process_timers_clear(me);
+                        break;
+                    }
+                    else {
+                        cmb_assert_release(sig == CMB_PROCESS_SUCCESS);
+                        vip->num_attractions_visited++;
+                        cmb_logger_user(stdout, LOGFLAG_VISITOR,
+                                        "Yay! Leaving attraction %u", vip->current_attraction);
+                        break;
+                    }
+                }
+
+                /* Out of the attraction, slightly dizzy. Do it again? */
+            }
+        }
+
+        /* No, enough for today */
+        cmb_logger_user(stdout, LOGFLAG_VISITOR, "Leaving");
+        cmb_objectqueue_put(sim->departeds, (void *)vip);
+        cmb_process_exit(NULL);
+
+        /* Not reached */
+        return NULL;
     }
 
 
-or even like this, remembering that it does not matter if we have nested function calls
-in Cimba since it is based on stackful coroutines, and that we have defined
-``CMB_PROCESS_SUCCESS`` as the numeric value zero:
+To model the jockeying and reneging behavior, we introduce additional ``cmb_process``
+methods: The process can schedule a future timeout event for itself by calling
+``cmb_process_timer_set()``. When the timer event occurs, the process will be interrupted
+from whatever it is doing with whatever signal the timer was set to send, with
+``CMB_PROCESS_TIMEOUT`` as a predefined possibility. By setting a timeout before some
+``_acquire()``, ``_get()``, or ``_wait()`` call, the process can abort the wait when
+patience runs out.
+
+Here, we set two different timers, one with the signal ``TIMER_JOCKEYING`` and one with
+``TIMER_RENEGING``. After these are set, the visitor process suspends itself
+unconditionally by calling ``cmb_process_yield()`` after entering the
+``cmb_priorityqueue``. The visitor process is then a passive object managed by the
+server process until it is resumed by the server, or until one of the timers goes off
+and it awakes with a start and shows signs of impatience.
+
+Note that one of the first things the server process does after getting a visitor from
+the priority queue is to call ``cmb_process_timers_clear()`` to make sure it does not
+suddenly wake up and walk off in the middle of the ride. Conversely, one of the first
+things the visitor process does after waking up on a timer signal is to call
+``cmb_priorityqueue_cancel()`` to make sure that it is not admitted on a ride when it
+actually is walking away from that attraction.
+
+The entire dynamic of having the same object act as both an active, opinionated process
+(or agent) interleaved by it acting as a passive object being handled by other
+processes is enabled by our processes being stackful coroutines. When suspended, their
+entire state is safely stored on their own execution stack until it is resumed from the
+same point where it left off.
+
+Also note that the ``visitor`` process ends by placing itself in the
+``cmb_objectqueue`` of departed visitors before exiting. That way, a departure process
+can wait for it there, collect its statistics, and reclaim its allocated memory:
 
 .. code-block:: c
 
-    int64_t my_function(void)
+    void *departure_proc(struct cmb_process *me, void *vctx)
     {
-        int64_t sig = cmb_resource_acquire(thing1);
-        if (sig) goto bailout;
-        int64_t sig = cmb_resource_acquire(thing2);
-        if (sig) goto cleanup1;
-        cmb_process_hold(cmb_random_gamma(2.0, 2.0));
-        if (sig) goto cleanup2;
-        int64_t sig = cmb_resourcepool_acquire(cat, 1);
-        if (sig) goto cleanup3;
-        cmb_process_hold(cmb_random_gamma(2.0, 2.0));
-        if (sig) goto cleanup3;
-        return sig;
+        cmb_unused(me);
+        cmb_assert_debug(vctx != NULL);
 
-        cleanup3:
-            cmb_resourcepool_release(cat, 1);
-        cleanup2:
-            cmb_resource_release(thing2);
-        cleanup1:
-            cmb_resource_release(thing1);
-        bailout:
-            return sig;
-    }
+        const struct context *ctx = vctx;
+        struct simulation *sim = ctx->sim;
 
+        while (true) {
+            /* Wait for departing visitor */
+            struct visitor *vip = NULL;
+            (void)cmb_objectqueue_get(sim->departeds, (void **)(&vip));
+            cmb_assert_debug(vip != NULL);
+            cmb_assert_debug(cmb_process_status((struct cmb_process *)vip) == CMB_PROCESS_FINISHED);
+            cmb_logger_user(stdout, LOGFLAG_DEPARTURE, "%s departed",
+                            ((struct cmb_process *)vip)->name);
 
-    /* In some other function */
-    struct cmb_process *me = cmb_process_current();
-    uint64_t handle = cmb_process_timer_set(me, patience, CMB_PROCESS_TIMEOUT);
-    int64_t sig = my_function();
-    if (sig == CMB_PROCESS_SUCCESS) {
-        cmb_process_timer_cancel(pp, handle);
-        /* We have the resources, do something */
-    else {
-        /* We don't, do something else */
-    }
+            /* Collect its statistics */
+            const double tsys = cmb_time() - vip->entry_time;
+            cmb_datasummary_add(&sim->time_in_park, tsys);
+            cmb_datasummary_add(&sim->riding_times, vip->riding_time);
+            cmb_datasummary_add(&sim->waiting_times, vip->waiting_time);
+            cmb_datasummary_add(&sim->num_rides, vip->num_attractions_visited);
+            cmb_datasummary_add(&sim->walking_times, vip->walking_time);
 
-
-In some cases, we may want to have multiple timers set. The function
-``cmb_process_timer_add()`` sets another timer without clearing any existing timers. For
-example:
-
-.. code-block:: c
-
-    #define SIG_GRUMPINESS 17
-    #define SIG_OPEN_REBELLION 42
-
-    /* ... */
-
-    struct cmb_process *me = cmb_process_current();
-    uint64_t hdl1 = cmb_process_timer_set(me, 0.5 * patience, SIG_GRUMPINESS);
-    uint64_t hdl2 = cmb_process_timer_add(me, patience, SIG_OPEN_REBELLION);
-
-    while ((int64_t sig = cmb_resource_acquire(something)) != CMB_PROCESS_SUCCESS) {
-        if (sig == SIG_GRUMPINESS) {
-            /* Express our impatience to management */
-            int64_t pri = cmb_process_priority(me);
-            cmb_process_set_priority(me, pri + 1);
-        }
-        else {
-            /* Hopeless case */
-            break;
+            /* Reclaim its memory allocation */
+            visitor_terminate(vip);
+            visitor_destroy(vip);
         }
     }
 
-Customers derived from cmb_process
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The object-oriented paradigm is very natural for simulation modeling, and was first
-developed for this purpose in Simula67.
+Here, we have not bothered to define this as a derived class, but just pass it the
+pointer to the ``departeds`` object queue as part of the context argument.
 
 Alias sampling probabilities
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We will model the amusement park attractions as nodes in a fully-connected network.
+We model the amusement park attractions as nodes in a fully-connected network.
 Node 0 will be the exit, while nodes 1 through *n* are the attractions. Each node has
 one or more priority queues for waiting customers. For each node *i*, there is a certain
 probability that the customer goes to attraction *j* next, including the possibilities of
@@ -1642,20 +1870,245 @@ calling ``cmb_random_alias_create()``. We can then sample it as often as needed 
 calling ``cmb_random_alias_sample()``, and clean it up when no longer needed by calling
 ``cmb_random_alias_destroy()``.
 
+It looks like this in the ``struct attraction``:
+
+.. code-block:: c
+    struct attraction {
+        unsigned num_queues;
+        struct cmb_priorityqueue **queues;
+        unsigned num_servers;
+        struct server **servers;
+        struct cmb_random_alias *quo_vadis;
+    };
+
+It is initialized like this in ``attraction_initialize`` from one row of the transition
+probability matrix:
+
+.. code-block:: c
+
+    ap->quo_vadis = cmb_random_alias_create(NUM_ATTRACTIONS + 2, transition_probs[ui]);
+
+and, as we saw above, sampled like this by the ``visitor_proc`` when deciding where to
+go next.
+
+.. code-block:: c
+
+    const unsigned nxt = cmb_random_alias_sample(qv);
+
+It eventually gets destroyed from ``attraction_terminate()``:
+
+.. code-block:: c
+
+    cmb_random_alias_destroy(ap->quo_vadis);
+
+A day in the park
+^^^^^^^^^^^^^^^^^
+
+You can find the rest of the code in tutorials/tut_3_1.c
+
+Running it, we get output like this:
+
+.. code-block:: none
+
+    [ambonvik@Threadripper cimba]$ build/tutorial/tut_3_1 | more
+        0.0000	Server_01_00_00	serverfunc (186):  Open for next batch
+        0.0000	Server_02_00_00	serverfunc (186):  Open for next batch
+        0.0000	Server_02_00_01	serverfunc (186):  Open for next batch
+        0.0000	Server_02_00_02	serverfunc (186):  Open for next batch
+        0.0000	Server_03_00_00	serverfunc (186):  Open for next batch
+        0.0000	Server_03_00_01	serverfunc (186):  Open for next batch
+        0.0000	Server_04_00_00	serverfunc (186):  Open for next batch
+        0.0000	Server_04_01_00	serverfunc (186):  Open for next batch
+        0.0000	Server_04_02_00	serverfunc (186):  Open for next batch
+        0.0000	Server_05_00_00	serverfunc (186):  Open for next batch
+        0.0000	Server_06_00_00	serverfunc (186):  Open for next batch
+        0.0000	Server_07_00_00	serverfunc (186):  Open for next batch
+        0.0000	Server_08_00_00	serverfunc (186):  Open for next batch
+        0.0000	Server_09_00_00	serverfunc (186):  Open for next batch
+      0.038977	Arrivals	arrival_proc (529):  Visitor_000001 arriving
+      0.038977	Visitor_000001	visitor_proc (336):  Started
+      0.038977	Visitor_000001	visitor_proc (344):  At 0, next 2
+      0.068032	Arrivals	arrival_proc (529):  Visitor_000002 arriving
+      0.068032	Visitor_000002	visitor_proc (336):  Started
+      0.068032	Visitor_000002	visitor_proc (344):  At 0, next 1
+        1.0330	Arrivals	arrival_proc (529):  Visitor_000003 arriving
+        1.0330	Visitor_000003	visitor_proc (336):  Started
+        1.0330	Visitor_000003	visitor_proc (344):  At 0, next 1
+        1.1268	Arrivals	arrival_proc (529):  Visitor_000004 arriving
+        1.1268	Visitor_000004	visitor_proc (336):  Started
+        1.1268	Visitor_000004	visitor_proc (344):  At 0, next 2
+        2.1046	Visitor_000002	visitor_proc (367):  At attraction 1, queue 0 looks shortest (0)
+        2.1046	Visitor_000002	visitor_proc (387):  Joining queue Queue_01_00
+        2.1046	Server_01_00_00	serverfunc (192):  Got visitor Visitor_000002
+        2.1046	Server_01_00_00	serverfunc (197):  Has 1 for 1 slots
+        2.1046	Server_01_00_00	serverfunc (206):  Starting ride
+        2.6024	Arrivals	arrival_proc (529):  Visitor_000005 arriving
+        2.6024	Visitor_000005	visitor_proc (336):  Started
+        2.6024	Visitor_000005	visitor_proc (344):  At 0, next 4
+        3.9335	Visitor_000003	visitor_proc (367):  At attraction 1, queue 0 looks shortest (0)
+        3.9335	Visitor_000003	visitor_proc (387):  Joining queue Queue_01_00
+        4.2126	Arrivals	arrival_proc (529):  Visitor_000006 arriving
+        4.2126	Visitor_000006	visitor_proc (336):  Started
+        4.2126	Visitor_000006	visitor_proc (344):  At 0, next 1
+        4.4175	Visitor_000001	visitor_proc (367):  At attraction 2, queue 0 looks shortest (0)
+        4.4175	Visitor_000001	visitor_proc (387):  Joining queue Queue_02_00
+        4.4175	Server_02_00_00	serverfunc (192):  Got visitor Visitor_000001
+        4.4175	Server_02_00_00	serverfunc (197):  Has 1 for 5 slots
+        4.4175	Server_02_00_00	serverfunc (206):  Starting ride
+        6.2520	Server_01_00_00	serverfunc (209):  Ride finished
+        6.2520	Server_01_00_00	serverfunc (218):  Resuming visitor Visitor_000002
+        6.2520	Server_01_00_00	serverfunc (186):  Open for next batch
+        6.2520	Server_01_00_00	serverfunc (192):  Got visitor Visitor_000003
+        6.2520	Server_01_00_00	serverfunc (197):  Has 1 for 1 slots
+        6.2520	Server_01_00_00	serverfunc (206):  Starting ride
+        6.2520	Visitor_000002	visitor_proc (434):  Yay! Leaving attraction 1
+        6.2520	Visitor_000002	visitor_proc (344):  At 1, next 2
+        8.9219	Visitor_000006	visitor_proc (367):  At attraction 1, queue 0 looks shortest (0)
+        8.9219	Visitor_000006	visitor_proc (387):  Joining queue Queue_01_00
+        9.2341	Visitor_000002	visitor_proc (367):  At attraction 2, queue 0 looks shortest (0)
+        9.2341	Visitor_000002	visitor_proc (387):  Joining queue Queue_02_00
+        9.2341	Server_02_00_01	serverfunc (192):  Got visitor Visitor_000002
+        9.2341	Server_02_00_01	serverfunc (197):  Has 1 for 5 slots
+        9.2341	Server_02_00_01	serverfunc (206):  Starting ride
+
+...and so on, until it reports its statistics for the day:
+
+.. code-block:: none
+
+    Number of rides taken:
+    N      489  Mean    2.656  StdDev    2.065  Variance    4.263  Skewness    1.161  Kurtosis    1.826
+    Time spent in park:
+    N      489  Mean    57.29  StdDev    28.75  Variance    826.4  Skewness    1.922  Kurtosis    5.839
+    Riding times:
+    N      489  Mean    18.25  StdDev    15.74  Variance    247.8  Skewness    1.437  Kurtosis    3.119
+    Waiting times:
+    N      489  Mean    5.135  StdDev    5.840  Variance    34.11  Skewness    1.506  Kurtosis    2.701
+    Walking times:
+    N      489  Mean    32.36  StdDev    10.38  Variance    107.7  Skewness    1.819  Kurtosis    6.464
+
+    Detailed queue reports:
+    Queue lengths for Queue_01_00:
+    N      291  Mean   0.6106  StdDev    1.966  Variance    3.864  Skewness    1.035  Kurtosis   -1.130
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |##################################################
+    [     1.000,      2.000)   |################-
+    [     2.000,      3.000)   |######-
+    [     3.000,      4.000)   |###-
+    [     4.000,      5.000)   |#-
+    [     5.000,  Infinity )   |=
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_02_00:
+    N      208  Mean  0.02090  StdDev   0.3534  Variance   0.1249  Skewness    3.552  Kurtosis    11.59
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |##################################################
+    [     1.000,      2.000)   |=
+    [     2.000,  Infinity )   |-
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_03_00:
+    N      226  Mean  0.05570  StdDev   0.5429  Variance   0.2947  Skewness    2.165  Kurtosis    2.624
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |##################################################
+    [     1.000,      2.000)   |##-
+    [     2.000,  Infinity )   |-
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_04_00:
+    N      124  Mean   0.6596  StdDev    1.430  Variance    2.046  Skewness  -0.1934  Kurtosis   -2.882
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |##########################-
+    [     1.000,      2.000)   |##################################################
+    [     2.000,  Infinity )   |-
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_04_01:
+    N       87  Mean   0.6489  StdDev    1.839  Variance    3.383  Skewness -0.05056  Kurtosis   -2.938
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |##############################=
+    [     1.000,      2.000)   |##################################################
+    [     2.000,  Infinity )   |#=
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_04_02:
+    N       42  Mean   0.5169  StdDev    2.566  Variance    6.586  Skewness -0.01380  Kurtosis   -3.189
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |##############################################=
+    [     1.000,  Infinity )   |##################################################
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_05_00:
+    N      228  Mean   0.6369  StdDev    1.959  Variance    3.836  Skewness   0.6569  Kurtosis   -2.050
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |##################################################
+    [     1.000,      2.000)   |#####################=
+    [     2.000,      3.000)   |##########-
+    [     3.000,      4.000)   |##=
+    [     4.000,      5.000)   |=
+    [     5.000,  Infinity )   |-
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_06_00:
+    N      203  Mean   0.2927  StdDev    1.465  Variance    2.147  Skewness   0.9759  Kurtosis   -1.616
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |##################################################
+    [     1.000,      2.000)   |########-
+    [     2.000,      3.000)   |###=
+    [     3.000,  Infinity )   |=
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_07_00:
+    N      200  Mean   0.2457  StdDev    1.284  Variance    1.649  Skewness   0.9909  Kurtosis   -1.588
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |#################################################=
+    [     1.000,      2.000)   |########=
+    [     2.000,      3.000)   |###-
+    [     3.000,  Infinity )   |-
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_08_00:
+    N      178  Mean   0.4554  StdDev    1.750  Variance    3.062  Skewness   0.5572  Kurtosis   -2.401
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |##################################################
+    [     1.000,      2.000)   |#################-
+    [     2.000,      3.000)   |#######=
+    [     3.000,  Infinity )   |=
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_09_00:
+    N      198  Mean   0.2153  StdDev    1.199  Variance    1.438  Skewness    1.078  Kurtosis   -1.344
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |#################################################=
+    [     1.000,      2.000)   |#######=
+    [     2.000,      3.000)   |##-
+    [     3.000,  Infinity )   |-
+    --------------------------------------------------------------------------------
+
+...and finally, the trial outcomes that would be passed on to the experiment array if
+we parallelized this simulation in the same way as the first (and next) example:
+
+.. code-block:: none
+
+    Trial outcomes:
+    ---------------
+    Average number of rides: 2.66
+    Average time in park: 57.29
+    Average time in rides: 18.25
+    Average time in queues: 5.13
+    Average time walking: 32.36
+
+We will skip parallelizing this example and instead move to the final tutorial.
 
 A LNG tanker harbor with condition variables
 --------------------------------------------
 
 Once upon a time, a harbor simulation with tugs puttering about was the author's
 first exposure to Simula67, coroutines, and object-oriented programming. The
-essential *rightness* made a lasting impression. Building a 21st century version
-will be our final Cimba tutorial.
-
-In our first tutorial, the active processes interacted through a ``cmb_buffer`` with
-``put`` and ``get`` methods. We have also discussed other process interactions through
-``cmb_resource`` and ``cmb_resourcepool`` with their ``acquire``, ``hold``, and ``release``
-semantics. We will now introduce the extremely powerful ``cmb_condition`` that
-allows arbitrarily complex ``wait`` calls.
+essential *rightness* made a lasting impression. Building a beefed-up 21st century version
+will be our final Cimba tutorial. We will use the occasion to introduce the
+extremely powerful ``cmb_condition`` that allows our processes to make arbitrarily
+complex ``wait`` calls.
 
 Since a simulation model only should be built in order to answer some specific
 question or set of questions, we will assume that our Simulated Port Authority
@@ -1682,7 +2135,7 @@ Processes, resources, and conditions
 
 The simulated world is described in ``struct simulation``. Again, there is an
 arrival and a departure process generating and removing ships, but the ships
-themselves are now also active processes. We have two pools of resources, the
+themselves are again active processes. We have two pools of resources, the
 tugs and the berths (of two different sizes), and one single resource, the
 communication channel used to announce that a ship is moving.
 
@@ -1915,7 +2368,6 @@ the same signature as for the ``cmb_process``. It can look like this:
 
 .. code-block:: c
 
-    /* The ship process function */
     void *ship_proc(struct cmb_process *me, void *vctx)
     {
         cmb_assert_debug(me != NULL);
@@ -1999,7 +2451,6 @@ the same signature as for the ``cmb_process``. It can look like this:
          * cmb_process_exit() with the return value as argument. */
         return t_sys_p;
     }
-
 
 Note the loop on ``cmb_condition_wait()``. The condition will schedule a wakeup event
 for all waiting processes with a satisfied demand, but it is entirely possible
@@ -2113,8 +2564,8 @@ additional asymmetric coroutines executing on their own stacks with no special h
 needed.
 
 In this example, we just did the ship allocation and initialization inline. If we were to
-create and/or initialize ships from more than one place in the
-code, we would wrap these in proper ``ship_create()`` and ``ship_initialize()``
+create and/or initialize ships from more than one place in the code, or just wanted to be
+tidy, we would wrap these in proper ``ship_create()`` and ``ship_initialize()``
 functions to avoid repeating ourselves, but there is nothing that forces us to write
 pro forma constructor and destructor functions. For illustration and code style, we
 do this "properly" in the next iteration of the example, ``tutorial/tut_4_2.c``, where
@@ -2176,8 +2627,8 @@ The departure process is reasonably straightforward, capturing the exit value fr
 the ship process and then recycling the entire ship. A ``cmb_condition`` is used
 to know that one or more ships have departed, triggering the departure process
 to do something. This does the same as using the ``cmb_objectqueue`` in the previous
-example, but demonstrates a different way of doing it (effectively the same as
-internal workings of a ``cmb_objectqueue``). We also use our new destructor functions:
+example, but demonstrates a different way of doing it (effectively the internal
+workings of a ``cmb_objectqueue``). We also use our new destructor functions:
 
 .. code-block:: c
 
@@ -2489,11 +2940,8 @@ one does not make much sense even at the highest traffic scenario. The SPA shoul
 rather consider building another one or two small berths next.
 
 This concludes our final tutorial. We have introduced the very powerful
-``cmb_condition`` allowing processes to wait for arbitrary combinations of conditions.
-Along the way, we demonstrated that user applications can build derived classes from
-Cimba parent classes using single inheritance. For example, the ``ship`` class in this
-tutorial was derived from a ``cmb_process`` which in turn is derived from a
-``cmi_coroutine``.
+``cmb_condition`` allowing processes to wait for arbitrary combinations of conditions
+in the simulated world.
 
 For a more in-depth discussion of how various parts of Cimba work and why they were
 built that way, consider reading the Background section next.
