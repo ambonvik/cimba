@@ -366,13 +366,13 @@ void *visitor_proc(struct cmb_process *me, void *vctx)
 
             cmb_logger_user(stdout, LOGFLAG_VISITOR,
                             "At attraction %u, queue %u looks shortest (%" PRIu64 ")",
-                            ua, shrtqi, shrtlen);
+                            nxt, shrtqi, shrtlen);
 
             /* Balking? */
             if (shrtlen > (uint64_t)(vip->patience * balking_threshold)) {
                 /* Too long queue, go to next instead */
                 cmb_logger_user(stdout, LOGFLAG_VISITOR,
-                                "Balked at attraction %u, queue %u", ua, shrtqi);
+                                "Balked at attraction %u, queue %u", nxt, shrtqi);
                 continue;
             }
 
@@ -395,7 +395,7 @@ void *visitor_proc(struct cmb_process *me, void *vctx)
             while (true) {
                 const int64_t sig = cmb_process_yield();
                 if (sig == TIMER_JOCKEYING) {
-                    cmb_logger_user(stdout, LOGFLAG_VISITOR, "Jockeying at attraction %u", ua);
+                    cmb_logger_user(stdout, LOGFLAG_VISITOR, "Jockeying at attraction %u", nxt);
                     const unsigned in_q = shrtqi;
                     const unsigned mypos = cmb_priorityqueue_position(q, pq_hndl);
                     shrtlen = UINT64_MAX;
@@ -540,6 +540,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
     struct simulation *sim = ctx->sim;
 
     while (true) {
+        /* Wait for a departing visitor */
         struct visitor *vip = NULL;
         (void)cmb_objectqueue_get(sim->departeds, (void **)(&vip));
         cmb_assert_debug(vip != NULL);
@@ -555,6 +556,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
         cmb_datasummary_add(&sim->num_rides, vip->num_attractions_visited);
         cmb_datasummary_add(&sim->walking_times, vip->walking_time);
 
+        /* Reclaim its memory allocation */
         visitor_terminate(vip);
         visitor_destroy(vip);
     }
