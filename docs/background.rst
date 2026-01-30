@@ -1164,7 +1164,8 @@ speed. The current SimPy version is 4.1.1.
 
 In the ``benchmark`` directory, you will find examples of the same simulated scenario
 implemented in SimPy and Cimba. A complete multithreaded M/M/1 queue simulation could
-look like this in SimPy:
+look like this in SimPy,
+`benchmark/MM1_multi.py <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_multi.py>`
 
 .. code-block:: Python
 
@@ -1227,7 +1228,8 @@ look like this in SimPy:
     if __name__ == "__main__":
         main()
 
-The same model would look like this in Cimba:
+The same model would look like this in Cimba,
+`benchmark/MM1_multi.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_multi.c>`:
 
 .. code-block:: C
 
