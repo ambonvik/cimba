@@ -181,7 +181,9 @@ The illustration below shows the stacks at this point:
 .. image:: ../images/stack_1.png
 
 The service process to the right (green) has the CPU and is executing user code (red
-text). The main system stack is to the left. The dispatcher has executed the wakeup event
+text).
+
+The main system stack is to the left. The dispatcher has executed the wakeup event
 that resumed the service process. It has stored its registers on the stack and transferred
 control to the service process. The main stack pointer is at the last register pushed to
 the stack, but is itself safely stored to memory instead of in the ``SP`` register.
@@ -374,11 +376,11 @@ class in
 pattern. Your
 allocator function (e.g., ``visitor_create()``) allocates and zero-initializes raw memory,
 while the constructor function (``visitor_initialize()``) fills it with meaningful values.
-The constructor does not get called by itself, so your code is also responsible for
+The constructor does not get called automatically, so your code is also responsible for
 calling it, both for objects allocated on the heap, objects declared as local
 variables, and for objects that exist as a parent class to one of your objects. The
 last case is done by calling the parent class constructor, here
-``cmb_process_initialize()`` from within the child class constructor function.
+``cmb_process_initialize()``, from within the child class constructor function.
 
 Similarly, your code needs to provide a destructor to free any memory allocated by the
 object (``visitor_terminate()``), and a deallocator to free the object itself
