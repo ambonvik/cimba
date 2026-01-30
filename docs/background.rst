@@ -161,7 +161,8 @@ dispatcher process, and are always re-activated from the dispatcher process only
 
 The processes understand the simulation time, and may ``hold()`` for a certain
 amount of simulated time. Underneath this call are the asymmetric coroutine primitives of
-``cmi_coroutine_yield()`` (to the simulation dispatcher) and ``cmi_coroutine_resume()``
+:c:func`cmi_coroutine_yield()` (to the simulation dispatcher) and
+:c:func`cmi_coroutine_resume()`
 (when the simulation clock has
 advanced by this amount). Processes can also ``acquire()`` and ``release()`` resources,
 wait for some other process to finish, interrupt or stop other processes, wait for some
@@ -200,13 +201,14 @@ stacks look like this:
 .. image:: ../images/stack_2.png
 
 The arrival process has saved its registers to the stack and its stack pointer to the
-appropriate member of our ``struct cmi_coroutine``. Control transfers to the dispatcher
+appropriate member of our :c:struct:`struct cmi_coroutine`. Control transfers to the
+dispatcher
 on the main stack by loading its stack pointer from memory to the register, and then
 popping the remaining register values from the main stack.
 
 .. image:: ../images/stack_3.png
 
-The stack rapidly returns up to the dispatcher loop in ``cmb_event_queue_execute()``,
+The stack rapidly returns up to the dispatcher loop in :c:func:`cmb_event_queue_execute`,
 which now pulls off and executes the next event from the event queue.
 
 .. image:: ../images/stack_4.png
@@ -242,8 +244,8 @@ As should be evident from these examples, Cimba does not care about what level o
 function call stack its context switching functions get called from. It can be directly
 from the process function (like in this example), or the process function can call another
 function, that calls some other function, which in turn calls a Cimba function like
-``cmb_process_hold()``. The intermediate user functions in the call chain do not even
-need to know that they are part of a discrete event simulation, much less care about
+:c:func:`cmb_process_hold()`. The intermediate user functions in the call chain do not
+even need to know that they are part of a discrete event simulation, much less care about
 what stack they are executing on. They are just C functions that get called and do their
 thing. There is no need to refactor the whole call chain to yield generators at multiple
 levels if you change something deep in the call chain. This is why we insisted on
@@ -316,23 +318,24 @@ Cimba functions and variables follow a naming convention of
 
 * *cimba* - functions and objects at the outer level, organizing and executing your
   multithreaded simulation experiment as a series of trials. This is outside the simulated
-  world. Example: ``cimba_version()``
+  world. Example: :c:func:`cimba_version()`
 
 * *cmb* - functions and objects in the simulated world. These are the building blocks of
   your simulation. You will probably build a single-threaded version only using
   functions from this namespace first, and parallelize it later when you need the
-  computing power. Example: ``cmb_random_uniform()``
+  computing power. Example: :c:func:`cmb_random_uniform()`
 
 * *cmi* - internal functions and objects that for some reason need to be exposed
   globally, but that your simulation model does not need to interact with. Example:
-  ``cmi_coroutine_create()``
+  :c:func:`cmi_coroutine_create()`
 
 Static functions and variables internal to each module do not use the
 *<namespace>_<module>_* prefix since they do not have global scope.
 
-There is one notable exception to this naming convention: The function ``cmb_time()``,
+There is one notable exception to this naming convention: The function :c:func:`cmb_time`,
 which returns the current simulation clock value. It is declared and defined in the
-``cmb_event`` module, and should perhaps be called ``cmb_event_time()`` according to
+``cmb_event`` module, and should perhaps be called :c:func:`cmb_event_time`
+according to
 our rule, but since it is a global state in the simulated world and not related to any
 particular event, it is more intuitive to make this one exception for it.
 
@@ -506,11 +509,10 @@ the hashheap will use a default comparator that only uses the ``double`` key and
 retrieves the smallest value first.
 
 For efficiency reasons, the hash table needs to be sized as a power of two. It will
-start small and grow as needed. Cimba initializes its event queue with only 8 slots in
-the heap and 16 in the hash map (guaranteeing <= 50 % hash map utilization before
-doubling). This way, the entire structure will fit well inside a 2K CPU L1 cache until
-it has to outgrow the cache. We do not want to penalize the performance of small
-simulation models for the ability to run very large ones.
+start small and grow as needed. This way, the entire structure will fit well inside
+a 2K CPU L1 cache until the application requires it to outgrow the cache. We do not want
+to penalize the performance of small simulation models for the ability to run very large
+ones.
 
 .. _background_resources:
 
