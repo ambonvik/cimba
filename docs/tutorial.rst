@@ -1661,7 +1661,7 @@ and walking times.
 Its creators and destructors are similar to the ``server``'s, but the process function
 brings some new features:
 
-..code-block:: c
+.. code-block:: c
 
     void *visitor_proc(struct cmb_process *me, void *vctx)
     {
@@ -1883,6 +1883,7 @@ calling ``cmb_random_alias_sample()``, and clean it up when no longer needed by 
 It looks like this in the ``struct attraction``:
 
 .. code-block:: c
+
     struct attraction {
         unsigned num_queues;
         struct cmb_priorityqueue **queues;
