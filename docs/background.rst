@@ -161,8 +161,8 @@ dispatcher process, and are always re-activated from the dispatcher process only
 
 The processes understand the simulation time, and may ``hold()`` for a certain
 amount of simulated time. Underneath this call are the asymmetric coroutine primitives of
-:c:func`cmi_coroutine_yield()` (to the simulation dispatcher) and
-:c:func`cmi_coroutine_resume()`
+:c:func:`cmi_coroutine_yield` (to the simulation dispatcher) and
+:c:func:`cmi_coroutine_resume`
 (when the simulation clock has
 advanced by this amount). Processes can also ``acquire()`` and ``release()`` resources,
 wait for some other process to finish, interrupt or stop other processes, wait for some
@@ -357,10 +357,11 @@ provide directly:
   parent classes need to go first in each child class struct, and then there can only
   be one parent. This is no big loss, since multiple inheritance quickly becomes very
   confusing. We instead distinguish between *is a* relationships (single inheritance)
-  and *has a* relationships (composition). For example, our ``cmb_resource`` *is a*
-  ``cmi_holdable`` (an abstract parent class), but it *has a* ``cmb_resourceguard`` to
+  and *has a* relationships (composition). For example, our :c:struct:`cmb_resource`
+  *is a*   :c:struct:`cmi_holdable` (an abstract parent class), but it *has a*
+  :c:struct:`cmb_resourceguard` to
   maintain an orderly priority queue of processes waiting for the resource, and the
-  ``cmb_resourceguard`` itself *is a* ``cmi_hashheap``.
+  :c:struct:`cmb_resourceguard` itself *is a* :c:struct:`cmi_hashheap`.
 
 * *Automatic initialization and destruction* for objects that go in and out of scope.
   In C++, Resource Allocation Is Initialization (RAII). In C, it is not. (RAINI?) This
@@ -383,17 +384,19 @@ The constructor does not get called automatically, so your code is also responsi
 calling it, both for objects allocated on the heap, objects declared as local
 variables, and for objects that exist as a parent class to one of your objects. The
 last case is done by calling the parent class constructor, here
-``cmb_process_initialize()``, from within the child class constructor function.
+:c:func:`cmb_process_initialize`, from within the child class constructor function.
 
 Similarly, your code needs to provide a destructor to free any memory allocated by the
 object (``visitor_terminate()``), and a deallocator to free the object itself
 (``visitor_destroy()``). Your destructor function should also call the parent class
-destructor (here ``cmb_process_terminate()``), but your de-allocator should NOT call
+destructor (here :c:func:`cmb_process_terminate`), but your de-allocator should NOT
+call
 the parent class de-allocator, since that would be free'ing the same memory twice and
 probably crash your application.
 
 By looking around in the Cimba code, you will find many examples of how we have used
-the object-orientation. For example, a ``cmb_resourceguard`` does not actually care or
+the object-orientation. For example, a :c:struct:`cmb_resourceguard` does not actually
+care or
 know what type of resource it guards, only that it is something derived from the
 ``cmi_resourcebase`` abstract base class. Or, a process may be holding some resource, but
 may not really care what kind, only that it is some kind of ``cmi_holdable``, itself
@@ -432,7 +435,8 @@ Our process interactions are also events. For example, a process calling
 ``cmb_process_hold(5.0)`` actually schedules a wakeup event for itself at the current
 simulation time + 5.0 before it yields to the dispatcher. At some point, that event has
 bubbled up to the top of the priority queue and gets executed. Similarly, when a
-``cmb_resourceguard`` wakes up a waiting process to inform it that "congratulations,
+:c:struct:`cmb_resourceguard` wakes up a waiting process to inform it that
+"congratulations,
 you now have the resource", it schedules an event at the current time that actually
 resumes the process. This avoids long and complicated call stacks.
 
@@ -442,8 +446,8 @@ the process, and a pointer to the context argument for its ``resume()`` call,
 ``(*event)(me, context)``.
 
 Events are instantaneous in simulated time and always execute on the main stack directly
-from the dispatcher. If an event function tries to call ``cmb_process_hold()``, it will
-try to put the event dispatcher itself to sleep. This is not a good idea.
+from the dispatcher. If an event function tries to call :c:func:`cmb_process_hold()`,
+it will try to put the event dispatcher itself to sleep. This is not a good idea.
 
 Events do not have a return value. There is nowhere to return the value to. There is
 nowhere to store a return value for later use either. An event function has signature
@@ -458,7 +462,8 @@ but it is still not an object.
 
 The event queue also provides wildcard functions to search for, count, or cancel entries
 that match some combination of (action, subject, object). For this purpose,
-special values ``CMB_ANY_ACTION``, ``CMB_ANY_SUBJECT``, and ``CMB_ANY_OBJECT`` are
+special values :c:macro:`CMB_ANY_ACTION`, :c:macro:`CMB_ANY_SUBJECT`, and
+:c:macro:`CMB_ANY_OBJECT` are
 defined. As an example, suppose we are building a large-scale simulation model of an
 air war. When some plane in the simulation gets shot down, all its scheduled future
 events should be cancelled. In Cimba, this can be done by a simple call like
@@ -492,9 +497,9 @@ Cimba uses a hash-heap data structure for this. It consists of two interconnecte
 
 Once we have this module tightly packaged, it can be used elsewhere than just the main
 event queue. We use the same data structure for all priority queues of processes
-waiting for some resource, since our ``cmb_resourceguard`` is a derived class from
-``cmi_hashheap``. It is also used for the ``cmb_priorityqueue`` class of arbitrary
-objects passing from some producer to some consumer process.
+waiting for some resource, since our :c:struct:`cmb_resourceguard` is a derived class
+from ``cmi_hashheap``. It is also used for the :c:struct:`cmb_priorityqueue` class of
+arbitrary objects passing from some producer to some consumer process.
 In :ref:`our fourth tutorial, the LNG harbor simulation <tut_4>`, we even used an
 instance of it at the modeling level to maintain the set of active ships in the model.
 
@@ -521,19 +526,21 @@ Resources, resource guards, demands and conditions
 
 Many simulations involve active processes competing for some scarce resource. Cimba
 provides five resource classes and one very general condition variable class. Two of
-the resource classes are holdable with acquire/release semantics, where ``cmb_resource``
+the resource classes are holdable with acquire/release semantics, where
+:c:struct:`cmb_resource`
 is a simple binary semaphore that only one process can hold at a time, while the
-``cmb_resourcepool`` is a counting semaphore where several processes can hold some
-amount of the resource. The other three resource types have put/get semantics, where the
-``cmb_buffer`` only considers the number of units that goes in and out, while the
-``cmb_objectqueue`` and ``cmb_priorityqueue`` allow individual pointers to objects.
+:c:struct:`cmb_resourcepool` is a counting semaphore where several processes can hold
+some amount of the resource. The other three resource types have put/get semantics, where the
+:c:struct:`cmb_buffer` only considers the number of units that goes in and out, while the
+:c:struct:`cmb_objectqueue` and :c:struct:`cmb_priorityqueue` allow individual pointers
+to objects.
 
 The common theme for all these is that a process requests something and may have to
 wait in an orderly priority queue for its turn if that something is not immediately
 available. Our hashheap is a good starting point for building this. For this purpose, we
-derive a class ``cmb_resourceguard`` from the ``cmi_hashheap``, adding a pointer to some
-resource (the abstract base class) to be guarded, and a list of any observing resource
-guards.
+derive a class :c:struct:`cmb_resourceguard` from the :c:struct:`cmi_hashheap`, adding a
+pointer to some resource (the abstract base class) to be guarded, and a list of any
+observing resource guards.
 
 When a process requests some resource and finds it busy, it enqueues itself in the
 hashheap priority queue. It also registers its *demand function*, a predicate function
@@ -541,31 +548,32 @@ that takes three arguments, a pointer to the guarded resource, a pointer to the 
 itself, and a ``void`` pointer to some application-defined context. Using some
 combination of this information, the demand function returns a boolean true or false
 answer to whether the demand is satisfied. The demand function is pre-packaged for the
-four resource types. For example, a process requesting a simple ``cmb_resource`` demands
-that it is not already in use, while a process requesting to put some amount into a
-``cmb_buffer`` demands that there is free space in the buffer. After registering itself,
-the process yields control to the dispatcher. All of this happens inside the
-``acquire()``, ``get()``, or ``put()`` call, invisible to the calling process.
+four resource types. For example, a process requesting a simple :c:struct:`cmb_resource`
+demands that it is not already in use, while a process requesting to put some amount into a
+:c:struct:`cmb_buffer` demands that there is free space in the buffer. After registering
+itself, the process yields control to the dispatcher. All of this happens inside the
+respective ``acquire()``, ``get()``, or ``put()`` call, invisible to the calling process.
 
 When some other process is done with the resource and releases it, it will *signal* the
-``cmb_resourceguard``. This signal causes the resource guard to evaluate the demand
-function for its highest-priority waiting process. If satisfied, that process is
+:c:struct:`cmb_resourceguard`. This signal causes the resource guard to evaluate the
+demand function for its highest-priority waiting process. If satisfied, that process is
 removed from the wait list, gets reactivated, and can grab the resource. The resource
 guard then forwards the signal to any other resource guards that have registered
 themselves as observers of this one, causing these to do the same on their wait lists.
 
-The *condition variable* ``cmb_condition`` is essentially a named resource guard
+The *condition variable* :c:struct:`cmb_condition` is essentially a named resource guard
 with a user application defined demand function. The condition demand function can be
 anything that is computable from the given arguments and other state of the model at
 that point in simulated time. It can be used for arbitrarily complex "wait for any one of
-many" or "wait for all of many" scenarios where the ``cmb_condition`` will register
-itself as observer to the underlying resource guards, and, as shown in our second
+many" or "wait for all of many" scenarios where the :c:struct:`cmb_condition` will
+register itself as observer to the underlying resource guards, and, as shown in our second
 tutorial, it can include continuous-valued state variables.
 
 We believe that the open-ended flexibility of our demand predicate function,
-pre-packaged for the common resource types and exposed for the ``cmb_condition``, makes
-Cimba a very powerful and expressive simulation tool. There may also be a weak pun here
-somewhere on the C++ ``promise`` keyword: Cimba processes do not promise. They *demand*.
+pre-packaged for the common resource types and exposed for the
+:c:struct:`cmb_condition``, makes Cimba a very powerful and expressive simulation tool.
+There may also be a weak pun here somewhere on the C++ ``promise`` keyword: Cimba
+processes do not promise. They *demand*.
 
 .. _background_error:
 
@@ -624,9 +632,10 @@ It shows the simulation time, process, function, line number, actual condition t
 the program code file, and finally the random number seed used to initialize the trial.
 You now know both where to look and how to reproduce the issue if you want a closer look.
 
-Our asserts come in two favors: the ``cmb_assert_debug()`` and ``cmb_assert_release()``.
-There is also a ``cmb_assert()`` macro, but it is just a shorthand for
-``cmb_assert_debug()``.
+Our asserts come in two favors: the :c:macro:`cmb_assert_debug()` and
+:c:macro:`cmb_assert_release()`.
+There is also a :c:macro:`cmb_assert()` macro, but it is just a shorthand for
+:c:macro:`cmb_assert_debug()`.
 
 *Debug* asserts are used at the development stage to ensure
 that everything is working as expected, even if the code to check is time-consuming.
@@ -645,7 +654,7 @@ very slight speed improvement by defining the preprocessor symbol ``NASSERT`` an
 these vanish as well. We do not recommend this, since it turns off all input argument
 checking in Cimba functions, but it is possible to do.
 
-As an illustration, consider the function ``cmb_random_uniform()``:
+As an illustration, consider the function :c:func:`cmb_random_uniform()`:
 
 .. code-block:: C
 
@@ -692,27 +701,28 @@ mask given as an argument to a logger call, and a current bit field. Both are 32
 unsigned integers, type ``uint32_t``. If a simple bitwise and (``&``) between the logger's bit
 field and the caller's bit mask gives a non-zero result, that line is printed, otherwise
 it is not. Initially, all bits in the logger bit field are on, ``0xFFFFFFFF``. You can
-turn selected bits on and off with ``cmb_logger_flags_on()`` and
-``cmb_logger_flags_off()``. The bit field is thread local, so any bit twiddles will only
+turn selected bits on and off with :c:func:`cmb_logger_flags_on()` and
+:c:func:`cmb_logger_flags_off()`. The bit field is thread local, so any bit twiddles will only
 affect the current thread.
 
-The top four bits are reserved for Cimba use, defined as ``CMB_LOGGER_FATAL``,
-``CMB_LOGGER_ERROR``, ``CMB_LOGGER_WARNING``, and ``CMB_LOGGER_INFO``, respectively.
-These correspond to logger functions (actually macro wrappers) ``cmb_logger_fatal()``,
-``cmb_logger_error()``, ``cmb_logger_warning()``, and ``cmb_logger_info()``. These are
-``fprintf()``-style functions.
+The top four bits are reserved for Cimba use, defined as :c:macro:`CMB_LOGGER_FATAL`,
+:c:macro:`CMB_LOGGER_ERROR`, :c:macro:`CMB_LOGGER_WARNING`, and :c:macro:`CMB_LOGGER_INFO`,
+respectively.
+These correspond to logger functions (actually macro wrappers) :c:macro:`cmb_logger_fatal()`,
+:c:macro:`cmb_logger_error()`, :c:macro:`cmb_logger_warning()`, and
+:c:macro:`cmb_logger_info()`. These are ``fprintf()``-style functions.
 
-The difference between ``cmb_logger_fatal()`` and ``cmb_logger_error()`` is that
+The difference between :c:macro:`cmb_logger_fatal()` and :c:macro:`cmb_logger_error()` is that
 ``_fatal()`` will call ``abort()`` to terminate your entire program, while ``_error()``
-calls ``pthread_exit(NULL)`` to stop the current thread. ``cmb_logger_fatal()`` should
+calls ``pthread_exit(NULL)`` to stop the current thread. :c:macro:`cmb_logger_fatal()` should
 be used whenever there is a chance of memory corruption that could affect other
-threads, while ``cmb_logger_error()`` can be used if a single trial for some reason is
+threads, while :c:macro:`cmb_logger_error()` can be used if a single trial for some reason is
 unsuccessful and needs to bail out without providing a result. To make this work, you
 will need to initialize the trial result fields in your experiment array to some
 out-of-band value, and ensure that any remaining out-of-band values at the end of the
 experiment are not included in the result calculation.
 
-The ``cmb_logger_info()`` level is used internally in Cimba to give a basic view of
+The :c:macro:`cmb_logger_info()` level is used internally in Cimba to give a basic view of
 what is going on. It can look like this:
 
 .. code-block:: none
@@ -771,8 +781,8 @@ stacks. However, it will not be needed very often and can be turned off with
 
 It will still be in the code if turned off, requiring one 32-bit comparison per call, but
 you can make it vanish completely (like the asserts) by defining the preprocessor symbol
-``NLOGINFO``. That will turn the ``cmb_logger_info()`` wrapper macro into a no-op
-statement ``((void)(0))``, eliminating it from the code. For fast production code, you
+``NLOGINFO``. That will turn the :c:macro:`cmb_logger_info()` wrapper macro into a no-op
+statement, eliminating it from the code. For fast production code, you
 may want to compile Cimba with compiler flags ``-DNDEBUG -DNLOGINFO``. See the top
 level `meson.build <https://github.com/ambonvik/cimba/blob/main/meson.build>`_ and
 uncomment those two options before compiling and (re)installing CImba.
@@ -806,7 +816,7 @@ its own stream of random numbers, independent from any other trials.
 We initialize the PRNG in a three-stage bootstrapping process:
 
 * First, a truly random 64-bit seed can be obtained from a suitable hardware source of
-  entropy by calling ``cmb_random_hwseed()``. It will query the CPU for its best
+  entropy by calling :c:func:`cmb_random_hwseed`. It will query the CPU for its best
   source of randomness. On the x86-64 architecture, the preferred source is the
   ``RDSEED`` instruction that is available on Intel CPUs since 2014 and AMD CPUs since
   2016. This instruction uses thermal noise from the CPU itself to create a 64-bit
@@ -814,15 +824,15 @@ We initialize the PRNG in a three-stage bootstrapping process:
   return the best entropy that is available, if necessary by doing a mashup of the clock
   value, thread identifier, and CPU cycle counter.
 
-* Second, the seed is used to initialize the PRNG by calling ``cmb_random_initialize()``.
+* Second, the seed is used to initialize the PRNG by calling :c:func:`cmb_random_initialize`.
   It needs to create 256 bits of state from a 64-bit seed. We use a dedicated 64-bit state
   PRNG for this. We initialize it with the 64-bit seed, and then draw four samples from it
   to initialize the state of our main PRNG. This auxiliary PRNG is *splitmix64*, also
   public domain, see https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64#C
 
-* Finally, ``cmb_random_initialize()`` draws and discards 20 samples from the main PRNG
+* Finally, :c:func:`cmb_random_initialize` draws and discards 20 samples from the main PRNG
   to make sure that any initial transient is gone before returning and allowing
-  ``cmb_random_sfc64`` to provide pseudo-random numbers to the user application.
+  :c:func:`cmb_random_sfc64` to provide pseudo-random numbers to the user application.
 
 The result is a pseudo-random number sequence that cannot be distinguished from true
 randomness by any available statistical methods. In particular, successive values
@@ -833,10 +843,10 @@ where various entities can carry around their own sources of randomness, but mor
 a property of the simulated world. It just *is*. The simulated entities can obtain
 sample values from it according to whatever distribution is needed.
 
-The basic ``cmb_random_sfc64()`` returns an unsigned 64-bit bit pattern from the PRNG.
-This is a bit spartan for most purposes. The function ``cmb_random()`` instead returns
+The basic :c:func:`cmb_random_sfc64()` returns an unsigned 64-bit bit pattern from the PRNG.
+This is a bit spartan for most purposes. The function :c:func:`cmb_random()` instead returns
 the sample as a ``double`` between zero and one, inclusive. The first unit test in
-``test/test_random.c`` checks the output of ``cmb_random()`` against its expected values:
+``test/test_random.c`` checks the output of :c:func:`cmb_random()` against its expected values:
 
 .. code-block:: none
 
@@ -930,7 +940,7 @@ the sample as a ``double`` between zero and one, inclusive. The first unit test 
     --------------------------------------------------------------------------------
 
 Another way to check the quality is to generate a million successive (x, y) pairs from
-``cmb_random()`` and plot them. The human eye is pretty good at detecting correlations
+:c:func:`cmb_random()` and plot them. The human eye is pretty good at detecting correlations
 and patterns, sometimes even where no pattern exists, so this is a quite sensitive (but
 informal) test:
 
@@ -953,7 +963,7 @@ samples. For example, the infamous Cauchy distribution is simply the ratio of tw
 variates, suitably scaled and shifted.
 
 Cimba also provides a collection of discrete-valued distributions, starting from the
-simple unbiased coin flip in ``cmb_random_flip()``. It also provides Bernoulli trials
+simple unbiased coin flip in :c:func:`cmb_random_flip`. It also provides Bernoulli trials
 (biased coin flips, if such a thing exists), fair and loaded dice, geometric, Poisson and
 Pascal distributions, and so forth.
 
@@ -965,8 +975,9 @@ Vose alias method, see https://www.keithschwarz.com/darts-dice-coins/
 The alias method requires an initial step of setting up an alias table, but provides fast
 O(1) sampling thereafter. This is worthwhile for ``n`` larger than 10 or so, and about
 three times faster than the basic O(n) method for ``n = 30``. In Cimba, the alias table
-is created by calling ``cmb_random_alias_create()``, sampled with ``cmb_random_alias_sample()``,
-and destroyed with ``cmb_random_alias_destroy()``. (In this case, we have bundled the
+is created by calling :c:func:`cmb_random_alias_create`, sampled with
+:c:func:`cmb_random_alias_sample`,
+and destroyed with :c:func:`cmb_random_alias_destroy`. (In this case, we have bundled the
 allocation and initialization steps into a single ``_create()`` function, and the
 termination and deallocation steps into the ``_destroy()`` function.)
 
@@ -976,25 +987,28 @@ Data sets and summaries
 -----------------------
 
 As we saw in the previous section, Cimba provides a simple set of statistics utilities
-for debugging and simple reporting. The most basic class is the ``cmb_dataset``, simply
+for debugging and simple reporting. The most basic class is the :c:struct:`cmb_dataset`,
+simply
 a conveniently resizing array of sample values. It provides methods that require the
 individual values, such as calculating the median, quartiles, autocorrelation factors,
 and printing a histogram. It does not directly support fundamental statistics like mean
 and variance, though.
 
-These are provided through a separate class, ``cmb_datasummary()``, that computes
+These are provided through a separate class, :c:struct:`cmb_datasummary`, that computes
 running tallies for the first four moments in a single-pass algorithm whenever new data
 points are added to the summary, using the methods described by Pébay (https://www.osti.gov/servlets/purl/1028931)
 and Meng (https://arxiv.org/pdf/1510.04923).
 
 The reason for this is that we do not always need to keep all individual sample values,
 so we do not want to take the memory penalty of storing them if a simple summary is
-enough. In those cases, just adding the successive samples to a ``cmb_datasummary`` is
-more efficient. If we need both, collect the samples in a ``cmb_dataset`` and use the
-function ``cmb_dataset_summarize()`` to calculate a data summary object from the
+enough. In those cases, just adding the successive samples to a
+:c:struct:`cmb_datasummary` is
+more efficient. If we need both, collect the samples in a :c:struct:`cmb_dataset` and use the
+function :c:func:`cmb_dataset_summarize` to calculate a data summary object from the
 complete data set.
 
-The basic dataset is extended to a time series by the ``cmb_timeseries`` class. It adds
+The basic dataset is extended to a time series by the :c:struct:`cmb_timeseries` class.
+It adds
 a second ``double`` to make each sample an ``(x, t)`` pair. In addition, it calculates a
 third value ``w`` (for *weight*) that represents the time interval between one sample
 and the next.
@@ -1004,29 +1018,29 @@ which can have arbitrary time intervals between them. We may need to handle time
 series, e.g., the length of some queue, that may be zero for a long time and have short
 bursts of several non-zero values, but perhaps with zero or near zero durations. If we
 want to calculate sensible statistics from this time series, the sample values need to
-be weighted by the duration they had. The ``cmb_timeseries`` calculates these weights
-on the fly.
+be weighted by the duration they had. The :c:struct:`cmb_timeseries` calculates these
+weights on the fly.
 
 Similarly to the simple data set and data summary, there is a related
-``cmb_wtdsummary`` class for calculating duration-weighted statistics from a time
+:c:struct:`cmb_wtdsummary` class for calculating duration-weighted statistics from a time
 series, or, in cases where the complete time series data is not needed, directly in one
-pass by simply adding sample values to the ``cmb_wtdsummary`` along the way. The
+pass by simply adding sample values to the :c:struct:`cmb_wtdsummary` along the way. The
 algorithm is described by Pébay and others in a separate publication, see
 https://link.springer.com/article/10.1007/s00180-015-0637-z
 
 If one for some reason needs to calculate *unweighted* statistics from a time series,
-simply use the ``cmb_dataset_summarize()`` function instead. As a derived class, the
-``cmb_timeseries`` is still also a ``cmb_dataset``, and ``cmb_dataset_summarize()``
-will treat it as such.
+simply use the :c:func:`cmb_dataset_summarize` function instead. As a derived class,
+the :c:struct:`cmb_timeseries` is still also a :c:struct:`cmb_dataset`, and
+:c:func:`cmb_dataset_summarize` will treat it as such.
 
 The single pass calculations of variance and higher moments are non-trivial. The
 obvious implementation is numerically unstable. We strongly recommend using the Cimba
-``cmb_summary`` and ``cmb_wtdsummary`` to do this robustly whenever anything more than
-a simple sum and average is needed.
+:c:struct:`cmb_summary` and :c:struct:`cmb_wtdsummary` to do this robustly whenever
+anything more than a simple sum and average is needed.
 
-And, of course, if more statistical power is needed, use the ``cmb_dataset_print()``
-and ``cmb_timeseries_print()`` functions to write the raw data values to file, and use
-dedicated software such as *R* or *Gnuplot* to analyze and present the data.
+And, of course, if more statistical power is needed, use the :c:func:`cmb_dataset_print`
+and :c:func:`cmb_timeseries_print` functions to write the raw data values to file, and
+use dedicated software such as *R* or *Gnuplot* to analyze and present the data.
 
 .. _background_trials:
 
@@ -1109,7 +1123,7 @@ The user application allocates the experiment array, e.g.:
 
 and initializes it with the various trial parameters, with the necessary variations and
 replications. Once it has loaded parameters into each trial of the experiment array, it
-calls ``cimba_run_experiment()`` and waits for the results.
+calls :c:func:`cimba_run_experiment()` and waits for the results.
 
 .. code-block:: c
 
@@ -1122,14 +1136,14 @@ any way it wants.
 Two less obvious features to be aware of, perhaps less useful, but still:
 
 * You can use different trial functions per trial. If the last argument to
-  ``cimba_run_experiment()`` is ``NULL``, it will instead take the first 64 bits of your
+  :c:func:`cimba_run_experiment` is ``NULL``, it will instead take the first 64 bits of your
   trial structure as a pointer to the trial function to be used for this particular
   trial structure. You could have different trial functions for every trial if you
-  want. Of course, if the trial function argument to ``cimba_run_experiment()`` is ``NULL``
-  and the first 64 bits of your trial structure do *not* contain a valid function
+  want. Of course, if the trial function argument to :c:func:`cimba_run_experiment()` is
+  ``NULL`` and the first 64 bits of your trial structure do *not* contain a valid function
   address, your program will promptly crash with a segmentation fault.
 
-* ``cimba_run_experiment()`` does not even care if the trial functions it executes is a
+* :c:func:`cimba_run_experiment()` does not even care if the trial functions it executes is a
   simulation or something else. You could feed it some array of parameter values and a
   pointer to some function that does something with whatever those parameter values
   indicate. It is just a wrapper to a worker pool of pthreads and will happily

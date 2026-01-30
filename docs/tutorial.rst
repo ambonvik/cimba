@@ -29,7 +29,7 @@ customers into the queue at random intervals, a service process that gets
 customers from the queue and services them for a random duration, and the queue
 itself. We are not concerned with the characteristics of each customer, just how
 many there are in the queue, so we do not need a separate object for each customer.
-We will use a ``cmb_buffer`` for this. In this first iteration, we will hard-code
+We will use a :c:struct:`cmb_buffer` for this. In this first iteration, we will hard-code
 parameter values for simplicity, such as 75 % utilization, and then do it properly
 shortly.
 
@@ -77,13 +77,13 @@ Note that the number of customers to ``put`` or ``get`` is given as a *pointer t
 a variable* containing the number, not just a value. In more complex scenarios
 than this, the process may encounter a partially completed put or get, and we
 need a way to capture the actual state in these cases. For now, just note that
-the amount argument to ``cmb_buffer_put()`` and ``cmb_buffer_get()`` is a
+the amount argument to :c:func:`cmb_buffer_put` and :c:func:`cmb_buffer_get` is a
 pointer to an unsigned 64-bit integer variable.
 
 The process function signature is a function returning a pointer to void (i.e. a
 raw address to anything). It takes two arguments, the first one a pointer to a
-``cmb_process`` (itself), the second a pointer to void that gives whatever context
-the process needs to execute. For now, we only use the context pointer as a
+:c:struct:`cmb_process` (itself), the second a pointer to void that gives whatever
+context the process needs to execute. For now, we only use the context pointer as a
 pointer to the queue, and do not use the ``me`` pointer or the return value.
 
 Note also that all Cimba functions used here start with ``cmb_``, indicating
@@ -137,11 +137,11 @@ entropy source and initialize our pseudo-random number generators with it.
 It then initializes the simulation event queue, specifying at our clock will
 start from 0.0. (It could be any other value, but why not 0.0.)
 
-Next, it creates and initializes the ``cmb_buffer``, naming it "Queue" and setting
+Next, it creates and initializes the :c:struct:`cmb_buffer`, naming it "Queue" and setting
 it to unlimited size.
 
 After that, it creates, initializes, and starts the arrival and service processes.
-They get a pointer to the newly created ``cmb_buffer`` as their context argument,
+They get a pointer to the newly created :c:struct:`cmb_buffer` as their context argument,
 and the event queue is ready, so they can just start immediately.
 
 Notice the pattern here: Objects are first *created*, then *initialized* in a
@@ -159,7 +159,7 @@ clear on each object's memory allocation and initialization status. We have trie
 to be as consistent as possible in the Cimba create/initialize/terminate/destroy
 object lifecycle.
 
-Having made it this far, ``main()`` calls ``cmb_event_queue_execute()`` to run the
+Having made it this far, ``main()`` calls :c:func:`cmb_event_queue_execute` to run the
 simulation before cleaning up.
 
 Note that there are matching ``_terminate()`` calls for each ``_initialize()`` and
@@ -231,16 +231,16 @@ Stopping a simulation
 We will address stopping first. The processes are *coroutines*, executing
 concurrently on a separate stack for each process. Only one process can execute
 at a time. It continues executing until it voluntarily *yields* the CPU to some
-other coroutine. Calling ``cmb_process_hold()`` will do exactly that, transferring
+other coroutine. Calling :c:func:`cmb_process_hold` will do exactly that, transferring
 control to the hidden dispatcher process that determines what to do next.
 
 However, the dispatcher only knows about events, not coroutines or processes. It will
 run as long as there are scheduled events to execute. Our little simulation will always
 have scheduled events, and the dispatcher will not stop on its own. These events
 originate from our two processes: To ensure that a process returns to the other end of
-its ``cmb_process_hold()`` call, it will schedule a wakeup event at the expected time
+its :c:func:`cmb_process_hold` call, it will schedule a wakeup event at the expected time
 before it yields control to the dispatcher. When executed, this event will *resume*
-the coroutine where it left off, returning through the ``cmb_process_hold()`` call with a
+the coroutine where it left off, returning through the :c:func:`cmb_process_hold` call with a
 return value that indicates normal or abnormal return. (We have ignored the
 return values for now in the example above.) So, whenever there are more than
 one process running, there may be future events scheduled in the event queue.
@@ -322,7 +322,7 @@ process could just stop generating new arrivals, the event queue would clear, an
 simulation would stop. (See ``benchmark/MM1_single.c`` for an example doing exactly that.)
 
 We gave the end simulation event a default priority of 0 as the last argument to
-``cmb_event_schedule()``. Priorities are signed 64-bit integers, ``int64_t``. The
+:c:func:`cmb_event_schedule`. Priorities are signed 64-bit integers, ``int64_t``. The
 Cimba dispatcher will always select the scheduled event with the lowest
 scheduled time as the next event. The simulation clock then jumps to that time and that
 event will be executed. If several events
@@ -330,12 +330,12 @@ have the *same* scheduled time, the dispatcher will execute the one with the
 highest priority first. If several events have the same scheduled time *and*
 the same priority, it will execute them in first in first out order.
 
-Again, we ignored the event handle returned by ``cmb_event_schedule()``,
+Again, we ignored the event handle returned by :c:func:`cmb_event_schedule`,
 since we will not be using it in this example. If we wanted to keep it, it is an
 unsigned 64-bit integer (``uint64_t``).
 
 When initializing our arrivals and service processes, we quietly set the last
-argument to ``cmb_process_initialize()`` to 0. This was the inherent process
+argument to :c:func:`cmb_process_initialize` to 0. This was the inherent process
 priority for scheduling any events pertaining to this process, its
 priority when waiting for some resource, and so on. The processes can adjust
 their own (or each other's) priorities during the simulation, dynamically
@@ -397,10 +397,12 @@ Setting logging levels
 Next, the verbiage. Cimba has
 powerful and flexible logging that gives you fine-grained control of what to log.
 
-The core logging function is called ``cmb_logger_vfprintf()``. As the name says, it is
+The core logging function is called :c:func:`cmb_logger_vfprintf()`. As the name says,
+it is
 similar to the standard function ``vfprintf()`` but with some Cimba-specific added
 features. You will rarely interact directly with this function, but instead call
-wrapper functions (actually macros) like ``cmb_logger_user()`` or ``cmb_logger_error()``.
+wrapper functions (actually macros) like :c:macro:`cmb_logger_user()` or
+:c:macro:`cmb_logger_error()`.
 
 The key concept to understand here is the *logger flags*. Cimba uses a 32-bit
 unsigned integer (``uint32_t``) as a bit mask to determine what log entries to print
@@ -411,7 +413,7 @@ There is a global (actually thread local) bit field and a bit mask in each call.
 simple bitwise and (``&``) between the global bit field and the caller's bit mask gives a
 non-zero result, that line is printed, otherwise not. Initially, all bits in the global
 bit field are on, ``0xFFFFFFFF``. You can turn selected bits on and off with
-``cmb_logger_flags_on()`` and ``cmb_logger_flags_off()``.
+:c:func:`cmb_logger_flags_on` and :c:func:`cmb_logger_flags_off`.
 
 Again, it may be easier to show this in code than to explain. We add user-defined logging
 messages to the end event and the two processes. The messages take ``printf``-style
@@ -517,7 +519,7 @@ start reporting some statistics on the queue length.
 
 It will be no surprise that Cimba contains flexible and powerful statistics
 collectors and reporting functions. There is actually one built into the
-``cmb_buffer`` we have been using. We just need to turn it on:
+:c:struct:`cmb_buffer` we have been using. We just need to turn it on:
 
 .. code-block::
 
@@ -570,8 +572,8 @@ The text-mode histogram uses the character ``#`` to indicate a full pixel, ``=``
 one that is more than half full, and ``-`` for one that contains something but less
 than half filled.
 
-We can also get a pointer to the ``cmb_timeseries`` object by
-calling ``cmb_buffer_history()`` and doing further analysis on that. As an
+We can also get a pointer to the :c:struct:`cmb_timeseries` object by
+calling :c:func:`cmb_buffer_history` and doing further analysis on that. As an
 example, let's do the first 20 partial autocorrelation coefficients of the queue
 length time series and print a correlogram of that as well:
 
@@ -623,8 +625,8 @@ Before we go there, we will clean up a few rough edges. The compiler keeps warni
 us about unused function arguments. Unused arguments is not unusual with Cimba,
 since we often do not need all arguments to event and process functions. However,
 we do not want to turn off the warning altogether, but will inform the compiler
-(and human readers of the code) that this is intentional by using the ``cmb_unused()``
-macro:
+(and human readers of the code) that this is intentional by using the
+:c:macro:`cmb_unused()` macro:
 
 .. code-block:: c
 
@@ -684,10 +686,11 @@ We define a small helper function to load the parameters into the ``trial``:
 
 .. admonition:: Asserts and debuggers
 
-    Notice the ``cmb_assert_release`` in this code
+    Notice the :c:macro:`cmb_assert_release())` in this code
     fragment. It is a custom version of the standard ``assert()`` macro, triggering
     a hard stop if the condition evaluates to ``false``. Our custom asserts come in
-    two flavors, ``cmb_assert_debug()`` and ``cmb_assert_release()``. The ``_debug`` assert
+    two flavors, :c:macro:`cmb_assert_debug()` and :c:macro:`cmb_assert_release()`.
+    The ``_debug`` assert
     behaves like the standard one and goes away if the preprocessor symbol ``NDEBUG``
     is ``#defined``. The ``_release`` assert is still there, but also goes away if ``NASSERT``
     is ``#defined``. See :ref:`the background section <background_error>` for details.
@@ -747,7 +750,7 @@ As the last refactoring step before we parallelize, we move the simulation drive
 code from ``main()`` to a separate function ``run_MM1_trial()`` and call it from
 ``main()``. For reasons that soon will be evident, its argument is a single pointer
 to void, even if we immediately cast this to our ``struct trial *`` once inside the
-function. We remove the call to ``cmb_buffer_report()``, calculate the average
+function. We remove the call to :c:func:`cmb_buffer_report`, calculate the average
 queue length, and store it in the ``trial`` results field:
 
 .. code-block:: c
@@ -813,7 +816,7 @@ by just running them at the same time and collecting the output.
 
 Cimba creates a pool of worker threads, one per (logical) CPU core on the system.
 You describe your experiment as an array of trials and the function to execute each
-trial, and pass these to ``cimba_run_experiment()``.
+trial, and pass these to :c:func:`cimba_run_experiment`.
 The worker threads will pull trials from the experiment array and run them,
 storing the results back in your trial struct, before moving to the next un-executed
 trial in the array. This gives an inherent load balancing with minimal overhead. When all
@@ -881,7 +884,7 @@ would probably be given as an input file or as interactive input in real usage.
     ``free()``) is thread safe.
 
     If you absolutely *must* have a global or static variable, consider prefixing
-    it by ``CMB_THREAD_LOCAL`` to make it global or static *within that thread only*,
+    it by :c:macro:`CMB_THREAD_LOCAL` to make it global or static *within that thread only*,
     creating separate copies per thread.
 
 We can then run the experiment:
@@ -892,10 +895,10 @@ We can then run the experiment:
 
 The first argument is the experiment array, the last argument the simulation
 driver function we have developed earlier. It will take a pointer to a trial as
-its argument, but the internals of ``cimba_run_experiment()`` cannot know the
+its argument, but the internals of :c:func:`cimba_run_experiment` cannot know the
 detailed structure of your ``struct trial``, so it will be passed as a ``void *``.
 We need to explain the number of trials and the size of each trial struct as the
-second and third arguments to ``cimba_run_experiment()`` for it to do correct
+second and third arguments to :c:func:`cimba_run_experiment` for it to do correct
 pointer arithmetic internally.
 
 When done, we can collect the results like this:
@@ -931,7 +934,7 @@ When done, we can collect the results like this:
         write_gnuplot_commands();
         system("gnuplot -persistent tut_1_6.gp");
 
-We use a ``cmb_datasummary`` to simplify the calculation of confidence intervals,
+We use a :c:struct:`cmb_datasummary` to simplify the calculation of confidence intervals,
 knowing that it will calculate correct moments in a single pass of the data. We
 then write the results to an output file, write a gnuplot command file to plot
 the results, and spawn a gnuplot window to display the chart.
@@ -1022,7 +1025,7 @@ functionally the same as our final ``tutorial\tut_1_6.c`` but with additional in
 explanatory comments.
 
 For additional variations of this theme, see also ``benchmark/MM1_multi.c`` where
-the queue is modeled as a ``cmb_objectqueue`` with individual customers tracking
+the queue is modeled as a :c:struct:`cmb_objectqueue` with individual customers tracking
 their time in the system, and ``test/test_cimba.c`` modeling a M/G/1 queue with
 different utilizations and service time varibilities.
 
