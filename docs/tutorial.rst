@@ -100,6 +100,7 @@ afterwards. Let us try this:
     {
         const uint64_t seed = cmb_random_hwseed();
         cmb_random_initialize(seed);
+
         cmb_event_queue_initialize(0.0);
 
         struct cmb_buffer *que = cmb_buffer_create();
@@ -215,6 +216,7 @@ output like this:
         3.5362	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
         3.5362	Arrival	cmb_process_hold (278):  Holding for 3.198324 time units
         3.5362	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 6.734495
+        ...
 
 ...and will keep on doing that forever. We have to press Ctrl-C or similar
 to stop it. The good news is that it works. Each line in the trace contains the
@@ -328,7 +330,7 @@ have the *same* scheduled time, the dispatcher will execute the one with the
 highest priority first. If several events have the same scheduled time *and*
 the same priority, it will execute them in first in first out order.
 
-Again, we roundly ignored the event handle returned by ``cmb_event_schedule()``,
+Again, we ignored the event handle returned by ``cmb_event_schedule()``,
 since we will not be using it in this example. If we wanted to keep it, it is an
 unsigned 64-bit integer (``uint64_t``).
 
@@ -392,7 +394,7 @@ Progress: It started, ran, and stopped.
 Setting logging levels
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Next, the verbiage. As you would expect at this point in the tutorial, Cimba has
+Next, the verbiage. Cimba has
 powerful and flexible logging that gives you fine-grained control of what to log.
 
 The core logging function is called ``cmb_logger_vfprintf()``. As the name says, it is
@@ -405,14 +407,14 @@ unsigned integer (``uint32_t``) as a bit mask to determine what log entries to p
 and which to ignore. Cimba reserves the top four bits for its own use, identifying
 messages of various severities, leaving the 28 remaining bits for the user application.
 
-There is a central bit field and a bit mask in each call. If a simple bitwise
-and (``&``) between the central bit field and the caller's bit mask gives a non-
-zero result, that line is printed, otherwise not. Initially, all bits in the central
+There is a global (actually thread local) bit field and a bit mask in each call. If a
+simple bitwise and (``&``) between the global bit field and the caller's bit mask gives a
+non-zero result, that line is printed, otherwise not. Initially, all bits in the global
 bit field are on, ``0xFFFFFFFF``. You can turn selected bits on and off with
 ``cmb_logger_flags_on()`` and ``cmb_logger_flags_off()``.
 
-Again, it may be easier to show this in code than to explain. We add a user-defined logging
-message to the end event and the two processes. The messages take ``printf``-style
+Again, it may be easier to show this in code than to explain. We add user-defined logging
+messages to the end event and the two processes. The messages take ``printf``-style
 format strings and arguments:
 
 .. code-block:: c
@@ -688,15 +690,7 @@ We define a small helper function to load the parameters into the ``trial``:
     two flavors, ``cmb_assert_debug()`` and ``cmb_assert_release()``. The ``_debug`` assert
     behaves like the standard one and goes away if the preprocessor symbol ``NDEBUG``
     is ``#defined``. The ``_release`` assert is still there, but also goes away if ``NASSERT``
-    is ``#defined``.
-
-    The usage pattern is typically that ``cmb_assert_debug()`` is used to test
-    time-consuming invariants and post-conditions in the code, while
-    ``cmb_assert_release()`` is used for simple input argument validity checks
-    and similar pre-conditions that should be left in the production version
-    of your model. Internally, you will find this pattern nearly everywhere in
-    Cimba, as an example of programming by contract to ensure reliability and
-    clarity. See also https://en.wikipedia.org/wiki/Design_by_contract
+    is ``#defined``. See :ref:`the background section <background_error>` for details.
 
     We will trip one and see how it looks. We temporarily replace the
     exponentially distributed service time with a normally distributed one, mean
@@ -1007,7 +1001,7 @@ and run, and get output similar to this:
     Finished experiment, writing results to file
     It took 3.41133 sec
 
-Note that the Cimba logger now understands that it is running multithreaded and
+Note that the Cimba logger understands that it is now running multithreaded and
 prepends each logging line with the trial index in your experiment array. Note
 also that the trials may not be executed in strict sequence, since we do not
 control the detailed interleaving of the threads. That is up to the operating
