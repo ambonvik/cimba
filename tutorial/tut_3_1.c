@@ -115,13 +115,13 @@ struct visitor {
     struct cmb_process core;       /* <= Note: The real thing, not a pointer */
     double patience;
     bool goldcard;
-    double entry_time;
+    double entry_time_park;
+    double entry_time_queue;
     unsigned current_attraction;
     double riding_time;
     double waiting_time;
     double walking_time;
     unsigned num_attractions_visited;
-    double last_event_time;
 };
 
 struct server {
@@ -197,9 +197,8 @@ void *serverfunc(struct cmb_process *me, void *vctx)
         cmb_logger_user(stdout, LOGFLAG_SERVICE, "Has %u for %u slots", cnt, sp->batch_size);
         for (unsigned ui = 0; ui < cnt; ui++) {
             struct visitor *vip = batch[ui];
-            const double qt = cmb_time() - vip->last_event_time;
+            const double qt = cmb_time() - vip->entry_time_queue;
             vip->waiting_time += qt;
-            vip->last_event_time = cmb_time();
         }
 
         /* Run the ride with these visitors on board */
@@ -211,9 +210,7 @@ void *serverfunc(struct cmb_process *me, void *vctx)
         /* Unload and send the visitors on their merry way */
         for (unsigned ui = 0u; ui < cnt; ui++) {
             struct visitor *vip = batch[ui];
-            const double rt = cmb_time() - vip->last_event_time;
-            vip->riding_time += rt;
-            vip->last_event_time = cmb_time();
+            vip->riding_time += dur;
             struct cmb_process *pp = (struct cmb_process *)vip;
             cmb_logger_user(stdout, LOGFLAG_SERVICE, "Resuming visitor %s", cmb_process_name(pp));
             cmb_process_resume(pp, CMB_PROCESS_SUCCESS);
@@ -386,7 +383,7 @@ void *visitor_proc(struct cmb_process *me, void *vctx)
             uint64_t pq_hndl;
             cmb_logger_user(stdout, LOGFLAG_VISITOR,
                             "Joining queue %s", cmb_priorityqueue_name(q));
-            vip->last_event_time = cmb_time();
+            vip->entry_time_queue = cmb_time();
             /* Not blocking, since the queue has unlimited size */
             cmb_priorityqueue_put(q, (void *)vip, cmb_process_priority(me), &pq_hndl);
 
@@ -485,7 +482,7 @@ void visitor_start(struct visitor *vip)
 {
     cmb_assert_release(vip != NULL);
 
-    vip->entry_time = cmb_time();
+    vip->entry_time_park = cmb_time();
     cmb_process_start((struct cmb_process *)vip);
 }
 
@@ -544,12 +541,13 @@ void *departure_proc(struct cmb_process *me, void *vctx)
         struct visitor *vip = NULL;
         (void)cmb_objectqueue_get(sim->departeds, (void **)(&vip));
         cmb_assert_debug(vip != NULL);
-        cmb_assert_debug(cmb_process_status((struct cmb_process *)vip) == CMB_PROCESS_FINISHED);
+        struct cmb_process *pp = (struct cmb_process *)vip;
+        cmb_assert_debug(cmb_process_status(pp) == CMB_PROCESS_FINISHED);
         cmb_logger_user(stdout, LOGFLAG_DEPARTURE, "%s departed",
                         ((struct cmb_process *)vip)->name);
 
         /* Collect its statistics */
-        const double tsys = cmb_time() - vip->entry_time;
+        const double tsys = cmb_time() - vip->entry_time_park;
         cmb_datasummary_add(&sim->time_in_park, tsys);
         cmb_datasummary_add(&sim->riding_times, vip->riding_time);
         cmb_datasummary_add(&sim->waiting_times, vip->waiting_time);

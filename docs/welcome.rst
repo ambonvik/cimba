@@ -118,6 +118,4 @@ MinGW with its gcc compiler. For convenience, we use the CLion integrated
 development environment with built-in support for our build chain on both
 Linux and Windows.
 
-See also the
-`installation guide <https://cimba.readthedocs.io/en/latest/installation.html>`_
-for a more detailed description.
+See also the :ref:`installation guide <installation>` for a more detailed description.

@@ -7,6 +7,8 @@ In this section, we will explain the background for Cimba and some of
 the key design choices that are made in it. We start with a brief history that is
 necessary background for the project goals.
 
+.. _background_history:
+
 Project history and goals
 -------------------------
 
@@ -80,6 +82,8 @@ The goals for Cimba 3.0 are quite similar to those for earlier versions:
 
 I believe that Cimba 3.0 meets these goals and hope you will agree.
 
+.. _background_coroutines:
+
 Coroutines revisited
 --------------------
 
@@ -101,7 +105,7 @@ Coroutines received significant academic interest in the early years, but were t
 overshadowed by the object-oriented inheritance mechanisms. It seems that current
 trends are turning away from the more complex inheritance mechanisms, in many cases
 using composition instead of (multiple) inheritance, and also reviving the interest in
-coroutines. One important article is
+coroutines. One recent article is
 https://www.cs.tufts.edu/~nr/cs257/archive/roberto-ierusalimschy/revisiting-coroutines.pdf
 
 Unfortunately, when C++ finally got "coroutines" as a part of the language in 2020,
@@ -130,7 +134,7 @@ we want the flexibility of either just returning this exit value from the corout
 function or by calling a special ``exit()`` function with an argument. These should be
 equivalent, and the exit value should be persistent after the coroutine execution ends.
 
-And, of course, we want our coroutines to be extremely efficient. Calling``malloc()`` and
+And, of course, we want our coroutines to be extremely efficient. Calling ``malloc()`` and
 ``free()`` or ``memcpy()``'ing large amounts of data in each context switch is a definite
 no go.
 
@@ -140,7 +144,9 @@ gives us a powerful set of stackful coroutines, fulfilling all requirements to "
 coroutines, and in addition providing general mechanisms for communication between
 coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
 coroutines, or even as a mix of those paradigms by mixing asymmetric yield/resume pairs
-with symmetric transfers.(Debugging such a program may become rather confusing, though.)
+with symmetric transfers. (Debugging such a program may become rather confusing, though.)
+
+.. _background_processes:
 
 Cimba processes are asymmetric coroutines
 -----------------------------------------
@@ -155,7 +161,8 @@ dispatcher process, and are always re-activated from the dispatcher process only
 
 The processes understand the simulation time, and may ``hold()`` for a certain
 amount of simulated time. Underneath this call are the asymmetric coroutine primitives of
-``yield()`` (to the simulation dispatcher) and ``resume()`` (when the simulation clock has
+``cmi_coroutine_yield()`` (to the simulation dispatcher) and ``cmi_coroutine_resume()``
+(when the simulation clock has
 advanced by this amount). Processes can also ``acquire()`` and ``release()`` resources,
 wait for some other process to finish, interrupt or stop other processes, wait for some
 specific event, or even wait for some arbitrarily complex condition to become true.
@@ -198,7 +205,11 @@ popping the remaining register values from the main stack.
 .. image:: ../images/stack_3.png
 
 The stack rapidly returns up to the dispatcher loop in ``cmb_event_queue_execute()``,
-which now pulls off and executes the next event from the event queue. That happens to be
+which now pulls off and executes the next event from the event queue.
+
+.. image:: ../images/stack_4.png
+
+That happens to be
 another hold wakeup call. When executed, that event in turn resumes the target process,
 this time the arrival process. The asymmetric coroutine ``yield()``/``resume()`` pair
 is implemented by symmetric ``transfer()`` calls, which in turn triggers the context
@@ -208,10 +219,12 @@ At this point, returned from one event and executing the next, the
 stacks look the same as in the previous illustration, just with different data values
 in the registers and stack variables.
 
+.. image:: ../images/stack_5.png
+
 Control then passes to the arrival process. Its stack pointer is loaded from memory
 into the appropriate register.
 
-.. image:: ../images/stack_4.png
+.. image:: ../images/stack_6.png
 
 It pops the other saved register values from the stack and returns from the context
 call, which in turn returns back to the user code immediately after the
@@ -221,7 +234,7 @@ At this point, the context switch from the service to the arrival process by way
 the dispatcher is complete, the arrival process is executing user code, and the stacks
 look like this:
 
-.. image:: ../images/stack_5.png
+.. image:: ../images/stack_7.png
 
 As should be evident from these examples, Cimba does not care about what level of the
 function call stack its context switching functions get called from. It can be directly
@@ -238,6 +251,8 @@ We will soon return to Cimba's processes and their interactions, but if the read
 been paying attention, there is something else we need to address first: We just said
 *"inheriting all properties and methods from the coroutine class"*, but we also just
 said "C17" and "assembly".
+
+.. _background_oop:
 
 Object-oriented programming. In C and assembly.
 -----------------------------------------------
@@ -353,10 +368,12 @@ provide directly:
   also a reset function, in effect a terminate followed by a new initialize, returning
   the object to a newly initialized state.
 
-When defining your own classes derived from Cimba classes, such as the ``ship`` class in
-our second tutorial, your code has the responsibility to follow this pattern. Your
-allocator function (e.g., ``ship_create()``) allocates and zero-initializes raw memory,
-while the constructor function (``ship_initialize()``) fills it with meaningful values.
+When defining your own classes derived from Cimba classes, such as the ``visitor``
+class in
+:ref:`our third tutorial <tut_3>`, your code has the responsibility to follow this
+pattern. Your
+allocator function (e.g., ``visitor_create()``) allocates and zero-initializes raw memory,
+while the constructor function (``visitor_initialize()``) fills it with meaningful values.
 The constructor does not get called by itself, so your code is also responsible for
 calling it, both for objects allocated on the heap, objects declared as local
 variables, and for objects that exist as a parent class to one of your objects. The
@@ -364,8 +381,8 @@ last case is done by calling the parent class constructor, here
 ``cmb_process_initialize()`` from within the child class constructor function.
 
 Similarly, your code needs to provide a destructor to free any memory allocated by the
-object (``ship_terminate()``), and a deallocator to free the object itself
-(``ship_destroy()``). Your destructor function should also call the parent class
+object (``visitor_terminate()``), and a deallocator to free the object itself
+(``visitor_destroy()``). Your destructor function should also call the parent class
 destructor (here ``cmb_process_terminate()``), but your de-allocator should NOT call
 the parent class de-allocator, since that would be free'ing the same memory twice and
 probably crash your application.
@@ -379,13 +396,15 @@ derived from ``cmi_resourcebase``. If the process needs to drop the resource in 
 hurry, there is a polymorphic function (really just a pointer to the appropriate
 function) for how to handle that for a particular kind of resource.
 
+.. _background_events:
+
 Events and the event queue
 --------------------------
 
-The most fundamental property of a discrete event simulation is that state only
-changes at the event times. The basic algorithm is to maintain a priority queue of
+The most fundamental property of a discrete event simulation is that *state only
+changes at the event times*. The basic algorithm is to maintain a priority queue of
 scheduled events, retrieve the first one, set the simulation clock to its reactivation
-time, execute the event, and repeat.
+time, execute the event, and repeat. The time increments between events will vary.
 
 An event may schedule, cancel, or re-prioritize other events, and in general change
 the state of the model in arbitrary and application-defined ways. This is why
@@ -393,10 +412,10 @@ parallelizing a single model run is near impossible: The dispatcher cannot know 
 event to execute next or what state the next event will encounter before the current event
 is finished executing.
 
-Cimba maintains a single thread-local event queue and simulation clock. These are
+Cimba maintains a single thread local event queue and simulation clock. These are
 global to the simulated world, but local to each trial thread. Two simulations running
 in parallel on separate CPU cores exist in the same shared memory space, but do not
-interact or influence each other. They are in parallel universes.
+interact or influence each other. They are parallel universes.
 
 We define an *event* as a triple consisting of a pointer to a function that takes two
 pointers to ``void`` as arguments and does not return any value, and the two pointers
@@ -409,17 +428,17 @@ Our process interactions are also events. For example, a process calling
 simulation time + 5.0 before it yields to the dispatcher. At some point, that event has
 bubbled up to the top of the priority queue and gets executed. Similarly, when a
 ``cmb_resourceguard`` wakes up a waiting process to inform it that "congratulations,
-you now have the resource", it schedules an event at the current time with the process'
-priority that actually resumes the process. This avoids long and complicated call
-stacks.
+you now have the resource", it schedules an event at the current time that actually
+resumes the process. This avoids long and complicated call stacks.
 
 This also happens to be the reason why our events need to be (at least) a triple: The
 event to reactivate some process needs to contain the reactivation function, a pointer to
-the process, and a pointer to the context argument for its ``resume()`` call.
+the process, and a pointer to the context argument for its ``resume()`` call,
+``(*event)(me, context)``.
 
 Events are instantaneous in simulated time and always execute on the main stack directly
-from the dispatcher. If an event function tries to call ``cmb_process_hold()`` it will try
-to put the event dispatcher itself to sleep, which is not a good idea.
+from the dispatcher. If an event function tries to call ``cmb_process_hold()``, it will
+try to put the event dispatcher itself to sleep. This is not a good idea.
 
 Events do not have a return value. There is nowhere to return the value to. There is
 nowhere to store a return value for later use either. An event function has signature
@@ -439,6 +458,8 @@ defined. As an example, suppose we are building a large-scale simulation model o
 air war. When some plane in the simulation gets shot down, all its scheduled future
 events should be cancelled. In Cimba, this can be done by a simple call like
 ``cmb_event_pattern_cancel(CMB_ANY_ACTION, my_airplane, CMB_ANY_OBJECT);``
+
+.. _background_hashheap:
 
 The hash-heap - a binary heap meets a hash map
 ----------------------------------------------
@@ -468,9 +489,9 @@ Once we have this module tightly packaged, it can be used elsewhere than just th
 event queue. We use the same data structure for all priority queues of processes
 waiting for some resource, since our ``cmb_resourceguard`` is a derived class from
 ``cmi_hashheap``. It is also used for the ``cmb_priorityqueue`` class of arbitrary
-objects passing from some producer to some consumer process. In our second tutorial, the
-LNG harbor simulation, we even used an instance of it at the modeling level to maintain
-the set of active ships in the model.
+objects passing from some producer to some consumer process.
+In :ref:`our fourth tutorial, the LNG harbor simulation <tut_4>`, we even used an
+instance of it at the modeling level to maintain the set of active ships in the model.
 
 Each entry in the hashheap array provides space for four 64-bit payload items, together
 with the event handle, a ``double``, and a signed 64-bit integer for use as prioritization
@@ -488,6 +509,8 @@ the heap and 16 in the hash map (guaranteeing <= 50 % hash map utilization befor
 doubling). This way, the entire structure will fit well inside a 2K CPU L1 cache until
 it has to outgrow the cache. We do not want to penalize the performance of small
 simulation models for the ability to run very large ones.
+
+.. _background_resources:
 
 Resources, resource guards, demands and conditions
 --------------------------------------------------
@@ -540,6 +563,8 @@ pre-packaged for the common resource types and exposed for the ``cmb_condition``
 Cimba a very powerful and expressive simulation tool. There may also be a weak pun here
 somewhere on the C++ ``promise`` keyword: Cimba processes do not promise. They *demand*.
 
+.. _background_error:
+
 Error handling: The loud crashing noise
 ---------------------------------------
 
@@ -547,20 +572,20 @@ Cimba error handling is intentionally draconian. It will not try to "handle" err
 gently, but will make a loud crashing noise instead.
 
 To understand why, think about the worst case scenario for a discrete
-event simulation model: It must not produce incorrect results. It can not handle
+event simulation model: Producing incorrect results. The model can not handle
 errors in "helpful" ways that risks introducing biases. The consequences of
 that could range from embarrassing (e.g., during your Ph.D. thesis defense) to
 catastrophic (e.g., military decision making). Also, the model will run unattended in a
 multithreaded environment with no direct user interface. Requesting user clarification is
 not an option. It is far better that the simulation stops at any sign of trouble and
-requires you to fix the model code or input than to do something that could turn out to
-be wrong.
+requires you to fix the model code or its input than to do something that could turn
+out to be wrong.
 
 As a contrasting opposite, consider a music player application. If some sample is missing,
 the app should interpolate rather than make an audible dropout. If the network is slow,
-rather reduce the bit rate and degrade sound quality than stopping and restarting as the
-buffer empties and refills. That is not the kind of business Cimba is in. Like the
-proverbial samurai, it needs to return victorious or not at all.
+it should rather reduce the bit rate and degrade sound quality than stopping and
+restarting as the buffer empties and refills. That is not the kind of business Cimba is
+in. Like the proverbial samurai, it needs to return victorious or not at all.
 
 Our approach is known as
 "`offensive programming <https://en.wikipedia.org/wiki/Offensive_programming>`_".
@@ -652,10 +677,13 @@ For empirical data on the relationship between assertions and code quality, see,
 e.g., https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2006-54.pdf
 or https://www.cs.ucdavis.edu/~filkov/papers/assert-main.pdf
 
+.. _background_logging:
+
 Logging flags and bit masks
 ---------------------------
 
-As explained in the tutorial, the key concept for the logger is the logger flags; a bit
+As explained in :ref:`the first tutorial <tut_1_logging>`, the key concept for the
+logger is the *logger flags*; a bit
 mask given as an argument to a logger call, and a current bit field. Both are 32-bit
 unsigned integers, type ``uint32_t``. If a simple bitwise and (``&``) between the logger's bit
 field and the caller's bit mask gives a non-zero result, that line is printed, otherwise
@@ -685,43 +713,49 @@ what is going on. It can look like this:
 
 .. code-block:: none
 
-    [ambonvik@Threadripper cimba]$ ./build/benchmark/MM1_single | more
-        0.0000	dispatcher	cmb_process_start (121):  Start Arrival 0x560aba07b510
-        0.0000	dispatcher	cmb_process_start (121):  Start Service 0x560aba07be90
-        0.0000	dispatcher	cmb_event_queue_execute (252):  Starting simulation run
-        0.0000	Arrival	cmb_process_hold (289):  Hold until time 0.811026
-        0.0000	Service	cmb_objectqueue_get (206):  Gets an object from Queue, length now 0
-        0.0000	Service	cmb_objectqueue_get (238):  Waiting for an object
-        0.0000	Service	cmb_resourceguard_wait (128):  Waits for Queue
-       0.81103	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-       0.81103	Arrival	cmb_objectqueue_put (264):  Puts object 0x560aba0a3000 into Queue, length 0
-       0.81103	Arrival	cmb_objectqueue_put (286):  Success, put 0x560aba0a3000
-       0.81103	Arrival	cmb_resourceguard_signal (196):  Scheduling wakeup event for Service
-       0.81103	Arrival	cmb_process_hold (289):  Hold until time 0.928586
-       0.81103	dispatcher	resgrd_waitwu_evt (149):  Wakes Service signal 0 wait type 4
-       0.81103	Service	cmb_objectqueue_get (243):  Trying again
-       0.81103	Service	cmb_objectqueue_get (226):  Success, got 0x560aba0a3000
-       0.81103	Service	cmb_process_hold (289):  Hold until time 1.273660
-       0.92859	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-       0.92859	Arrival	cmb_objectqueue_put (264):  Puts object 0x560aba0a3008 into Queue, length 0
-       0.92859	Arrival	cmb_objectqueue_put (286):  Success, put 0x560aba0a3008
-       0.92859	Arrival	cmb_process_hold (289):  Hold until time 2.416227
-        1.2737	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
-        1.2737	Service	cmb_objectqueue_get (206):  Gets an object from Queue, length now 1
-        1.2737	Service	cmb_objectqueue_get (226):  Success, got 0x560aba0a3008
-        1.2737	Service	cmb_process_hold (289):  Hold until time 3.836229
-        2.4162	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-        2.4162	Arrival	cmb_objectqueue_put (264):  Puts object 0x560aba0a3000 into Queue, length 0
-        2.4162	Arrival	cmb_objectqueue_put (286):  Success, put 0x560aba0a3000
-        2.4162	Arrival	cmb_process_hold (289):  Hold until time 3.698153
-        3.6982	dispatcher	proc_holdwu_evt (255):  Wakes Arrival signal 0 wait type 1
-        3.6982	Arrival	cmb_objectqueue_put (264):  Puts object 0x560aba0a3010 into Queue, length 1
-        3.6982	Arrival	cmb_objectqueue_put (286):  Success, put 0x560aba0a3010
-        3.6982	Arrival	cmb_process_hold (289):  Hold until time 6.278845
-        3.8362	dispatcher	proc_holdwu_evt (255):  Wakes Service signal 0 wait type 1
-        3.8362	Service	cmb_objectqueue_get (206):  Gets an object from Queue, length now 2
-        3.8362	Service	cmb_objectqueue_get (226):  Success, got 0x560aba0a3000
-        3.8362	Service	cmb_process_hold (289):  Hold until time 4.634069
+    [ambonvik@Threadripper cimba]$ build/benchmark/MM1_single | more
+        0.0000	dispatcher	cmb_event_queue_execute (294):  Starting simulation run
+        0.0000	Arrival	cmb_process_hold (278):  Holding for 2.453981 time units
+        0.0000	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 2.453981
+        0.0000	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 0
+        0.0000	Service	cmb_objectqueue_get (246):  Waiting for an object
+        0.0000	Service	cmb_resourceguard_wait (149):  Waits for Queue
+        2.4540	dispatcher	process_wakeup_event_time (310):  Wakes Arrival signal 0
+        2.4540	Arrival	cmb_objectqueue_put (271):  Puts object 0x560d4b65b000 into Queue, length 0
+        2.4540	Arrival	cmb_objectqueue_put (293):  Success, put 0x560d4b65b000
+        2.4540	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+        2.4540	Arrival	cmb_process_hold (278):  Holding for 2.426109 time units
+        2.4540	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 4.880090
+        2.4540	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
+        2.4540	Service	cmb_objectqueue_get (251):  Trying again
+        2.4540	Service	cmb_objectqueue_get (234):  Success, got 0x560d4b65b000
+        2.4540	Service	cmb_process_hold (278):  Holding for 0.168973 time units
+        2.4540	Service	cmb_process_timer_add (343):  Scheduled timeout event at 2.622954
+        2.6230	dispatcher	process_wakeup_event_time (310):  Wakes Service signal 0
+        2.6230	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 0
+        2.6230	Service	cmb_objectqueue_get (246):  Waiting for an object
+        2.6230	Service	cmb_resourceguard_wait (149):  Waits for Queue
+        4.8801	dispatcher	process_wakeup_event_time (310):  Wakes Arrival signal 0
+        4.8801	Arrival	cmb_objectqueue_put (271):  Puts object 0x560d4b65b000 into Queue, length 0
+        4.8801	Arrival	cmb_objectqueue_put (293):  Success, put 0x560d4b65b000
+        4.8801	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+        4.8801	Arrival	cmb_process_hold (278):  Holding for 1.053152 time units
+        4.8801	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 5.933242
+        4.8801	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
+        4.8801	Service	cmb_objectqueue_get (251):  Trying again
+        4.8801	Service	cmb_objectqueue_get (234):  Success, got 0x560d4b65b000
+        4.8801	Service	cmb_process_hold (278):  Holding for 1.241683 time units
+        4.8801	Service	cmb_process_timer_add (343):  Scheduled timeout event at 6.121772
+        5.9332	dispatcher	process_wakeup_event_time (310):  Wakes Arrival signal 0
+        5.9332	Arrival	cmb_objectqueue_put (271):  Puts object 0x560d4b65b008 into Queue, length 0
+        5.9332	Arrival	cmb_objectqueue_put (293):  Success, put 0x560d4b65b008
+        5.9332	Arrival	cmb_process_hold (278):  Holding for 1.811018 time units
+        5.9332	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 7.744260
+        6.1218	dispatcher	process_wakeup_event_time (310):  Wakes Service signal 0
+        6.1218	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 1
+        6.1218	Service	cmb_objectqueue_get (234):  Success, got 0x560d4b65b008
+        6.1218	Service	cmb_process_hold (278):  Holding for 0.874290 time units
+        6.1218	Service	cmb_process_timer_add (343):  Scheduled timeout event at 6.996063
 
 If you compare this to the stack illustrations in the preceding section on Cimba
 processes as coroutines, this gives a pretty good view of what is happening on the
@@ -745,6 +779,8 @@ are bit masks, so your logging flags should be ``0x00000001``, ``0x00000002``,
 ``0x00000004``, ``0x00000008``, ``0x00000010``, and so on for single bits turned off
 and on.
 
+.. _background_random:
+
 Pseudo-random number generators and distributions
 -------------------------------------------------
 
@@ -754,7 +790,7 @@ statistical quality. In addition, we need them to be thread-safe, since it must 
 possible to reproduce the exact sequence of random numbers in a trial when given the
 same seed. We cannot have the outcome depend on other trials that may or may not be
 running in parallel. This is not very difficult to do, but it needs to be considered
-from the beginning, since the obvious way to code a PRNG is to keep its state as static
+from the beginning, since the obvious way to code a PRNG is to keep its state in static
 variables between calls.
 
 The PRNG in Cimba is an implementation of Chris Doty-Humphrey's ``sfc64``. It
@@ -930,6 +966,8 @@ and destroyed with ``cmb_random_alias_destroy()``. (In this case, we have bundle
 allocation and initialization steps into a single ``_create()`` function, and the
 termination and deallocation steps into the ``_destroy()`` function.)
 
+.. _background_data:
+
 Data sets and summaries
 -----------------------
 
@@ -985,6 +1023,8 @@ a simple sum and average is needed.
 And, of course, if more statistical power is needed, use the ``cmb_dataset_print()``
 and ``cmb_timeseries_print()`` functions to write the raw data values to file, and use
 dedicated software such as *R* or *Gnuplot* to analyze and present the data.
+
+.. _background_trials:
 
 Experiments consist of multi-threaded trials
 --------------------------------------------
@@ -1093,6 +1133,8 @@ Two less obvious features to be aware of, perhaps less useful, but still:
   construct a discrete event simulation engine that could be run in that wrapper like
   Cimba 2.0 did in its trans-Atlantic distributed simulation of 1995.
 
+.. _background_benchmark:
+
 Benchmarking Cimba against SimPy
 --------------------------------
 
@@ -1180,7 +1222,13 @@ The same model would look like this in Cimba:
     #define NUM_OBJECTS 1000000u
     #define ARRIVAL_RATE 0.9
     #define SERVICE_RATE 1.0
-    #define NUM_TRIALS 100
+
+    CMB_THREAD_LOCAL struct cmi_mempool objectpool = {
+        CMI_THREAD_STATIC,
+        sizeof(void *),
+        512u,
+        0u, 0u, 0u, NULL, NULL
+    };
 
     struct simulation {
         struct cmb_process *arrival;
@@ -1189,8 +1237,8 @@ The same model would look like this in Cimba:
     };
 
     struct trial {
-        double arr_rate;
-        double srv_rate;
+        double arr_mean;
+        double srv_mean;
         uint64_t obj_cnt;
         double sum_wait;
         double avg_wait;
@@ -1206,11 +1254,11 @@ The same model would look like this in Cimba:
         cmb_unused(me);
         const struct context *ctx = vctx;
         struct cmb_objectqueue *qp = ctx->sim->queue;
-        const double mean_hld = 1.0 / ctx->trl->arr_rate;
+        const double mean_hld = ctx->trl->arr_mean;
         for (uint64_t ui = 0; ui < NUM_OBJECTS; ui++) {
             const double t_hld = cmb_random_exponential(mean_hld);
             cmb_process_hold(t_hld);
-            void *object = cmi_mempool_alloc(&cmi_mempool_8b);
+            void *object = cmi_mempool_alloc(&objectpool);
             double *dblp = object;
             *dblp = cmb_time();
             cmb_objectqueue_put(qp, object);
@@ -1224,7 +1272,7 @@ The same model would look like this in Cimba:
         cmb_unused(me);
         const struct context *ctx = vctx;
         struct cmb_objectqueue *qp = ctx->sim->queue;
-        const double mean_srv = 1.0 / ctx->trl->srv_rate;
+        const double mean_srv = ctx->trl->srv_mean;
         uint64_t *cnt = &(ctx->trl->obj_cnt);
         double *sum = &(ctx->trl->sum_wait);
         while (true) {
@@ -1233,10 +1281,9 @@ The same model would look like this in Cimba:
             const double *dblp = object;
             const double t_srv = cmb_random_exponential(mean_srv);
             cmb_process_hold(t_srv);
-            const double t_sys = cmb_time() - *dblp;
-            *sum += t_sys;
+            *sum += cmb_time() - *dblp;
             *cnt += 1u;
-            cmi_mempool_free(&cmi_mempool_8b, object);
+            cmi_mempool_free(&objectpool, object);
         }
     }
 
@@ -1264,8 +1311,11 @@ The same model would look like this in Cimba:
 
         cmb_event_queue_execute();
 
+        cmb_process_stop(sim->service, NULL);
         cmb_process_terminate(sim->arrival);
         cmb_process_terminate(sim->service);
+        cmb_process_destroy(sim->arrival);
+        cmb_process_destroy(sim->service);
 
         cmb_objectqueue_destroy(sim->queue);
         cmb_event_queue_terminate();
@@ -1275,50 +1325,30 @@ The same model would look like this in Cimba:
 
     int main(void)
     {
-        struct trial *experiment = calloc(NUM_TRIALS, sizeof(*experiment));
-        for (unsigned ui = 0; ui < NUM_TRIALS; ui++) {
-            struct trial *trl = &experiment[ui];
-            trl->arr_rate = ARRIVAL_RATE;
-            trl->srv_rate = SERVICE_RATE;
-            trl->obj_cnt = 0u;
-            trl->sum_wait = 0.0;
-        }
+        struct trial *trl = malloc(sizeof(*trl));
+        trl->arr_mean = 1.0 / ARRIVAL_RATE;
+        trl->srv_mean = 1.0 / SERVICE_RATE;
+        trl->obj_cnt = 0u;
+        trl->sum_wait = 0.0;
+        run_trial(trl);
 
-        cimba_run_experiment(experiment,
-                             NUM_TRIALS,
-                             sizeof(*experiment),
-                             run_trial);
+        printf("Average system time %f (expected %f)\n",
+                trl->sum_wait / (double)trl->obj_cnt,
+                1.0 / (SERVICE_RATE - ARRIVAL_RATE));
 
-        struct cmb_datasummary summary;
-        cmb_datasummary_initialize(&summary);
-        for (unsigned ui = 0; ui < NUM_TRIALS; ui++) {
-            const double avg_tsys = experiment[ui].sum_wait / (double)(experiment[ui].obj_cnt);
-            cmb_datasummary_add(&summary, avg_tsys);
-        }
-
-        const unsigned un = cmb_datasummary_count(&summary);
-        if (un > 1) {
-            const double mean_tsys = cmb_datasummary_mean(&summary);
-            const double sdev_tsys = cmb_datasummary_stddev(&summary);
-            const double serr_tsys = sdev_tsys / sqrt((double)un);
-            const double ci_w = 1.96 * serr_tsys;
-            const double ci_l = mean_tsys - ci_w;
-            const double ci_u = mean_tsys + ci_w;
-
-            printf("Average system time %f (n %u, conf.int. %f - %f, expected %f)\n",
-                   mean_tsys, un, ci_l, ci_u, 1.0 / (SERVICE_RATE - ARRIVAL_RATE));
-
-            return 0;
-        }
+        return 0;
     }
 
 
-The Cimba code is significantly longer for the simple example, in this case 140 vs 60
+The Cimba code is significantly longer for the simple example, in this case 144 vs 60
 lines. The C base language also demands more careful declarations of object types, where
 Python will happily try to infer types from context. C also requires explicit management
 of object creation and destruction, since it does not have Python's automatic garbage
 collection. For a larger model, where the process function could be large, complex, and
-call various other functions, the SimPy code could become much harder to follow.
+call various other functions, the SimPy code could become much harder to follow. (We
+leave it as an exercise for the interested reader to build our :ref:`entertainment park
+tutorial <tut_3>` or :ref:`LNG harbor tutorial <tut_4>` in SimPy for a similar
+benchmarking.)
 
 Both programs produce a one-liner output similar to this:
 
@@ -1330,9 +1360,9 @@ However, the Cimba experiment can run its 100 trials in 0.56 seconds, while the 
 version takes 25.5 seconds to do the exact same thing. Cimba runs about *45 times faster*
 with all available cores in use.
 
-Cimba processes 25 % more simulated events per second on a single core (approx 20
+*Cimba processes 25 % more simulated events per second on a single core (approx 20
 million events / second) than what SimPy can do if it has all 64 logical cores to itself
-(approx 16 million events / second).
+(approx 16 million events / second).*
 
 .. image:: ../images/Speed_test_AMD_3970x.png
 
@@ -1348,11 +1378,13 @@ data analyst's Jupyter notebook, while Cimba is better for larger, more complex,
 more long-lived models where software engineering, maintainability, and efficiency become
 important.
 
+.. _background_name:
+
 How about the name 'Cimba'?
 ---------------------------
 
 Very simple. This is a simulation library in C, the author's initials are 'AMB', 'simba'
-means 'lion' in Swahili, and it is a little-known fact that real lions actually eat python
+means 'lion' in Swahili, and it is a little-known fact that real lions eat python
 snakes for breakfast. Of course it had to be named Cimba.
 
 If in doubt, read the source code
