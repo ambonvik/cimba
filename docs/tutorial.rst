@@ -164,7 +164,7 @@ simulation before cleaning up.
 
 Note that there are matching ``_terminate()`` calls for each ``_initialize()`` and
 matching ``_destroy()`` for each ``_create()``. These functions un-initialize and
-and de-allocate the objects that were created and initialized.
+and de-allocate the objects that were allocated and initialized.
 
 We can now run our first simulation and see what happens. It will generate
 output like this:
@@ -320,7 +320,7 @@ number of customers having been serviced, a statistics collector having a
 certain number of samples, or something else. Or, perhaps even easier, the arrival
 process could just stop generating new arrivals, the event queue would clear, and the
 simulation would stop. (See
-`benchmark/MM1_single.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`
+`benchmark/MM1_single.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`__
 for an example doing exactly that.)
 
 We gave the end simulation event a default priority of 0 as the last argument to
@@ -779,7 +779,7 @@ The ``main()`` function is now reduced to this:
     }
 
 We will not repeat the rest of the code here. You can find it in
-`tutorial/tut_1_5.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_5.c>`.
+`tutorial/tut_1_5.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_5.c>`__.
 Instead, we compile and run it, receiving output similar to this:
 
 .. code-block:: none
@@ -1024,16 +1024,16 @@ This concludes our first tutorial. We have followed the development steps from a
 first minimal model to demonstrate process interactions to a complete parallelized
 experiment with graphical output. The files ``tutorial/tut_1_*.c`` include working
 code for each stage of development. The version
-`tutorial/tut_1_7.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_7.c>`
+`tutorial/tut_1_7.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_7.c>`__
 is functionally the same as our final
-`tutorial\tut_1_6.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_6.c>`
+`tutorial\tut_1_6.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_6.c>`__
 but with additional inline explanatory comments.
 
 For additional variations of this theme, see also
-`benchmark/MM1_multi.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_multi.c>`
+`benchmark/MM1_multi.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_multi.c>`__
 where the queue is modeled as a :c:struct:`cmb_objectqueue` with individual customers
 tracking their time in the system, and
-`test/test_cimba.c <https://github.com/ambonvik/cimba/blob/main/test/test_cimba.c>`
+`test/test_cimba.c <https://github.com/ambonvik/cimba/blob/main/test/test_cimba.c>`__
 modeling a M/G/1 queue with different utilizations and service time varibilities.
 
 .. _tut_2:
@@ -1376,7 +1376,7 @@ The cats, on the other hand, are never interrupted and just ignore return values
     }
 
 The complete code is in
-`tutorial/tut_2_1.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_2_1.c>`
+`tutorial/tut_2_1.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_2_1.c>`__
 We compile and run, and get output similar to this:
 
 .. code-block:: none
@@ -1502,9 +1502,9 @@ Queuing with balking, reneging, and jockeying
 In :ref:`our first tutorial <tut_1>`, we modeled a M/M/1 queue as a simple buffer with
 just a numeric value for the queue length. This was sufficient to calculate queue length
 statistics. We have extended this in our benchmarking case,
-`benchmark/MM1_simple.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`
+`benchmark/MM1_simple.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`__
 and
-`benchmark/MM1_multi.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_multi.c>`,
+`benchmark/MM1_multi.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_multi.c>`__,
 where the customers were modeled as discrete objects
 containing their own arrival times to compute statistics for the time each customer
 spent in the system. In both cases, our simulated results were well aligned with
@@ -1952,7 +1952,7 @@ A day in the park
 ^^^^^^^^^^^^^^^^^
 
 You can find the rest of the code in
-`tutorials/tut_3_1.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_3_1.c>`
+`tutorials/tut_3_1.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_3_1.c>`__
 
 Running it, we get output like this:
 
@@ -2178,12 +2178,12 @@ An empty simulation template
 
 Our starting point will be an empty shell from :ref:`the first tutorial <tut_1>`,
 giving the correct initial structure to the model. You will find it in
-``tutorial/tut_4_0.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_0.c>`.
+``tutorial/tut_4_0.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_0.c>`__.
 It does not do anything, so there is no point in compiling it as it is, but you
 can use it as a starting template for your own models as well.
 
 The first functional version is in
-`tutorial/tut_4_1.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_1.c>`.
+`tutorial/tut_4_1.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_1.c>`__.
 We will not repeat all the code here, just point out some of the highlights.
 
 Processes, resources, and conditions
@@ -2628,7 +2628,7 @@ tidy, we would wrap these in proper ``ship_create()`` and ``ship_initialize()``
 functions to avoid repeating ourselves, but there is nothing that forces us to write
 pro forma constructor and destructor functions. For illustration and code style, we
 do this "properly" in the next iteration of the example,
-`tutorial/tut_4_2.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_2.c>`,
+`tutorial/tut_4_2.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_2.c>`__,
 where the ship class looks like this:
 
 .. code-block:: C
@@ -2961,7 +2961,7 @@ Building and running our new harbor simulation, we get output similar to this:
     Avg time in system, large ships: 17.341350
 
 You can find the code for this single-threaded stage in
-`tutorial/tut_4_1.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_1.c>`.
+`tutorial/tut_4_1.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_1.c>`__.
 
 Turning up the power
 ^^^^^^^^^^^^^^^^^^^^
