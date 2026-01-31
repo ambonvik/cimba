@@ -250,12 +250,15 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     cmb_process_hold(cmb_random_gamma(5.0, 0.01));
     cmb_resource_release(simp->comms);
 
+    /* It takes a while to move into position */
     const double docking_time = cmb_random_PERT(0.4, 0.5, 0.8);
     cmb_process_hold(docking_time);
 
     /* Safely at the quay to unload cargo, dismiss the tugs for now */
     cmb_logger_user(stdout, USERFLAG1, "%s docked, releases tugs, unloading", me->name);
     cmb_resourcepool_release(simp->tugs, shpp->tugs_needed);
+
+    /* Unloading also takes a while */
     const double tua = trlp->unloading_time_avg[shpp->size];
     const double unloading_time = cmb_random_PERT(0.75 * tua, tua, 2 * tua);
     cmb_process_hold(unloading_time);
@@ -269,6 +272,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     cmb_process_hold(cmb_random_gamma(5.0, 0.01));
     cmb_resource_release(simp->comms);
 
+    /* Gently move out again, assisted by tugs */
     const double undocking_time = cmb_random_PERT(0.4, 0.5, 0.8);
     cmb_process_hold(undocking_time);
 
@@ -277,7 +281,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     cmb_resourcepool_release(simp->berths[shpp->size], 1u);
     cmb_resourcepool_release(simp->tugs, shpp->tugs_needed);
 
-    /* One pass process, remove ourselves from the active set */
+    /* This is a one-pass process, remove ourselves from the active set */
     cmi_hashheap_remove(simp->active_ships, hndl);
     /* List ourselves as departed instead */
     cmi_slist_push(simp->departed_ships, &(shpp->listhead));
@@ -286,7 +290,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
 
     /* Store the time we spent as an exit value in a separate heap object.
      * The exit value is a void*, so we could store anything there, but for this
-     * demo, we keep it simple. */
+     * tutorial, we keep it simple. */
     const double t_dep = cmb_time();
     double *t_sys_p = malloc(sizeof(double));
     *t_sys_p = t_dep - t_arr;

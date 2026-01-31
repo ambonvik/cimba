@@ -1056,7 +1056,7 @@ experiment with graphical output. The files ``tutorial/tut_1_*.c`` include worki
 code for each stage of development. The version
 `tutorial/tut_1_7.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_7.c>`__
 is functionally the same as our final
-`tutorial\tut_1_6.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_6.c>`__
+`tutorial/tut_1_6.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_6.c>`__
 but with additional inline explanatory comments.
 
 For additional variations of this theme, see also
@@ -1132,21 +1132,23 @@ until then.
 Note also that there are some differences between the ``_acquire()``/``_release()`` pairs
 and the similar ``_get()``/``_put()`` pairs for buffers and queues. Suppose that you
 have a ``cmb_buffer`` of maximal size 10. It is still possible to call
-``cmb_buffer_put(oqp, 100)``. The call just puts in 10 to begin with, waits for
+``cmb_buffer_put(bufp, 100)``. The call just puts in 10 to begin with, waits for
 someone to get one or more of them, and then keeps refilling the queue until all 100 are
 put in. The call only returns at that point (unless interrupted, which we will discuss in
-a moment).  Similarly, ``cmb_buffer_get(oqp, 100)`` works as expected, and trying to
+a moment).  Similarly, ``cmb_buffer_get(bufp, 100)`` works as expected, and trying to
 ``_put()`` another item into a full :c:struct:`cmb_objectqueue` or
 :c:struct:`cmb_priorityqueue` just suspends the caller until space becomes available.
 
 Resources and resource pools are not like that. Requesting more from a resource pool
 than its maximum is an error. If we have a resource pool with maximum size 10, 5 of
-which already are in use, it is fine to call ``cmb_resourcepool_acquire(rp, 10)``. The
+which already are in use, it is fine to call ``cmb_resourcepool_acquire(rpp, 10)``. The
 call just waits until all 10 are available, accumulating its holding whenever some
 become available until it has all, and then returns. On the other hand, calling
-``cmb_resourcepool_acquire(rp, 11)`` will not work. It is not a meaningful call, so
+``cmb_resourcepool_acquire(rpp, 11)`` will not work. It is not a meaningful call, so
 Cimba will do the most helpful thing it can: Trip an `assert()` and crash your program
-on the spot, encouraging you to find and fix the error.
+on the spot, encouraging you to find and fix the error. (See :ref:`the
+explanatory section <background_error>` for more about the Cimba error handling
+philosophy.)
 
 Preemptions and interruptions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1253,7 +1255,7 @@ However, waiting puts and gets can still be interrupted. For the
 :c:struct:`cmb_objectqueue`
 and :c:struct:`cmb_priorityqueue`, it is very simple. If the respective ``_put()`` or
 ``_get()`` call returned :c:macro:`CMB_PROCESS_SUCCESS` the object was successfully
-added to the queue. If it returned anything else, it was not.
+added to the queue or retrieved from it. If it returned anything else, it was not.
 
 The :c:struct:`cmb_buffer` is similarly intuitive. Recall from
 :ref:`our first tutorial <tut_1>`
@@ -1280,7 +1282,7 @@ inefficient hoarders as they are. Unfortunately, there are also some
 rats, bigger and stronger than the mice. The rats will preempt the cheese from
 the mice, but only if the rat has higher priority. Otherwise, the rat will
 politely wait its turn. There is also a cat. It sleeps a lot, but when awake,
-it will select random rodents and interrupt whatever it is doing.
+it will select a random rodent and interrupt whatever it is doing.
 
 Since we do not plan to run any statistics here, we simplify the context struct
 to just the simulation struct. We can then write something like:
@@ -1486,7 +1488,7 @@ We compile and run, and get output similar to this:
 
 
 ...and so on. The interactions can get rather intricate, but hopefully intuitive:
-A :c:func:`cmb_resourepool_preempt()` call will start from the lowest priority victim
+A :c:func:`cmb_resourcepool_preempt()` call will start from the lowest priority victim
 process and take *all* of its resource, but only if the victim has strictly lower
 priority than the caller. If the requested amount is not satisfied from the first
 victim, it will continue to the next lowest priority victim. If some amount is
@@ -1548,15 +1550,13 @@ faster (jockeying). Or patiently wait until they get served and then leave for n
 adventures. Since the active entities in Cimba are the instance of
 :c:struct:`cmb_process`,
 that requires each customer to be represented as a process or a class derived from
-the process.
-
-Moreover, we will make our customers a derived "class" from the :c:struct:`cmb_process`,
-inheriting its properties and methods, and adding some more specifics.
+the process. We will make our customers a derived "class" from the
+:c:struct:`cmb_process`, inheriting its properties and methods, and adding some more specifics.
 
 The use case is to model an amusement park with guests wanting to use various
 attractions, where the park operator wants us to analyze ways of influencing customer
-behavior. The overall metric is the time spent in the park per visitor. The time unit
-is minutes.
+behavior. The overall metric is the time spent in the park per visitor and the
+breakdown of this time between riding, waiting, and walking. The time unit is minutes.
 
 Classes derived from cmb_process
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1591,7 +1591,7 @@ also create a derived ``struct server`` as a derived class from the
     };
 
 It is important to note that the first member of the struct is the parent class struct
-itself, not a pointer to an object of that class. We can the define the core methods of
+itself, not a pointer to an object of that class. We can now define the core methods of
 the server class:
 
 .. code-block:: c
@@ -1633,8 +1633,10 @@ the server class:
         free(sp);
     }
 
-The most important function is the server process function itself, which could look
-like this:
+The most important function is the server process function itself. It gets a group of
+suspended ``visitor`` processes from the priority queue, loads them into the attraction,
+holds them for the duration of the ride, stores some statistics in them, before
+resuming them as active processes. It can look like this:
 
 .. code-block:: c
 
@@ -1685,13 +1687,8 @@ like this:
         }
     }
 
-Note that the ``serverproc`` gets a group of suspended ``visitor`` processes from the
-priority queue, loads them into the attraction, holds them for the duration of the
-ride, stores some statistics in them, before resuming them as active processes.
-
-Since our processes are asymmetric coroutines, the :c:func:`cmb_process_resume()` call
-does
-not directly resume the target process (coroutine), but schedules an event that will
+Since our processes are *asymmetric* coroutines, the :c:func:`cmb_process_resume()` call
+does not directly resume the target process (coroutine), but schedules an event that will
 make the dispatcher resume the target process (coroutine). That way, all control passes
 through the dispatcher, and all coroutines are resumed by the dispatcher only.
 
@@ -1932,11 +1929,12 @@ Alias sampling probabilities
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 We model the amusement park attractions as nodes in a fully-connected network.
-Node 0 will be the exit, while nodes 1 through *n* are the attractions. Each node has
+Node 0 will be the entrance, while nodes 1 through *n* are the attractions, and node
+*n+1* is the exit. Each node (except the entrance and the exit) has
 one or more priority queues for waiting customers. For each node *i*, there is a certain
-probability that the customer goes to attraction *j* next, including the possibilities of
-exiting the park and of taking another go on the same attraction. This can be
-represented as a matrix of transition probabilities *p(i, j)*.
+probability that the customer goes to attraction *j* next, including both the
+possibility of exiting the park and the possibility of taking another go on the same
+attraction. This can be represented as a matrix of transition probabilities *p(i, j)*.
 
 However, the obvious sampling algorithm is rather slow for large *n*: Generate a random
 number *x* in *[0, 1]*. Starting *j* from 0, add *p(i, j)* until the sum is greater
@@ -1947,7 +1945,8 @@ Instead, we will use a particularly clever O(1) algorithm known as Vose alias sa
 It requires us to pre-compute a lookup table that we will store with each node by
 calling :c:func:`cmb_random_alias_create()`. We can then sample it as often as needed by
 calling :c:func:`cmb_random_alias_sample()`, and clean it up when no longer needed by
-calling :c:func:`cmb_random_alias_destroy()`.
+calling :c:func:`cmb_random_alias_destroy()`. The overhead in construction and
+destruction pays for itself in overall efficiency already for *n > 7* or so.
 
 It looks like this in the ``struct attraction``:
 
@@ -2051,8 +2050,9 @@ Running it, we get output like this:
         9.2341	Server_02_00_01	serverfunc (192):  Got visitor Visitor_000002
         9.2341	Server_02_00_01	serverfunc (197):  Has 1 for 5 slots
         9.2341	Server_02_00_01	serverfunc (206):  Starting ride
+        ...
 
-...and so on, until it reports its statistics for the day:
+...and so on, until it finishes and reports its statistics for the day:
 
 .. code-block:: none
 
@@ -2166,8 +2166,8 @@ Running it, we get output like this:
     [     3.000,  Infinity )   |-
     --------------------------------------------------------------------------------
 
-...and finally, the trial outcomes that would be passed on to the experiment array if
-we parallelized this simulation in the same way as the first (and next) example:
+...and finally, it reports the trial outcomes that would be passed on to the experiment
+array if we parallelized this simulation in the same way as the first (and next) example:
 
 .. code-block:: none
 
@@ -2190,20 +2190,22 @@ A LNG tanker harbor with complex resources and conditions
 
 Once upon a time, a harbor simulation with tugs puttering about was the author's
 first exposure to Simula67, coroutines, and object-oriented programming. The
-essential *rightness* made a lasting impression. Building a beefed-up 21st century version
-will be our final Cimba tutorial. We will use the occasion to introduce the
-extremely powerful :c:struct:`cmb_condition` that allows our processes to make
-arbitrarily complex ``wait`` calls. We will also show how to use some of the Cimba internal
-building blocks, like the ``cmi_slist` singly linked list and the ``cmi_hashheap`` for
-various collections of simulation objects.
+essential *rightness* made a lasting impression. Building a beefed-up 21st century
+version will be our final Cimba tutorial.
+
+We will use the occasion to introduce the extremely powerful :c:struct:`cmb_condition`
+that allows our processes to make arbitrarily complex ``wait`` calls. We will also show
+how to use some of the Cimba internal building blocks, like the ``cmi_slist` singly
+linked list and the ``cmi_hashheap`` for various collections of simulation objects.
 
 Since a simulation model only should be built in order to answer some specific
-question or set of questions, we will assume that our Simulated Port Authority
+question or set of questions, we will assume that our customer, the Simulated Port
+Authority (SPA),
 needs to decide whether to spend next year's investment budget on buying more
 tugs, building another berth, or dredging a deeper harbor channel. The relevant
 performance metric is to minimize the average time spent in the harbor for the
 ships. The ships come in two sizes, large and small, with different requirements
-to wind, water depth, tugs, and berths. Our model will help the SPA decide. The
+to wind, water depth, tugs, and berths. Our model will help the SPA prioritize. The
 time unit in our simulation will be hours.
 
 An empty simulation template
@@ -2223,7 +2225,7 @@ Processes, resources, and conditions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The simulated world is described in ``struct simulation``. Again, there is an
-arrival and a departure process generating and removing ships, but the ships
+arrival and a departure process generating and removing ships, and the ships
 themselves are again active processes. We have two pools of resources, the
 tugs and the berths (of two different sizes), and one single resource, the
 communication channel used to announce that a ship is moving.
@@ -2361,10 +2363,11 @@ saying to the guard "wake me up when this becomes true".
 
 For a :c:struct:`cmb_resource`, the demand function is internal and pre-defined,
 evaluating
-to ``true`` if the resource is available. When some other process releases the
+to ``true`` if the resource is available. When a process releases the
 resource, the guard is signaled, the predicate evaluates to ``true``, and the
 highest priority waiting process gets the resource and returns successfully from
-its :c:func:`cmb_resource_acquire()` call as the new holder of the resource.
+its :c:func:`cmb_resource_acquire()` (or :c:func:`cmb_resource_preempt()`) call as the
+new holder of the resource.
 
 Similarly, the :c:struct:`cmb_resourcepool` is a counting semaphore, where there is a
 certain number of resource items and a process can acquire and release more
@@ -2494,12 +2497,15 @@ the same signature as for the :c:struct:`cmb_process`. It can look like this:
         cmb_process_hold(cmb_random_gamma(5.0, 0.01));
         cmb_resource_release(simp->comms);
 
+        /* It takes a while to move into position */
         const double docking_time = cmb_random_PERT(0.4, 0.5, 0.8);
         cmb_process_hold(docking_time);
 
         /* Safely at the quay to unload cargo, dismiss the tugs for now */
         cmb_logger_user(stdout, USERFLAG1, "%s docked, unloading", me->name);
         cmb_resourcepool_release(simp->tugs, shpp->tugs_needed);
+
+        /* Unloading also takes a while */
         const double tua = trlp->unloading_time_avg[shpp->size];
         const double unloading_time = cmb_random_PERT(0.75 * tua, tua, 2 * tua);
         cmb_process_hold(unloading_time);
@@ -2513,6 +2519,7 @@ the same signature as for the :c:struct:`cmb_process`. It can look like this:
         cmb_process_hold(cmb_random_gamma(5.0, 0.01));
         cmb_resource_release(simp->comms);
 
+        /* Gently move out again, assisted by tugs */
         const double undocking_time = cmb_random_PERT(0.4, 0.5, 0.8);
         cmb_process_hold(undocking_time);
 
@@ -2521,7 +2528,7 @@ the same signature as for the :c:struct:`cmb_process`. It can look like this:
         cmb_resourcepool_release(simp->berths[shpp->size], 1u);
         cmb_resourcepool_release(simp->tugs, shpp->tugs_needed);
 
-        /* One pass process, remove ourselves from the active set */
+        /* This is a one-pass process, remove ourselves from the active set */
         cmi_hashheap_remove(simp->active_ships, hndl);
         /* List ourselves as departed instead */
         cmi_list_push(&(simp->departed_ships), shpp);
@@ -2530,7 +2537,7 @@ the same signature as for the :c:struct:`cmb_process`. It can look like this:
 
         /* Store the time we spent as an exit value in a separate heap object.
          * The exit value is a void*, so we could store anything there, but for this
-         * demo, we keep it simple. */
+         * tutorial, we keep it simple. */
         const double t_dep = cmb_time();
         double *t_sys_p = malloc(sizeof(double));
         *t_sys_p = t_dep - t_arr;
@@ -2588,8 +2595,8 @@ On the other hand, this is not safe at all:
         }
 
         /* Do NOT do this: Hold and/or request a resource not part of the condition
-         * predicate, the yielding execution to other processes that may invalidate
-         * our condition before we act on it. */
+         * predicate, possibly yielding execution to other processes that may invalidate
+         * our condition before we can act on it. */
         cmb_resource_acquire(simp->comms);
         cmb_process_hold(cmb_random_gamma(5.0, 0.01));
         cmb_resource_release(simp->comms);
@@ -2652,7 +2659,10 @@ We next write the arrival process generating ships:
 
 As we see, Cimba processes can create other processes as needed. These simply become
 additional asymmetric coroutines executing on their own stacks with no special handling
-needed.
+needed. There are no "function coloring" issues involved. The processes switch
+seamlessly between being active agents and passive objects as needed. For the programmer,
+mentally placing oneself in a process and just focusing on what that process does is a
+very powerful encapsulation of complexity.
 
 In this example, we just did the ship allocation and initialization inline. If we were to
 create and/or initialize ships from more than one place in the code, or just wanted to be
@@ -2718,10 +2728,10 @@ where the ship class looks like this:
 The departure process is reasonably straightforward, capturing the exit value from
 the ship process and then recycling the entire ship. A :c:struct:`cmb_condition` is used
 to know that one or more ships have departed, triggering the departure process
-to do something. This does the same as using the :c:struct:`cmb_objectqueue` in the
-previous
-example, but demonstrates a different way of doing it (effectively the internal
-workings of a :c:struct:`cmb_objectqueue`). We also use our new destructor functions:
+to do something. This actually does exactly the same as using the
+:c:struct:`cmb_objectqueue` in the previous
+example, but demonstrates a different way of doing it (effectively exposing the internal
+workings of a :c:struct:`cmb_objectqueue`).
 
 .. code-block:: c
 
@@ -2764,7 +2774,7 @@ workings of a :c:struct:`cmb_objectqueue`). We also use our new destructor funct
 Running a trial
 ^^^^^^^^^^^^^^^
 
-Our simulation driver function ``run_trial()`` does in principle the same as in
+Our simulation driver function ``run_trial()`` does the same as in
 :ref:`our first tutorial <tut_1>`: Sets up the simulated world, runs the simulation,
 collects the results, and cleans up everything after itself. There are more objects
 involved this time, so we will not reproduce the entire function here, just call your
@@ -2790,7 +2800,8 @@ call from the weather process, since we know that the harbormaster will be
 signaled by the tide process immediately thereafter, saving one set of demand
 recalculations per simulated hour.
 
-The second is where the resource guard observer/signal forwarding becomes useful:
+The second section to note is where the resource guard observer/signal forwarding becomes
+useful:
 
 .. code-block:: c
 
@@ -2999,13 +3010,15 @@ Turning up the power
 ^^^^^^^^^^^^^^^^^^^^
 
 We still find it fascinating to see our simulated ships and tugs scurrying about, but our
-client, the Simulated Port Authority, reminds us that next year's budget is due and they
+paying customer, the Simulated Port Authority, reminds us that next year's budget is due
+and that they
 would prefer getting answers to their questions soon. And, by the way, could we add
 scenarios where traffic increases by 10 % and 25 % above today's baseline levels?
 
 Time to fire up more computing power.
 
-Setting up our experiment, we believe that the factors depth, number of tugs, and number
+Setting up our experiment, we believe that the factors dredging depth, number of tugs,
+and number
 of small and large berths are largely independent. We can probably vary one at a time
 rather than setting up a factorial experiment (which may still be computationally more
 efficient to do). To ensure that the SPA also has numbers it can use beyond next
@@ -3021,8 +3034,8 @@ of trials, executes it in parallel on the available CPU cores, assembles the out
 file, and plots it in a separate gnuplot window.
 
 We compile and run, and 4.1 seconds later, this chart appears, showing our 60
-parameter combinations, the average time in the system for small and large ships
-under each set of parameters, and tight 95 % confidence intervals based
+parameter combinations, the average time in the system for small (blue) and large ships
+(red) under each set of parameters, and tight 95 % confidence intervals based
 on our 10 replications of each parameter combination:
 
 .. image:: ../images/tut_4_2.png
@@ -3034,7 +3047,7 @@ one does not make much sense even at the highest traffic scenario. The SPA shoul
 rather consider building another one or two small berths next.
 
 This concludes our final tutorial. The code is in
-`tutorial/tut_4_2.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_2.c>.
+`tutorial/tut_4_2.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_2.c>_.
 We have demonstrated the very powerful
 :c:struct:`cmb_condition` allowing processes to wait for arbitrary combinations of
 conditions in the simulated world. We also used the internal :c:struct:`cmi_slist` and
