@@ -16,6 +16,8 @@ copyright = 'Asbjørn M. Bonvik 2025-26'
 
 extensions = ['breathe', 'exhale']
 
+c_extra_keywords = []
+
 html_theme = 'sphinx_rtd_theme'
 html_logo = '../images/logo_small.png'
 html_theme_options = {
@@ -30,6 +32,9 @@ breathe_projects = {
 }
 
 breathe_default_project = "cimba"
+breathe_projects_source = {
+    "cimba": ("../include", ["cmb_process.h", "cmb_buffer.h"])
+}
 
 breathe_default_members = ('members', 'undoc-members')
 breathe_domain_by_extension = {

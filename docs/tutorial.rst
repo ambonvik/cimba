@@ -77,8 +77,8 @@ Note that the number of customers to ``put`` or ``get`` is given as a *pointer t
 a variable* containing the number, not just a value. In more complex scenarios
 than this, the process may encounter a partially completed put or get, and we
 need a way to capture the actual state in these cases. For now, just note that
-the amount argument to :c:func:`cmb_buffer_put <cmb_buffer_put>` and
-:c:func:`cmb_buffer_get <cmb_buffer_get>` is a
+the amount argument to :c:func:`cmb_buffer_put()` and
+:c:func:`cmb_buffer_get()` is a
 pointer to an unsigned 64-bit integer variable.
 
 The process function signature is a function returning a pointer to void (i.e. a
@@ -232,7 +232,7 @@ Stopping a simulation
 We will address stopping first. The processes are *coroutines*, executing
 concurrently on a separate stack for each process. Only one process can execute
 at a time. It continues executing until it voluntarily *yields* the CPU to some
-other coroutine. Calling :c:func:`cmb_process_hold <cmb_process_hold>` will do exactly
+other coroutine. Calling :c:func:`cmb_process_hold()` will do exactly
 that, transferring
 control to the hidden dispatcher process that determines what to do next.
 
@@ -240,11 +240,11 @@ However, the dispatcher only knows about events, not coroutines or processes. It
 run as long as there are scheduled events to execute. Our little simulation will always
 have scheduled events, and the dispatcher will not stop on its own. These events
 originate from our two processes: To ensure that a process returns to the other end of
-its :c:func:`cmb_process_hold <cmb_process_hold>` call, it will schedule a wakeup event
+its :c:func:`cmb_process_hold()` call, it will schedule a wakeup event
 at the expected time
 before it yields control to the dispatcher. When executed, this event will *resume*
 the coroutine where it left off, returning through the
-:c:func:`cmb_process_hold <cmb_process_hold>` call
+:c:func:`cmb_process_hold()` call
 with a return value that indicates normal or abnormal return. (We have ignored the
 return values for now in the example above.) So, whenever there are more than
 one process running, there may be future events scheduled in the event queue.
@@ -312,7 +312,7 @@ and schedule an ``end_sim`` event before executing the event queue:
         return 0;
     }
 
-The arguments to :c:func:`cmb_event_schedule` are the event function, its subject and
+The arguments to :c:func:`cmb_event_schedule()` are the event function, its subject and
 object pointers, the simulated time when this event will happen, and an event
 priority. We have set end time 10.0 here. It could also be expressed as
 ``cmb_time() + 10.0`` for "in 10.0 time units from now".
@@ -328,7 +328,7 @@ simulation would stop. (See
 for an example doing exactly that.)
 
 We gave the end simulation event a default priority of 0 as the last argument to
-:c:func:`cmb_event_schedule`. Priorities are signed 64-bit integers, ``int64_t``. The
+:c:func:`cmb_event_schedule()`. Priorities are signed 64-bit integers, ``int64_t``. The
 Cimba dispatcher will always select the scheduled event with the lowest
 scheduled time as the next event. The simulation clock then jumps to that time and that
 event will be executed. If several events
@@ -336,12 +336,12 @@ have the *same* scheduled time, the dispatcher will execute the one with the
 highest priority first. If several events have the same scheduled time *and*
 the same priority, it will execute them in first in first out order.
 
-Again, we ignored the event handle returned by :c:func:`cmb_event_schedule`,
+Again, we ignored the event handle returned by :c:func:`cmb_event_schedule()`,
 since we will not be using it in this example. If we wanted to keep it, it is an
 unsigned 64-bit integer (``uint64_t``).
 
 When initializing our arrivals and service processes, we quietly set the last
-argument to :c:func:`cmb_process_initialize` to 0. This was the inherent process
+argument to :c:func:`cmb_process_initialize()` to 0. This was the inherent process
 priority for scheduling any events pertaining to this process, its
 priority when waiting for some resource, and so on. The processes can adjust
 their own (or each other's) priorities during the simulation, dynamically
@@ -419,7 +419,7 @@ There is a global (actually thread local) bit field and a bit mask in each call.
 simple bitwise and (``&``) between the global bit field and the caller's bit mask gives a
 non-zero result, that line is printed, otherwise not. Initially, all bits in the global
 bit field are on, ``0xFFFFFFFF``. You can turn selected bits on and off with
-:c:func:`cmb_logger_flags_on` and :c:func:`cmb_logger_flags_off`.
+:c:func:`cmb_logger_flags_on()` and :c:func:`cmb_logger_flags_off()`.
 
 Again, it may be easier to show this in code than to explain. We add user-defined logging
 messages to the end event and the two processes. The messages take ``printf``-style
@@ -579,7 +579,7 @@ one that is more than half full, and ``-`` for one that contains something but l
 than half filled.
 
 We can also get a pointer to the :c:struct:`cmb_timeseries` object by
-calling :c:func:`cmb_buffer_history <cmb_buffer_history>` and doing further analysis on
+calling :c:func:`cmb_buffer_history()` and doing further analysis on
 that. As an
 example, let's do the first 20 partial autocorrelation coefficients of the queue
 length time series and print a correlogram of that as well:
@@ -693,7 +693,7 @@ We define a small helper function to load the parameters into the ``trial``:
 
 .. admonition:: Asserts and debuggers
 
-    Notice the :c:macro:`cmb_assert_release())` in this code
+    Notice the :c:macro:`cmb_assert_release()` in this code
     fragment. It is a custom version of the standard ``assert()`` macro, triggering
     a hard stop if the condition evaluates to ``false``. Our custom asserts come in
     two flavors, :c:macro:`cmb_assert_debug()` and :c:macro:`cmb_assert_release()`.
@@ -724,7 +724,7 @@ We define a small helper function to load the parameters into the ``trial``:
     the condition that failed, the source code file where it blew up, and the random
     number seed that was used to initialize the run.
 
-    If using a debugger, place a breakpoint  in :c:func:`cmi_assert_failed`.
+    If using a debugger, place a breakpoint  in :c:func:`cmi_assert_failed()`.
     If some assert trips, control will always
     go there. You can then page up the stack and see exactly what happened.
 
@@ -824,7 +824,7 @@ by just running them at the same time and collecting the output.
 
 Cimba creates a pool of worker threads, one per (logical) CPU core on the system.
 You describe your experiment as an array of trials and the function to execute each
-trial, and pass these to :c:func:`cimba_run_experiment`.
+trial, and pass these to :c:func:`cimba_run_experiment()`.
 The worker threads will pull trials from the experiment array and run them,
 storing the results back in your trial struct, before moving to the next un-executed
 trial in the array. This gives an inherent load balancing with minimal overhead. When all
@@ -903,10 +903,10 @@ We can then run the experiment:
 
 The first argument is the experiment array, the last argument the simulation
 driver function we have developed earlier. It will take a pointer to a trial as
-its argument, but the internals of :c:func:`cimba_run_experiment` cannot know the
+its argument, but the internals of :c:func:`cimba_run_experiment()` cannot know the
 detailed structure of your ``struct trial``, so it will be passed as a ``void *``.
 We need to explain the number of trials and the size of each trial struct as the
-second and third arguments to :c:func:`cimba_run_experiment` for it to do correct
+second and third arguments to :c:func:`cimba_run_experiment()` for it to do correct
 pointer arithmetic internally.
 
 When done, we can collect the results like this:
@@ -1069,10 +1069,10 @@ If the requested resource or number of resources is not available, the ``_acquir
 calls will wait in a priority queue until the requested amount becomes available.
 The ordering is determined first by the process priority, then FIFO based on the
 simulation timestamp when it entered the queue. Changing a process' priority with
-:c:func:`cmb_process_priority_set` will also have effect on any priority queues it may
+:c:func:`cmb_process_priority_set()` will also have effect on any priority queues it may
 be waiting in, with no need to explicitly reorder the queue from the application.
 
-The typical usage pattern is also the reason for the name :c:func:`cmb_process_hold`:
+The typical usage pattern is also the reason for the name :c:func:`cmb_process_hold()`:
 
 .. code-block:: c
 
@@ -1128,8 +1128,8 @@ Preemptions and interruptions
 
 We have already explained that Cimba processes (and the coroutines they are
 derived from) execute atomically until they explicitly yield control. These
-yield (and resume) points are hidden inside functions like :c:func:`cmb_process_hold`
-or :c:func:`cmb_resource_acquire`. Inside the call, control may (or may not) be
+yield (and resume) points are hidden inside functions like :c:func:`cmb_process_hold()`
+or :c:func:`cmb_resource_acquire()`. Inside the call, control may (or may not) be
 passed to some other process. The call will only return when control is transferred
 back to this process. To the calling process just sitting on its own stack, it
 looks very simple, but a lot of things may be happening elsewhere in the meantime.
@@ -1138,14 +1138,14 @@ A yielded process does not have any guarantees for what may be happening to it
 before it resumes control. Other processes may act on this process, perhaps
 stopping it outright, waking it up early, or snatching a resource away from it.
 
-To be able to tell the difference, functions like :c:func:`cmb_process_hold` and
-:c:func:`cmb_resource_acquire` have an integer return value, an ``int64_t``. We have
+To be able to tell the difference, functions like :c:func:`cmb_process_hold()` and
+:c:func:`cmb_resource_acquire()` have an integer return value, an ``int64_t``. We have
 quietly ignored the return values in our earlier examples, but they are an
 important signalling mechanism between Cimba processes.
 
 Cimba has reserved a few possible return values for itself. Most importantly,
 :c:macro:`CMB_PROCESS_SUCCESS` (numeric value 0) means a normal and successful return.
-For example, if :c:func:`cmb_process_hold` returns :c:macro:`CMB_PROCESS_SUCCESS`, the
+For example, if :c:func:`cmb_process_hold()` returns :c:macro:`CMB_PROCESS_SUCCESS`, the
 calling process knows that it was woken up at the scheduled time without any shenanigans.
 
 The second most important value is :c:macro:`CMB_PROCESS_PREEMPTED`. That means that a
@@ -1159,7 +1159,7 @@ between processes.
 
 These signal values create a rich set of direct process interactions. As an
 example, suppose some process currently holds 10 units from some resource pool.
-It then calls :c:func:`cmb_resourcepool_acquire` requesting 10 more units. At that
+It then calls :c:func:`cmb_resourcepool_acquire()` requesting 10 more units. At that
 moment, only 5 are available. The process takes these 5 and adds itself to the
 priority queue maintained by the resource guard before yielding. In effect, it asks
 to be woken up whenever some more is available, intending to return from its
@@ -1170,14 +1170,14 @@ There are now three different outcomes for the ``_acquire()`` call:
 1. All goes as expected, 5 more units eventually become available, the process
    takes them, and returns :c:macro:`CMB_PROCESS_SUCCESS`. It now holds 20 units.
 
-2. Some higher priority process calls :c:func:`cmb_resourcepool_preempt` and this
+2. Some higher priority process calls :c:func:`cmb_resourcepool_preempt()` and this
    process is targeted. The higher priority process takes *all* units held by
    the victim process. Its acquire call returns :c:macro:`CMB_PROCESS_PREEMPTED`. It
    now holds 0 units.
 
-3. Some other process calls :c:func:`cmb_process_interrupt` on this process. It
+3. Some other process calls :c:func:`cmb_process_interrupt()` on this process. It
    excuses itself from the resource guard priority queue and returns whatever
-   signal value was given to :c:func:`cmb_process_interrupt`, perhaps
+   signal value was given to :c:func:`cmb_process_interrupt()`, perhaps
    :c:macro:`CMB_PROCESS_INTERRUPTED` or some other value that has an
    application-defined meaning. It unwinds the 5 units it collected during the
    call and returns holding the same amount as it held before
@@ -1203,11 +1203,11 @@ resource, for example:
         /* ??? */
     }
 
-In cases like this, the functions :c:func:`cmb_resource_held_by_process` and
-:c:func:`cmb_resourcepool_held_by_process` with a pointer to the process itself as the
+In cases like this, the functions :c:func:`cmb_resource_held_by_process()` and
+:c:func:`cmb_resourcepool_held_by_process()` with a pointer to the process itself as the
 second argument can be useful to figure out which resource was preempted. If the caller
 does not have a pointer to itself handy (it is always the first argument to the
-process function), it can get one by calling :c:func:`cmb_process_current`,
+process function), it can get one by calling :c:func:`cmb_process_current()`,
 returning a pointer to the currently executing process, i.e. the caller.
 
 Buffers and object queues, interrupted
@@ -1222,7 +1222,7 @@ Buffers and their cousins act differently. Once something is put in, other
 processes can get it and consume it immediately. Preempting a put or get operation
 does not have any obvious meaning. If a buffer is empty, a process get call is waiting
 at the resource guard, and a higher priority process wants to get some first, it
-just calls :c:func:`cmb_buffer_get` and goes first in the priority queue.
+just calls :c:func:`cmb_buffer_get()` and goes first in the priority queue.
 
 However, waiting puts and gets can still be interrupted. For the
 :c:struct:`cmb_objectqueue`
@@ -1461,7 +1461,7 @@ We compile and run, and get output similar to this:
 
 
 ...and so on. The interactions can get rather intricate, but hopefully intuitive:
-A :c:func:`cmb_resourepool_preempt` call will start from the lowest priority victim
+A :c:func:`cmb_resourepool_preempt()` call will start from the lowest priority victim
 process and take *all* of its resource, but only if the victim has strictly lower
 priority than the caller. If the requested amount is not satisfied from the first
 victim, it will continue to the next lowest priority victim. If some amount is
@@ -1494,9 +1494,9 @@ pattern as in :ref:`our first tutorial <tut_1>`, so we will not repeat that here
 
 This completes our second tutorial, demonstrating how to "``_acquire()`` and
 ``_release()`` resources, and to use direct process interactions like
-:c:func:`cmb_process_interrupt` and :c:func:`cmb_resourcepool_preempt`.
-We also have mentioned, but not demonstrated :c:func:`cmb_process_wait_process`
-and :c:func:`cmb_process_wait_event`. We encourage you to look up these in the API
+:c:func:`cmb_process_interrupt()` and :c:func:`cmb_resourcepool_preempt`.
+We also have mentioned, but not demonstrated :c:func:`cmb_process_wait_process()`
+and :c:func:`cmb_process_wait_event()`. We encourage you to look up these in the API
 reference documentation next.
 
 .. _tut_3:
@@ -1664,7 +1664,8 @@ Note that the ``serverproc`` gets a group of suspended ``visitor`` processes fro
 priority queue, loads them into the attraction, holds them for the duration of the
 ride, stores some statistics in them, before resuming them as active processes.
 
-Since our processes are asymmetric coroutines, the :c:func:`cmb_process_resume` call does
+Since our processes are asymmetric coroutines, the :c:func:`cmb_process_resume()` call
+does
 not directly resume the target process (coroutine), but schedules an event that will
 make the dispatcher resume the target process (coroutine). That way, all control passes
 through the dispatcher, and all coroutines are resumed by the dispatcher only.
@@ -1829,7 +1830,8 @@ brings some new features:
 
 To model the jockeying and reneging behavior, we use additional :c:struct:`cmb_process`
 methods: The process can schedule a future timeout event for itself by calling
-:c:func:`cmb_process_timer_set`. When the timer event occurs, the process will be interrupted
+:c:func:`cmb_process_timer_set()`. When the timer event occurs, the process will be
+interrupted
 from whatever it is doing with whatever signal the timer was set to send, with
 :c:macro:`CMB_PROCESS_TIMEOUT` as a predefined possibility. By setting a timeout before
 some ``_acquire()``, ``_get()``, or ``_wait()`` call, the process can abort the wait when
@@ -1837,21 +1839,22 @@ patience runs out.
 
 Here, we set *two* different timers, one with the signal ``TIMER_JOCKEYING`` and one with
 ``TIMER_RENEGING``. After these are set, the visitor process suspends itself
-unconditionally by calling :c:func:`cmb_process_yield` after entering the
+unconditionally by calling :c:func:`cmb_process_yield()` after entering the
 :c:struct:`cmb_priorityqueue`. The visitor process is then a passive object managed by
 the server process until it is resumed by the server, or until one of the timers goes off
 and it awakes with a start and shows signs of impatience.
 
-Note that the timers remain active past the call to :c:func:`cmb_priorityqueue_put`.
+Note that the timers remain active past the call to :c:func:`cmb_priorityqueue_put()`.
 The timers are part of the process state, not the function call. They remain active
 until either going off or getting cancelled / cleared.
 
 Note also that one of the first things the server process does after getting a visitor
-from the priority queue is to call :c:func:`cmb_process_timers_clear` to make sure it does
+from the priority queue is to call :c:func:`cmb_process_timers_clear()` to make sure it
+does
 not suddenly wake up and walk off in the middle of the ride. Conversely, one of the first
 things the visitor process does after waking up on a timer signal is to call
-:c:func:`cmb_priorityqueue_cancel` to make sure that it is not admitted on a ride when it
-actually is walking away from that attraction.
+:c:func:`cmb_priorityqueue_cancel()` to make sure that it is not admitted on a ride
+when it actually is walking away from that attraction.
 
 The entire dynamic of having the same object act as both an active, opinionated process
 (or agent) interleaved by it acting as a passive object being handled by other
@@ -1913,13 +1916,13 @@ represented as a matrix of transition probabilities *p(i, j)*.
 However, the obvious sampling algorithm is rather slow for large *n*: Generate a random
 number *x* in *[0, 1]*. Starting *j* from 0, add *p(i, j)* until the sum is greater
 than *x*. The current *j* is then the selected value. (This is implemented in Cimba as
-the function :c:func:`cmb_random_loaded_dice`.)
+the function :c:func:`cmb_random_loaded_dice()`.)
 
 Instead, we will use a particularly clever O(1) algorithm known as Vose alias sampling.
 It requires us to pre-compute a lookup table that we will store with each node by
-calling :c:func:`cmb_random_alias_create`. We can then sample it as often as needed by
-calling :c:func:`cmb_random_alias_sample`, and clean it up when no longer needed by calling
-:c:func:`cmb_random_alias_destroy`.
+calling :c:func:`cmb_random_alias_create()`. We can then sample it as often as needed by
+calling :c:func:`cmb_random_alias_sample()`, and clean it up when no longer needed by
+calling :c:func:`cmb_random_alias_destroy()`.
 
 It looks like this in the ``struct attraction``:
 
@@ -2337,7 +2340,7 @@ evaluating
 to ``true`` if the resource is available. When some other process releases the
 resource, the guard is signaled, the predicate evaluates to ``true``, and the
 highest priority waiting process gets the resource and returns successfully from
-its :c:struct:`cmb_resource_acquire` call as the new holder of the resource.
+its :c:func:`cmb_resource_acquire()` call as the new holder of the resource.
 
 Similarly, the :c:struct:`cmb_resourcepool` is a counting semaphore, where there is a
 certain number of resource items and a process can acquire and release more
@@ -2524,7 +2527,7 @@ Therefore, we test and wait again if it is no longer satisfied.
 For readers familiar with POSIX condition variables, there is a notable lack of
 a protecting mutex here. It is not needed in a coroutine-based concurrency model.
 Once control is back in this process, it will not be interrupted before we yield
-the execution through some call like :c:func:`cmb_process_hold`. In particular, this
+the execution through some call like :c:func:`cmb_process_hold()`. In particular, this
 is safe:
 
 .. code-block:: c
@@ -2546,7 +2549,7 @@ is safe:
         cmb_process_hold(cmb_random_gamma(5.0, 0.01));
         cmb_resource_release(simp->comms);
 
-We know that tugs and berths are available from the :c:func:`cmb_condition_wait`, so
+We know that tugs and berths are available from the :c:func:`cmb_condition_wait()`, so
 the ``_acquire()`` calls will return immediately and successfully.
 
 On the other hand, this is not safe at all:
@@ -2758,7 +2761,7 @@ weather process a higher priority than the tide process. It will then always
 execute first, giving the tide process guaranteed updated information rather
 than possibly acting on the previous hour's data.
 
-As an efficiency optimization, we can now also remove the :c:func:`cmb_condition_signal`
+As an efficiency optimization, we can now also remove the :c:func:`cmb_condition_signal()`
 call from the weather process, since we know that the harbormaster will be
 signaled by the tide process immediately thereafter, saving one set of demand
 recalculations per simulated hour.
