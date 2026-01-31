@@ -67,7 +67,7 @@ It is fast, powerful, reliable, and free.
   The code is written with liberal use of assertions 
   to enforce preconditions, invariants, and postconditions in each function. The 
   assertions act as self-enforcing documentation on expected inputs to and outputs from 
-  the Cimba functions. About 12.8 % of all code lines in the Cimba library are 
+  the Cimba functions. About 13 % of all code lines in the Cimba library are 
   asssertions, a very high density.
   There are unit tests for each module. Running the unit test battery in debug mode (all
   assertions active) verifies the correct operation in great detail. You can do that by the
