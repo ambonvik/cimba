@@ -17,7 +17,9 @@ void *arrival(struct cmb_process *me, void *ctx)
 {
     struct cmb_buffer *bp = ctx;
     while (true) {
-        double t_ia = cmb_random_exponential(1.0 / 0.75);
+        const double rate = 0.75;
+        const double mean = 1.0 / rate;
+        const double t_ia = cmb_random_exponential(mean);
         cmb_process_hold(t_ia);
         uint64_t n = 1;
         cmb_buffer_put(bp, &n);
@@ -28,9 +30,11 @@ void *service(struct cmb_process *me, void *ctx)
 {
     struct cmb_buffer *bp = ctx;
     while (true) {
+        const double rate = 1.0;
+        const double mean = 1.0 / rate;
         uint64_t m = 1;
         cmb_buffer_get(bp, &m);
-        double t_srv = cmb_random_exponential(1.0);
+        double t_srv = cmb_random_exponential(mean);
         cmb_process_hold(t_srv);
     }
 }
