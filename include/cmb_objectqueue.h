@@ -47,13 +47,6 @@
 #include "cmi_resourcebase.h"
 
 /**
- * @brief Unlimited queue size
- */
-#ifndef CMB_UNLIMITED
-  #define CMB_UNLIMITED UINT64_MAX
-#endif
-
-/**
 * @brief A fixed-capacity queue where one or more producer processes (putters)
  * can put arbitrary objects into the one end, and one or more consumer
  * processes (getters) can get objects out of the other end. If space is not
@@ -75,14 +68,14 @@ struct cmb_objectqueue {
 /**
  * @brief Allocate memory for a `cmb_objectqueue` object.
  *
- * @relates cmb_objectqueue
+ * @memberof cmb_objectqueue
  */
 extern struct cmb_objectqueue *cmb_objectqueue_create(void);
 
 /**
  * @brief Make an allocated `cmb_objectqueue` ready for use.
  *
- * @relates cmb_objectqueue
+ * @memberof cmb_objectqueue
  * @param oqp Pointer to a `cmb_objectqueue`
  * @param name The identifying name string.
  * @param capacity Its maximum size, possibly `CMB_OBJECTQUEUE_UNLIMITED` for unlimited.
@@ -94,7 +87,7 @@ extern void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
 /**
  * @brief  Un-initializes an object queue.
  *
- * @relates cmb_objectqueue
+ * @memberof cmb_objectqueue
  * @param oqp Pointer to a `cmb_objectqueue`
  */
 extern void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp);
@@ -102,7 +95,7 @@ extern void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp);
 /**
  * @brief  Deallocate memory for an object queue.
  *
- * @relates cmb_objectqueue
+ * @memberof cmb_objectqueue
  * @param oqp Pointer to a `cmb_objectqueue`
  */
 extern void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp);
@@ -120,7 +113,7 @@ extern void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp);
  * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
  * object pointer will be `NULL`.
  *
- * @relates cmb_objectqueue
+ * @memberof cmb_objectqueue
  * @param oqp Pointer to an object queue
  * @param objectloc Pointer to the location for storing the obtained object.
  * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
@@ -136,7 +129,7 @@ extern int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp,
  * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
  * object pointer will still be unchanged.
  *
- * @relates cmb_objectqueue
+ * @memberof cmb_objectqueue
  * @param oqp Pointer to an object queue
  * @param object Pointer to the object
  * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
@@ -194,7 +187,7 @@ static inline uint64_t cmb_objectqueue_space(struct cmb_objectqueue *oqp)
 /**
  * @brief Returns position of object in object queue
  *
- * @relates cmb_objectqueue
+ * @memberof cmb_objectqueue
  * @param oqp Pointer to an object queue
  * &param object Pointer to some object, possibly NULL
  * @return The position of the object in the queue, zero if not found. Will return
@@ -205,7 +198,7 @@ extern uint64_t cmb_objectqueue_position(struct cmb_objectqueue *oqp, void *obje
 /**
  * @brief Turn on data recording.
  *
- * @relates cmb_objectqueue
+ * @memberof cmb_objectqueue
  * @param oqp Pointer to a object queue
  */
 extern void cmb_objectqueue_recording_start(struct cmb_objectqueue *oqp);
@@ -213,7 +206,7 @@ extern void cmb_objectqueue_recording_start(struct cmb_objectqueue *oqp);
 /**
  * @brief Turn off data recording.
  *
- * @relates cmb_objectqueue
+ * @memberof cmb_objectqueue
  * @param oqp Pointer to an object queue
  */
 extern void cmb_objectqueue_recording_stop(struct cmb_objectqueue *oqp);
@@ -221,7 +214,7 @@ extern void cmb_objectqueue_recording_stop(struct cmb_objectqueue *oqp);
 /**
  * @brief Get the recorded timeseries of queue lengths.
  *
-* @relates cmb_objectqueue
+* @memberof cmb_objectqueue
  * @param oqp Pointer to an object queue
  * @return Pointer to a `cmb_timeseries` containing the queue length history.
  */
@@ -232,7 +225,7 @@ extern struct cmb_timeseries *cmb_objectqueue_history(struct cmb_objectqueue *oq
  *        statistical metrics and histograms. Mostly intended for debugging
  *        purposes, not presentation graphics.
  *
- * @relates cmb_objectqueue
+ * @memberof cmb_objectqueue
  * @param oqp Pointer to an object queue
  * @param fp File pointer, possibly `stdout`.
  */

@@ -49,7 +49,7 @@ struct cmb_wtdsummary {
  * Note that this does not allocate from a thread local memory pool,
  * since it may be passed back outside the current replication.
  *
- * @relates cmb_wtdsummary
+ * @memberof cmb_wtdsummary
  * @return A pointer to a newly allocated weighted data summary object.
  */
 extern struct cmb_wtdsummary *cmb_wtdsummary_create(void);
@@ -58,7 +58,7 @@ extern struct cmb_wtdsummary *cmb_wtdsummary_create(void);
  *  @brief Initialize a weighted data summary, not necessarily allocated on the
  *         heap.
  *
- * @relates cmb_wtdsummary
+ * @memberof cmb_wtdsummary
  * @param wsp Pointer to a weighted data summary.
  */
 extern void cmb_wtdsummary_initialize(struct cmb_wtdsummary *wsp);
@@ -67,7 +67,7 @@ extern void cmb_wtdsummary_initialize(struct cmb_wtdsummary *wsp);
  * @brief Reset a previously used weighted data summary to a newly initialized
  *        state.
  *
- * @relates cmb_wtdsummary
+ * @memberof cmb_wtdsummary
  * @param wsp Pointer to a weighted data summary.
  */
 extern void cmb_wtdsummary_reset(struct cmb_wtdsummary *wsp);
@@ -76,7 +76,7 @@ extern void cmb_wtdsummary_reset(struct cmb_wtdsummary *wsp);
  * @brief Un-initialize the weighted data summary, returning it to a newly
  *        created state.
  *
- * @relates cmb_wtdsummary
+ * @memberof cmb_wtdsummary
  * @param wsp Pointer to a weighted data summary.
  */
 extern void cmb_wtdsummary_terminate(struct cmb_wtdsummary *wsp);
@@ -84,7 +84,7 @@ extern void cmb_wtdsummary_terminate(struct cmb_wtdsummary *wsp);
 /**
  * @brief Deallocate (free) the allocated memory for a weighted data summary.
  *
- * @relates cmb_wtdsummary
+ * @memberof cmb_wtdsummary
  * @param wsp Pointer to a weighted data summary previously created by
  *              `cmb_datasummary_create`.
  */
@@ -94,7 +94,7 @@ extern void cmb_wtdsummary_destroy(struct cmb_wtdsummary *wsp);
  * @brief Add a sample `(x, w)` to the weighted summary. Any zero-weight samples
  *        are ignored, not even counted.
  *
- * @relates cmb_wtdsummary
+ * @memberof cmb_wtdsummary
  * @param wsp Pointer to a weighted data summary.
  * @param x Sample value to be added.
  * @param w Sample weight to be added.
@@ -112,7 +112,7 @@ extern uint64_t cmb_wtdsummary_add(struct cmb_wtdsummary *wsp,
  *      online computation of higher-order multivariate central moments with
  *      arbitrary weights", Computational Statistics (2016) 31:1305–1325
  *
- * @relates cmb_wtdsummary
+ * @memberof cmb_wtdsummary
  * @param tgt Pointer to a weighted summary to receive the merge.
  *            Any previous content will be overwritten. Possibly equal to
  *            `ws1`or `ws2`, or a separate third weighted data summary.
@@ -247,7 +247,7 @@ static inline double cmb_wtdsummary_kurtosis(const struct cmb_wtdsummary *wsp)
 /**
  * @brief Print a line of basic statistics for the weighted data summary.
  *
- * @relates cmb_wtdsummary
+ * @memberof cmb_wtdsummary
  * @param wsp Pointer to a weighted data summary.
  * @param fp A file pointer for where to print, possibly `stdout`
  * @param lead_ins Flag to control if explanatory text is printed. If false,

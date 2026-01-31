@@ -36,13 +36,6 @@
 #include "cmi_resourcebase.h"
 
 /**
- * @brief Unlimited queue size
- */
-#ifndef CMB_UNLIMITED
-  #define CMB_UNLIMITED UINT64_MAX
-#endif
-
-/**
  * @brief A fixed-capacity priority queue where one or more producer processes (putters)
  *        can put arbitrary objects into the one end, and one or more consumer
  *        processes (getters) can get objects out of the other end. If space is not
@@ -62,14 +55,14 @@ struct cmb_priorityqueue {
 /**
  * @brief Allocate memory for a `cmb_priorityqueue` object.
  *
- * @relates cmb_priorityqueue
+ * @memberof cmb_priorityqueue
  */
 extern struct cmb_priorityqueue *cmb_priorityqueue_create(void);
 
 /**
  * @brief Make an allocated `cmb_priorityqueue` ready for use.
  *
- * @relates cmb_priorityqueue
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to a `cmb_priorityqueue`
  * @param name The identifying name string
  * @param capacity Its maximum size, possibly `CMB_UNLIMITED`
@@ -81,7 +74,7 @@ extern void cmb_priorityqueue_initialize(struct cmb_priorityqueue *pqp,
 /**
  * @brief  Un-initializes an object queue.
  *
- * @relates cmb_priorityqueue
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to a `cmb_priorityqueue`
  */
 extern void cmb_priorityqueue_terminate(struct cmb_priorityqueue *pqp);
@@ -89,7 +82,7 @@ extern void cmb_priorityqueue_terminate(struct cmb_priorityqueue *pqp);
 /**
  * @brief  Deallocate memory for an object queue.
  *
- * @relates cmb_priorityqueue
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to a `cmb_priorityqueue`
  */
 extern void cmb_priorityqueue_destroy(struct cmb_priorityqueue *pqp);
@@ -107,7 +100,7 @@ extern void cmb_priorityqueue_destroy(struct cmb_priorityqueue *pqp);
  * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
  * object pointer will be `NULL`.
  *
- * @relates cmb_priorityqueue
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @param objectloc Pointer to the location for storing the obtained object.
  * @return `CMB_PROCESS_SUCCESS` (0) for success, some other value otherwise.
@@ -123,7 +116,7 @@ extern int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp,
  * interrupt signal received, some value other than `CMB_PROCESS_SUCCESS`. The
  * object pointer will still be unchanged.
  *
- * @relates cmb_priorityqueue
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @param object Pointer to the object
  * @param priority The object priority, higher goes before lower
@@ -139,7 +132,7 @@ extern int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
 /**
  * @brief Return the 1-based position of an object in the queue by priority order.
  *
- * @relates cmb_priorityqueue
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @param handle The handle of the object to locate
  * @return 1-based position in the queue, or 0 if not found
@@ -236,7 +229,7 @@ static inline uint64_t cmb_priorityqueue_space(struct cmb_priorityqueue *pqp)
 /**
  * @brief Turn on data recording.
  *
- * @relates cmb_priorityqueue
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to a object queue
  */
 extern void cmb_priorityqueue_recording_start(struct cmb_priorityqueue *pqp);
@@ -244,7 +237,7 @@ extern void cmb_priorityqueue_recording_start(struct cmb_priorityqueue *pqp);
 /**
  * @brief Turn off data recording.
  *
- * @relates cmb_priorityqueue
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  */
 extern void cmb_priorityqueue_recording_stop(struct cmb_priorityqueue *pqp);
@@ -252,7 +245,7 @@ extern void cmb_priorityqueue_recording_stop(struct cmb_priorityqueue *pqp);
 /**
  * @brief Get the recorded timeseries of queue lengths.
  *
- * @relates cmb_priorityqueue
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @return Pointer to a `cmb_timeseries` containing the queue length history.
  */
@@ -263,7 +256,7 @@ extern struct cmb_timeseries *cmb_priorityqueue_history(struct cmb_priorityqueue
  *        statistical metrics and histograms. Mostly intended for debugging
  *        purposes, not presentation graphics.
  *
- * @relates cmb_priorityqueue
+ * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @param fp File pointer, possibly `stdout`.
  */

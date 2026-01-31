@@ -56,7 +56,7 @@ struct cmb_datasummary {
  * Note that this does not allocate from a thread local memory pool,
  * since it may be passed back outside the current replication.
  *
- * @relates cmb_datasummary
+ * @memberof cmb_datasummary
  * @return A pointer to a newly allocated data summary.
  */
 extern struct cmb_datasummary *cmb_datasummary_create(void);
@@ -64,7 +64,7 @@ extern struct cmb_datasummary *cmb_datasummary_create(void);
 /**
  * @brief Deallocate (free) the allocated memory for a data summary.
  *
- * @relates cmb_datasummary
+ * @memberof cmb_datasummary
  * @param dsp Pointer to a data summary previously created by
  *              `cmb_datasummary_create`.
  */
@@ -80,7 +80,7 @@ extern void cmb_datasummary_initialize(struct cmb_datasummary *dsp);
 /**
  * @brief Reset a previously used data summary to a newly initialized state.
  *
- * @relates cmb_datasummary
+ * @memberof cmb_datasummary
  *  @param dsp Pointer to a data summary.
  */
 extern void cmb_datasummary_reset(struct cmb_datasummary *dsp);
@@ -88,7 +88,7 @@ extern void cmb_datasummary_reset(struct cmb_datasummary *dsp);
 /**
  * @brief Un-initialize the data summary, returning it to a newly created state.
  *
- * @relates cmb_datasummary
+ * @memberof cmb_datasummary
  * @param dsp Pointer to a data summary.
  */
 extern void cmb_datasummary_terminate(struct cmb_datasummary *dsp);
@@ -96,7 +96,7 @@ extern void cmb_datasummary_terminate(struct cmb_datasummary *dsp);
 /**
  * @brief Add a single value to a data summary, updating running statistics.
  *
- * @relates cmb_datasummary
+ * @memberof cmb_datasummary
  * @param dsp Pointer to a data summary.
  * @param y Sample value to be added.
  * @return The updated sample count.
@@ -111,7 +111,7 @@ extern uint64_t cmb_datasummary_add(struct cmb_datasummary *dsp, double y);
  * Use case: Partition a simulation across several pthreads and CPU cores,
  * assemble the final results by merging the data summaries returned by each.
  *
- * @relates cmb_datasummary
+ * @memberof cmb_datasummary
  * @param tgt Pointer to data summary to receive the
  *            merge. Any previous content will be overwritten.
  * @param dsp1 Pointer to a data summary.
@@ -222,7 +222,7 @@ static inline double cmb_datasummary_stddev(const struct cmb_datasummary *dsp)
 /**
  * @brief The sample skewness of the samples in the data summary.
  *
- * @relates cmb_datasummary
+ * @memberof cmb_datasummary
  * @param dsp Pointer to a data summary.
  * @return The sample skewness of the samples in the data summary.
  */
@@ -231,7 +231,7 @@ extern double cmb_datasummary_skewness(const struct cmb_datasummary *dsp);
 /**
  * @brief The sample excess kurtosis of the samples in the data summary.
  *
- * @relates cmb_datasummary
+ * @memberof cmb_datasummary
  * @param dsp Pointer to a data summary
  * @return The sample excess kurtosis of the samples in the data summary.
  */
@@ -240,7 +240,7 @@ extern double cmb_datasummary_kurtosis(const struct cmb_datasummary *dsp);
 /**
  * @brief Print a line of basic statistics for the data summary.
  *
- * @relates cmb_datasummary
+ * @memberof cmb_datasummary
  * @param dsp Pointer to a data summary.
  * @param fp A file pointer for where to print, possibly `stdout`
  * @param lead_ins Flag to control if explanatory text is printed. If false,

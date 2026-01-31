@@ -35,6 +35,11 @@
 #include <stdint.h>
 
 /**
+ * @brief Unlimited buffer and queue sizes, defined here for convenience
+ */
+#define CMB_UNLIMITED UINT64_MAX
+
+/**
  * @brief Maximum length of a resource name, anything longer will be truncated
  */
 #define CMI_RESOURCEBASE_NAMEBUF_SZ 32

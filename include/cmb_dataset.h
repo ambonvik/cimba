@@ -56,7 +56,7 @@ struct cmb_dataset {
  * Remember to call a matching `cmb_dataset_destroy` when done to avoid memory
  * leakage.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @return A freshly allocated dataset object.
  */
 extern struct cmb_dataset *cmb_dataset_create(void);
@@ -64,7 +64,7 @@ extern struct cmb_dataset *cmb_dataset_create(void);
 /**
  * @brief Initialize the dataset, clearing any data values.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to an already allocated dataset object.
  */
 extern void cmb_dataset_initialize(struct cmb_dataset *dsp);
@@ -72,7 +72,7 @@ extern void cmb_dataset_initialize(struct cmb_dataset *dsp);
 /**
  * @brief Re-initialize it, returning it to a newly initialized state.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to an already allocated dataset object.
  */
 extern void cmb_dataset_reset(struct cmb_dataset *dsp);
@@ -80,7 +80,7 @@ extern void cmb_dataset_reset(struct cmb_dataset *dsp);
 /**
  * @brief Un-initialize it, returning it to a newly created state.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to an already allocated dataset object.
  */
 extern void cmb_dataset_terminate(struct cmb_dataset *dsp);
@@ -88,7 +88,7 @@ extern void cmb_dataset_terminate(struct cmb_dataset *dsp);
 /**
  * @brief Copy `tgt` into `src`, overwriting whatever was in `tgt`.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param tgt Pointer to the target dataset object.
  * @param src Pointer to the source dataset object.
  * @return Number of data points copied.
@@ -100,7 +100,7 @@ extern uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
  * @brief  Merge datasets `s1` and `s2` into dataset `tgt`.
  *         The target may or may not be one of the two sources, but not `NULL`.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param tgt Pointer to the target dataset object.
  * @param s1 Pointer to the first source dataset object.
  * @param s2 Pointer to the second source dataset object.
@@ -118,7 +118,7 @@ extern uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
  * `cmb_dataset_create`. Otherwise, only use `cmb_dataset_terminate` to
  * free the internal data array.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to a previously allocated dataset object.
  */
 extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
@@ -126,7 +126,7 @@ extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
 /**
  * @brief  Sort the data array in ascending order
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  */
 extern void cmb_dataset_sort(const struct cmb_dataset *dsp);
@@ -134,7 +134,7 @@ extern void cmb_dataset_sort(const struct cmb_dataset *dsp);
 /**
  * @brief  Add a single value to a dataset, resizing the array as needed.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param x The new sample value to add.
  * @return The new number of data values in the array.
@@ -144,7 +144,7 @@ extern uint64_t cmb_dataset_add(struct cmb_dataset *dsp, double x);
 /**
  * @brief  Calculate summary statistics of the data series
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param dsump Pointer to a data summary object to store the results.
  * @return The number of data values included in the summary.
@@ -200,7 +200,7 @@ static inline double cmb_dataset_max(const struct cmb_dataset *dsp)
  * May be somewhat time-consuming, since it first needs to sort the data array.
  * Calling it on an empty dataset will generate a warning and return zero.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @return The maximum data value in the data set, zero if no data yet.
  */
@@ -210,7 +210,7 @@ extern double cmb_dataset_median(const struct cmb_dataset *dsp);
  * @brief Calculate and print the "five-number" summary of dataset quantiles,
  *        i.e., minimum, first quartile, median, third quartile, and maximum.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly `stdout`
  * @param lead_ins Flag for whether to add lead-in texts or just print the
@@ -229,7 +229,7 @@ extern void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
 *
  *  Adds overflow bins to the ends of the range to catch anything outside.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly `stdout`
  * @param num_bins The number of bins, not including the two overflow bins
@@ -245,7 +245,7 @@ extern void cmb_dataset_histogram_print(const struct cmb_dataset *dsp,
 /**
  * @brief Print the raw data values in a single column.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly ``stdout``
  */
@@ -254,7 +254,7 @@ extern void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp);
 /**
  * @brief Calculate autocorrelation coefficients.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param n The highest lag value to calculate
  * @param acf The array where the acf's will be stored, size ``n + 1``
@@ -271,7 +271,7 @@ extern void cmb_dataset_ACF(const struct cmb_dataset *dsp,
  * argument ``acf[]``. If this argument is ``NULL``, they will be calculated
  * directly from the dataset during the call.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param n The highest lag value to calculate.
  * @param pacf The array where the pacf's will be stored, size ``n + 1``
@@ -292,7 +292,7 @@ extern void cmb_dataset_PACF(const struct cmb_dataset *dsp,
  *
  * To print PACFs, give a vector of PACFs as the ``acf`` argument.
  *
- * @relates cmb_dataset
+ * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly ``stdout``
  * @param n The highest lag value to calculate.

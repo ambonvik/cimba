@@ -86,7 +86,7 @@ typedef bool (cmb_condition_demand_func)(const struct cmb_condition *cnd,
 /**
  * @brief  Allocate memory for a condition variable.
  *
- * @relates cmb_condition
+ * @memberof cmb_condition
  * @return Pointer to an allocated condition variable.
  */
 extern struct cmb_condition *cmb_condition_create(void);
@@ -94,7 +94,7 @@ extern struct cmb_condition *cmb_condition_create(void);
 /**
  * @brief  Make an allocated condition variable ready for use.
  *
- * @relates cmb_condition
+ * @memberof cmb_condition
  * @param cvp Pointer to an allocated condition variable.
  * @param name A null-terminated string naming the condition variable.
  */
@@ -111,7 +111,7 @@ extern void cmb_condition_terminate(struct cmb_condition *cvp);
 /**
  * @brief Deallocates memory for a condition variable.
  *
- * @relates cmb_condition
+ * @memberof cmb_condition
  * @param cvp Pointer to an allocated condition variable.
  */
 extern void cmb_condition_destroy(struct cmb_condition *cvp);
@@ -121,7 +121,7 @@ extern void cmb_condition_destroy(struct cmb_condition *cvp);
  *        expressed as a predicate function that returns a boolean answer based
  *        on whatever state.
  *
- * @relates cmb_condition
+ * @memberof cmb_condition
  * @param cvp Pointer to a condition variable.
  * @param dmnd The demand predicate function.
  * @param ctx The context argument to the demand predicate function.
@@ -137,7 +137,7 @@ extern int64_t cmb_condition_wait(struct cmb_condition *cvp,
  * @brief Re-evaluate the demand predicate for all waiting processes and
  *        reactivate those that evaluate as `true`.
  *
- * @relates cmb_condition
+ * @memberof cmb_condition
  * @param cvp Pointer to a condition variable.
  */
 extern bool cmb_condition_signal(struct cmb_condition *cvp);
@@ -146,7 +146,7 @@ extern bool cmb_condition_signal(struct cmb_condition *cvp);
  * @brief Remove the process from the priority queue and resume it with a
  *        `CMB_PROCESS_CANCELLED` signal.
  *
- * @relates cmb_condition
+ * @memberof cmb_condition
  * @param cvp Pointer to a condition variable.
  * @param pp Pointer to a process, presumably waiting for the condition
  *
@@ -159,7 +159,7 @@ extern bool cmb_condition_cancel(struct cmb_condition *cvp,
  * @brief Remove the process from the priority queue without resuming it. Used
  *        e.g., when stopping a process and cancelling its appointments.
  *
- * @relates cmb_condition
+ * @memberof cmb_condition
  * @param cvp Pointer to a condition variable.
  * @param pp Pointer to a process, presumably waiting for the condition
  *
