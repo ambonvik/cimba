@@ -11,12 +11,12 @@ Implementation status:
 * Apple Silicon: Planned
 * ARM: Planned
 
-Cimba models run 40-50 times faster than SimPy. The chart below shows the number of 
-simulated 
+Cimba models run 40-50 times faster than SimPy equivalents. The chart below shows the 
+number of simulated 
 events processed per second of wall clock time on a simple M/M/1 queue implemented in 
 SimPy and Cimba. Cimba runs this scenario 45 times faster than SimPy with all CPU cores 
-in use. Cimba even runs 25 % faster (20M events/sec) _on a single core_ than SimPy using 
-all 64 cores (16M events/sec).
+in use. _Cimba runs 25 % faster (20M events/sec) on a single core than SimPy using 
+all 64 cores (16M events/sec)._
 
 ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
 
