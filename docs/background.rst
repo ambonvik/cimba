@@ -257,7 +257,7 @@ proper *stackful* coroutines.
 We will soon return to Cimba's processes and their interactions, but if the reader has
 been paying attention, there is something else we need to address first: We just said
 *"inheriting all properties and methods from the coroutine class"*, but we also just
-said "C17" and "assembly".
+said *"C17"* and *"assembly"*.
 
 .. _background_oop:
 
@@ -266,13 +266,13 @@ Object-oriented programming. In C and assembly.
 
 Object-oriented programming is a way of structuring program design, not necessarily a
 language feature. It uses concepts like *encapsulation*, *inheritance*, and
-*polymorphism* to create a natural descriptions of the objects in the program.
+*polymorphism* to create a natural description of the objects in the program.
 
 * *Encapsulation* bundles the properties and methods of objects into a compact
   description, usually called a *class*. The individual *instances*, objects that
   belong to the same class, have the same structure but may have different data values.
 
-* *Inheritance* is the relationship between classes where a class is derived from
+* *Inheritance* is the relationship between classes where a *child class* is derived from
   another *parent* class. Objects belonging to the child class also belong to the parent
   class and inherit all properties and methods from there. The child class adds its own
   properties and methods, and may *overload* (change) the meaning of parent class methods.
@@ -333,7 +333,10 @@ Cimba functions and variables follow a naming convention of
   :c:func:`cmi_coroutine_create()`
 
 Static functions and variables internal to each module do not use the
-*<namespace>_<module>_* prefix since they do not have global scope.
+*<namespace>_<module>_* prefix since they do not have global scope. One example is the
+intermediate function ``wakeup_event_time`` visible in the stack images above. It is an
+internal static function in ``cmb_process.c``. Hence, its name is not prefixed with
+its namespace ``cmb`` and module ``process`` since it has file scope only.
 
 There is one notable exception to this naming convention: The function :c:func:`cmb_time`,
 which returns the current simulation clock value. It is declared and defined in the
@@ -346,8 +349,9 @@ As part of our convention, the object methods will take a first argument that is
 pointer to the object itself. This corresponds to the implicit ``this`` or ``self``
 pointer in object-oriented languages. Again, there are a few exceptions: Some functions
 that are only called by the current process and act on itself do not have this argument.
-It is enough to say ``cmb_process_hold(5)``, not ``cmb_process_hold(me, 5)``. Similarly,
-calling ``cmb_process_exit(ptr)`` is enough, calling ``cmb_process_exit(me, ptr)``
+It is enough to say ``cmb_process_hold(5.0)``, not ``cmb_process_hold(me, 5.0)``.
+Similarly,
+calling ``cmb_process_exit(NULL)`` is enough, calling ``cmb_process_exit(me, NULL)``
 would be slightly strange. We believe this exception makes the code more intuitive,
 even if it is not entirely consistent.
 
@@ -381,7 +385,7 @@ When defining your own classes derived from Cimba classes, such as the ``visitor
 class in
 :ref:`our third tutorial <tut_3>`, your code has the responsibility to follow this
 pattern. Your
-allocator function (e.g., ``visitor_create()``) allocates and zero-initializes raw memory,
+allocator function (e.g., ``visitor_create()``) allocates raw memory,
 while the constructor function (``visitor_initialize()``) fills it with meaningful values.
 The constructor does not get called automatically, so your code is also responsible for
 calling it, both for objects allocated on the heap, objects declared as local
@@ -449,13 +453,14 @@ the process, and a pointer to the context argument for its ``resume()`` call,
 ``(*event)(me, context)``.
 
 Events are instantaneous in simulated time and always execute on the main stack directly
-from the dispatcher. If an event function tries to call :c:func:`cmb_process_hold()`,
+from the dispatcher. If an event function itselft tries to call
+:c:func:`cmb_process_hold()`,
 it will try to put the event dispatcher itself to sleep. This is not a good idea.
 
 Events do not have a return value. There is nowhere to return the value to. There is
 nowhere to store a return value for later use either. An event function has signature
 ``void foo(void*, void*)`` while a process function has signature
-``void *bar(void*, void*)``.
+``void *bar(void*, void*)`` since it can and often will return something.
 
 An event is not even an object. It is ephemeral; once it has occurred, it is gone.
 You cannot take a pointer to an event. You can schedule an event as a triple ``(action,
@@ -498,8 +503,8 @@ Cimba uses a hash-heap data structure for this. It consists of two interconnecte
   speed improvement. We use Fibonacci hashing and open addressing for simplicity and
   efficiency, see https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
 
-Once we have this module tightly packaged, it can be used elsewhere than just the main
-event queue. We use the same data structure for all priority queues of processes
+Once we have this module tightly packaged, it can be reused for other purposes than just
+the main event queue. We use the same data structure for all priority queues of processes
 waiting for some resource, since our :c:struct:`cmb_resourceguard` is a derived class
 from ``cmi_hashheap``. It is also used for the :c:struct:`cmb_priorityqueue` class of
 arbitrary objects passing from some producer to some consumer process.
@@ -507,14 +512,15 @@ In :ref:`our fourth tutorial, the LNG harbor simulation <tut_4>`, we even used a
 instance of it at the modeling level to maintain the set of active ships in the model.
 
 Each entry in the hashheap array provides space for four 64-bit payload items, together
-with the event handle, a ``double``, and a signed 64-bit integer for use as prioritization
+with the hash key, a ``double``, and a signed 64-bit integer for use as prioritization
 keys. The ``cmi_hashheap`` struct also has a pointer to an application-provided comparator
 function that determines the ordering between two entries. For the main event priority
-queue, this is based on reactivation time, priority, and handle value (i.e. FIFO
-ordering as tie-breaker), while the waiting list for a resource will use the process
+queue, this is based on reactivation time, priority, and as a last resort, the
+key (handle) value as a tie-breaker, while the waiting list for a resource will use
+the process
 priority and the handle value as ordering keys. If no comparator function is provided,
 the hashheap will use a default comparator that only uses the ``double`` key and
-retrieves the smallest value first.
+retrieves the smallest value first, intended as a simple FIFO rule.
 
 For efficiency reasons, the hash table needs to be sized as a power of two. It will
 start small and grow as needed. This way, the entire structure will fit well inside
@@ -531,7 +537,7 @@ Many simulations involve active processes competing for some scarce resource. Ci
 provides five resource classes and one very general condition variable class. Two of
 the resource classes are holdable with acquire/release semantics, where
 :c:struct:`cmb_resource`
-is a simple binary semaphore that only one process can hold at a time, while the
+is a simple binary semaphore that only one process can hold at a time and the
 :c:struct:`cmb_resourcepool` is a counting semaphore where several processes can hold
 some amount of the resource. The other three resource types have put/get semantics, where the
 :c:struct:`cmb_buffer` only considers the number of units that goes in and out, while the
@@ -547,8 +553,8 @@ observing resource guards.
 
 When a process requests some resource and finds it busy, it enqueues itself in the
 hashheap priority queue. It also registers its *demand function*, a predicate function
-that takes three arguments, a pointer to the guarded resource, a pointer to the process
-itself, and a ``void`` pointer to some application-defined context. Using some
+that takes three arguments: A pointer to the guarded resource, a pointer to the process
+itself, and a ``void*`` pointer to some application-defined context. Using some
 combination of this information, the demand function returns a boolean true or false
 answer to whether the demand is satisfied. The demand function is pre-packaged for the
 four resource types. For example, a process requesting a simple :c:struct:`cmb_resource`
@@ -575,6 +581,7 @@ tutorial, it can include continuous-valued state variables.
 We believe that the open-ended flexibility of our demand predicate function,
 pre-packaged for the common resource types and exposed for the
 :c:struct:`cmb_condition`, makes Cimba a very powerful and expressive simulation tool.
+
 There may also be a weak pun here somewhere on the C++ ``promise`` keyword: Cimba
 processes do not promise. They *demand*.
 
@@ -593,13 +600,13 @@ that could range from embarrassing (e.g., during your Ph.D. thesis defense) to
 catastrophic (e.g., military decision making). Also, the model will run unattended in a
 multithreaded environment with no direct user interface. Requesting user clarification is
 not an option. It is far better that the simulation stops at any sign of trouble and
-requires you to fix the model code or its input than to do something that could turn
-out to be wrong.
+requires you to fix the model code or its input before trying again, than to do something
+that could turn out to be subtly wrong.
 
 As a contrasting opposite, consider a music player application. If some sample is missing,
 the app should interpolate rather than make an audible dropout. If the network is slow,
-it should rather reduce the bit rate and degrade sound quality than stopping and
-restarting as the buffer empties and refills. That is not the kind of business Cimba is
+it should reduce the bit rate and degrade sound quality rather than stopping and
+restarting as the buffer empties and refills. This is not the kind of business Cimba is
 in. Like the proverbial samurai, it needs to return victorious or not at all.
 
 Our approach is known as
@@ -608,7 +615,8 @@ This is closely related to the
 `Design by Contract <https://en.wikipedia.org/wiki/Design_by_contract>`_
 paradigm, where code expresses clear assertions about the expected preconditions,
 invariants, and postconditions during function execution. If one of those assertions is
-proven invalid, execution stops right there. The assertions then become self-enforcing
+proven invalid, execution stops right there with a diagnostic message. The assertions
+then become self-enforcing
 code documentation, since whatever condition it asserts to be true *must* be true for
 execution to proceed past that point.
 
@@ -620,7 +628,7 @@ has had time to propagate elsewhere in your code before something crashes will b
 impossible. We need to catch it as close to the source as possible. Error messages need
 to give additional useful information, not just about what went wrong and where in the
 code it went wrong, but also what process, thread, random number seed, and so on, to
-locate, replicate, and fix the issue.
+replicate, locate, and fix the issue.
 
 Cimba provides its own ``assert()`` macros. Tripping a Cimba assert will give a crash
 report like this:
@@ -652,10 +660,9 @@ will approximately double the execution speed of your model.
 function to work correctly. These remain in the code even with ``-DNDEBUG``, since they
 express the contracts towards surrounding code such as valid ranges for input values.
 These are typically simple and fast statements. If you are absolutely certain that your
-model is working correctly and that all your inputs are valid, you can squeeze out a
-very slight speed improvement by defining the preprocessor symbol ``NASSERT`` and making
-these vanish as well. We do not recommend this, since it turns off all input argument
-checking in Cimba functions, but it is possible to do.
+model is working correctly and that all your inputs are valid, you can squeeze out another
+slight speed improvement by defining the preprocessor symbol ``NASSERT`` and making
+these vanish as well.
 
 As an illustration, consider the function :c:func:`cmb_random_uniform()`:
 
@@ -732,47 +739,52 @@ what is going on. It can look like this:
 
     [ambonvik@Threadripper cimba]$ build/benchmark/MM1_single | more
         0.0000	dispatcher	cmb_event_queue_execute (294):  Starting simulation run
-        0.0000	Arrival	cmb_process_hold (278):  Holding for 2.453981 time units
-        0.0000	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 2.453981
+        0.0000	Arrival	cmb_process_hold (278):  Holding for 0.786458 time units
+        0.0000	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 0.786458
         0.0000	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 0
         0.0000	Service	cmb_objectqueue_get (246):  Waiting for an object
         0.0000	Service	cmb_resourceguard_wait (149):  Waits for Queue
-        2.4540	dispatcher	process_wakeup_event_time (310):  Wakes Arrival signal 0
-        2.4540	Arrival	cmb_objectqueue_put (271):  Puts object 0x560d4b65b000 into Queue, length 0
-        2.4540	Arrival	cmb_objectqueue_put (293):  Success, put 0x560d4b65b000
-        2.4540	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
-        2.4540	Arrival	cmb_process_hold (278):  Holding for 2.426109 time units
-        2.4540	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 4.880090
-        2.4540	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
-        2.4540	Service	cmb_objectqueue_get (251):  Trying again
-        2.4540	Service	cmb_objectqueue_get (234):  Success, got 0x560d4b65b000
-        2.4540	Service	cmb_process_hold (278):  Holding for 0.168973 time units
-        2.4540	Service	cmb_process_timer_add (343):  Scheduled timeout event at 2.622954
-        2.6230	dispatcher	process_wakeup_event_time (310):  Wakes Service signal 0
-        2.6230	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 0
-        2.6230	Service	cmb_objectqueue_get (246):  Waiting for an object
-        2.6230	Service	cmb_resourceguard_wait (149):  Waits for Queue
-        4.8801	dispatcher	process_wakeup_event_time (310):  Wakes Arrival signal 0
-        4.8801	Arrival	cmb_objectqueue_put (271):  Puts object 0x560d4b65b000 into Queue, length 0
-        4.8801	Arrival	cmb_objectqueue_put (293):  Success, put 0x560d4b65b000
-        4.8801	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
-        4.8801	Arrival	cmb_process_hold (278):  Holding for 1.053152 time units
-        4.8801	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 5.933242
-        4.8801	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
-        4.8801	Service	cmb_objectqueue_get (251):  Trying again
-        4.8801	Service	cmb_objectqueue_get (234):  Success, got 0x560d4b65b000
-        4.8801	Service	cmb_process_hold (278):  Holding for 1.241683 time units
-        4.8801	Service	cmb_process_timer_add (343):  Scheduled timeout event at 6.121772
-        5.9332	dispatcher	process_wakeup_event_time (310):  Wakes Arrival signal 0
-        5.9332	Arrival	cmb_objectqueue_put (271):  Puts object 0x560d4b65b008 into Queue, length 0
-        5.9332	Arrival	cmb_objectqueue_put (293):  Success, put 0x560d4b65b008
-        5.9332	Arrival	cmb_process_hold (278):  Holding for 1.811018 time units
-        5.9332	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 7.744260
-        6.1218	dispatcher	process_wakeup_event_time (310):  Wakes Service signal 0
-        6.1218	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 1
-        6.1218	Service	cmb_objectqueue_get (234):  Success, got 0x560d4b65b008
-        6.1218	Service	cmb_process_hold (278):  Holding for 0.874290 time units
-        6.1218	Service	cmb_process_timer_add (343):  Scheduled timeout event at 6.996063
+       0.78646	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+       0.78646	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c000 into Queue, length 0
+       0.78646	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c000
+       0.78646	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+       0.78646	Arrival	cmb_process_hold (278):  Holding for 0.237395 time units
+       0.78646	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 1.023854
+       0.78646	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
+       0.78646	Service	cmb_objectqueue_get (251):  Trying again
+       0.78646	Service	cmb_objectqueue_get (234):  Success, got 0x555ae5e1c000
+       0.78646	Service	cmb_process_hold (278):  Holding for 1.321970 time units
+       0.78646	Service	cmb_process_timer_add (343):  Scheduled timeout event at 2.108428
+        1.0239	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        1.0239	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c008 into Queue, length 0
+        1.0239	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c008
+        1.0239	Arrival	cmb_process_hold (278):  Holding for 3.063936 time units
+        1.0239	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 4.087789
+        2.1084	dispatcher	wakeup_event_time (310):  Wakes Service signal 0
+        2.1084	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 1
+        2.1084	Service	cmb_objectqueue_get (234):  Success, got 0x555ae5e1c008
+        2.1084	Service	cmb_process_hold (278):  Holding for 0.576082 time units
+        2.1084	Service	cmb_process_timer_add (343):  Scheduled timeout event at 2.684510
+        2.6845	dispatcher	wakeup_event_time (310):  Wakes Service signal 0
+        2.6845	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 0
+        2.6845	Service	cmb_objectqueue_get (246):  Waiting for an object
+        2.6845	Service	cmb_resourceguard_wait (149):  Waits for Queue
+        4.0878	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        4.0878	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c008 into Queue, length 0
+        4.0878	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c008
+        4.0878	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+        4.0878	Arrival	cmb_process_hold (278):  Holding for 1.313836 time units
+        4.0878	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 5.401625
+        4.0878	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
+        4.0878	Service	cmb_objectqueue_get (251):  Trying again
+        4.0878	Service	cmb_objectqueue_get (234):  Success, got 0x555ae5e1c008
+        4.0878	Service	cmb_process_hold (278):  Holding for 2.084093 time units
+        4.0878	Service	cmb_process_timer_add (343):  Scheduled timeout event at 6.171883
+        5.4016	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        5.4016	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c000 into Queue, length 0
+        5.4016	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c000
+        5.4016	Arrival	cmb_process_hold (278):  Holding for 1.702620 time units
+        5.4016	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 7.104245
 
 If you compare this to the stack illustrations in the preceding section on Cimba
 processes as coroutines, this gives a pretty good view of what is happening on the
@@ -785,10 +797,10 @@ stacks. However, it will not be needed very often and can be turned off with
 It will still be in the code if turned off, requiring one 32-bit comparison per call, but
 you can make it vanish completely (like the asserts) by defining the preprocessor symbol
 ``NLOGINFO``. That will turn the :c:macro:`cmb_logger_info()` wrapper macro into a no-op
-statement, eliminating it from the code. For fast production code, you
-may want to compile Cimba with compiler flags ``-DNDEBUG -DNLOGINFO``. See the top
-level `meson.build <https://github.com/ambonvik/cimba/blob/main/meson.build>`_ and
-uncomment those two options before compiling and (re)installing CImba.
+statement, eliminating it from the code. For fast production code, already well tested,
+you may want to compile Cimba with compiler flags ``-DNDEBUG -DNASSERT -DNLOGINFO``. See
+the top level `meson.build <https://github.com/ambonvik/cimba/blob/main/meson.build>`_ and
+uncomment those options before compiling and (re)installing Cimba.
 
 As shown in the tutorial, the user application can define up to 28 different logger
 flags for fine-grained control of what logging messages to print. Remember that these
@@ -976,12 +988,12 @@ probability of outcome ``i``, for ``0 <= i < n``. A clever algorithm for this is
 Vose alias method, see https://www.keithschwarz.com/darts-dice-coins/
 
 The alias method requires an initial step of setting up an alias table, but provides fast
-O(1) sampling thereafter. This is worthwhile for ``n`` larger than 10 or so, and about
+O(1) sampling thereafter. This is worthwhile for ``n`` larger than seven or so, and about
 three times faster than the basic O(n) method for ``n = 30``. In Cimba, the alias table
-is created by calling :c:func:`cmb_random_alias_create`, sampled with
-:c:func:`cmb_random_alias_sample`,
-and destroyed with :c:func:`cmb_random_alias_destroy`. (In this case, we have bundled the
-allocation and initialization steps into a single ``_create()`` function, and the
+is created by calling :c:func:`cmb_random_alias_create()`, sampled with
+:c:func:`cmb_random_alias_sample()`,
+and destroyed with :c:func:`cmb_random_alias_destroy()`. (In this case, we have bundled
+the allocation and initialization steps into a single ``_create()`` function, and the
 termination and deallocation steps into the ``_destroy()`` function.)
 
 .. _background_data:
@@ -1051,7 +1063,7 @@ Experiments consist of multi-threaded trials
 --------------------------------------------
 
 Finally, we return to the primary objective for Cimba: To provide multi-threaded
-discrete event simulation that harnesses the power of modern multi-core CPUS. As
+discrete event simulation that harnesses the power of modern multi-core CPU's. As
 explained in the sections about coroutines and pseudo-random number generators above,
 Cimba is designed from the ground up to enable multithreaded execution. Once that is in
 place, the actual implementation is straightforward. For portability, we use POSIX
@@ -1136,12 +1148,12 @@ Once this function returns, each trial in the experiment array will have its res
 fields populated. The application can then parse the outcome and present the results in
 any way it wants.
 
-Two less obvious features to be aware of, perhaps less useful, but still:
+Two less obvious features to be aware of, perhaps also less useful, but still:
 
-* You can use different trial functions per trial. If the last argument to
+* You can use different trial functions per trial. If the trial function argument to
   :c:func:`cimba_run_experiment` is ``NULL``, it will instead take the first 64 bits of your
-  trial structure as a pointer to the trial function to be used for this particular
-  trial structure. You could have different trial functions for every trial if you
+  trial struct as a pointer to the trial function to be used for this particular
+  trial. You could have different trial functions for every trial if you
   want. Of course, if the trial function argument to :c:func:`cimba_run_experiment()` is
   ``NULL`` and the first 64 bits of your trial structure do *not* contain a valid function
   address, your program will promptly crash with a segmentation fault.
@@ -1150,22 +1162,25 @@ Two less obvious features to be aware of, perhaps less useful, but still:
   simulation or something else. You could feed it some array of parameter values and a
   pointer to some function that does something with whatever those parameter values
   indicate. It is just a wrapper to a worker pool of pthreads and will happily
-  multithread whatever task you ask it to. The design challenge with Cimba was to
-  construct a discrete event simulation engine that could be run in that wrapper like
-  Cimba 2.0 did in its trans-Atlantic distributed simulation of 1995.
+  multithread whatever task you ask it to. The main design challenge with Cimba was to
+  construct a discrete event simulation engine that *can* be run in that
+  multithreaded wrapper.
 
 .. _background_benchmark:
 
 Benchmarking Cimba against SimPy
 --------------------------------
 
-The most relevant comparison is probably the Python package SimPy (https://pypi.org/project/simpy/),
+The most relevant comparison for Cimba is probably the Python package SimPy
+(https://pypi.org/project/simpy/),
 since it provides similar functionality to Cimba, only with Python as its base language
-instead of C. SimPy emphasises ease of use as a main design objective, following the
+instead of C. SimPy emphasizes ease of use as a main design objective, following the
 overall Python philosophy, while Cimba (being a C library) has a natural emphasis on
-speed. The current SimPy version is 4.1.1.
+speed. Python processes are based on stackless generators, while Cimba has its
+stackful coroutine processes. The current SimPy version is 4.1.1.
 
-In the ``benchmark`` directory, you will find examples of the same simulated scenario
+In the `benchmark <https://github.com/ambonvik/cimba/tree/main/benchmark>`_ directory,
+you will find examples of the same simulated scenario
 implemented in SimPy and Cimba. A complete multithreaded M/M/1 queue simulation could
 look like this in SimPy,
 `benchmark/MM1_multi.py <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_multi.py>`_
@@ -1364,8 +1379,8 @@ The same model would look like this in Cimba,
 
 
 The Cimba code is significantly longer for the simple example, in this case 144 vs 60
-lines. The C base language also demands more careful declarations of object types, where
-Python will happily try to infer types from context. C also requires explicit management
+lines. The C base language demands more careful declarations of object types, where
+Python will happily try to infer types from context. C requires explicit management
 of object creation and destruction, since it does not have Python's automatic garbage
 collection. For a larger model, where the process function could be large, complex, and
 call various other functions, the SimPy code could become much harder to follow. (We
@@ -1380,12 +1395,12 @@ Both programs produce a one-liner output similar to this:
     Average system time 10.000026 (n 100, conf.int. 9.964877 - 10.035176, expected 10.000000)
 
 However, the Cimba experiment can run its 100 trials in 0.56 seconds, while the SimPy
-version takes 25.5 seconds to do the exact same thing. Cimba runs about *45 times faster*
+version takes 25.5 seconds to do the same thing. Cimba runs about *45 times faster*
 with all available cores in use.
 
-*Cimba processes 25 % more simulated events per second on a single core (approx 20
+Cimba processes 25 % more simulated events per second on a single core (approx 20
 million events / second) than what SimPy can do if it has all 64 logical cores to itself
-(approx 16 million events / second).*
+(approx 16 million events / second).
 
 .. image:: ../images/Speed_test_AMD_3970x.png
 
