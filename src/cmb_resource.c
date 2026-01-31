@@ -248,10 +248,10 @@ void cmb_resource_release(struct cmb_resource *rp) {
 }
 
 /*
- * resource_wakeup_event_preempt - The event handler that actually resumes the
+ * wakeup_event_preempt - The event handler that actually resumes the
  * process coroutine after being scheduled by cmb_resource_preempt
  */
-static void resource_wakeup_event_preempt(void *vp, void *arg)
+static void wakeup_event_preempt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
@@ -289,7 +289,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
         cmi_process_remove_holdable(victim, hrp);
         cmi_process_cancel_awaiteds(pp);
         rp->holder = NULL;
-        (void)cmb_event_schedule(resource_wakeup_event_preempt,
+        (void)cmb_event_schedule(wakeup_event_preempt,
                                  (void *)victim,
                                  (void *)CMB_PROCESS_PREEMPTED,
                                  cmb_time(),
