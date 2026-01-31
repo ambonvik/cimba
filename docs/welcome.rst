@@ -3,9 +3,9 @@
 Cimba - Multithreaded Discrete Event Simulation in C
 ====================================================
 
-Cimba is a very fast discrete event simulation library written in C and assembly for
-both Linux and Windows on x86-64 architectures, providing process-oriented
-simulation combined with multithreaded parallelism for high performance on modern CPUs.
+Cimba is a very fast discrete event simulation library written in C and assembly,
+providing process-oriented simulation combined with multithreaded parallelism for
+high performance on modern CPUs.
 
 Parallelizing discrete event simulation is both a very hard and a trivially simple
 problem, depending on the way you look at it. Parallelizing a single simulation
@@ -18,7 +18,7 @@ generate statistical results. These trials are *intended* to be independent tria
 making them near-trivial to parallelize by simply running them all at the same time,
 or at least running as many as you have CPU cores available for.
 
-Which is what Cimba does.
+This is what Cimba does.
 
 Why should I use Cimba?
 -----------------------
@@ -31,7 +31,9 @@ It is powerful, fast, reliable, and free.
     * Cimba processes are full asymmetric stackful coroutines. It is possible to pass
       control between processes at any depth of the call stack, not just in a single
       generator function. This enables well-structured coding of arbitrarily large
-      simulation models.
+      simulation models. As a first-order object, a simulated process can be passed as
+      an argument to other functions, returned from functions, and stored in data
+      structures, allowing rich and complex interactions between processes.
 
     * Cimba provides pre-packaged process interaction mechanisms like resources,
       resource pools, buffers, object queues, priority queues, timeouts, and even
@@ -40,10 +42,19 @@ It is powerful, fast, reliable, and free.
       false result.
 
     * Cimba includes powerful logging and data collection features that makes it easy
-      to get a model running and understand what is happening inside it.
+      to get a model running and understand what is happening inside it, including
+      custom asserts to pinpoint sources of errors.
 
     * Cimba includes a wide range of fast, high quality random number generators, both
-      academically important and more empirically oriented types.
+      academically important and more empirically oriented types. Important
+      distributions like normal and exponential are implemented by state-of-the-art
+      ziggurat rejection sampling for speed and accuracy.
+
+    * As a C program, easy integration with other libraries and programs. You could call
+      CUDA routines to enhance your simulation models with GPU-powered agentic behavior
+      or drive a fancy graphics interface like a 3D visualization of a manufacturing
+      plant. You could even call the Cimba simulation engine from other programming
+      languages, since the C calling convention is standard and well-documented.
 
 * *Fast*: The speed from multithreaded parallel execution translates to high
   resolution in your simulation modelling. You can run hundreds of replications

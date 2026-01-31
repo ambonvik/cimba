@@ -3,15 +3,20 @@
 ## A multithreaded discrete event simulation library in C
 
 ### What is it?
-A fast discrete event simulation library written in C and assembly for
-both Linux and Windows, providing multithreaded parallelism for high performance on modern CPUs. 
-Initially only for x86-64 architectures, ARM and Apple Silicon are planned next.
+A fast discrete event simulation library written in C and assembly with POSIX pthreads.
+Simulated processes are implemented as stackful coroutines.
 
-The chart below shows the number of simulated events processed per second of wall 
-clock time with the same scenario, a simple M/M/1 queue, implemented in SimPy and Cimba.
-Cimba runs the scenario 45 times faster than SimPy with all CPU cores in use. In fact, 
-Cimba runs 25 % faster (20M events/sec) _on a single core_ than SimPy does on all 64 
-cores (16M events/sec).
+Implementation status:
+* x86-64: Stable, both for Linux and Windows
+* Apple Silicon: Planned
+* ARM: Planned
+
+Cimba models runs 40-50 times faster than SimPy. The chart below shows the number of 
+simulated 
+events processed per second of wall clock time on a simple M/M/1 queue implemented in 
+SimPy and Cimba. Cimba runs this scenario 45 times faster than SimPy with all CPU cores 
+in use. Cimba even runs 25 % faster (20M events/sec) _on a single core_ than SimPy using 
+all 64 cores (16M events/sec).
 
 ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
 
@@ -30,28 +35,40 @@ It is fast, powerful, reliable, and free.
 
 * *Powerful*: Cimba provides a comprehensive toolkit for discrete event simulation:
 
-  * Processes implemented as full, asymmetric stackful coroutines. A simulated process can
+  * Processes implemented as asymmetric stackful coroutines. A simulated process can
     yield and resume control from any level of a function call stack, allowing 
-    well-structured coding of arbitrarily large simulation models.
+    well-structured coding of arbitrarily large simulation models. As a first-order 
+    object, a simulated process can be passed as an argument to other functions, 
+    returned from functions, and stored in data structures, allowing rich and complex 
+    interactions between processes.
   
   * Pre-packaged process interaction mechanisms like resources, resource pools, buffers, 
-    object queues, priority queues, timeouts, and even condition variables where your 
-    simulated processes can wait for arbitrarily complex conditions to become true –  
-    anything you can express as a function returning a binary true or false result.
+    object queues, priority queues, and timeouts. Cimba also provides condition variables 
+    where your simulated processes can wait for arbitrarily complex conditions to become 
+    true – anything you can express as a function returning a binary true or false result.
 
   * A wide range of fast, high-quality random number generators, both
-    of academically important and more empirically oriented types.
+    of academically important and more empirically oriented types. Important 
+    distributions like normal and exponential are implemented by state-of-the-art 
+    ziggurat rejection sampling for speed and accuracy.
   
   * Integrated logging and data collection features that make it easy
-    to get a model running and understand what is happening inside it.
+    to get a model running and understand what is happening inside it, including 
+    custom asserts to pinpoint sources of errors. 
+
+  * As a C program, easy integration with other libraries and programs. You could call 
+    CUDA routines to enhance your simulation models with GPU-powered agentic behavior or 
+    drive a fancy graphics interface like a 3D visualization of a manufacturing plant. 
+    You could even call the Cimba simulation engine from other programming languages, 
+    since the C calling convention is standard and well-documented. 
 
 * *Reliable*: Cimba is well-engineered open source. There is no
-  mystery to the results you get. The code is written with liberal use of assertions 
+  mystery to the results you get.
+  The code is written with liberal use of assertions 
   to enforce preconditions, invariants, and postconditions in each function. The 
   assertions act as self-enforcing documentation on expected inputs to and outputs from 
   the Cimba functions. About 12.8 % of all code lines in the Cimba library are 
   asssertions, a very high density.
-
   There are unit tests for each module. Running the unit test battery in debug mode (all
   assertions active) verifies the correct operation in great detail. You can do that by the
   one-liner ``meson test -C build" from the terminal command line.
@@ -251,28 +268,20 @@ Discrete event simulation fits well with an object-oriented paradigm. That is
 why object-oriented programming was invented in the first place for Simula67.
 Since OOP is not directly enforced in plain C, we provide the object-oriented
 characteristics (such as encapsulation, inheritance, composition, polymorphism, 
-message passing, and information hiding) in the Cimba software design instead.
+message passing, and information hiding) in the Cimba software design instead. The 
+function names clearly indicate what namespace and module each function belongs to. 
 
-Inside the codebase, you will find namespaces like `cimba_` (overarching code to
-manage your experiments and trials), `cmb_`  (used by your simulated world inside
-each trial), and `cmi_` (internal stuff that your model does not need to interact 
-with). The different functions are then bundled in modules (effectively classes) 
-like `cmb_process.h`, containing the API for that part of the library. These
-modules form logical inheritance hierarchies, where e.g., a `cmb_process` is a
-derived subclass from a `cmi_coroutine`, inheriting all its methods and members.
+The simulated processes are stackful coroutines on their own call stacks, allowing the 
+processes to store their state at arbitrary points and resume execution from there 
+later. The context-switching code is hand-coded assembly for each platform.
 
-We distinguish between "is a" (inheritance) and "has a" (composition) relationships.
-For example, a `cmb_resource` _is a_ `cmi_holdable` (a virtual base class), while 
-it _has a_ `cmb_resourceguard` maintaining an orderly
-priority queue of waiting processes, where the `cmi_resourceguard` itself _is a_ 
-`cmi_hashheap`. Each class of objects has allocator, constructor, destructor, and
-de-allocator functions for an orderly object lifecycle, and where derived classes
-behave as you would expect with respect to their parent classes.
+![Stackful coroutines](images/stack_1.png)
 
-The code is liberally sprinkled with `assert` statements testing for preconditions,
+The C code is liberally sprinkled with `assert` statements testing for preconditions,
 invariants, and postconditions wherever possible, applying Design by Contracts 
-principles for reliability. The Cimba library contains 958 asserts in 7 585 lines of 
-code in total, for a very high assert density of 12.6 %. These are custom-written asserts 
+principles for reliability. The Cimba library contains 958 asserts in 7 132 lines of 
+C code, for a very high assert density of 13.4 %. These are custom-written 
+asserts 
 that will report 
 what trial, what process, the simulated time, the function and line number, and even the 
 random number seed used, if anything should go wrong. All time-consuming invariants and 

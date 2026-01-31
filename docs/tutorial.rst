@@ -5,8 +5,8 @@ Tutorial: Modeling with Cimba
 
 .. _tut_1:
 
-Our first simulation - a M/M/1 queue
-------------------------------------
+A simple M/M/1 queue
+--------------------
 
 In this section, we will walk through the development of a simple model from
 connecting basic entities and interactions to parallelizing the model on all
@@ -1503,8 +1503,8 @@ reference documentation next.
 
 .. _tut_3:
 
-Queuing with balking, reneging, and jockeying
----------------------------------------------
+Agents balking, reneging, and jockeying in queues
+-------------------------------------------------
 
 In :ref:`our first tutorial <tut_1>`, we modeled a M/M/1 queue as a simple buffer with
 just a numeric value for the queue length. This was sufficient to calculate queue length
@@ -2162,8 +2162,8 @@ to the final tutorial.
 
 .. _tut_4:
 
-A LNG tanker harbor with condition variables
---------------------------------------------
+A LNG tanker harbor with complex resources and conditions
+---------------------------------------------------------
 
 Once upon a time, a harbor simulation with tugs puttering about was the author's
 first exposure to Simula67, coroutines, and object-oriented programming. The
