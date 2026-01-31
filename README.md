@@ -4,7 +4,7 @@
 
 ### What is it?
 A fast discrete event simulation library written in C and assembly with POSIX pthreads.
-Simulated processes are implemented as stackful coroutines.
+Simulated processes are implemented as stackful coroutines ("fibers") inside the pthreads.
 
 Implementation status:
 * x86-64: Stable, both for Linux and Windows
