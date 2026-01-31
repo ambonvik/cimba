@@ -1068,8 +1068,8 @@ modeling a M/G/1 queue with different utilizations and service time varibilities
 
 .. _tut_2:
 
-Acquiring, preempting, and releasing resources
-----------------------------------------------
+Acquiring, preempting, holding, and releasing resources, with interruptions
+---------------------------------------------------------------------------
 
 We will now introduce the Cimba methods for acquiring and releasing resources
 of various kinds. We will also show additional process interactions where
