@@ -824,7 +824,9 @@ variables between calls.
 
 The PRNG in Cimba is an implementation of Chris Doty-Humphrey's ``sfc64``. It
 provides 64-bit output and maintains a 256-bit state. It is certain to have a cycle
-period of at least 2^64. It is in public domain, see https://pracrand.sourceforge.net
+period of at least 2^64, and is both faster and higher statistical quality than
+better-knon generators, such as the Mersenne Twister. It is in public domain, see
+https://pracrand.sourceforge.net
 for the details. In our implementation, the PRNG state is thread local, giving each trial
 its own stream of random numbers, independent from any other trials.
 
