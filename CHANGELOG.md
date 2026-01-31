@@ -7,7 +7,7 @@ changes, and bug fixes below. For complete details, see the git commit history.
 
 ### Not released: 3.0.0
 * Bug fixes and speed improvements
-* Adds cmb_priorityqueue
+* Adds cmb_priorityqueue, cmb_process_timer*, cmb_process_yield/resume
 * Possible API changes based on beta test feedback
 
 ### 2025-12-27: 3.0.0 beta
