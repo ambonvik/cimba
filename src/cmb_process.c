@@ -118,10 +118,10 @@ void cmb_process_destroy(struct cmb_process *pp)
 }
 
 /*
- * process_start_event - The event that actually starts the process
+ * start_event - The event that actually starts the process
  * coroutine after being scheduled by cmb_process_start.
  */
-static void process_start_event(void *vp, void *arg)
+static void start_event(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
@@ -140,7 +140,7 @@ void cmb_process_start(struct cmb_process *pp)
     const double t = cmb_time();
     const int64_t pri = pp->priority;
 
-    (void)cmb_event_schedule(process_start_event, pp, NULL, t, pri);
+    (void)cmb_event_schedule(start_event, pp, NULL, t, pri);
 }
 
 /*
@@ -297,11 +297,11 @@ int64_t cmb_process_hold(const double dur)
 }
 
 /*
- * process_wakeup_event_time - The event that resumes the process after being
+ * wakeup_event_time - The event that resumes the process after being
  * scheduled by cmb_process_timer_set or cmb_process_hold. Does not clear any
  * other timers set for the process.
  */
-static void process_wakeup_event_time(void *vp, void *arg)
+static void wakeup_event_time(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
@@ -336,7 +336,7 @@ uint64_t cmb_process_timer_add(struct cmb_process *pp,
    /* Schedule a wakeup event and add it to our list */
     const int64_t pri = cmb_process_priority(pp);
     const double t = cmb_time() + dur;
-    const uint64_t handle = cmb_event_schedule(process_wakeup_event_time,
+    const uint64_t handle = cmb_event_schedule(wakeup_event_time,
                                                pp, (void *)sig, t, pri);
 
     cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
@@ -394,10 +394,10 @@ void cmb_process_timers_clear(struct cmb_process *pp)
 }
 
 /*
- * process_wakeup_event_process - The event that resumes the process after being scheduled by
+ * wakeup_event_process - The event that resumes the process after being scheduled by
  *           cmb_process_wait_process
  */
-static void process_wakeup_event_process(void *vp, void *arg)
+static void wakeup_event_process(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
@@ -509,7 +509,7 @@ static void wake_process_waiters(struct cmi_slist_head *waiters,
         cmb_assert_debug(pp != NULL);
         const double time = cmb_time();
         const int64_t priority = cmb_process_priority(pp);
-        (void)cmb_event_schedule(process_wakeup_event_process, pp, (void *)signal,
+        (void)cmb_event_schedule(wakeup_event_process, pp, (void *)signal,
                                  time, priority);
         cmi_mempool_free(&cmi_process_waitertags, pw);
     }
@@ -633,10 +633,10 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
 }
 
 /*
- * process_wakeup_event_interrupt - The event that actually interrupts the
+ * wakeup_event_interrupt - The event that actually interrupts the
  * process coroutine after being scheduled by cmb_process_interrupt.
  */
-static void process_wakeup_event_interrupt(void *vp, void *arg)
+static void wakeup_event_interrupt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     cmb_assert_debug((int64_t)arg != CMB_PROCESS_SUCCESS);
@@ -668,7 +668,7 @@ void cmb_process_interrupt(struct cmb_process *pp,
                     pp->name, sig, pri);
 
     const double t = cmb_time();
-    (void)cmb_event_schedule(process_wakeup_event_interrupt, pp, (void *)sig, t, pri);
+    (void)cmb_event_schedule(wakeup_event_interrupt, pp, (void *)sig, t, pri);
 }
 
 /*
@@ -720,10 +720,10 @@ void cmb_process_stop(struct cmb_process *tgt, void *retval)
 }
 
 /*
- * process_resume_event - The event that actually resumes the process,
+ * resume_event - The event that actually resumes the process,
  * since this only can be done by the dispatcher
  */
-static void process_resume_event(void *vp, void *arg)
+static void resume_event(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
@@ -743,5 +743,5 @@ void cmb_process_resume(struct cmb_process *pp, int64_t sig)
 {
     cmb_assert_debug(pp != NULL);
     cmb_logger_info(stdout, "Schedules resume event for %s signal %" PRIi64, pp->name, sig);
-    (void)cmb_event_schedule(process_resume_event, pp, (void *)sig, cmb_time(), pp->priority);
+    (void)cmb_event_schedule(resume_event, pp, (void *)sig, cmb_time(), pp->priority);
 }
