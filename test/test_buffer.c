@@ -166,7 +166,7 @@ void test_queue(const double duration)
     printf("Create a buffer\n");
     thesim->buf = cmb_buffer_create();
     cmb_buffer_initialize(thesim->buf, "Buf", 10u);
-    cmb_buffer_start_recording(thesim->buf);
+    cmb_buffer_recording_start(thesim->buf);
 
     char scratchpad[32];
     printf("Create three processes feeding into the buffer\n");
@@ -207,7 +207,7 @@ void test_queue(const double duration)
     cmb_event_queue_execute();
 
     printf("Report statistics...\n");
-    cmb_buffer_stop_recording(thesim->buf);
+    cmb_buffer_recording_stop(thesim->buf);
     cmb_buffer_print_report(thesim->buf, stdout);
 
     printf("Clean up\n");

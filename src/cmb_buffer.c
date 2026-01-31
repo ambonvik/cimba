@@ -136,7 +136,7 @@ static void record_sample(struct cmb_buffer *bp) {
     }
 }
 
-void cmb_buffer_start_recording(struct cmb_buffer *bp)
+void cmb_buffer_recording_start(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
@@ -145,7 +145,7 @@ void cmb_buffer_start_recording(struct cmb_buffer *bp)
     record_sample(bp);
 }
 
-void cmb_buffer_stop_recording(struct cmb_buffer *bp)
+void cmb_buffer_recording_stop(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);

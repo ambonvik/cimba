@@ -56,7 +56,7 @@ int main(void)
     struct simulation sim = {};
     sim.que = cmb_buffer_create();
     cmb_buffer_initialize(sim.que, "Queue", CMB_UNLIMITED);
-    cmb_buffer_start_recording(sim.que);
+    cmb_buffer_recording_start(sim.que);
 
     sim.arr = cmb_process_create();
     cmb_process_initialize(sim.arr, "Arrival", arrival, sim.que, 0);
@@ -69,7 +69,7 @@ int main(void)
     cmb_event_schedule(end_sim, NULL, &sim, 1e6, 0);
     cmb_event_queue_execute();
 
-    cmb_buffer_stop_recording(sim.que);
+    cmb_buffer_recording_stop(sim.que);
     cmb_buffer_print_report(sim.que, stdout);
 
     struct cmb_timeseries *ts = cmb_buffer_history(sim.que);

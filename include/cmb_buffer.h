@@ -213,7 +213,7 @@ static inline uint64_t cmb_buffer_space(struct cmb_buffer *bp)
  * @relates cmb_buffer
  * @param bp Pointer to the buffer object.
  */
-extern void cmb_buffer_start_recording(struct cmb_buffer *bp);
+extern void cmb_buffer_recording_start(struct cmb_buffer *bp);
 
 /**
  * @brief Turn off data recording
@@ -221,7 +221,7 @@ extern void cmb_buffer_start_recording(struct cmb_buffer *bp);
  * @relates cmb_buffer
  * @param bp Pointer to the buffer object.
  */
-extern void cmb_buffer_stop_recording(struct cmb_buffer *bp);
+extern void cmb_buffer_recording_stop(struct cmb_buffer *bp);
 
 /**
  * @brief Get the recorded timeseries of buffer levels.

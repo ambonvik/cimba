@@ -95,7 +95,7 @@ static void start_rec_evt(void *subject, void *object)
     cmb_unused(object);
 
     const struct simulation *sim = subject;
-    cmb_buffer_start_recording(sim->queue);
+    cmb_buffer_recording_start(sim->queue);
 }
 
 /*
@@ -106,7 +106,7 @@ static void stop_rec_evt(void *subject, void *object)
     cmb_unused(object);
 
     const struct simulation *sim = subject;
-    cmb_buffer_stop_recording(sim->queue);
+    cmb_buffer_recording_stop(sim->queue);
 }
 
 /*

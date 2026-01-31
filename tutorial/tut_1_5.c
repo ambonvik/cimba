@@ -41,7 +41,7 @@ static void start_rec(void *subject, void *object)
 
     const struct context *ctx = object;
     const struct simulation *sim = ctx->sim;
-    cmb_buffer_start_recording(sim->que);
+    cmb_buffer_recording_start(sim->que);
 }
 
 static void stop_rec(void *subject, void *object)
@@ -50,7 +50,7 @@ static void stop_rec(void *subject, void *object)
 
     const struct context *ctx = object;
     const struct simulation *sim = ctx->sim;
-    cmb_buffer_stop_recording(sim->que);
+    cmb_buffer_recording_stop(sim->que);
 }
 
 
