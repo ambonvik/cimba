@@ -1,10 +1,10 @@
 Cimba discrete event simulation library
-Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025 - 26.
 Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 Components adapted from materials under copyright by others:
 
-Fast PRNG by Chris McFarland
+Fast PRNG by Chris McFarland (Ziggurat algorithm for normal and exponential distributions)
     https://github.com/cd-mcfarland/fast_prng
     See also https://arxiv.org/pdf/1403.6870
     Used with permission by author
@@ -30,7 +30,7 @@ Fast PRNG by Chris McFarland
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 
-User Context Switcher by Hirbod Benham
+User Context Switcher by Hirbod Benham (Linux context switching)
     https://github.com/HirbodBehnam/UserContextSwitcher
     Released under MIT license:
 

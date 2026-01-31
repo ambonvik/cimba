@@ -4,7 +4,7 @@ REM Batch job to configure Cimba build with MinGW-W64 on Windows
 REM Sets the install directory as a Meson install prefix
 REM Sets PATH entries to find the installed Cimba afterwards
 REM
-REM Copyright (C) 2025 Asbjørn M Bonvik
+REM Copyright (C) Asbjørn M Bonvik 2025-26
 
 setlocal
 

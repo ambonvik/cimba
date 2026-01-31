@@ -1,5 +1,6 @@
 # config/AddToEnv.ps1
 # Windows specific PowerShell script to set environment variables
+# Copyright (C) Asbjørn M Bonvik 2025-26
 #
 param (
     [string]$InstallPrefix
