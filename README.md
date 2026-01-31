@@ -11,7 +11,7 @@ Implementation status:
 * Apple Silicon: Planned
 * ARM: Planned
 
-Cimba models runs 40-50 times faster than SimPy. The chart below shows the number of 
+Cimba models run 40-50 times faster than SimPy. The chart below shows the number of 
 simulated 
 events processed per second of wall clock time on a simple M/M/1 queue implemented in 
 SimPy and Cimba. Cimba runs this scenario 45 times faster than SimPy with all CPU cores 
@@ -71,13 +71,13 @@ It is fast, powerful, reliable, and free.
   asssertions, a very high density.
   There are unit tests for each module. Running the unit test battery in debug mode (all
   assertions active) verifies the correct operation in great detail. You can do that by the
-  one-liner ``meson test -C build" from the terminal command line.
+  one-liner ``meson test -C build`` from the terminal command line.
 
 * *Free*: Cimba should fit well into the budget of most research groups.
 
 ### What can I use Cimba for?
 It is a general-purpose discrete event simulation library, in the spirit of a
-21st century descendant of Simula67. You can use it to model, e.g.
+21st century Simula67 descendant. You can use it to model, e.g.
 * computer networks,
 * operating system task scheduling, 
 * transportation networks, 
@@ -92,11 +92,12 @@ illustrations of model expressiveness.
 For direct comparison, you will also find the same scenario modeled in both Cimba and 
 SimPy in the [benchmark](benchmark) directory.
 
-If you look under the hood, you will also find reusable internal components
-like stackful coroutines doing their own thing on thread-safe cactus stacks,
-fast memory pool allocators for generic small objects, and sophisticated data
-structures like hash-heaps combining a binary heap and an open addressing hash
-map with fibonacci hashing for fast access to various objects.
+If you look under the hood, you will find additional reusable internal components.
+There are stackful coroutines doing their own thing on thread-safe cactus stacks. 
+Cimba contains fast memory pool allocators for generic small objects and 
+hash-heaps combining a binary heap and an open addressing hash map using fibonacci 
+hashing. Although not part of the public Cimba API, these can also be used in your model 
+if needed.
 
 ### What does the code look like?
 It is C11/C17. As an illustration, this is the entire code for our multithreaded M/M/1 
@@ -273,7 +274,7 @@ function names clearly indicate what namespace and module each function belongs 
 
 The simulated processes are stackful coroutines on their own call stacks, allowing the 
 processes to store their state at arbitrary points and resume execution from there 
-later. The context-switching code is hand-coded assembly for each platform.
+later. The context-switching code is hand-coded in assembly for each platform.
 
 ![Stackful coroutines](images/stack_1.png)
 
@@ -298,7 +299,8 @@ But do read the [LICENSE](LICENSE). We do not give any warranties here.
 
 ### Object-oriented? In C and assembly? Why not just use C++?
 Long story made short: C++ exception handling is not very friendly to the stackful 
-coroutines we need in Cimba. C++ coroutines are something entirely different.
+coroutines we need in Cimba. The stackless coroutines in C++ are entirely different from 
+what we need.
 
 C++ has also become a large and feature-rich language, where it will be
 hard to ensure compatibility with every possible combination of features.
