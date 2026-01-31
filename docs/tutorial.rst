@@ -174,49 +174,48 @@ output like this:
 
     [ambonvik@Threadripper cimba]$ build/tutorial/tut_1_1 | more
         0.0000	dispatcher	cmb_event_queue_execute (294):  Starting simulation run
-        0.0000	Arrival	cmb_process_hold (278):  Holding for 0.914167 time units
-        0.0000	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 0.914167
+        0.0000	Arrival	cmb_process_hold (278):  Holding for 2.317172 time units
+        0.0000	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 2.317172
         0.0000	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
         0.0000	Service	cmb_buffer_get (244):  Waiting for more, level now 0
         0.0000	Service	cmb_resourceguard_wait (149):  Waits for Queue
-       0.91417	dispatcher	process_wakeup_event_time (310):  Wakes Arrival signal 0
-       0.91417	Arrival	cmb_buffer_put (291):  Puts 1 into Queue, level 0
-       0.91417	Arrival	cmb_buffer_put (298):  Success, found room for 1, has 0 remaining
-       0.91417	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
-       0.91417	Arrival	cmb_process_hold (278):  Holding for 2.481069 time units
-       0.91417	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 3.395236
-       0.91417	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
-       0.91417	Service	cmb_buffer_get (251):  Returned successfully from wait
-       0.91417	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
-       0.91417	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
-       0.91417	Service	cmb_process_hold (278):  Holding for 0.361672 time units
-       0.91417	Service	cmb_process_timer_add (343):  Scheduled timeout event at 1.275839
-        1.2758	dispatcher	process_wakeup_event_time (310):  Wakes Service signal 0
-        1.2758	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
-        1.2758	Service	cmb_buffer_get (244):  Waiting for more, level now 0
-        1.2758	Service	cmb_resourceguard_wait (149):  Waits for Queue
-        3.3952	dispatcher	process_wakeup_event_time (310):  Wakes Arrival signal 0
-        3.3952	Arrival	cmb_buffer_put (291):  Puts 1 into Queue, level 0
-        3.3952	Arrival	cmb_buffer_put (298):  Success, found room for 1, has 0 remaining
-        3.3952	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
-        3.3952	Arrival	cmb_process_hold (278):  Holding for 0.140934 time units
-        3.3952	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 3.536170
-        3.3952	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
-        3.3952	Service	cmb_buffer_get (251):  Returned successfully from wait
-        3.3952	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
-        3.3952	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
-        3.3952	Service	cmb_process_hold (278):  Holding for 0.051428 time units
-        3.3952	Service	cmb_process_timer_add (343):  Scheduled timeout event at 3.446664
-        3.4467	dispatcher	process_wakeup_event_time (310):  Wakes Service signal 0
-        3.4467	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
-        3.4467	Service	cmb_buffer_get (244):  Waiting for more, level now 0
-        3.4467	Service	cmb_resourceguard_wait (149):  Waits for Queue
-        3.5362	dispatcher	process_wakeup_event_time (310):  Wakes Arrival signal 0
-        3.5362	Arrival	cmb_buffer_put (291):  Puts 1 into Queue, level 0
-        3.5362	Arrival	cmb_buffer_put (298):  Success, found room for 1, has 0 remaining
-        3.5362	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
-        3.5362	Arrival	cmb_process_hold (278):  Holding for 3.198324 time units
-        3.5362	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 6.734495
+        2.3172	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        2.3172	Arrival	cmb_buffer_put (291):  Puts 1 into Queue, level 0
+        2.3172	Arrival	cmb_buffer_put (298):  Success, found room for 1, has 0 remaining
+        2.3172	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+        2.3172	Arrival	cmb_process_hold (278):  Holding for 1.262760 time units
+        2.3172	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 3.579932
+        2.3172	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
+        2.3172	Service	cmb_buffer_get (251):  Returned successfully from wait
+        2.3172	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
+        2.3172	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
+        2.3172	Service	cmb_process_hold (278):  Holding for 0.313617 time units
+        2.3172	Service	cmb_process_timer_add (343):  Scheduled timeout event at 2.630789
+        2.6308	dispatcher	wakeup_event_time (310):  Wakes Service signal 0
+        2.6308	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
+        2.6308	Service	cmb_buffer_get (244):  Waiting for more, level now 0
+        2.6308	Service	cmb_resourceguard_wait (149):  Waits for Queue
+        3.5799	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        3.5799	Arrival	cmb_buffer_put (291):  Puts 1 into Queue, level 0
+        3.5799	Arrival	cmb_buffer_put (298):  Success, found room for 1, has 0 remaining
+        3.5799	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+        3.5799	Arrival	cmb_process_hold (278):  Holding for 1.859304 time units
+        3.5799	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 5.439236
+        3.5799	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
+        3.5799	Service	cmb_buffer_get (251):  Returned successfully from wait
+        3.5799	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
+        3.5799	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
+        3.5799	Service	cmb_process_hold (278):  Holding for 0.079210 time units
+        3.5799	Service	cmb_process_timer_add (343):  Scheduled timeout event at 3.659142
+        3.6591	dispatcher	wakeup_event_time (310):  Wakes Service signal 0
+        3.6591	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
+        3.6591	Service	cmb_buffer_get (244):  Waiting for more, level now 0
+        3.6591	Service	cmb_resourceguard_wait (149):  Waits for Queue
+        5.4392	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        5.4392	Arrival	cmb_buffer_put (291):  Puts 1 into Queue, level 0
+        5.4392	Arrival	cmb_buffer_put (298):  Success, found room for 1, has 0 remaining
+        5.4392	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+        5.4392	Arrival	cmb_process_hold (278):  Holding for 0.473225 time units
         ...
 
 ...and will keep on doing that forever. We have to press Ctrl-C or similar
@@ -355,40 +354,64 @@ We compile and run, and get something like this:
 
     [ambonvik@Threadripper cimba]$ build/tutorial/tut_1_2
         0.0000	dispatcher	cmb_event_queue_execute (294):  Starting simulation run
-        0.0000	Arrival	cmb_process_hold (278):  Holding for 1.206577 time units
-        0.0000	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 1.206577
+        0.0000	Arrival	cmb_process_hold (278):  Holding for 0.013427 time units
+        0.0000	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 0.013427
         0.0000	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
         0.0000	Service	cmb_buffer_get (244):  Waiting for more, level now 0
         0.0000	Service	cmb_resourceguard_wait (149):  Waits for Queue
-        1.2066	dispatcher	process_wakeup_event_time (310):  Wakes Arrival signal 0
-        1.2066	Arrival	cmb_buffer_put (291):  Puts 1 into Queue, level 0
-        1.2066	Arrival	cmb_buffer_put (298):  Success, found room for 1, has 0 remaining
-        1.2066	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
-        1.2066	Arrival	cmb_process_hold (278):  Holding for 0.269439 time units
-        1.2066	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 1.476016
-        1.2066	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
-        1.2066	Service	cmb_buffer_get (251):  Returned successfully from wait
-        1.2066	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
-        1.2066	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
-        1.2066	Service	cmb_process_hold (278):  Holding for 0.112337 time units
-        1.2066	Service	cmb_process_timer_add (343):  Scheduled timeout event at 1.318914
-        1.3189	dispatcher	process_wakeup_event_time (310):  Wakes Service signal 0
-        1.3189	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
-        1.3189	Service	cmb_buffer_get (244):  Waiting for more, level now 0
-        1.3189	Service	cmb_resourceguard_wait (149):  Waits for Queue
+      0.013427	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+      0.013427	Arrival	cmb_buffer_put (291):  Puts 1 into Queue, level 0
+      0.013427	Arrival	cmb_buffer_put (298):  Success, found room for 1, has 0 remaining
+      0.013427	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+      0.013427	Arrival	cmb_process_hold (278):  Holding for 1.117654 time units
+      0.013427	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 1.131082
+      0.013427	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
+      0.013427	Service	cmb_buffer_get (251):  Returned successfully from wait
+      0.013427	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
+      0.013427	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
+      0.013427	Service	cmb_process_hold (278):  Holding for 0.907590 time units
+      0.013427	Service	cmb_process_timer_add (343):  Scheduled timeout event at 0.921017
+       0.92102	dispatcher	wakeup_event_time (310):  Wakes Service signal 0
+       0.92102	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
+       0.92102	Service	cmb_buffer_get (244):  Waiting for more, level now 0
+       0.92102	Service	cmb_resourceguard_wait (149):  Waits for Queue
+        1.1311	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        1.1311	Arrival	cmb_buffer_put (291):  Puts 1 into Queue, level 0
+        1.1311	Arrival	cmb_buffer_put (298):  Success, found room for 1, has 0 remaining
+        1.1311	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+        1.1311	Arrival	cmb_process_hold (278):  Holding for 0.525121 time units
+        1.1311	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 1.656202
+        1.1311	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
+        1.1311	Service	cmb_buffer_get (251):  Returned successfully from wait
+        1.1311	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
+        1.1311	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
+        1.1311	Service	cmb_process_hold (278):  Holding for 0.176342 time units
+        1.1311	Service	cmb_process_timer_add (343):  Scheduled timeout event at 1.307423
+        1.3074	dispatcher	wakeup_event_time (310):  Wakes Service signal 0
+        1.3074	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
+        1.3074	Service	cmb_buffer_get (244):  Waiting for more, level now 0
+        1.3074	Service	cmb_resourceguard_wait (149):  Waits for Queue
+        1.6562	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        1.6562	Arrival	cmb_buffer_put (291):  Puts 1 into Queue, level 0
+        1.6562	Arrival	cmb_buffer_put (298):  Success, found room for 1, has 0 remaining
+        1.6562	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+        1.6562	Arrival	cmb_process_hold (278):  Holding for 1.383170 time units
+        1.6562	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 3.039372
 
         ...
 
-        9.3630	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
-        9.3630	Service	cmb_buffer_get (251):  Returned successfully from wait
-        9.3630	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
-        9.3630	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
-        9.3630	Service	cmb_process_hold (278):  Holding for 0.039627 time units
-        9.3630	Service	cmb_process_timer_add (343):  Scheduled timeout event at 9.402603
-        9.4026	dispatcher	process_wakeup_event_time (310):  Wakes Service signal 0
-        9.4026	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 0
-        9.4026	Service	cmb_buffer_get (244):  Waiting for more, level now 0
-        9.4026	Service	cmb_resourceguard_wait (149):  Waits for Queue
+        9.4105	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        9.4105	Arrival	cmb_buffer_put (291):  Puts 1 into Queue, level 0
+        9.4105	Arrival	cmb_buffer_put (298):  Success, found room for 1, has 0 remaining
+        9.4105	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+        9.4105	Arrival	cmb_process_hold (278):  Holding for 3.841477 time units
+        9.4105	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 13.252013
+        9.4105	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
+        9.4105	Service	cmb_buffer_get (251):  Returned successfully from wait
+        9.4105	Service	cmb_buffer_get (207):  Gets 1 from Queue, level 1
+        9.4105	Service	cmb_buffer_get (214):  Success, 1 was available, got 1
+        9.4105	Service	cmb_process_hold (278):  Holding for 1.190526 time units
+        9.4105	Service	cmb_process_timer_add (343):  Scheduled timeout event at 10.601062
         10.000	dispatcher	cmb_process_stop (705):  Stop Arrival value (nil)
         10.000	dispatcher	cmb_process_stop (705):  Stop Service value (nil)
         10.000	dispatcher	cmb_event_queue_execute (297):  No more events in queue
