@@ -56,7 +56,7 @@ struct cmb_timeseries {
  * Remember to call a matching `cmb_timeseries_destroy` when done to avoid
  * memory leakage.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @return A freshly allocated time series object.
  */
 extern struct cmb_timeseries *cmb_timeseries_create(void);
@@ -64,7 +64,7 @@ extern struct cmb_timeseries *cmb_timeseries_create(void);
 /**
  * @brief Initialize the time series, clearing any data values.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to an already allocated time series object.
  */
 extern void cmb_timeseries_initialize(struct cmb_timeseries *tsp);
@@ -72,7 +72,7 @@ extern void cmb_timeseries_initialize(struct cmb_timeseries *tsp);
 /**
  * @brief Re-initialize it, returning it to a newly initialized state.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to an already allocated time series object.
  */
 extern void cmb_timeseries_reset(struct cmb_timeseries *tsp);
@@ -80,7 +80,7 @@ extern void cmb_timeseries_reset(struct cmb_timeseries *tsp);
 /**
  * @brief Un-initialize it, returning it to a newly created state.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to an already allocated time series object.
  */
 extern void cmb_timeseries_terminate(struct cmb_timeseries *tsp);
@@ -93,7 +93,7 @@ extern void cmb_timeseries_terminate(struct cmb_timeseries *tsp);
  * `cmb_timeseries_create`. Otherwise, use `cmb_timeseries_terminate` to free
  * the data array only.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to a previously allocated time series object.
  */
 extern void cmb_timeseries_destroy(struct cmb_timeseries *tsp);
@@ -102,7 +102,7 @@ extern void cmb_timeseries_destroy(struct cmb_timeseries *tsp);
 /**
  * @brief Copy `tgt` into `src`, overwriting whatever was in `tgt`.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tgt Pointer to the target time series object.
  * @param src Pointer to the source time series object.
  * @return Number of data points copied.
@@ -113,7 +113,7 @@ extern uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
 /**
  * @brief  Add a single value to a time series, resizing the array as needed.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param x The new sample x-value to add.
  * @param t The t-value (timestamp) for the new sample.
@@ -134,7 +134,7 @@ extern uint64_t cmb_timeseries_add(struct cmb_timeseries *tsp,
  * argument for user flexibility in any other use cases and for better
  * separation between Cimba modules.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param t The t-value (timestamp) for the final value, usually `cmb_time()`.
  */
@@ -147,7 +147,7 @@ extern uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, double t);
  * Caution: Changes the sequence of data points, no longer a timeseries after
  * this call.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to a time series object.
  */
 extern void cmb_timeseries_sort_x(struct cmb_timeseries *tsp);
@@ -156,7 +156,7 @@ extern void cmb_timeseries_sort_x(struct cmb_timeseries *tsp);
  * @brief  An "undo" function for `cmb_timeseries_sort_x()`, sorting the time
  *         series back to an ascending time sequence.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to a time series object.
  */
 extern void cmb_timeseries_sort_t(struct cmb_timeseries *tsp);
@@ -164,7 +164,7 @@ extern void cmb_timeseries_sort_t(struct cmb_timeseries *tsp);
 /**
  * @brief  Calculate summary statistics of the time series.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param wsp Pointer to a weighted data summary object.
  * @return The number of data points in the summary.
@@ -221,7 +221,7 @@ static inline double cmb_timeseries_max(const struct cmb_timeseries *tsp)
  *
  * Call `cmb_dataset_median((struct cmb_dataset *)tsp, ...)` for unweighted.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @return The median value in the time series.
  */
@@ -234,7 +234,7 @@ extern double cmb_timeseries_median(const struct cmb_timeseries *tsp);
  * Call `cmb_dataset_fivenum_print((struct cmb_dataset *)tsp, ...)` to get
  * unweighted quantiles.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param fp A file pointer for the output, possibly `stdout`.
  * @param lead_ins A flag indicating whether to add explanatory text (if `true`)
@@ -251,7 +251,7 @@ extern void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
  *
  *  Call `cmb_dataset_histogram((struct cmb_dataset *)tsp, ...)` for unweighted.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param fp A file pointer for the output, possibly `stdout`.
  * @param num_bins Number of histogram bins to use. Will add one more on either
@@ -269,7 +269,7 @@ extern void cmb_timeseries_histogram_print(const struct cmb_timeseries *tsp,
 /**
  * @brief Print the raw data in the timeseries.
  *
- * @memberof cmb_timeseries
+ * @relates cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param fp A file pointer for the output, possibly `stdout`.
  */

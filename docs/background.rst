@@ -16,14 +16,14 @@ Cimba 3.0.0 was released on GitHub as public beta in late 2025, but as the versi
 indicates, there is some history before this first public release.
 
 The earliest ideas that eventually became Cimba date to work done at the Norwegian Defence
-Research Establishment in the late 1980s. I built discrete event simulation models
-in languages like Simscript and Simula67. Encountering Simula67's coroutines and
-object-orientation was revelatory in its essential *rightness*. However, Simula67 was
-still severely limited in many other respects and not really a practical option at that
-time. Our simulation models were quite large, up to several hundred thousand lines of
-code. The main language used was Simscript II.5.
+Research Establishment in the late 1980s. I built, maintained, and ran discrete event
+simulation models in languages like Simscript and Simula67. Encountering Simula67's
+coroutines and object-orientation was revelatory in its essential *rightness*. However,
+Simula67 was still severely limited in many other respects and not really a practical
+option at that time. Our simulation models were quite large, up to several hundred
+thousand lines of code. The main language used was Simscript II.5.
 
-Around 1990, we started building discrete event simulation models in C++ as early adopters
+Around 1990, I started building discrete event simulation models in C++ as an early adopter
 of that language. The first C++ models ran on VAXstations where spawning a coroutine is
 a single assembly instruction. Trying to port that code to a Windows PC was a somewhat
 painful experience (and a complete failure). I actually complained to Bjarne Stroustrup in

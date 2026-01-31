@@ -73,7 +73,7 @@ struct cmb_resourcepool {
 /**
  * @brief  Allocate memory for a resource pool.
  *
- * @memberof cmb_resourcepool
+ * @relates cmb_resourcepool
  * @return Pointer to an allocated resource pool.
  */
 extern struct cmb_resourcepool *cmb_resourcepool_create(void);
@@ -81,7 +81,7 @@ extern struct cmb_resourcepool *cmb_resourcepool_create(void);
 /**
  * @brief  Make an allocated resource pool ready for use.
  *
- * @memberof cmb_resourcepool
+ * @relates cmb_resourcepool
  * @param rpp Pointer to a resource pool.
  * @param name A null-terminated string naming the resource pool.
  * @param capacity The maximum amount that can be assigned at the same time.
@@ -93,7 +93,7 @@ extern void cmb_resourcepool_initialize(struct cmb_resourcepool *rpp,
 /**
  * @brief  Un-initializes a resource pool.
  *
- * @memberof cmb_resourcepool
+ * @relates cmb_resourcepool
  * @param rpp Pointer to a resource pool.
  */
 extern void cmb_resourcepool_terminate(struct cmb_resourcepool *rpp);
@@ -101,7 +101,7 @@ extern void cmb_resourcepool_terminate(struct cmb_resourcepool *rpp);
 /**
  * @brief Deallocates memory for a resource pool.
  *
- * @memberof cmb_resourcepool
+ * @relates cmb_resourcepool
  * @param rpp Pointer to an allocated resource pool object.
  */
 extern void cmb_resourcepool_destroy(struct cmb_resourcepool *rpp);
@@ -110,7 +110,7 @@ extern void cmb_resourcepool_destroy(struct cmb_resourcepool *rpp);
  * @brief Return the amount of this pool that is currently held by the given
  *        process, possibly zero.
  *
- * @memberof cmb_resourcepool
+ * @relates cmb_resourcepool
  * @param rpp Pointer to a resource pool.
  * @param pp Pointer to a `cmb_process`
  * @return The amount from this resource pool that is held by the process.
@@ -134,7 +134,7 @@ extern uint64_t cmb_resourcepool_held_by_process(const struct cmb_resourcepool *
  * In particular, do not assume that the process has received the requested
  * req_amount when it returns.
  *
- * @memberof cmb_resourcepool
+ * @relates cmb_resourcepool
  * @param rpp Pointer to a resource pool.
  * @param req_amount The requested amount.
  * @return `CMB_PROCESS_SUCCESS` if successful, otherwise the signal received
@@ -155,7 +155,7 @@ extern int64_t cmb_resourcepool_acquire(struct cmb_resourcepool *rpp,
  * req_amount, an unchanged req_amount (interrupted), or nothing at all (preempted). This
  * function does not return the req_amount received or held, only the signal value.
  *
- * @memberof cmb_resourcepool
+ * @relates cmb_resourcepool
  * @param rpp Pointer to a resource pool.
  * @param req_amount The requested amount.
  * @return `CMB_PROCESS_SUCCESS` if successful, otherwise the signal received
@@ -169,7 +169,7 @@ extern int64_t cmb_resourcepool_preempt(struct cmb_resourcepool *rpp,
  *        everything that the calling process holds, but not more than it is
  *        currently holding. Always returns immediately.
  *
- * @memberof cmb_resourcepool
+ * @relates cmb_resourcepool
  * @param rpp Pointer to a resource pool.
  * @param rel_amount The requested amount.
  */
@@ -235,7 +235,7 @@ extern void cmb_resourcepool_start_recording(struct cmb_resourcepool *rsp);
 /**
  * @brief Turn off data recording.
  *
- * @memberof cmb_resourcepool
+ * @relates cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  */
 extern void cmb_resourcepool_stop_recording(struct cmb_resourcepool *rsp);
@@ -243,7 +243,7 @@ extern void cmb_resourcepool_stop_recording(struct cmb_resourcepool *rsp);
 /**
  * @brief Get the recorded timeseries of resource usage.
  *
- * @memberof cmb_resourcepool
+ * @relates cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  * @return Pointer to a `cmb_timeseries` containing the usage history.
  */
@@ -254,7 +254,7 @@ extern struct cmb_timeseries *cmb_resourcepool_get_history(struct cmb_resourcepo
  *        statistical metrics and a histogram. Mostly intended for debugging
  *        purposes, not presentation graphics.
  *
- * @memberof cmb_resourcepool
+ * @relates cmb_resourcepool
  * @param rsp Pointer to a resource pool.
  * @param fp File pointer, possibly `stdout`.
  */

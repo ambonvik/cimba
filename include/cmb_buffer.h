@@ -87,13 +87,13 @@ struct cmb_buffer {
 
 /**
  * @brief Allocate memory for a buffer object.
- * @memberof cmb_buffer
+ * @relates cmb_buffer
  */
 extern struct cmb_buffer *cmb_buffer_create(void);
 
 /**
  * @brief Make an allocated buffer object ready for use.
- * @memberof cmb_buffer
+ * @relates cmb_buffer
  * @param bp Pointer to the already allocated buffer object.
  * @param name A null-terminated string naming the buffer resource.
  * @param capacity The capacity of the buffer. Use `UINT64_MAX`
@@ -105,14 +105,14 @@ extern void cmb_buffer_initialize(struct cmb_buffer *bp,
 
 /**
  * @brief Un-initializes a buffer object.
- * @memberof cmb_buffer
+ * @relates cmb_buffer
  * @param bp Pointer to the buffer object.
  */
 extern void cmb_buffer_terminate(struct cmb_buffer *bp);
 
 /**
  * @brief Deallocates memory for a buffer object.
- * @memberof cmb_buffer
+ * @relates cmb_buffer
  * @param bp Pointer to the buffer object.
  */
 extern void cmb_buffer_destroy(struct cmb_buffer *bp);
@@ -131,7 +131,7 @@ extern void cmb_buffer_destroy(struct cmb_buffer *bp);
  * value is then the interrupt signal received, some other value than
  * `CMB_PROCESS_SUCCESS`, possibly an application-defined reason code.
  *
- * @memberof cmb_buffer
+ * @relates cmb_buffer
  * @param bp Pointer to the buffer object.
  * @param amntp Pointer to a variable containing the amount to be obtained. Will
  *              contain the amount actually obtained after the call.
@@ -194,7 +194,7 @@ static inline uint64_t cmb_buffer_level(struct cmb_buffer *bp)
 /**
  * @brief Returns current free space in the buffer
  *
- * @memberof cmb_buffer
+ * @relates cmb_buffer
  * @param bp Pointer to a buffer
  * @return The available space in the buffer
  */
@@ -210,7 +210,7 @@ static inline uint64_t cmb_buffer_space(struct cmb_buffer *bp)
 /**
  * @brief Turn on data recording.
  *
- * @memberof cmb_buffer
+ * @relates cmb_buffer
  * @param bp Pointer to the buffer object.
  */
 extern void cmb_buffer_start_recording(struct cmb_buffer *bp);
@@ -218,7 +218,7 @@ extern void cmb_buffer_start_recording(struct cmb_buffer *bp);
 /**
  * @brief Turn off data recording
  *
- * @memberof cmb_buffer
+ * @relates cmb_buffer
  * @param bp Pointer to the buffer object.
  */
 extern void cmb_buffer_stop_recording(struct cmb_buffer *bp);
@@ -226,7 +226,7 @@ extern void cmb_buffer_stop_recording(struct cmb_buffer *bp);
 /**
  * @brief Get the recorded timeseries of buffer levels.
  *
- * @memberof cmb_buffer
+ * @relates cmb_buffer
  * @param bp Pointer to the buffer object.
  * @return Pointer to a `cmb_timeseries`containing the buffer level history.
  */
@@ -237,7 +237,7 @@ extern struct cmb_timeseries *cmb_buffer_history(struct cmb_buffer *bp);
  * statical metrics and a histogram. Mostly intended for debugging purposes,
  * not presentation graphics.
  *
- * @memberof cmb_buffer
+ * @relates cmb_buffer
  * @param bp Pointer to the buffer object.
  * @param fp File pointer, possibly `stdout`.
  */
