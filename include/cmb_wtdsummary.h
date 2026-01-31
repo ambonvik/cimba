@@ -37,8 +37,6 @@
 /**
  * @brief A weighted data summary maintaining running tally statistics, derived
  *        from the `cmb_datasummary` parent class.
- *
- * @extends cmb_datasummary
  */
 struct cmb_wtdsummary {
     struct cmb_datasummary ds;  /**< Parent class, inheriting all properties from there */

@@ -201,7 +201,7 @@ stacks look like this:
 .. image:: ../images/stack_2.png
 
 The arrival process has saved its registers to the stack and its stack pointer to the
-appropriate member of our :c:struct:`struct cmi_coroutine`. Control transfers to the
+appropriate member of our ``struct cmi_coroutine``. Control transfers to the
 dispatcher
 on the main stack by loading its stack pointer from memory to the register, and then
 popping the remaining register values from the main stack.
@@ -571,7 +571,7 @@ tutorial, it can include continuous-valued state variables.
 
 We believe that the open-ended flexibility of our demand predicate function,
 pre-packaged for the common resource types and exposed for the
-:c:struct:`cmb_condition``, makes Cimba a very powerful and expressive simulation tool.
+:c:struct:`cmb_condition`, makes Cimba a very powerful and expressive simulation tool.
 There may also be a weak pun here somewhere on the C++ ``promise`` keyword: Cimba
 processes do not promise. They *demand*.
 

@@ -2210,8 +2210,7 @@ The other one, Davy Jones, just watches for ships leaving harbor and triggers th
 departure process.
 
 There is no guarantee that ships will be leaving in first in first out order, so
-we use a :c:struct:`cmi_hashheap`` as a fast data set for active ships. Departed ships
-can be
+we use a ``cmi_hashheap`` as a fast data set for active ships. Departed ships can be
 handled by simpler means, so a simple linked list with LIFO (stack) ordering will
 be sufficient. These two classes are not considered part of the external Cimba
 API, but happen to be available tools that fit the task.
@@ -2228,7 +2227,7 @@ Building our ships
 Our ships will come in two sizes, small and large. We define an ``enum`` for this,
 explicitly starting from zero to use it directly as an array index later. We then
 define a ``struct ship`` to be a derived class from :c:struct:`cmb_process` by placing
-a :c:struct:`struct cmb_process` as the first member of ``struct ship``. (Not a pointer
+a :c:struct:`cmb_process` as the first member of ``struct ship``. (Not a pointer
 to a :c:struct:`cmb_process` - the ship *is a* process.) The rest of the ship struct contains
 the characteristics of a particular ship object to be instantiated in the simulation.
 

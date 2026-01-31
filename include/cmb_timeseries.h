@@ -41,8 +41,6 @@
 /**
  * @brief A time series with a conveniently resizing sample array. The parent
  *        class `cmb_dataset` provides the `xa` array.
- *
- * @extends cmb_dataset
  */
 struct cmb_timeseries {
     struct cmb_dataset ds;  /**< Parent class providing the `xa` array */
