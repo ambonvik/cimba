@@ -77,7 +77,8 @@ Note that the number of customers to ``put`` or ``get`` is given as a *pointer t
 a variable* containing the number, not just a value. In more complex scenarios
 than this, the process may encounter a partially completed put or get, and we
 need a way to capture the actual state in these cases. For now, just note that
-the amount argument to :c:func:`cmb_buffer_put` and :c:func:`cmb_buffer_get` is a
+the amount argument to :c:func:`cmb_buffer_put <cmb_buffer_put>` and
+:c:func:`cmb_buffer_get <cmb_buffer_get>` is a
 pointer to an unsigned 64-bit integer variable.
 
 The process function signature is a function returning a pointer to void (i.e. a
@@ -231,17 +232,20 @@ Stopping a simulation
 We will address stopping first. The processes are *coroutines*, executing
 concurrently on a separate stack for each process. Only one process can execute
 at a time. It continues executing until it voluntarily *yields* the CPU to some
-other coroutine. Calling :c:func:`cmb_process_hold` will do exactly that, transferring
+other coroutine. Calling :c:func:`cmb_process_hold <cmb_process_hold>` will do exactly
+that, transferring
 control to the hidden dispatcher process that determines what to do next.
 
 However, the dispatcher only knows about events, not coroutines or processes. It will
 run as long as there are scheduled events to execute. Our little simulation will always
 have scheduled events, and the dispatcher will not stop on its own. These events
 originate from our two processes: To ensure that a process returns to the other end of
-its :c:func:`cmb_process_hold` call, it will schedule a wakeup event at the expected time
+its :c:func:`cmb_process_hold <cmb_process_hold>` call, it will schedule a wakeup event
+at the expected time
 before it yields control to the dispatcher. When executed, this event will *resume*
-the coroutine where it left off, returning through the :c:func:`cmb_process_hold` call with a
-return value that indicates normal or abnormal return. (We have ignored the
+the coroutine where it left off, returning through the
+:c:func:`cmb_process_hold <cmb_process_hold>` call
+with a return value that indicates normal or abnormal return. (We have ignored the
 return values for now in the example above.) So, whenever there are more than
 one process running, there may be future events scheduled in the event queue.
 
@@ -575,7 +579,8 @@ one that is more than half full, and ``-`` for one that contains something but l
 than half filled.
 
 We can also get a pointer to the :c:struct:`cmb_timeseries` object by
-calling :c:func:`cmb_buffer_history` and doing further analysis on that. As an
+calling :c:func:`cmb_buffer_history <cmb_buffer_history>` and doing further analysis on
+that. As an
 example, let's do the first 20 partial autocorrelation coefficients of the queue
 length time series and print a correlogram of that as well:
 

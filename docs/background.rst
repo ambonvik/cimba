@@ -29,7 +29,7 @@ a single assembly instruction. Trying to port that code to a Windows PC was a so
 painful experience (and a complete failure). I actually complained to Bjarne Stroustrup in
 person about the inconsistent to non-existent support for Simula-like coroutines in C++ at
 a conference in Helsingør, probably in 1991. He seemed to agree but I silently resolved
-to build my next simulation model in pure K&R C. Which I did.
+to build my next simulation model in pure K&R C.
 
 That opportunity arose at MIT around 1994, where I needed a discrete event simulation
 model for cross-checking analytical models of manufacturing systems. For perhaps obvious
