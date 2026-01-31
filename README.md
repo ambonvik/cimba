@@ -87,11 +87,6 @@ It is a general-purpose discrete event simulation library, in the spirit of a
 * military command and control systems,
 * and quite a few more application domains.
 
-See the [tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html) for 
-illustrations of model expressiveness. 
-For direct comparison, you will also find the same scenario modeled in both Cimba and 
-SimPy in the [benchmark](benchmark) directory.
-
 If you look under the hood, you will find additional reusable internal components.
 There are stackful coroutines doing their own thing on thread-safe cactus stacks. 
 Cimba contains fast memory pool allocators for generic small objects and 
@@ -100,8 +95,8 @@ hashing. Although not part of the public Cimba API, these can also be used in yo
 if needed.
 
 ### What does the code look like?
-It is C11/C17. As an illustration, this is the entire code for our multithreaded M/M/1 
-benchmark mentioned above:
+It is C11/C17. As an illustration, this is the entire code for [our multithreaded M/M/1 
+benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned above:
 
 ```
 #include <inttypes.h>
@@ -244,8 +239,9 @@ int main(void)
     }
 }
 ```
-See our tutorial for more usage examples at 
-https://cimba.readthedocs.io/en/latest/tutorial.html
+See [our tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html) for more 
+usage examples at ReadTheDocs.
+
 
 ### So, what can I use all that speed for?
 As shown above, it is some 45 times faster than SimPy in a relevant benchmark. It means 
@@ -269,12 +265,13 @@ Discrete event simulation fits well with an object-oriented paradigm. That is
 why object-oriented programming was invented in the first place for Simula67.
 Since OOP is not directly enforced in plain C, we provide the object-oriented
 characteristics (such as encapsulation, inheritance, composition, polymorphism, 
-message passing, and information hiding) in the Cimba software design instead. The 
-function names clearly indicate what namespace and module each function belongs to. 
-
+message passing, and information hiding) in the Cimba software design instead. (See 
+the [ReadTheDocs explanation](https://cimba.readthedocs.io/en/latest/background.html#object-oriented-programming-in-c-and-assembly)
+for more details.)
 The simulated processes are stackful coroutines on their own call stacks, allowing the 
 processes to store their state at arbitrary points and resume execution from there 
-later. The context-switching code is hand-coded in assembly for each platform.
+later. The context-switching code is hand-coded in assembly for each platform. (Again, 
+[more details here](https://cimba.readthedocs.io/en/latest/background.html#coroutines-revisited).)
 
 ![Stackful coroutines](images/stack_1.png)
 
