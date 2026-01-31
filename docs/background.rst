@@ -16,7 +16,8 @@ Cimba 3.0.0 was released on GitHub as public beta in late 2025, but as the versi
 indicates, there is some history before this first public release.
 
 The earliest ideas that eventually became Cimba date to work done at the Norwegian Defence
-Research Establishment in the late 1980s. I built, maintained, and ran discrete event
+Research Establishment in the late 1980s, towards the end of the Cold War. I built,
+maintained, and ran discrete event
 simulation models in languages like Simscript and Simula67. Encountering Simula67's
 coroutines and object-orientation was revelatory in its essential *rightness*. However,
 Simula67 was still severely limited in many other respects and not really a practical
@@ -28,8 +29,8 @@ of that language. The first C++ models ran on VAXstations where spawning a corou
 a single assembly instruction. Trying to port that code to a Windows PC was a somewhat
 painful experience (and a complete failure). I actually complained to Bjarne Stroustrup in
 person about the inconsistent to non-existent support for Simula-like coroutines in C++ at
-a conference in Helsingør, probably in 1991. He seemed to agree but I silently resolved
-to build my next simulation model in pure K&R C.
+a conference in Helsingør, Denmark, probably in 1991. He seemed to agree but I silently
+resolved to build my next simulation model in pure K&R C.
 
 That opportunity arose at MIT around 1994, where I needed a discrete event simulation
 model for cross-checking analytical models of manufacturing systems. For perhaps obvious
@@ -117,7 +118,7 @@ coroutines we are looking for.
 In Cimba, we have some additional requirements to the coroutines beyond being full-fledged
 coroutines, i.e., stackful first class objects. Our coroutines need to be thread-safe,
 since we will combine these with multithreading at the next higher level of concurrency.
-The Cimba coroutines will interact in parallel universes within each thread, but not
+The Cimba coroutines will interact within each thread, but not
 across threads.
 
 We also want our coroutines to share information both through pointer arguments to the
@@ -136,7 +137,8 @@ equivalent, and the exit value should be persistent after the coroutine executio
 
 And, of course, we want our coroutines to be extremely efficient. Calling ``malloc()`` and
 ``free()`` or ``memcpy()``'ing large amounts of data in each context switch is a definite
-no go.
+no go. We want the minimal context switches needed to guarantee correctness, only saving
+the necessary registers and swapping out the stack pointer, nothing more.
 
 We are not aware of any open source coroutine implementation that exactly meets these
 requirements, so Cimba contains its own, built from the ground up in C and assembly. This
@@ -157,9 +159,10 @@ asymmetric coroutines, inheriting all properties and methods from the coroutine 
 adding a name, a priority for scheduling processes, and pointers to things it may be
 waiting for, to resources it may be holding, and to other processes that may be waiting
 for it. As asymmetric coroutines, the Cimba processes always transfer control to a single
-dispatcher process, and are always re-activated from the dispatcher process only.
+dispatcher process running on the main program stack, and are always re-activated from
+the dispatcher process only.
 
-The processes understand the simulation time, and may ``hold()`` for a certain
+The processes understand the simulation time and may ``hold()`` for a certain
 amount of simulated time. Underneath this call are the asymmetric coroutine primitives of
 :c:func:`cmi_coroutine_yield` (to the simulation dispatcher) and
 :c:func:`cmi_coroutine_resume`
@@ -168,7 +171,7 @@ advanced by this amount). Processes can also ``acquire()`` and ``release()`` res
 wait for some other process to finish, interrupt or stop other processes, wait for some
 specific event, or even wait for some arbitrarily complex condition to become true.
 
-Since the simulated processes as asymmetric coroutines is fundamental to how Cimba
+Since the asymmetric coroutine process concept is fundamental to how Cimba
 works, we will now look closely at what happens during a context switch between processes.
 
 Suppose we are running the M/M/1 simulation used to benchmark against SimPy,
