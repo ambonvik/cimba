@@ -5,8 +5,8 @@ Tutorial: Modeling with Cimba
 
 .. _tut_1:
 
-A simple M/M/1 queue
---------------------
+A simple M/M/1 queue parallelized
+---------------------------------
 
 In this section, we will walk through the development of a simple model from
 connecting basic entities and interactions to parallelizing the model on all
