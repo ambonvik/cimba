@@ -152,7 +152,7 @@ extern int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp);
  * value is then the interrupt signal received, some other value than
  * `CMB_PROCESS_SUCCESS`, possibly an application-defined reason code.
  *
- * @memberof cmb_buffer
+ * @relates cmb_buffer
  * @param bp Pointer to the buffer object.
  * @param amntp Pointer to a variable containing the amount to be obtained. Will
  *              contain the amount actually obtained after the call.
@@ -194,7 +194,7 @@ static inline uint64_t cmb_buffer_level(struct cmb_buffer *bp)
 /**
  * @brief Returns current free space in the buffer
  *
- * @relates cmb_buffer
+ * @memberof cmb_buffer
  * @param bp Pointer to a buffer
  * @return The available space in the buffer
  */

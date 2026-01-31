@@ -207,7 +207,7 @@ static inline double cmb_datasummary_variance(const struct cmb_datasummary *dsp)
 /**
  * @brief The sample standard deviation of the samples in the data summary.
  *
- * @relates cmb_datasummary
+ * @memberof cmb_datasummary
  * @param dsp Pointer to a data summary.
  * @return The sample standard deviation of the samples in the data summary.
  */

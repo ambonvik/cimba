@@ -2178,7 +2178,7 @@ An empty simulation template
 
 Our starting point will be an empty shell from :ref:`the first tutorial <tut_1>`,
 giving the correct initial structure to the model. You will find it in
-``tutorial/tut_4_0.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_0.c>`__.
+`tutorial/tut_4_0.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_0.c>`__.
 It does not do anything, so there is no point in compiling it as it is, but you
 can use it as a starting template for your own models as well.
 

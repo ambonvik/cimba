@@ -66,7 +66,7 @@ It is powerful, fast, reliable, and free.
 
   There are unit tests for each module. Running the unit test battery in debug mode (all
   assertions active) verifies correct operation in great detail. You can do that by the
-  one-liner ``meson test -C build" from the terminal command line.
+  one-liner ``meson test -C build`` from the terminal command line.
 
 * *Free*: Cimba should fit well into the budget of most research groups.
 
