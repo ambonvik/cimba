@@ -251,8 +251,8 @@ the [ReadTheDocs explanation](https://cimba.readthedocs.io/en/latest/background.
 for more details.)
 The simulated processes are stackful coroutines on their own call stacks, allowing the 
 processes to store their state at arbitrary points and resume execution from there 
-later. The context-switching code is hand-coded in assembly for each platform. (Again, 
-[more details here](https://cimba.readthedocs.io/en/latest/background.html#coroutines-revisited).)
+later. The context-switching code is hand-coded in assembly for each platform. (You 
+can find [more details here](https://cimba.readthedocs.io/en/latest/background.html#coroutines-revisited).)
 
 ![Stackful coroutines](images/stack_1.png)
 
@@ -267,7 +267,7 @@ postconditions are debug asserts, while the release asserts mostly check precond
 like function argument validity. Turning off the debug asserts doubles the speed of your
 model when you are ready for it, while turning off the release asserts as well gives 
 a small incremental improvement. (Again, 
-[more details here](https://cimba.readthedocs.io/en/latest/background.html#error-handling-the-loud-crashing-noise).)
+[more explanation here](https://cimba.readthedocs.io/en/latest/background.html#error-handling-the-loud-crashing-noise).)
 
 This is then combined with extensive unit testing of each module, ensuring that
 all lower level functionality works as expected before moving on to higher levels. 
