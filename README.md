@@ -80,20 +80,21 @@ It is fast, powerful, reliable, and free.
 It is a general-purpose discrete event simulation library, in the spirit of a
 21st century Simula67 descendant. You can use it to model, e.g.
 * computer networks,
-* operating system task scheduling, 
 * transportation networks, 
+* operating system task scheduling,
 * manufacturing systems and job shops,
-* queuing systems like bank tellers and store checkouts,
-* urban systems like emergency services and garbage collection,
 * military command and control systems,
-* and quite a few more application domains.
+* hospital and emergency room patient flows,
+* queuing systems like bank tellers and store checkouts,
+* urban systems like public transport and garbage collection,
+* and quite a few more application domains of similar kinds, where overall system 
+  complexity arises from interactions between relatively simple components.
 
-If you look under the hood, you will find additional reusable internal components.
-There are stackful coroutines doing their own thing on thread-safe cactus stacks. 
-Cimba contains fast memory pool allocators for generic small objects and 
-hash-heaps combining a binary heap and an open addressing hash map using fibonacci 
-hashing. Although not part of the public Cimba API, these can also be used in your model 
-if needed.
+If you look under the hood, you will also find additional reusable internal components.
+Cimba contains stackful coroutines doing their own thing on thread-safe cactus stacks. 
+There are fast memory pool allocators for generic small objects and hash-heaps combining 
+a binary heap and an open addressing hash map using Fibonacci hashing. Although not part 
+of the public Cimba API, these components can also be used in your model if needed.
 
 ### What does the code look like?
 It is C11/C17. As an illustration, this is the entire code for [our multithreaded M/M/1 
