@@ -100,9 +100,9 @@ generalizes the concept of a subroutine to several parallel threads of execution
 co-exist and are non-preemptively scheduled. Combined with object-orientation, it
 means that one can describe a class of objects as independent threads of execution, often
 infinite loops, where the object's code just does its own thing. The objects become
-active agents in their own world. The complexity in the
-simulated world arises from the interactions between the active processes and various
-other passive objects, while the description of each entity's actions is very natural.
+active agents in their own world. The complexity in the simulation arises from the
+interactions between the active processes and various passive objects, while the
+description of each entity's actions is very natural.
 
 Coroutines received significant academic interest in the early years, but were then
 overshadowed by the object-oriented inheritance mechanisms. It seems that current
