@@ -248,7 +248,7 @@ with a return value that indicates normal or abnormal return. (We have ignored t
 return values for now in the example above.) So, whenever there are more than
 one process running, there may be future events scheduled in the event queue.
 
-To stop the simulation, we simply schedule an "end simulation" event, which
+To stop the simulation, we can schedule an "end simulation" event, which
 stops any running processes at that point. The dispatcher then ends the run.
 
 This is perhaps easier to do in code than to describe in text. We define a
@@ -316,13 +316,14 @@ object pointers, the simulated time when this event will happen, and an event
 priority. We have set end time 10.0 here. It could also be expressed as
 ``cmb_time() + 10.0`` for "in 10.0 time units from now".
 
-In Cimba, the simulation end does not even have to be at a predetermined time. It is
+The simulation end event does not need to be at a predetermined time. It is
 equally valid for some process in the simulation to schedule an end simulation
 event at the current time whenever some condition is met, such as a certain
 number of customers having been serviced, a statistics collector having a
-certain number of samples, or something else. Or, perhaps even easier, the arrival
-process could just stop generating new arrivals, the event queue would clear, and the
-simulation would stop. (See
+certain number of samples, or something else. Or, perhaps even easier for this simple
+simulation, the arrival
+process could just stop generating new arrivals after a certain count, the event queue
+would clear, and the simulation would stop. (See
 `benchmark/MM1_single.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`__
 for an example doing exactly that.)
 
@@ -340,7 +341,7 @@ since we will not be using it in this example. If we wanted to keep it, it is an
 unsigned 64-bit integer (``uint64_t``).
 
 When initializing our arrivals and service processes, we quietly set the last
-argument to :c:func:`cmb_process_initialize()` to 0. This was the inherent process
+argument to :c:func:`cmb_process_initialize()` to 0. This is the inherent process
 priority for scheduling any events pertaining to this process, its
 priority when waiting for some resource, and so on. The processes can adjust
 their own (or each other's) priorities during the simulation, dynamically
@@ -416,19 +417,18 @@ We compile and run, and get something like this:
         10.000	dispatcher	cmb_process_stop (705):  Stop Service value (nil)
         10.000	dispatcher	cmb_event_queue_execute (297):  No more events in queue
 
-Progress: It started, ran, and stopped.
+Progress: It started, ran, and now also stopped.
 
 .. _tut_1_logging:
 
 Setting logging levels
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Next, the verbiage. Cimba has
-powerful and flexible logging that gives you fine-grained control of what to log.
+Next, the verbiage. Cimba has powerful and flexible logging that gives you fine-grained
+control of what to log.
 
 The core logging function is called :c:func:`cmb_logger_vfprintf()`. As the name says,
-it is
-similar to the standard function ``vfprintf()`` but with some Cimba-specific added
+it is similar to the standard function ``vfprintf()`` but with some Cimba-specific added
 features. You will rarely interact directly with this function, but instead call
 wrapper functions (actually macros) like :c:macro:`cmb_logger_user()` or
 :c:macro:`cmb_logger_error()`.
