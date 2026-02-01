@@ -24,14 +24,13 @@
 #ifndef NASSERT
 /*
  * cmi_assert_failed - Report and abort in case of assert triggered.
- *
- * Key advice: Place a debugger breakpoint right here. You will thank me later.
  */
 void cmi_assert_failed(const char *sourcefile,
                        const char *func,
                        const int line,
                        const char *condition)
 {
+    /* Key advice: Place a debugger breakpoint right here. You will thank me later. */
     cmi_logger_fatal(stderr, func, line,
                      "Assert \"%s\" failed, source file %s",
                      condition, sourcefile);
