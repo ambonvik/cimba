@@ -959,7 +959,9 @@ informal) test:
 
 The various pseudo-random number distributions build on this generator, shaping its
 output to match the required probability density functions. The algorithms used are
-selected for speed and accuracy.
+selected for speed and accuracy. Please run
+[the cmb_random unit test](https://github.com/ambonvik/cimba/blob/main/test/test_random.c)
+for verification of the individual distributions versus expected values.
 
 The exponential and normal distributions are implementations of Chris McFarland's
 improved Ziggurat algorithms, see https://github.com/cd-mcfarland/fast_prng
