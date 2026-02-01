@@ -288,8 +288,7 @@ and reliability. If you need to call Cimba from some other language, the C calli
 convention is well-known and well-documented.
 
 ### Version 3.0.0, you say. Why haven't I heard about Cimba before?
-Because we did not make it public before. The first ideas that eventually became 
-Cimba were built in C++ around 1990. What retrospectively can be called Cimba 1.0
+Because it was not made public before. What retrospectively can be called Cimba 1.0
 was implemented in K&R C at MIT in the early 1990's, followed by a parallelized
 version 2.0 in ANSI C and Perl around 1995–96. The present version written in 
 C17 with POSIX pthreads is the third major rebuild, and the first public version.
