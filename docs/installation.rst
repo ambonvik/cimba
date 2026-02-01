@@ -1,7 +1,7 @@
 .. _installation:
 
 Installation guide
-==================
+=================
 
 You will need a C compiler like gcc or clang, the NASM assembler, and a development
 toolchain of git, meson, and ninja. For some of the examples in the tutorial, you
@@ -35,9 +35,12 @@ code tree, and enter these commands:
 You need elevated privileges (``sudo``) for the last step, since it installs
 the library and header files in system locations  ``/usr/local/lib``
 and ``/usr/local/include``. These should already be in the respective paths for
-compilation and runtime linking. If you encounter errors, such as the include file not
-found by the compiler or the Cimba library not found at runtime, please check that these
-paths are correctly configured on your system.
+compilation and runtime linking.
+
+If you encounter errors, such as the include file not found by the compiler or the Cimba
+library not found at runtime, please check that these paths are correctly configured on
+your system. The details of how to fix the issue may be distro-specific, so we will not
+try to give a recipe here.
 
 Windows
 -------
