@@ -637,7 +637,7 @@ It shows the simulation time, process, function, line number, actual condition t
 the program code file, and finally the random number seed used to initialize the trial.
 You now know both where to look and how to reproduce the issue if you want a closer look.
 
-Our asserts come in two favors: the :c:macro:`cmb_assert_debug()` and
+Our asserts come in two flavors: the :c:macro:`cmb_assert_debug()` and
 :c:macro:`cmb_assert_release()`.
 There is also a :c:macro:`cmb_assert()` macro, but it is just a shorthand for
 :c:macro:`cmb_assert_debug()`.
