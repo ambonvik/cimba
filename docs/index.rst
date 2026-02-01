@@ -1,6 +1,8 @@
 Cimba documentation
 ==============================
 
+.. image:: ../images/logo_large.jpg
+
 .. toctree::
     :maxdepth: 1
     :caption: Contents:
