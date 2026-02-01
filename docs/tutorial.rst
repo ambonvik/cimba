@@ -716,6 +716,8 @@ We define a small helper function to load the parameters into the ``trial``:
         trl->duration = 1e6;
     }
 
+.. _tut_1_assert:
+
 .. admonition:: Asserts and debuggers
 
     Notice the :c:macro:`cmb_assert_release()` in this code
