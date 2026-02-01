@@ -2,8 +2,7 @@
 
 Cimba - Multithreaded Discrete Event Simulation in C
 ====================================================
-
-Cimba is a very fast discrete event simulation library written in C and assembly,
+Cimba is a fast discrete event simulation library written in C and assembly,
 providing process-oriented simulation combined with multithreaded parallelism for
 high performance on modern CPUs.
 
@@ -14,15 +13,12 @@ world depend on a shared time variable and cannot race ahead.
 
 Luckily, we almost never run only a single simulation run, but a possibly large
 experiment consisting of many trials (replications and parameter combinations) to
-generate statistical results. These trials are *intended* to be independent trials,
+generate statistical results. These trials are *intended* to be independent,
 making them near-trivial to parallelize by simply running them all at the same time,
 or at least running as many as you have CPU cores available for.
 
-This is what Cimba does.
-
 Why should I use Cimba?
 -----------------------
-
 It is powerful, fast, reliable, and free.
 
 * *Powerful*: Cimba provides a comprehensive toolkit for well-engineered discrete event
@@ -83,7 +79,6 @@ It is powerful, fast, reliable, and free.
 
 What can I use Cimba for?
 -------------------------
-
 It is a general purpose discrete event simulation library, in the spirit of a
 21st century descendant of Simula67. It may be the right tool for the job if you need
 quantitative performance analysis of some system that is so complex that it is
@@ -121,7 +116,6 @@ map with fibonacci hashing for fast access to various objects.
 
 You had me at "free". How do I get my hands on Cimba?
 -----------------------------------------------------
-
 You simply clone the repository from https://github.com/ambonvik/cimba,
 build, and install it. You will need a C build chain and the Meson build manager.
 On Linux, you can use gcc or Clang, while the recommended approach on Windows is
