@@ -195,7 +195,7 @@ the stack, but is itself safely stored to memory instead of in the ``SP`` regist
 
 The arrival process is holding. That call caused a context switch, so its stack pointer
 is at the last register that was pushed to its stack. The difference from the
-dispatcher on the main stack is that it *on its own stack* without touching the main
+dispatcher on the main stack is that it is *on its own stack* without touching the main
 stack at all.
 
 Now the service process is in its ``get()`` call and finds the queue empty. It has to
@@ -1058,12 +1058,12 @@ use dedicated software such as *R* or *Gnuplot* to analyze and present the data.
 Experiments consist of multi-threaded trials
 --------------------------------------------
 
-Finally, we return to the primary objective for Cimba: To provide multi-threaded
+We now return to the primary objective for Cimba: To provide multi-threaded
 discrete event simulation that harnesses the power of modern multi-core CPU's. As
 explained in the sections about coroutines and pseudo-random number generators above,
 Cimba is designed from the ground up to enable multithreaded execution. Once that is in
-place, the actual implementation is straightforward. For portability, we use POSIX
-pthreads as the concurrency model, see https://en.wikipedia.org/wiki/Pthreads
+place, the actual implementation is straightforward. We use POSIX pthreads as the
+concurrency model, see https://en.wikipedia.org/wiki/Pthreads
 
 The basic idea is to structure your *experiment* as an array of *trials*. Your
 simulated world is constant across trials, except for the trial parameters. Cimba
