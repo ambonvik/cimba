@@ -41,12 +41,7 @@ struct simulation {
     struct cmb_objectqueue *queue;
 };
 
-CMB_THREAD_LOCAL struct cmi_mempool objectpool = {
-    CMI_THREAD_STATIC,
-    8u,
-    512u,
-    0u, 0u, 0u, NULL, NULL
-};
+CMB_THREAD_LOCAL struct cmi_mempool objectpool = CMI_MEMPOOL_STATIC_INIT(8u, 512u);
 
 static void end_sim_evt(void *subject, void *object)
 {

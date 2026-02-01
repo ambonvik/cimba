@@ -27,12 +27,7 @@
 #define ARRIVAL_RATE 0.9
 #define SERVICE_RATE 1.0
 
-CMB_THREAD_LOCAL struct cmi_mempool objectpool = {
-    CMI_THREAD_STATIC,
-    sizeof(void *),
-    512u,
-    0u, 0u, 0u, NULL, NULL
-};
+CMB_THREAD_LOCAL struct cmi_mempool objectpool = CMI_MEMPOOL_STATIC_INIT(sizeof(void *), 512u);
 
 struct simulation {
     struct cmb_process *arrival;

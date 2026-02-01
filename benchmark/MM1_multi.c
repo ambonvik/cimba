@@ -28,12 +28,7 @@
 #define SERVICE_RATE 1.0
 #define NUM_TRIALS 100
 
-CMB_THREAD_LOCAL struct cmi_mempool objectpool = {
-    CMI_THREAD_STATIC,
-    8u,
-    512u,
-    0u, 0u, 0u, NULL, NULL
-};
+CMB_THREAD_LOCAL struct cmi_mempool objectpool = CMI_MEMPOOL_STATIC_INIT(8u, 512u);
 
 struct simulation {
     struct cmb_process *arrival;

@@ -28,26 +28,17 @@
 #include "cmi_process.h"
 #include "cmb_resource.h"
 
-CMB_THREAD_LOCAL struct cmi_mempool cmi_process_awaitabletags = {
-    CMI_THREAD_STATIC,
-    sizeof(struct cmi_process_awaitable),
-    128u,
-    0u, 0u, 0u, NULL, NULL
-};
+/*
+ * Thread local mempools for assorted small objects.
+ */
+CMB_THREAD_LOCAL struct cmi_mempool cmi_process_awaitabletags
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_awaitable), 128u);
 
-CMB_THREAD_LOCAL struct cmi_mempool cmi_process_holdabletags = {
-    CMI_THREAD_STATIC,
-    sizeof(struct cmi_process_holdable),
-    256u,
-    0u, 0u, 0u, NULL, NULL
-};
+CMB_THREAD_LOCAL struct cmi_mempool cmi_process_holdabletags
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_holdable), 256u);
 
-CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags = {
-    CMI_THREAD_STATIC,
-    sizeof(struct cmi_process_waiter),
-    256u,
-    0u, 0u, 0u, NULL, NULL
-};
+CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_waiter), 256u);
 
 /*
  * cmb_process_create - Allocate memory for the process.

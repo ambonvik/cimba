@@ -33,12 +33,8 @@
 #define NUM_PUTTERS 3u
 #define NUM_GETTERS 3u
 
-CMB_THREAD_LOCAL struct cmi_mempool objectpool = {
-    CMI_THREAD_STATIC,
-    sizeof(void *),
-    512u,
-    0u, 0u, 0u, NULL, NULL
-};
+CMB_THREAD_LOCAL struct cmi_mempool objectpool
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(void *), 512u);
 
 struct simulation {
     struct cmb_process *putters[NUM_PUTTERS];

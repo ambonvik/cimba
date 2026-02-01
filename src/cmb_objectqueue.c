@@ -40,19 +40,16 @@
 
 /*
  * struct queue_tag - A tag for the singly linked list that is a queue.
- * We need a circular list here and will not use the cmi_slist implementation.
+ * We need a circular list here and do not use the cmi_slist implementation.
  */
 struct queue_tag {
     struct queue_tag *next;
     void *object;
 };
 
-CMB_THREAD_LOCAL struct cmi_mempool objectqueue_tags = {
-    CMI_THREAD_STATIC,
-    sizeof(struct queue_tag),
-    256u,
-    0u, 0u, 0u, NULL, NULL
-};
+/* Thread local mempool of queue tags */
+CMB_THREAD_LOCAL struct cmi_mempool objectqueue_tags
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct queue_tag), 256u);
 
 struct cmb_objectqueue *cmb_objectqueue_create(void)
 {

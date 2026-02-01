@@ -55,6 +55,11 @@ struct cmi_mempool {
 };
 
 /*
+ * Convenience macro to simplify thread local initialization of a static mempool.
+ */
+#define CMI_MEMPOOL_STATIC_INIT(sz, num) { CMI_THREAD_STATIC, (sz), (num), 0, 0, 0, NULL, NULL }
+
+/*
  * Allocate memory for a cmi_mempool struct, not yet for the objects to
  * be contained in the pool.
  */

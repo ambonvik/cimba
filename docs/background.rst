@@ -1263,12 +1263,7 @@ The same model would look like this in Cimba,
     #define ARRIVAL_RATE 0.9
     #define SERVICE_RATE 1.0
 
-    CMB_THREAD_LOCAL struct cmi_mempool objectpool = {
-        CMI_THREAD_STATIC,
-        sizeof(void *),
-        512u,
-        0u, 0u, 0u, NULL, NULL
-    };
+    CMB_THREAD_LOCAL struct cmi_mempool objectpool = CMI_MEMPOOL_STATIC_INIT(sizeof(void *), 512u);
 
     struct simulation {
         struct cmb_process *arrival;
@@ -1380,15 +1375,17 @@ The same model would look like this in Cimba,
     }
 
 
-The Cimba code is significantly longer for the simple example, in this case 144 vs 60
-lines. The C base language demands more careful declarations of object types, where
-Python will happily try to infer types from context. C requires explicit management
-of object creation and destruction, since it does not have Python's automatic garbage
-collection. For a larger model, where the process function could be large, complex, and
-call various other functions, the SimPy code could become much harder to follow. (We
+The Cimba code is significantly longer for this simple example, 139 vs 60 lines. The C
+base language demands more careful declarations of object types, whereas Python will
+happily try to infer types from context. C requires explicit management of object creation
+and destruction, since it does not have Python's automatic garbage collection. This
+requires some additional code lines.
+
+For a larger model, where the process function could be large, complex, and
+call various other functions, the SimPy code could become much harder to follow. We
 leave it as an exercise for the interested reader to build our :ref:`entertainment park
 tutorial <tut_3>` or :ref:`LNG harbor tutorial <tut_4>` in SimPy for a similar
-benchmarking.)
+benchmarking.
 
 Both programs produce a one-liner output similar to this:
 

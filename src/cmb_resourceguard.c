@@ -56,13 +56,9 @@ struct observer_tag {
     struct cmi_slist_head listhead;
 };
 
-CMB_THREAD_LOCAL struct cmi_mempool observer_tagpool = {
-    CMI_THREAD_STATIC,
-    sizeof(struct observer_tag),
-    256u,
-    0u, 0u, 0u, NULL, NULL
-};
-
+/* Thread local mempool of tags for observer tags */
+CMB_THREAD_LOCAL struct cmi_mempool observer_tagpool
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct observer_tag), 256u);
 
 /*
  * guard_queue_check - Test if heap_tag *a should go before *b. If so, return true.

@@ -24,12 +24,7 @@
 
 #include "test.h"
 
-CMB_THREAD_LOCAL struct cmi_mempool mempool_32b = {
-    CMI_THREAD_STATIC,
-    32u,
-    128u,
-    0u, 0u, 0u, NULL, NULL
-};
+CMB_THREAD_LOCAL struct cmi_mempool mempool_32b = CMI_MEMPOOL_STATIC_INIT(32u, 128u);
 
 int main(void)
 {
