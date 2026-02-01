@@ -19,7 +19,20 @@ or at least running as many as you have CPU cores available for.
 
 Why should I use Cimba?
 -----------------------
-It is powerful, fast, reliable, and free.
+It is fast, powerful, reliable, and free.
+
+* *Fast*: The speed from multithreaded parallel execution translates to high
+  resolution in your simulation modelling. You can run hundreds of replications
+  and parameter variations in just a few seconds, generating tight confidence
+  intervals in your experiments and high density of data points along parameter
+  variations.
+
+  In a M/M/1 queue benchmark, Cimba runs about *45 times faster* than SimPy with all
+  available cores in use. This corresponds to a 97.8 % reduction in run time. In fact,
+  Cimba runs faster on a single core (left chart, about 20 million events per second)
+  than SimPy does with all 64 cores (right chart, about 16 million events per second).
+
+  .. image:: ../images/Speed_test_AMD_3970x.png
 
 * *Powerful*: Cimba provides a comprehensive toolkit for well-engineered discrete event
   simulation models, including very large ones.
@@ -51,19 +64,6 @@ It is powerful, fast, reliable, and free.
       or drive a fancy graphics interface like a 3D visualization of a manufacturing
       plant. You could even call the Cimba simulation engine from other programming
       languages, since the C calling convention is standard and well-documented.
-
-* *Fast*: The speed from multithreaded parallel execution translates to high
-  resolution in your simulation modelling. You can run hundreds of replications
-  and parameter variations in just a few seconds, generating tight confidence
-  intervals in your experiments and high density of data points along parameter
-  variations.
-
-  In a M/M/1 queue benchmark, Cimba runs about *45 times faster* than SimPy with all
-  available cores in use. This corresponds to a 97.8 % reduction in run time. In fact,
-  Cimba runs faster on a single core (left chart, about 20 million events per second)
-  than SimPy does with all 64 cores (right chart, about 16 million events per second).
-
-  .. image:: ../images/Speed_test_AMD_3970x.png
 
 * *Reliable*: Cimba is well engineered, self-contained open source. There is no mystery to
   the results you get. The code is written with liberal use of assertions to enforce
