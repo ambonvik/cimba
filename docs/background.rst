@@ -640,8 +640,8 @@ You now know both where to look and how to reproduce the issue if you want a clo
 
 If you are using a debugger, we encourage you to put a permanent breakpoint in
 `cmi_assert_failed() <https://github.com/ambonvik/cimba/blob/main/src/cmb_assert.c>`_
-You will then be able to page up the stack and identify the circumstances that caused
-the error, see the example in :ref:`our first tutorial <tut_1_assert>`.
+If compiling in debug mode, you will then be able to page up the stack and identify the
+circumstances that caused the error, see :ref:`the example in our first tutorial <tut_1_assert>`.
 
 Our asserts come in two flavors: the :c:macro:`cmb_assert_debug()` and
 :c:macro:`cmb_assert_release()`.
