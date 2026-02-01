@@ -108,7 +108,7 @@ Coroutines received significant academic interest in the early years, but were t
 overshadowed by the object-oriented inheritance mechanisms. It seems that current
 trends are turning away from the more complex inheritance mechanisms, in many cases
 using composition instead of (multiple) inheritance, and also reviving the interest in
-coroutines. One recent article is
+coroutines. One fairly recent article is
 https://www.cs.tufts.edu/~nr/cs257/archive/roberto-ierusalimschy/revisiting-coroutines.pdf
 
 Unfortunately, when C++ finally got "coroutines" as a part of the language in 2020,
@@ -178,8 +178,8 @@ works, we will now look closely at what happens during a context switch between 
 Suppose we are running the M/M/1 simulation used to benchmark against SimPy,
 `benchmark/MM1_single.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`_.
 We are running on a single CPU core. The queue is currently empty, the arrival process is
-holding, the service process has just woken up from its ``hold()``, and is now about to
-``get()`` an object from the queue, line 78 of the code.
+holding, the service process has just woken up from its ``hold()``, looped around, and is
+now about to ``get()`` an object from the queue in line 79 of the code.
 
 The illustration below shows the stacks at this point:
 
@@ -236,7 +236,7 @@ into the appropriate register.
 
 It pops the other saved register values from the stack and returns from the context
 call, which in turn returns back to the user code immediately after the
-``hold()`` call in line 58 of
+``hold()`` call in line 59 of
 `benchmark/MM1_single.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_single.c>`_.
 At this point, the context switch from the service to the arrival process by way of
 the dispatcher is complete, the arrival process is executing user code, and the stacks
