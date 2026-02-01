@@ -266,8 +266,8 @@ Object-oriented programming. In C and assembly.
 -----------------------------------------------
 
 Object-oriented programming is a way of structuring program design, not necessarily a
-language feature. It uses concepts like *encapsulation*, *inheritance*, and
-*polymorphism* to create a natural description of the objects in the program.
+language feature. It uses concepts like *encapsulation*, *inheritance*, *polymorphism*,
+and *abstraction* to create a natural description of the objects in the program.
 
 * *Encapsulation* bundles the properties and methods of objects into a compact
   description, usually called a *class*. The individual *instances*, objects that
