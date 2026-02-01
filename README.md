@@ -288,9 +288,9 @@ can find [more details here](https://cimba.readthedocs.io/en/latest/background.h
 
 The C code is liberally sprinkled with `assert` statements testing for preconditions,
 invariants, and postconditions wherever possible, applying Design by Contracts 
-principles for reliability. The Cimba library contains 958 asserts in 7 132 lines of 
+principles for reliability. The Cimba library contains 958 asserts in 7132 lines of 
 C code, for a very high assert density of 13.4 %. These are custom-written 
-asserts that will report 
+assert macros that will report 
 what trial, what process, the simulated time, the function and line number, and even the 
 random number seed used, if anything should go wrong. All time-consuming invariants and 
 postconditions are debug asserts, while the release asserts mostly check preconditions 
