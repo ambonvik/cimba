@@ -110,8 +110,9 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
     #define NUM_OBJECTS 1000000u
     #define ARRIVAL_RATE 0.9
     #define SERVICE_RATE 1.0
+    #define NUM_TRIALS 100
     
-    CMB_THREAD_LOCAL struct cmi_mempool objectpool = CMI_MEMPOOL_STATIC_INIT(sizeof(void *), 512u);
+    CMB_THREAD_LOCAL struct cmi_mempool objectpool = CMI_MEMPOOL_STATIC_INIT(8u, 512u);
     
     struct simulation {
         struct cmb_process *arrival;
@@ -164,7 +165,8 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
             const double *dblp = object;
             const double t_srv = cmb_random_exponential(mean_srv);
             cmb_process_hold(t_srv);
-            *sum += cmb_time() - *dblp;
+            const double t_sys = cmb_time() - *dblp;
+            *sum += t_sys;
             *cnt += 1u;
             cmi_mempool_free(&objectpool, object);
         }
@@ -208,19 +210,43 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
     
     int main(void)
     {
-        struct trial *trl = malloc(sizeof(*trl));
-        trl->arr_mean = 1.0 / ARRIVAL_RATE;
-        trl->srv_mean = 1.0 / SERVICE_RATE;
-        trl->obj_cnt = 0u;
-        trl->sum_wait = 0.0;
-        run_trial(trl);
+        struct trial *experiment = calloc(NUM_TRIALS, sizeof(*experiment));
+        for (unsigned ui = 0; ui < NUM_TRIALS; ui++) {
+            struct trial *trl = &experiment[ui];
+            trl->arr_mean = 1.0 / ARRIVAL_RATE;
+            trl->srv_mean = 1.0 / SERVICE_RATE;
+            trl->obj_cnt = 0u;
+            trl->sum_wait = 0.0;
+        }
     
-        printf("Average system time %f (expected %f)\n",
-                trl->sum_wait / (double)trl->obj_cnt,
-                1.0 / (SERVICE_RATE - ARRIVAL_RATE));
+        cimba_run_experiment(experiment,
+                             NUM_TRIALS,
+                             sizeof(*experiment),
+                             run_trial);
     
-        return 0;
+        struct cmb_datasummary summary;
+        cmb_datasummary_initialize(&summary);
+        for (unsigned ui = 0; ui < NUM_TRIALS; ui++) {
+            const double avg_tsys = experiment[ui].sum_wait / (double)(experiment[ui].obj_cnt);
+            cmb_datasummary_add(&summary, avg_tsys);
+        }
+    
+        const unsigned un = cmb_datasummary_count(&summary);
+        if (un > 1) {
+            const double mean_tsys = cmb_datasummary_mean(&summary);
+            const double sdev_tsys = cmb_datasummary_stddev(&summary);
+            const double serr_tsys = sdev_tsys / sqrt((double)un);
+            const double ci_w = 1.96 * serr_tsys;
+            const double ci_l = mean_tsys - ci_w;
+            const double ci_u = mean_tsys + ci_w;
+    
+            printf("Average system time %f (n %u, conf.int. %f - %f, expected %f)\n",
+                   mean_tsys, un, ci_l, ci_u, 1.0 / (SERVICE_RATE - ARRIVAL_RATE));
+    
+            return 0;
+        }
     }
+
 ```
 See [our tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html) for more 
 usage examples at ReadTheDocs.
