@@ -1,7 +1,7 @@
 .. _welcome:
 
-Cimba - Multithreaded Discrete Event Simulation in C
-====================================================
+Cimba - Multithreaded Discrete Event Simulation
+===============================================
 Cimba is a fast discrete event simulation library written in C and assembly,
 providing process-oriented simulation combined with multithreaded parallelism for
 high performance on modern CPUs.
