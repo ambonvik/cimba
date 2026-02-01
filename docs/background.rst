@@ -633,8 +633,9 @@ report like this:
 
     Process finished with exit code 134 (interrupted by signal 6:SIGABRT)
 
-It shows the simulation time, process, function, line number, actual condition that failed,
-the program code file, and finally the random number seed used to initialize the trial.
+It shows the simulation time, process, function, line number, the actual condition that
+failed, the program code file, and finally the random number seed used to initialize the
+trial. If running multi-threaded, it will also include the trial number.
 You now know both where to look and how to reproduce the issue if you want a closer look.
 
 Our asserts come in two flavors: the :c:macro:`cmb_assert_debug()` and
