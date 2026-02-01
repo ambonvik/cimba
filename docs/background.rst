@@ -342,19 +342,17 @@ its namespace ``cmb`` and module ``process`` since it has file scope only.
 There is one notable exception to this naming convention: The function :c:func:`cmb_time`,
 which returns the current simulation clock value. It is declared and defined in the
 ``cmb_event`` module, and should perhaps be called :c:func:`cmb_event_time`
-according to
-our rule, but since it is a global state in the simulated world and not related to any
-particular event, it is more intuitive to make this one exception for it.
+according to our rule, but since it is a global state in the simulated world and not
+related to any particular event, it is more intuitive to make this one exception for it.
 
 As part of our convention, the object methods will take a first argument that is a
 pointer to the object itself. This corresponds to the implicit ``this`` or ``self``
 pointer in object-oriented languages. Again, there are a few exceptions: Some functions
 that are only called by the current process and act on itself do not have this argument.
 It is enough to say ``cmb_process_hold(5.0)``, not ``cmb_process_hold(me, 5.0)``.
-Similarly,
-calling ``cmb_process_exit(NULL)`` is enough, calling ``cmb_process_exit(me, NULL)``
-would be slightly strange. We believe this exception makes the code more intuitive,
-even if it is not entirely consistent.
+Similarly, calling ``cmb_process_exit(NULL)`` is enough, calling
+``cmb_process_exit(me, NULL)`` would be slightly strange. We believe this exception makes
+the code more intuitive, even if it is not entirely consistent.
 
 One can claim that this approach to object-oriented programming provides
 most of the benefits while minimizing the overhead and constraints from a typical
@@ -383,10 +381,8 @@ provide directly:
   the object to a newly initialized state.
 
 When defining your own classes derived from Cimba classes, such as the ``visitor``
-class in
-:ref:`our third tutorial <tut_3>`, your code has the responsibility to follow this
-pattern. Your
-allocator function (e.g., ``visitor_create()``) allocates raw memory,
+class in :ref:`our third tutorial <tut_3>`, your code has the responsibility to follow
+this pattern. Your allocator function (e.g., ``visitor_create()``) allocates raw memory,
 while the constructor function (``visitor_initialize()``) fills it with meaningful values.
 The constructor does not get called automatically, so your code is also responsible for
 calling it, both for objects allocated on the heap, objects declared as local
@@ -398,14 +394,12 @@ Similarly, your code needs to provide a destructor to free any memory allocated 
 object (``visitor_terminate()``), and a deallocator to free the object itself
 (``visitor_destroy()``). Your destructor function should also call the parent class
 destructor (here :c:func:`cmb_process_terminate`), but your de-allocator should NOT
-call
-the parent class de-allocator, since that would be free'ing the same memory twice and
+call the parent class de-allocator, since that would be free'ing the same memory twice and
 probably crash your application.
 
 By looking around in the Cimba code, you will find many examples of how we have used
 the object-orientation. For example, a :c:struct:`cmb_resourceguard` does not actually
-care or
-know what type of resource it guards, only that it is something derived from the
+care or know what type of resource it guards, only that it is something derived from the
 ``cmi_resourcebase`` abstract base class. Or, a process may be holding some resource, but
 may not really care what kind, only that it is some kind of ``cmi_holdable``, itself
 derived from ``cmi_resourcebase``. If the process needs to drop the resource in a
@@ -444,9 +438,8 @@ Our process interactions are also events. For example, a process calling
 simulation time + 5.0 before it yields to the dispatcher. At some point, that event has
 bubbled up to the top of the priority queue and gets executed. Similarly, when a
 :c:struct:`cmb_resourceguard` wakes up a waiting process to inform it that
-"congratulations,
-you now have the resource", it schedules an event at the current time that actually
-resumes the process. This avoids long and complicated call stacks.
+"congratulations, you now have the resource", it schedules an event at the current time
+that actually resumes the process. This avoids long and complicated call stacks.
 
 This also happens to be the reason why our events need to be (at least) a triple: The
 event to reactivate some process needs to contain the reactivation function, a pointer to
@@ -454,7 +447,7 @@ the process, and a pointer to the context argument for its ``resume()`` call,
 ``(*event)(me, context)``.
 
 Events are instantaneous in simulated time and always execute on the main stack directly
-from the dispatcher. If an event function itselft tries to call
+from the dispatcher. If an event function itself tries to call
 :c:func:`cmb_process_hold()`,
 it will try to put the event dispatcher itself to sleep. This is not a good idea.
 
@@ -466,16 +459,16 @@ nowhere to store a return value for later use either. An event function has sign
 An event is not even an object. It is ephemeral; once it has occurred, it is gone.
 You cannot take a pointer to an event. You can schedule an event as a triple ``(action,
 subject, object)`` to occur at a certain point in time with a certain priority, and you
-can cancel a scheduled event, reschedule it, or change its priority,
-but it is still not an object.
+can cancel a scheduled event, reschedule it, or change its priority by referring to its
+*handle*, but it is still not an object.
 
 The event queue also provides wildcard functions to search for, count, or cancel entries
 that match some combination of (action, subject, object). For this purpose,
 special values :c:macro:`CMB_ANY_ACTION`, :c:macro:`CMB_ANY_SUBJECT`, and
-:c:macro:`CMB_ANY_OBJECT` are
-defined. As an example, suppose we are building a large-scale simulation model of an
-air war. When some plane in the simulation gets shot down, all its scheduled future
-events should be cancelled. In Cimba, this can be done by a simple call like
+:c:macro:`CMB_ANY_OBJECT` are defined. As an example, suppose we are building a
+large-scale simulation model of an air war. When some plane in the simulation gets shot
+down, all its scheduled future events should be cancelled. In Cimba, this can be done by
+a simple call like
 ``cmb_event_pattern_cancel(CMB_ANY_ACTION, my_airplane, CMB_ANY_OBJECT);``
 
 .. _background_hashheap:
