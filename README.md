@@ -263,9 +263,10 @@ simulates an M/G/1 queue at four different levels of
 service process variability. For each variability level, it tries 
 five system utilization levels. There are ten replications for each parameter 
 combination, in total 4 * 5 * 10 = 200 trials. Each trial lasts for one million 
-time units, where the average service time always is 1.0 time units. This entire 
-simulation runs in about 1.5 seconds on an AMD Threadripper 3970X with Arch Linux 
-and produces the chart below. 
+time units, where the average service time always is 1.0 time units. 
+
+This entire simulation runs in *about 1.5 seconds* on an AMD Threadripper 3970X with 
+Arch Linux and produces the chart below. 
 
 ![M/G/1 queue](images/MG1%20example.png)
 
