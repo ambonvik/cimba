@@ -1415,7 +1415,7 @@ How about the name 'Cimba'?
 ---------------------------
 
 Very simple. This is a simulation library in C, the author's initials are 'AMB', 'simba'
-means 'lion' in Swahili, and it is a little-known fact that real lions eat python
+means 'lion' in Swahili, and real lions are among the very few predators that eat python
 snakes for breakfast. Of course it had to be named Cimba.
 
 If in doubt, read the source code
