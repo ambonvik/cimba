@@ -248,8 +248,7 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
     }
 
 ```
-See [our tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html) for more 
-usage examples at ReadTheDocs.
+See [our tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html) at ReadTheDocs for more usage examples.
 
 
 ### So, what can I use all that speed for?
