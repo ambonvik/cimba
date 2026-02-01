@@ -260,14 +260,14 @@ The C code is liberally sprinkled with `assert` statements testing for precondit
 invariants, and postconditions wherever possible, applying Design by Contracts 
 principles for reliability. The Cimba library contains 958 asserts in 7 132 lines of 
 C code, for a very high assert density of 13.4 %. These are custom-written 
-asserts 
-that will report 
+asserts that will report 
 what trial, what process, the simulated time, the function and line number, and even the 
 random number seed used, if anything should go wrong. All time-consuming invariants and 
 postconditions are debug asserts, while the release asserts mostly check preconditions 
 like function argument validity. Turning off the debug asserts doubles the speed of your
-model when you are ready for it, while turning off the release asserts as well only gives 
-a small incremental improvement.
+model when you are ready for it, while turning off the release asserts as well gives 
+a small incremental improvement. (Again, 
+[more details here](https://cimba.readthedocs.io/en/latest/background.html#error-handling-the-loud-crashing-noise).)
 
 This is then combined with extensive unit testing of each module, ensuring that
 all lower level functionality works as expected before moving on to higher levels. 
