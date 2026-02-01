@@ -232,7 +232,7 @@ void test_priorityqueue(const double duration)
 int main(void)
 {
     cmi_test_print_line("*");
-    printf("**************************   Testing priority queues   ***************************\n");
+    printf("*************************   Testing priority queues   **************************\n");
     cmi_test_print_line("*");
 
     test_priorityqueue(1000000);
