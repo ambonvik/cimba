@@ -56,9 +56,10 @@ It is fast, powerful, reliable, and free.
     to get a model running and understand what is happening inside it, including 
     custom asserts to pinpoint sources of errors. 
 
-  * As a C program, easy integration with other libraries and programs. You could call 
-    CUDA routines to enhance your simulation models with GPU-powered agentic behavior or 
-    drive a fancy graphics interface like a 3D visualization of a manufacturing plant. 
+  * As a C library, Cimba allows easy integration with other libraries and programs. You 
+    could call CUDA routines to enhance your simulation models with GPU-powered agentic 
+    behavior or drive a fancy graphics interface like a 3D visualization of a 
+    manufacturing plant. 
     You could even call the Cimba simulation engine from other programming languages, 
     since the C calling convention is standard and well-documented. 
 
