@@ -114,8 +114,8 @@ fast memory pool allocators for generic small objects, and sophisticated data
 structures like hash-heaps combining a binary heap and an open addressing hash
 map with fibonacci hashing for fast access to various objects.
 
-You had me at "free". How do I get my hands on Cimba?
------------------------------------------------------
+How can I get it?
+-----------------
 You simply clone the repository from https://github.com/ambonvik/cimba,
 build, and install it. You will need a C build chain and the Meson build manager.
 On Linux, you can use gcc or Clang, while the recommended approach on Windows is
