@@ -52,16 +52,17 @@ This was lashed together at the operating system process level using ``rsh`` and
 script to control the individual simulations on a cluster of workstations, and, just to
 make a point, on at least one computer back at the Norwegian Defence Research
 Establishment for a trans-Atlantic distributed simulation model. At the same time, the
-core discrete event simulation was rewritten in ANSI C with a binary heap event queue. It
-needed to be very efficient and have a very small memory footprint to run at low priority
-in the background on occupied workstations without anyone noticing a performance drop.
-This was pretty good for 1995, and can safely be considered Cimba version 2.0, but it was
-never released to the public.
+core discrete event simulation engine was rewritten in ANSI C with a binary heap event
+queue. It needed to be very efficient and have a very small memory footprint to run at
+low priority in the background on occupied workstations without anyone noticing a
+performance drop. This was pretty good for 1995, and can safely be considered Cimba
+version 2.0, but it was never released to the public.
 
 After that, not much happened to it, until I decided to dust it off and publish it as
 open source many years later. The world had evolved quite a bit in the meantime, so the
 code required another comprehensive re-write to exploit the computing power in modern
-CPU's, this time coded in C17. This is the present Cimba 3.0.
+CPU's, this time coded in C17 and assembly with Posix pthreads concurrency. This is the
+present Cimba 3.0.
 
 The goals for Cimba 3.0 are quite similar to those for earlier versions:
 
@@ -76,7 +77,7 @@ The goals for Cimba 3.0 are quite similar to those for earlier versions:
   worldviews with a comprehensive collection of state-of-the-art pseudo-random number
   generators and distributions.
 
-* Robustness, using object-oriented design principles and comprehensive unit testing to
+* Robustness, using object-oriented design principles and extensive unit testing to
   ensure that it works as expected (but do read the
   `Licence <https://github.com/ambonvik/cimba/blob/main/LICENSE>`_,
   we are not making any warranties here).
@@ -96,11 +97,12 @@ perhaps not the most important part.
 
 The most powerful concept for simulation work was the *coroutine*. This
 generalizes the concept of a subroutine to several parallel threads of execution that
-co-exist and are non-preemptively scheduled. Combined with object-orientation, this
+co-exist and are non-preemptively scheduled. Combined with object-orientation, it
 means that one can describe a class of objects as independent threads of execution, often
-infinite loops, where the object's code just does its own thing. The complexity in the
-simulated world then arises from the interactions between the active processes and various
-other passive object, while the description of each entity's actions is very natural.
+infinite loops, where the object's code just does its own thing. The objects become
+active agents in their own world. The complexity in the
+simulated world arises from the interactions between the active processes and various
+other passive objects, while the description of each entity's actions is very natural.
 
 Coroutines received significant academic interest in the early years, but were then
 overshadowed by the object-oriented inheritance mechanisms. It seems that current
@@ -110,7 +112,7 @@ coroutines. One recent article is
 https://www.cs.tufts.edu/~nr/cs257/archive/roberto-ierusalimschy/revisiting-coroutines.pdf
 
 Unfortunately, when C++ finally got "coroutines" as a part of the language in 2020,
-these turned out both to be less powerful and less efficient than expected. (See
+these turned out to be both less powerful and less efficient than expected. (See
 https://probablydance.com/2021/10/31/c-coroutines-do-not-spark-joy/ for the details.)
 For our purposes here, it is sufficient to say that these coroutines are not the
 coroutines we are looking for.
@@ -118,8 +120,7 @@ coroutines we are looking for.
 In Cimba, we have some additional requirements to the coroutines beyond being full-fledged
 coroutines, i.e., stackful first class objects. Our coroutines need to be thread-safe,
 since we will combine these with multithreading at the next higher level of concurrency.
-The Cimba coroutines will interact within each thread, but not
-across threads.
+The Cimba coroutines will interact within each thread, but not across threads.
 
 We also want our coroutines to share information both through pointer arguments to the
 context-switching functions ``yield()``, ``resume()``, and ``transfer()``, and by the
@@ -142,9 +143,9 @@ the necessary registers and swapping out the stack pointer, nothing more.
 
 We are not aware of any open source coroutine implementation that exactly meets these
 requirements, so Cimba contains its own, built from the ground up in C and assembly. This
-gives us a powerful set of stackful coroutines, fulfilling all requirements to "full"
-coroutines, and in addition providing general mechanisms for communication between
-coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
+gives us a powerful set of thread-safe stackful coroutines, fulfilling all requirements
+to "full" coroutines, and in addition providing general mechanisms for communication
+between coroutines. The Cimba coroutines can both be used as symmetric or as asymmetric
 coroutines, or even as a mix of those paradigms by mixing asymmetric yield/resume pairs
 with symmetric transfers. (Debugging such a program may become rather confusing, though.)
 
