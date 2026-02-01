@@ -301,7 +301,7 @@ a small incremental improvement. (Again,
 
 This is then combined with extensive unit testing of each module, ensuring that
 all lower level functionality works as expected before moving on to higher levels. 
-You will find the test files corresponding to each code module in the `[test]<./test>`_ 
+You will find the test files corresponding to each code module in the [test](./test) 
 directory.
 
 But do read the [LICENSE](LICENSE). We do not give any warranties here.
