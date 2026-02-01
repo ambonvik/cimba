@@ -274,13 +274,15 @@ Arch Linux and produces the chart below.
 Discrete event simulation fits well with an object-oriented paradigm. That is
 why object-oriented programming was invented in the first place for Simula67.
 Since OOP is not directly enforced in plain C, we provide the object-oriented
-characteristics (such as encapsulation, inheritance, composition, polymorphism, 
-message passing, and information hiding) in the Cimba software design instead. (See 
+characteristics (such as encapsulation, inheritance, polymorphism, and abstraction) 
+in the Cimba software design instead. (See 
 the [ReadTheDocs explanation](https://cimba.readthedocs.io/en/latest/background.html#object-oriented-programming-in-c-and-assembly)
 for more details.)
+
 The simulated processes are stackful coroutines on their own call stacks, allowing the 
 processes to store their state at arbitrary points and resume execution from there 
-later. The context-switching code is hand-coded in assembly for each platform. (You 
+later with minimal overhead. The context-switching code is hand-coded in assembly for 
+each platform. (You 
 can find [more details here](https://cimba.readthedocs.io/en/latest/background.html#coroutines-revisited).)
 
 ![Stackful coroutines](images/stack_1.png)
