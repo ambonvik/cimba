@@ -819,7 +819,7 @@ variables between calls.
 The PRNG in Cimba is an implementation of Chris Doty-Humphrey's ``sfc64``. It
 provides 64-bit output and maintains a 256-bit state. It is certain to have a cycle
 period of at least 2^64, and is both faster and higher statistical quality than
-better-knon generators, such as the Mersenne Twister. It is in public domain, see
+better-known generators such as the Mersenne Twister. It is in public domain, see
 https://pracrand.sourceforge.net
 for the details. In our implementation, the PRNG state is thread local, giving each trial
 its own stream of random numbers, independent from any other trials.
@@ -979,13 +979,13 @@ simple unbiased coin flip in :c:func:`cmb_random_flip`. It also provides Bernoul
 Pascal distributions, and so forth.
 
 In some cases, a model needs to sample based on some empirical, discrete-valued set of
-probabilities. The probabilities can be given as an array ``p[n]``, where ``p[i]`` is the
-probability of outcome ``i``, for ``0 <= i < n``. A clever algorithm for this is the
+probabilities. The probabilities can be given as an array *p[n]*, where *p[i]* is the
+probability of outcome *i*, for *0 <= i < n*. A clever algorithm for this is the
 Vose alias method, see https://www.keithschwarz.com/darts-dice-coins/
 
 The alias method requires an initial step of setting up an alias table, but provides fast
-O(1) sampling thereafter. This is worthwhile for ``n`` larger than seven or so, and about
-three times faster than the basic O(n) method for ``n = 30``. In Cimba, the alias table
+O(1) sampling thereafter. This is worthwhile for *n* larger than seven or so, and about
+three times faster than the basic O(n) method for *n = 30*. In Cimba, the alias table
 is created by calling :c:func:`cmb_random_alias_create()`, sampled with
 :c:func:`cmb_random_alias_sample()`,
 and destroyed with :c:func:`cmb_random_alias_destroy()`. (In this case, we have bundled
@@ -999,30 +999,28 @@ Data sets and summaries
 
 As we saw in the previous section, Cimba provides a simple set of statistics utilities
 for debugging and simple reporting. The most basic class is the :c:struct:`cmb_dataset`,
-simply
-a conveniently resizing array of sample values. It provides methods that require the
-individual values, such as calculating the median, quartiles, autocorrelation factors,
+simply a conveniently resizing array of sample values. It provides methods that require
+the individual values, such as calculating the median, quartiles, autocorrelation factors,
 and printing a histogram. It does not directly support fundamental statistics like mean
 and variance, though.
 
 These are provided through a separate class, :c:struct:`cmb_datasummary`, that computes
 running tallies for the first four moments in a single-pass algorithm whenever new data
-points are added to the summary, using the methods described by Pébay (https://www.osti.gov/servlets/purl/1028931)
+points are added to the summary, using the methods described by
+Pébay (https://www.osti.gov/servlets/purl/1028931)
 and Meng (https://arxiv.org/pdf/1510.04923).
 
 The reason for this is that we do not always need to keep all individual sample values,
 so we do not want to take the memory penalty of storing them if a simple summary is
 enough. In those cases, just adding the successive samples to a
-:c:struct:`cmb_datasummary` is
-more efficient. If we need both, collect the samples in a :c:struct:`cmb_dataset` and use the
-function :c:func:`cmb_dataset_summarize` to calculate a data summary object from the
-complete data set.
+:c:struct:`cmb_datasummary` is more efficient. If we need both, collect the samples in
+a :c:struct:`cmb_dataset` and use the function :c:func:`cmb_dataset_summarize` to
+calculate a data summary object from the complete data set.
 
 The basic dataset is extended to a time series by the :c:struct:`cmb_timeseries` class.
-It adds
-a second ``double`` to make each sample an ``(x, t)`` pair. In addition, it calculates a
-third value ``w`` (for *weight*) that represents the time interval between one sample
-and the next.
+It adds a second ``double`` to make each sample an ``(x, t)`` pair. In addition, it
+calculates a third value ``w`` (for *weight*) that represents the time interval between
+one sample and the next.
 
 Recall that in a discrete event simulation, nothing happens except at the event times,
 which can have arbitrary time intervals between them. We may need to handle time
@@ -1147,20 +1145,20 @@ any way it wants.
 Two less obvious features to be aware of, perhaps also less useful, but still:
 
 * You can use different trial functions per trial. If the trial function argument to
-  :c:func:`cimba_run_experiment` is ``NULL``, it will instead take the first 64 bits of your
-  trial struct as a pointer to the trial function to be used for this particular
+  :c:func:`cimba_run_experiment` is ``NULL``, it will instead take the first 64 bits of
+  your   trial struct as a pointer to the trial function to be used for this particular
   trial. You could have different trial functions for every trial if you
   want. Of course, if the trial function argument to :c:func:`cimba_run_experiment()` is
   ``NULL`` and the first 64 bits of your trial structure do *not* contain a valid function
   address, your program will promptly crash with a segmentation fault.
 
-* :c:func:`cimba_run_experiment()` does not even care if the trial functions it executes is a
-  simulation or something else. You could feed it some array of parameter values and a
-  pointer to some function that does something with whatever those parameter values
+* :c:func:`cimba_run_experiment()` does not even care if the trial functions it executes
+  is a simulation or something else. You could feed it some array of parameter values and
+  a pointer to some function that does something with whatever those parameter values
   indicate. It is just a wrapper to a worker pool of pthreads and will happily
   multithread whatever task you ask it to. The main design challenge with Cimba was to
-  construct a discrete event simulation engine that *can* be run in that
-  multithreaded wrapper.
+  construct a discrete event simulation engine that *can* be run in the multithreaded
+  wrapper, not constructing the wrapper as such.
 
 .. _background_benchmark:
 
