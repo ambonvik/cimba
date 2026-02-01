@@ -649,9 +649,9 @@ Our asserts come in two flavors: the :c:macro:`cmb_assert_debug()` and
 There is also a :c:macro:`cmb_assert()` macro, but it is just a shorthand for
 :c:macro:`cmb_assert_debug()`.
 
-*Debug* asserts are used at the development stage to ensure
-that everything is working as expected, even if the code to check is time-consuming.
-Inside Cimba, you will asserts that call dedicated predicate functions to validate
+*Debug* asserts are used at the development stage to ensure that everything is working as
+expected, even if the code to check it is time-consuming.
+Inside Cimba, you will find asserts that call dedicated predicate functions to validate
 whether the coroutine stacks are valid, if the event queue heap condition is satisfied,
 and so forth. Like the standard C ``assert()`` macro, the debug asserts vanish from the
 code if the preprocessor symbol ``NDEBUG`` is defined. Disabling the debug asserts
@@ -662,8 +662,8 @@ function to work correctly. These remain in the code even with ``-DNDEBUG``, sin
 express the contracts towards surrounding code such as valid ranges for input values.
 These are typically simple and fast statements. If you are absolutely certain that your
 model is working correctly and that all your inputs are valid, you can squeeze out another
-slight speed improvement by defining the preprocessor symbol ``NASSERT`` and making
-these vanish as well.
+slight speed improvement (about 10 %) by defining the preprocessor symbol ``NASSERT`` and
+making these vanish as well.
 
 As an illustration, consider the function :c:func:`cmb_random_uniform()`:
 
