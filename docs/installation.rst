@@ -84,7 +84,7 @@ from the ``mingw64\bin`` directory to the same directory as your executable file
 Verifying your installation
 ---------------------------
 
-After installation, we can write a C program like 
+After installation, we can write a C program like
 `[tutorial/hello.c] <https://github.com/ambonvik/cimba/blob/main/tutorial/hello.c>`_:
 
 .. code-block:: c
