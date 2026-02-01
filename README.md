@@ -287,8 +287,9 @@ can find [more details here](https://cimba.readthedocs.io/en/latest/background.h
 ![Stackful coroutines](images/stack_1.png)
 
 The C code is liberally sprinkled with `assert` statements testing for preconditions,
-invariants, and postconditions wherever possible, applying Design by Contracts 
-principles for reliability. The Cimba library contains 958 asserts in 7132 lines of 
+invariants, and postconditions wherever possible, applying 
+[Design by Contract](https://en.wikipedia.org/wiki/Design_by_contract) 
+principles for high reliability. The Cimba library contains 958 asserts in 7132 lines of 
 C code, for a very high assert density of 13.4 %. These are custom-written 
 assert macros that will report 
 what trial, what process, the simulated time, the function and line number, and even the 
@@ -304,7 +305,7 @@ all lower level functionality works as expected before moving on to higher level
 You will find the test files corresponding to each code module in the [test](./test) 
 directory.
 
-But do read the [LICENSE](LICENSE). We do not give any warranties here.
+But do read the [LICENSE](LICENSE). We are not giving any warranties here.
 
 ### Object-oriented? In C and assembly? Why not just use C++?
 Long story made short: C++ exception handling is not very friendly to the stackful 
