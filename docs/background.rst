@@ -1182,6 +1182,10 @@ overall Python philosophy, while Cimba (being a C library) has a natural emphasi
 speed. Python processes are based on stackless generators, while Cimba has its
 stackful coroutine processes. The current SimPy version is 4.1.1.
 
+For comparable multithreading, SimPy needs to be combined with the Python
+``multiprocessing`` package. In the following, when referring to SimPy in a
+multithreading context, this should be understood as SimPy + multiprocessing.
+
 In the `benchmark <https://github.com/ambonvik/cimba/tree/main/benchmark>`_ directory,
 you will find examples of the same simulated scenario
 implemented in SimPy and Cimba. A complete multithreaded M/M/1 queue simulation could
@@ -1387,6 +1391,11 @@ call various other functions, the SimPy code could become much harder to follow.
 leave it as an exercise for the interested reader to build our :ref:`entertainment park
 tutorial <tut_3>` or :ref:`LNG harbor tutorial <tut_4>` in SimPy for a similar
 benchmarking.
+
+We compile for speed, using gcc v 15.2.1 with options ``-O3 -flto=auto -fuse-linker-plugin
+-DNDEBUG -DNASSERT -DLOGINFO`` as appropriate for already well-tested code. The host
+system is a PC with AMD Threadripper 3970x CPU and 128 GB RAM. The OS is Arch Linux.
+For SimPy, we use Python v 3.14.
 
 Both programs produce a one-liner output similar to this:
 
