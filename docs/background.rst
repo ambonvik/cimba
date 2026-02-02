@@ -1179,17 +1179,16 @@ The most relevant comparison for Cimba is probably the Python package SimPy
 since it provides similar functionality to Cimba, only with Python as its base language
 instead of C. SimPy emphasizes ease of use as a main design objective, following the
 overall Python philosophy, while Cimba (being a C library) has a natural emphasis on
-speed. Python processes are based on stackless generators, while Cimba has its
+speed. SimPy processes are based on stackless generators, whereas Cimba has its
 stackful coroutine processes. The current SimPy version is 4.1.1.
 
-For comparable multithreading, SimPy needs to be combined with the Python
+For comparable multithreading functionality, SimPy needs to be combined with the Python
 ``multiprocessing`` package. In the following, when referring to SimPy in a
 multithreading context, this should be understood as SimPy + multiprocessing.
 
 In the `benchmark <https://github.com/ambonvik/cimba/tree/main/benchmark>`_ directory,
-you will find examples of the same simulated scenario
-implemented in SimPy and Cimba. A complete multithreaded M/M/1 queue simulation could
-look like this in SimPy,
+you will find examples of the same simulated scenario implemented in SimPy and Cimba.
+A complete multithreaded M/M/1 queue simulation could look like this in SimPy,
 `benchmark/MM1_multi.py <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_multi.py>`_
 
 .. code-block:: Python
@@ -1392,10 +1391,20 @@ leave it as an exercise for the interested reader to build our :ref:`entertainme
 tutorial <tut_3>` or :ref:`LNG harbor tutorial <tut_4>` in SimPy for a similar
 benchmarking.
 
-We compile for speed, using gcc v 15.2.1 with options ``-O3 -flto=auto -fuse-linker-plugin
--DNDEBUG -DNASSERT -DLOGINFO`` as appropriate for already well-tested code. The host
-system is a PC with AMD Threadripper 3970x CPU and 128 GB RAM. The OS is Arch Linux.
-For SimPy, we use Python v 3.14.
+Moreover, Cimba's stackful coroutines allow calls to context-switching functions (like
+``cmb_process_hold()`` or ``cmb_resource_acquire()``) from arbitrary deep within
+function call hierarchies. Control will leave the call stack where it is and pick up
+again from the same point when control is passed back into that ``cmb_process``. This
+makes for a very natural way to express agentic behavior by simulated processes. The
+stackless Python ``generator`` that SimPy processes are based on cannot do this.
+
+We compile the Cimba code for speed, using gcc v 15.2.1 with options ``-O3 -flto=auto
+-fuse-linker-plugin -DNDEBUG -DNASSERT -DLOGINFO`` as appropriate for already well-tested
+code (i.e., everything uncommented in
+`the top level meson.build <https://github.com/ambonvik/cimba/blob/main/meson.build>`_).
+For SimPy, we use Python v 3.14.2. The host system is built around a ASRock TRX40
+Taichi motherboard with an AMD Threadripper 3970x CPU and 128 GB RAM. The OS is Arch
+Linux.
 
 Both programs produce a one-liner output similar to this:
 
@@ -1404,26 +1413,20 @@ Both programs produce a one-liner output similar to this:
     Average system time 10.000026 (n 100, conf.int. 9.964877 - 10.035176, expected 10.000000)
 
 However, the Cimba experiment can run its 100 trials in 0.56 seconds, while the SimPy
-version takes 25.5 seconds to do the same thing. Cimba runs about *45 times faster*
-with all available cores in use.
+version takes 25.5 seconds to do the same thing with all available cores in use. Cimba
+runs this scenario about *45 times faster* than SimPy. Equivalently, the Cimba running
+time is *97.8 % less* than SimPy's for this simple model.
 
-Cimba processes 25 % more simulated events per second on a single core (approx 20
+Cimba even processes 25 % more simulated events per second *on a single core* (approx 20
 million events / second) than what SimPy can do if it has all 64 logical cores to itself
 (approx 16 million events / second).
 
 .. image:: ../images/Speed_test_AMD_3970x.png
 
-Moreover, Cimba's stackful coroutines allow calls to context-switching functions (like
-``cmb_process_hold()`` or ``cmb_resource_acquire()``) from arbitrary deep within
-function call hierarchies. Control will leave the call stack where it is and pick up
-again from the same point when control is passed back into that ``cmb_process``.
-The stackless Python ``generator`` that SimPy processes are based on cannot do this.
-
 Our (admittedly biased) view is that SimPy is good for simple one-off simulations where
-learning curve and development time are the critical constraints, perhaps as part of a
-data analyst's Jupyter notebook, while Cimba is better for larger, more complex, and
-more long-lived models where software engineering, maintainability, and efficiency become
-important.
+learning curve and development time are the critical constraints, while Cimba is better
+for larger, more complex, and more long-lived models where software engineering,
+maintainability, and efficiency become important. This aligns with our project goals.
 
 .. _background_name:
 
