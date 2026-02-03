@@ -61,7 +61,7 @@ version 2.0, but it was never released to the public.
 After that, not much happened to it, until I decided to dust it off and publish it as
 open source many years later. The world had evolved quite a bit in the meantime, so the
 code required another comprehensive re-write to exploit the computing power in modern
-CPU's, this time coded in C17 and assembly with Posix pthreads concurrency. This is the
+CPU's, this time coded in C17 and assembly with POSIX pthreads concurrency. This is the
 present Cimba 3.0.
 
 The goals for Cimba 3.0 are quite similar to those for earlier versions:
