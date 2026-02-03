@@ -131,6 +131,7 @@ cmi_coroutine_trampoline:
     ; Push RDI to (un)align stack to 16-byte boundary since the jmp will
     ; not be storing a return pointer before the callee stack frame.
     push rdi
+    ; Load the coroutine return value as the argument to the exit function.
     mov rdi, rax
     ; Jump to whatever exit function was given when setting up the trampoline.
     jmp r15
