@@ -63,7 +63,7 @@ extern void *cmi_coroutine_stacklimit(void);
  * Here, we set up a context with the launcher/trampoline function as the
  * "return" address and register values that prepare for launching the
  * coroutine function cr_foo(coro, arg) on first transfer, and for calling
- * cmi_coroutine_exit to catch its exit value if the coroutine function ever
+ * cm_coroutine_exit to catch its exit value if the coroutine function ever
  * returns.
  *
  * In our coroutines:
@@ -113,7 +113,7 @@ bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
 void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
-    cmb_assert_debug(cp->stack != NULL),
+    cmb_assert_debug(cp->stack != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
 
     /* Make sure we can recognize if something overwrites the end of stack */
@@ -176,7 +176,7 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 
     /* Place address of coroutine function in R12 */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)(cp->cr_foo);
+    *(uint64_t *)stkptr = (uintptr_t)(cp->cr_function);
 
     /* Place address of coroutine struct in R13 */
     stkptr -= 8u;
