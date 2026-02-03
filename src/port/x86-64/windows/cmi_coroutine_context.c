@@ -63,7 +63,7 @@ extern void *cmi_coroutine_stacklimit(void);
  * Here, we set up a context with the launcher/trampoline function as the
  * "return" address and register values that prepare for launching the
  * coroutine function cr_foo(coro, arg) on first transfer, and for calling
- * cmb_coroutine_exit to catch its exit value if the coroutine function ever
+ * cmi_coroutine_exit to catch its exit value if the coroutine function ever
  * returns.
  *
  * In our coroutines:
