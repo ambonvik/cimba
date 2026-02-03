@@ -107,7 +107,7 @@ cmi_coroutine_context_switch:
 ;   R12 - coroutine function address
 ;   R13 - its first argument cp, pointer to this coroutine
 ;   R14 - its second argument arg, pointer to void
-;   R15 - address of coroutine exit function, usually cmb_coroutine_exit
+;   R15 - address of coroutine exit function, usually cmi_coroutine_exit
 ;
 cmi_coroutine_trampoline:
     ; Is not a leaf function, needs to obey Linux ABI calling convention.
