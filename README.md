@@ -309,8 +309,8 @@ But do read the [LICENSE](LICENSE). We are not giving any warranties here.
 
 ### Object-oriented? In C and assembly? Why not just use C++?
 Long story made short: C++ exception handling is not very friendly to the stackful 
-coroutines we need in Cimba. The stackless coroutines in C++ are entirely different from 
-what we need.
+coroutines we need in Cimba. The stackless coroutines in C++ are not the coroutines 
+that we are looking for.
 
 C++ has also become a large and feature-rich language, where it will be
 hard to ensure compatibility with every possible combination of features.
