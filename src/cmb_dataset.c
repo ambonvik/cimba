@@ -436,7 +436,7 @@ static void data_print_chars(FILE *fp,
                              const uint16_t repeats)
 {
     for (uint16_t ui = 0; ui < repeats; ui++) {
-        const int r = fputc(c, fp);;
+        const int r = fputc(c, fp);
         cmb_assert_release(r == c);
     }
 }
