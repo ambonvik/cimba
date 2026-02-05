@@ -1635,7 +1635,7 @@ the server class:
         free(sp);
     }
 
-The most important function is the server process function itself. It gets a group of
+The most important member function is the server process function itself. It gets a group of
 suspended ``visitor`` processes from the priority queue, loads them into the attraction,
 holds them for the duration of the ride, stores some statistics in them, before
 resuming them as active processes. It can look like this:
@@ -1855,8 +1855,7 @@ brings some new features:
 To model the jockeying and reneging behavior, we use additional :c:struct:`cmb_process`
 methods: The process can schedule a future timeout event for itself by calling
 :c:func:`cmb_process_timer_set()`. When the timer event occurs, the process will be
-interrupted
-from whatever it is doing with whatever signal the timer was set to send, with
+interrupted from whatever it is doing with whatever signal the timer was set to send, with
 :c:macro:`CMB_PROCESS_TIMEOUT` as a predefined possibility. By setting a timeout before
 some ``_acquire()``, ``_get()``, or ``_wait()`` call, the process can abort the wait when
 patience runs out.
@@ -1874,17 +1873,18 @@ until either going off or getting cancelled / cleared.
 
 Note also that one of the first things the server process does after getting a visitor
 from the priority queue is to call :c:func:`cmb_process_timers_clear()` to make sure it
-does
-not suddenly wake up and walk off in the middle of the ride. Conversely, one of the first
-things the visitor process does after waking up on a timer signal is to call
+does not suddenly wake up and walk off in the middle of the ride. Conversely, one of the
+first things the visitor process does after waking up on a timer signal is to call
 :c:func:`cmb_priorityqueue_cancel()` to make sure that it is not admitted on a ride
 when it actually is walking away from that attraction.
 
-The entire dynamic of having the same object act as both an active, opinionated process
-(or agent) interleaved by it acting as a passive object being handled by other
+The entire dynamic of having the same process object both act as an active, opinionated
+agent in its simulated world, and act as a passive object being handled by other
 processes is enabled by our processes being stackful coroutines. When suspended, their
 entire state is safely stored on their own execution stack until it is resumed from the
-same point where it left off.
+same point where it left off. Our processes are first-class objects that can be passed
+around as function arguments and return values, stored and retrieved, created and destroyed
+at runtime.
 
 Also note that the ``visitor`` process ends by placing itself in the
 :c:struct:`cmb_objectqueue` of departed visitors before exiting. That way, a departure
@@ -3049,7 +3049,7 @@ one does not make much sense even at the highest traffic scenario. The SPA shoul
 rather consider building another one or two small berths next.
 
 This concludes our final tutorial. The code is in
-`tutorial/tut_4_2.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_2.c>_.
+`tutorial/tut_4_2.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_2.c>`_.
 We have demonstrated the very powerful
 :c:struct:`cmb_condition` allowing processes to wait for arbitrary combinations of
 conditions in the simulated world. We also used the internal :c:struct:`cmi_slist` and
