@@ -12,11 +12,10 @@ Implementation status:
 * ARM: Planned
 
 Cimba models run 40-50 times faster than SimPy equivalents. The chart below shows the 
-number of simulated 
-events processed per second of wall clock time on a simple M/M/1 queue implemented in 
-SimPy and Cimba. Cimba runs this scenario 45 times faster than SimPy with all CPU cores 
-in use. _Cimba runs 25 % faster (20M events/sec) on a single core than SimPy using 
-all 64 cores (16M events/sec)._
+number of simulated events processed per second of wall clock time on a simple M/M/1 
+queue implemented in SimPy and Cimba. Cimba runs this scenario 45 times faster than 
+SimPy with all CPU cores in use. _Cimba runs 25 % faster (20M events/sec) on a single 
+core than SimPy using all 64 cores (16M events/sec)._
 
 ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
 
@@ -37,11 +36,12 @@ It is fast, powerful, reliable, and free.
 
   * Processes implemented as asymmetric stackful coroutines. A simulated process can
     yield and resume control from any level of a function call stack, allowing 
-    well-structured coding of arbitrarily large simulation models. As a first-order 
-    object, a simulated process can be passed as an argument to other functions, 
-    returned from functions, and stored in data structures, allowing rich and complex 
-    interactions between processes.
-  
+    well-structured coding of arbitrarily large simulation models. This makes it 
+    natural to express agentic behavior by conceptually placing oneself "inside" that 
+    process and describing what it does. A simulated process can run in an infinite loop 
+    or act as a one-shot customer passing through the system, being both an active 
+    agent and a passive object as needed.
+
   * Pre-packaged process interaction mechanisms like resources, resource pools, buffers, 
     object queues, priority queues, and timeouts. Cimba also provides condition variables 
     where your simulated processes can wait for arbitrarily complex conditions to become 
