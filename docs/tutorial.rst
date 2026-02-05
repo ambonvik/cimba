@@ -167,8 +167,9 @@ Note that there are matching ``_terminate()`` calls for each ``_initialize()`` a
 matching ``_destroy()`` for each ``_create()``. These functions un-initialize and
 and de-allocate the objects that were allocated and initialized.
 
-We can now run our first simulation and see what happens. It will generate
-output like this:
+We can now run
+`our first simulation <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_1.c>`_
+and see what happens. It will generate output like this:
 
 .. code-block:: none
 
