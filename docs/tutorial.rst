@@ -350,7 +350,9 @@ moving themselves up or down in various queues. Cimba does not attempt to
 adjust any priorities by itself, it just acts on whatever the priorities are,
 and reshuffles any existing queues as needed if priorities change.
 
-We compile and run, and get something like this:
+We compile and run
+`our revised code <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_2.c>`_
+and get something like this:
 
 .. code-block:: none
 
@@ -540,7 +542,9 @@ We turn off our user-defined messages like this:
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG1);
 
-As you would expect, this version of the program produces no output.
+As you would expect,
+`this version of the program <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_3.c>`_
+produces no output.
 
 Collecting and reporting statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -644,6 +648,8 @@ Output:
       19  -0.022                                 =|
       20   0.025                                  |=
     --------------------------------------------------------------------------------
+
+The code for this stage `can be found here. <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_4.c>`_
 
 This is not quite publication-ready graphics, but can be useful at the model
 development stage we are at now: We have numbers. Theory predicts an average
