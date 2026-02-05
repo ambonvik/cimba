@@ -147,9 +147,9 @@ and the event queue is ready, so they can just start immediately.
 
 Notice the pattern here: Objects are first *created*, then *initialized* in a
 separate call. The create method allocates heap memory for the object, the initialize
-method makes it ready for use. Some objects, such as the event queue, already
-exist in pre-allocated memory and cannot be created. There are no
-``cmb_event_queue_create()`` or ``cmb_event_queue_destroy()`` functions.
+method makes it ready for use. Some objects, such as the pseudo-random number generator
+and the event queue, already exist in pre-allocated memory and cannot be created. There
+are no ``cmb_event_queue_create()`` or ``cmb_event_queue_destroy()`` functions.
 
 In later examples, we will also
 see cases where some Cimba object is simply declared as a local variable and
