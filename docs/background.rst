@@ -51,7 +51,7 @@ node to dole out the jobs and collect the statistics.
 
 This was lashed together at the operating system process level using ``rsh`` and a Perl
 script to control the individual simulations on a cluster of Sun Sparcstations across
-MIT campus, and, just to make a point, on a IBM Pentium PC wunning Linux and one
+MIT campus, and, just to make a point, on a IBM Pentium PC running Linux and one
 Sparcstation back at the Norwegian Defence Research Establishment for an architecture
 independent and trans-Atlantic distributed simulation model. At the same time, the core
 discrete event simulation engine was rewritten in ANSI C with a binary heap event queue.
