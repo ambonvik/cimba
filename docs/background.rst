@@ -91,8 +91,9 @@ I believe that Cimba 3.0 meets these goals and hope you will agree.
 Coroutines revisited
 --------------------
 
-It is well known that the Simula programming language introduced object-oriented
-programming, see https://en.wikipedia.org/wiki/Simula for the story. For those of us that
+It is well known that
+`the Simula programming language <https://en.wikipedia.org/wiki/Simula>`_
+introduced object-oriented programming. For those of us that
 were lucky enough (or just plain old enough) to actually have programmed in Simula67, the
 object-orientation with classes and inheritance was only part of the experience, and
 perhaps not the most important part.
@@ -169,10 +170,10 @@ The processes understand the simulation time and may ``hold()`` for a certain
 amount of simulated time. Underneath this call are the asymmetric coroutine primitives of
 :c:func:`cmi_coroutine_yield` (to the simulation dispatcher) and
 :c:func:`cmi_coroutine_resume`
-(when the simulation clock has
-advanced by this amount). Processes can also ``acquire()`` and ``release()`` resources,
-wait for some other process to finish, interrupt or stop other processes, wait for some
-specific event, or even wait for some arbitrarily complex condition to become true.
+(when the simulation clock has advanced by this amount). Processes can also ``acquire()``
+and ``release()`` resources, wait for some other process to finish, interrupt or stop
+other processes, wait for some specific event, or even wait for some arbitrarily complex
+condition to become true.
 
 Since the asymmetric coroutine process concept is fundamental to how Cimba
 works, we will now look closely at what happens during a context switch between processes.

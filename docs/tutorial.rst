@@ -1532,8 +1532,9 @@ This completes our second tutorial, demonstrating how to "``_acquire()`` and
 ``_release()`` resources, and to use direct process interactions like
 :c:func:`cmb_process_interrupt()` and :c:func:`cmb_resourcepool_preempt`.
 We also have mentioned, but not demonstrated :c:func:`cmb_process_wait_process()`
-and :c:func:`cmb_process_wait_event()`. We encourage you to look up these in the API
-reference documentation next.
+and :c:func:`cmb_process_wait_event()`. We encourage you to look up these in
+`the API reference documentation <https://cimba.readthedocs.io/en/latest/api/library_root.html>`_
+next.
 
 .. _tut_3:
 
