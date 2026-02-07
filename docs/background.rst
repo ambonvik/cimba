@@ -39,15 +39,15 @@ forward from the earlier C++ work at NDRE. It had a collection of standard rando
 generators and distributions, and used a linked list for its main event queue. It did the
 job but could be improved. In retrospect, I consider this Cimba version 1.0.
 
-For `my PhD thesis research <https://web.mit.edu/org/m/manuf-sys/www/amb.summary.html>`_
-at the `MIT Operations Research Center <https://orc.mit.edu>`_, I needed to run *many*
-simulations with various parameter combinations and replications. By then, I had realized
-that parallelizing a discrete event simulation model is trivially simple if one looks at
-it with a telescope instead of using a microscope. The individual replications are *meant*
-to be independent identically distributed trials, implying that there is nearly no
-interaction between them at runtime. One can just fork off as many replications in
-parallel as one has computing resources for, and use one computing node to dole out the
-jobs and collect the statistics.
+For `my PhD thesis research <https://dspace.mit.edu/handle/1721.1/11038>`_
+at the `MIT Operations Research Center <https://orc.mit.edu>`_, I needed to run
+`*many* simulations with various parameter combinations and replications <https://web.mit.edu/org/m/manuf-sys/www/amb.summary.html>`_.
+By then, I had realizedthat parallelizing a discrete event simulation model is trivially
+simple if one looks at it with a telescope instead of using a microscope. The individual
+replications are *meant* to be independent identically distributed trials, implying that
+there is no interaction between them at runtime. One can just fork off as many
+replications in parallel as one has computing resources for, and use one computing node to
+dole out the jobs and collect the statistics.
 
 This was lashed together at the operating system process level using ``rsh`` and a Perl
 script to control the individual simulations on a cluster of Sun Sparcstations across
