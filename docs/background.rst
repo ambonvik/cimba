@@ -75,7 +75,7 @@ The goals for Cimba 3.0 are quite similar to those for earlier versions:
 * Portability, running both on Linux and Windows, initially limited to the AMD64 /
   x86-64 architecture and GCC-like compilers, with more architectures planned.
 
-* Expressive power, combining process-oriented and event-oriented simulation
+* Expressive power, combining process- and event-oriented simulation
   worldviews with a comprehensive collection of state-of-the-art pseudo-random number
   generators and distributions.
 
@@ -84,7 +84,7 @@ The goals for Cimba 3.0 are quite similar to those for earlier versions:
   `Licence <https://github.com/ambonvik/cimba/blob/main/LICENSE>`_,
   we are not making any warranties here).
 
-I believe that Cimba 3.0 meets these goals and hope you will agree.
+I believe that Cimba 3.0 meets these goals. I hope you will agree.
 
 .. _background_coroutines:
 
