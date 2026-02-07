@@ -12,7 +12,7 @@ necessary background for the project goals.
 Project history and goals
 -------------------------
 
-Cimba 3.0.0 was released on GitHub as public beta in late 2025, but as the version number
+Cimba 3.0.0 was released on GitHub as public beta in late 2025 but, as the version number
 indicates, there is some history before this first public release.
 
 The earliest ideas that eventually became Cimba date to work done at the
