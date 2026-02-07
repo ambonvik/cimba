@@ -15,8 +15,9 @@ Project history and goals
 Cimba 3.0.0 was released on GitHub as public beta in late 2025, but as the version number
 indicates, there is some history before this first public release.
 
-The earliest ideas that eventually became Cimba date to work done at the Norwegian Defence
-Research Establishment in the late 1980s, towards the end of the Cold War. I built,
+The earliest ideas that eventually became Cimba date to work done at the
+`Norwegian Defence Research Establishment <https://en.wikipedia.org/wiki/Norwegian_Defence_Research_Establishment>`_
+in the late 1980s, towards the end of the Cold War. I built,
 maintained, and ran discrete event simulation models in languages like Simscript and
 Simula67. Encountering Simula67's coroutines and object-orientation was revelatory in its
 essential *rightness*. However, Simula67 was still severely limited in many other respects
@@ -31,12 +32,12 @@ person about the inconsistent to non-existent support for Simula-like coroutines
 a conference in Helsingør, Denmark, probably in 1991. He seemed to agree but I silently
 resolved to build my next simulation model in pure K&R C.
 
-That opportunity arose at MIT around 1994, where I needed a discrete event simulation
-model for cross-checking analytical models of manufacturing systems. For perhaps obvious
-reasons, this was a clean sheet design with no code carried forward from the earlier
-C++ work at NDRE. It had a collection of standard random number generators and
-distributions, and used a linked list for its main event queue. It did the job, running
-on a Linux PC, but could be improved. In retrospect, I consider this Cimba version 1.0.
+That opportunity arose at `MIT <https://www.mit.edu>`_ around 1994, where I needed a
+discrete event simulation model for cross-checking analytical models of manufacturing
+systems. For perhaps obvious reasons, this was a clean sheet design with no code carried
+forward from the earlier C++ work at NDRE. It had a collection of standard random number
+generators and distributions, and used a linked list for its main event queue. It did the
+job but could be improved. In retrospect, I consider this Cimba version 1.0.
 
 For `my PhD thesis research <https://web.mit.edu/org/m/manuf-sys/www/amb.summary.html>`_
 at the `MIT Operations Research Center <https://orc.mit.edu>`_, I needed to run *many*
