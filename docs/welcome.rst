@@ -105,7 +105,7 @@ For example, you can use it to model:
 
 * ...and many other application domains along similar lines.
 
-See the tutorials for illustrations of both expressive power and how to use
+See :ref:`the tutorials <tutorial>` for illustrations of both expressive power and how to use
 it for multi-threaded computing power.
 
 If you look under the hood, you will also find reusable internal components
