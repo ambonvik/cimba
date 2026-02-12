@@ -2205,7 +2205,7 @@ version will be our final Cimba tutorial.
 
 We will use the occasion to introduce the extremely powerful :c:struct:`cmb_condition`
 that allows our processes to make arbitrarily complex ``wait`` calls. We will also show
-how to use some of the Cimba internal building blocks, like the ``cmi_slist` singly
+how to use some of the Cimba internal building blocks, like the ``cmi_slist`` singly
 linked list and the ``cmi_hashheap`` for various collections of simulation objects.
 
 Since a simulation model only should be built in order to answer some specific
