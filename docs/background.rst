@@ -374,8 +374,8 @@ provide directly:
 
 * *Automatic initialization and destruction* for objects that go in and out of scope.
   In C++, Resource Allocation Is Initialization (RAII). In C, it is not. (RAINI?) This
-  requires us to distinguish clearly between allocating, initializing, terminating, and
-  destroying an object. The allocate/destroy pair handles raw memory allocation. For
+  requires us to distinguish clearly between creating, initializing, terminating, and
+  destroying an object. The create/destroy pair handles raw memory allocation. For
   objects declared as local variables or implicitly as parent class objects, these are
   not called. The initialize/terminate pair makes the allocated memory space ready for
   use as an actual object and handles any necessary clean-up (such as deallocating
@@ -430,7 +430,7 @@ global to the simulated world, but local to each trial thread. Two simulations r
 in parallel on separate CPU cores exist in the same shared memory space, but do not
 interact or influence each other. They are parallel universes.
 
-We define an *event* as a triple consisting of a pointer to a function that takes two
+We define an event as a triple consisting of a pointer to a function that takes two
 pointers to ``void`` as arguments and does not return any value, and the two pointers
 to ``void`` that will become its arguments. The function is an *action*, the two
 arguments its *subject* and *object*. The event is then executing the one-liner
@@ -446,8 +446,8 @@ that actually resumes the process. This avoids long and complicated call stacks.
 
 This also happens to be the reason why our events need to be (at least) a triple: The
 event to reactivate some process needs to contain the reactivation function, a pointer to
-the process, and a pointer to the context argument for its ``resume()`` call,
-``(*event)(me, context)``.
+the process, and a pointer to the ``void*`` message argument for its ``resume()`` call,
+``(*resume)(me, msg)``.
 
 Events are instantaneous in simulated time and always execute on the main stack directly
 from the dispatcher. If an event function itself tries to call
@@ -463,7 +463,9 @@ An event is not even an object. It is ephemeral; once it has occurred, it is gon
 You cannot take a pointer to an event. You can schedule an event as a triple ``(action,
 subject, object)`` to occur at a certain point in time with a certain priority, and you
 can cancel a scheduled event, reschedule it, or change its priority by referring to its
-*handle*, but it is still not an object.
+*handle*, but it is still not an object. It only exists inside the event queue until it
+occurs. In computer sciency terms, it could be considered
+[a closure](https://en.wikipedia.org/wiki/Closure_(computer_programming)).
 
 The event queue also provides wildcard functions to search for, count, or cancel entries
 that match some combination of (action, subject, object). For this purpose,
