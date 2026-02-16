@@ -20,14 +20,23 @@ cc = meson.get_compiler('c')
 desired_flags = ['-Wno-pedantic',
                  '-D_POSIX_C_SOURCE=200809L',
                  '-fno-semantic-interposition',
-                 '-ftls-model=initial-exec',
                  '-O3',
-                 '-flto=auto',
-                 '-fuse-linker-plugin',
                  '-DNDEBUG',
 #                 '-DNLOGINFO',
 #                 '-DNASSERT'
 ]
+
+if host_machine.system() == 'linux'
+    desired_flags += ['-ftls-model=initial-exec',
+                 '-flto=auto',
+                 '-fuse-linker-plugin'
+    ]
+endif
+
+if host_machine.system() == 'windows'
+    desired_flags += ['-fno-plt']
+endif
+
 supported_flags = cc.get_supported_arguments(desired_flags)
 add_project_arguments(supported_flags, language : 'c', native : true)
 

@@ -115,6 +115,7 @@ cmake-build-*/
 
 # Meson
 build/
+buildDir/
 
 # Mongo Explorer plugin
 .idea/**/mongoSettings.xml
