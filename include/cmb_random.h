@@ -256,10 +256,11 @@ static inline double cmb_random_logistic(const double m, const double s)
  *
  * The mean, variance, and all higher moments are undefined.
  *
+ * Consists of the ratio of two standard normal distributed variables.
  * Occurs e.g., as the incidence of rays from a point source onto a line.
  * Substituting it for a normal distribution in some financial model gives
  * black swan events galore. Also known as the Lorentz distribution or the
- * Witch of Agnesi. It is evil. Mostly useful as a practical joke, or as a
+ * Witch of Agnesi. It is evil. Mostly useful as a practical joke or as a
  * pathological test case to break assumptions.
  *
  * See also https://en.wikipedia.org/wiki/Cauchy_distribution
