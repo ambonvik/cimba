@@ -84,8 +84,8 @@ extern const char *cimba_version(void);
  * variables to remember values between calls to some function. If you do, it
  * will easily lead to undefined behavior when different threads execute in
  * parallel in the same memory space, reading and writing the variable values in
- * unpredictable sequences. Using normal local variables and function arguments
- * is safe.
+ * unpredictable sequences. Using normal (auto) local variables and function
+ * arguments is safe.
  *
  * If you absolutely must have a global or static variable to be shared between
  * function calls, declare it `CMB_THREAD_LOCAL` to keep it local to that
