@@ -239,6 +239,30 @@ void run_mg1_trial(void *vtrl)
 /* Declare for later use, do not want to digress with that here */
 void write_gnuplot_commands(unsigned ncvs, const double *cvs);
 
+/* Testing the cimba_set_init_func and _exit_func */
+struct thread_context {
+    pthread_t thread_id;
+};
+
+void *thread_init_func(void)
+{
+    struct thread_context *ctx = malloc(sizeof *ctx);
+    ctx->thread_id = pthread_self();
+    // printf("Thread %p initiated\n", (void *)(ctx->thread_id));
+    // fflush(stdout);
+
+    return ctx;
+}
+
+void thread_exit_func(void *vctx)
+{
+    struct thread_context *ctx = vctx;
+    // printf("Thread %p terminated\n", (void *)(ctx->thread_id));
+    // fflush(stdout);
+
+    free(ctx);
+}
+
 /*
  * Our main() function, loading the experiment and reporting the outcome.
  */
@@ -273,6 +297,10 @@ int main(void)
             }
         }
     }
+
+    printf("Setting thread hooks\n");
+    cimba_set_thread_init_func(thread_init_func);
+    cimba_set_thread_exit_func(thread_exit_func);
 
     printf("Executing experiment\n");
     cimba_run_experiment(experiment,

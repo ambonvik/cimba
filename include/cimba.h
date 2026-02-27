@@ -145,4 +145,52 @@ extern void cimba_run_experiment(void *your_experiment_array,
                                  size_t trial_struct_size,
                                  cimba_trial_func *your_trial_func);
 
+/**
+* @brief Defines a prototype for an optional user-provided function to execute
+* when initializing a phtread.
+*/
+typedef void *(cimba_thread_init_func)(void);
+
+/**
+ * @brief Set the user-defined thread initialization function. This will be
+ *        called at the start of each new Cimba pthread. Used e.g. to determine
+ *        CUDA stream parameters for each pthread.
+ *
+ *        The init function's exit value will be stored as a thread local
+ *        variable and can be accessed from inside the pthread by calling
+ *        cimba_thread_context()
+ *
+ * @param func A function to be called when starting a new pthread
+ */
+void cimba_set_thread_init_func(cimba_thread_init_func *func);
+
+/**
+* @brief Defines a prototype for an optional user-provided function to execute
+* when terminating a phtread. The argument is a thread context created by a
+* previous thread init function, obtained by calling cimba_thread_context()
+*/
+typedef void (cimba_thread_exit_func)(void *context);
+
+/**
+ * @brief Set the user-defined thread termination function. This will be
+ *        called exiting each Cimba pthread. Used e.g. to clean up
+ *        CUDA stream parameters for each pthread.
+ *
+ *        The exit function's argument is a context previously created by a
+ *        thread init function, obtained by calling cimba_thread_context()
+ *
+ * @param func A function to be called before exiting a pthread
+ */
+extern void cimba_set_thread_exit_func(cimba_thread_exit_func *func);
+
+/**
+* @brief Access the thread context if one exists. Used e.g. for storing CUDA
+*        stream info for this thread.
+*
+* @return Thread context previously created by a thread init function,
+*           possibly NULL if no such function has been called.
+*/
+extern void *cimba_thread_context(void);
+
+
 #endif // CIMBA_CIMBA_H

@@ -6,7 +6,7 @@
  * worker threads equal to the number of logical cores on the machine, then let
  * these pull and execute trials from the experiment array.
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-2026.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,8 +37,13 @@ extern uint32_t cmi_cpu_cores(void);
 static uint64_t cmg_next_trial_idx;
 static void *cmg_experiment_arr;
 static size_t cmg_trial_struct_sz;
-static cimba_trial_func *cmg_trial_func;
+static cimba_trial_func *cmg_trial_func = NULL;
 static uint64_t cmg_total_trials;
+static cimba_thread_init_func *cmg_thread_init_func = NULL;
+static cimba_thread_exit_func *cmg_thread_exit_func = NULL;
+
+/* User-defined context per thread */
+CMB_THREAD_LOCAL void *cmi_thread_context = NULL;
 
 /*
  * cimba_version - Return the version string as const char *
@@ -46,6 +51,35 @@ static uint64_t cmg_total_trials;
 const char *cimba_version(void)
 {
     return CIMBA_VERSION;
+}
+
+/* Set the initialization callback function */
+void cimba_set_thread_init_func(cimba_thread_init_func *func)
+{
+    cmg_thread_init_func = func;
+}
+
+/* Set the termination callback function */
+void cimba_set_thread_exit_func(cimba_thread_exit_func *func)
+{
+    cmg_thread_exit_func = func;
+}
+
+/* Return whatever context was created by the cmg_thread_init_func, if any */
+void *cimba_thread_context(void)
+{
+    return cmi_thread_context;
+}
+
+/*
+ * thread_exit_wrapper - Internal function to simplify conditional pthread_cleanup_push
+ * with its strange unbalanced braces and other weirdness. It is cleaner like this.
+ */
+static void thread_exit_wrapper(void *context)
+{
+    if (cmg_thread_exit_func != NULL) {
+        cmg_thread_exit_func(context);
+    }
 }
 
 /*
@@ -58,8 +92,16 @@ static void *worker_thread_func(void *arg)
 {
     cmb_unused(arg);
 
+    /* Any user-defined initialization needed? */
+    if (cmg_thread_init_func != NULL) {
+        cmi_thread_context = cmg_thread_init_func();
+    }
+
     /* Make sure we free any thread local allocations before we exit */
     pthread_cleanup_push(cmi_mempool_cleanup, NULL);
+
+    /* Any user-defined cleanup needed? */
+    pthread_cleanup_push(thread_exit_wrapper, cmi_thread_context);
 
     while (true) {
         /* stdatomic.h broken on Windows, using gcc/clang intrinsic instead for now */
@@ -83,7 +125,8 @@ static void *worker_thread_func(void *arg)
         }
     }
 
-    /* Made it this far, execute the cleanup function before exiting */
+    /* Made it this far, execute the cleanup functionS before exiting */
+    pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
 
     return NULL;
