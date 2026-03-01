@@ -242,12 +242,16 @@ void write_gnuplot_commands(unsigned ncvs, const double *cvs);
 /* Testing the cimba_set_init_func and _exit_func */
 struct thread_context {
     pthread_t thread_id;
+    void *usrarg;
+    uint64_t tid;
 };
 
-void *thread_init_func(void)
+void *thread_init_func(void *usrarg, const uint64_t tid)
 {
     struct thread_context *ctx = malloc(sizeof *ctx);
     ctx->thread_id = pthread_self();
+    ctx->usrarg = usrarg;
+    ctx->tid = tid;
     // printf("Thread %p initiated\n", (void *)(ctx->thread_id));
     // fflush(stdout);
 
@@ -299,8 +303,7 @@ int main(void)
     }
 
     printf("Setting thread hooks\n");
-    cimba_set_thread_init_func(thread_init_func);
-    cimba_set_thread_exit_func(thread_exit_func);
+    cimba_set_thread_hooks(thread_init_func, NULL, thread_exit_func);
 
     printf("Executing experiment\n");
     cimba_run_experiment(experiment,

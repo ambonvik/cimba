@@ -40,6 +40,7 @@ static size_t cmg_trial_struct_sz;
 static cimba_trial_func *cmg_trial_func = NULL;
 static uint64_t cmg_total_trials;
 static cimba_thread_init_func *cmg_thread_init_func = NULL;
+static void *cmg_thread_init_usrarg = NULL;
 static cimba_thread_exit_func *cmg_thread_exit_func = NULL;
 
 /* User-defined context per thread */
@@ -54,15 +55,13 @@ const char *cimba_version(void)
 }
 
 /* Set the initialization callback function */
-void cimba_set_thread_init_func(cimba_thread_init_func *func)
+void cimba_set_thread_hooks(cimba_thread_init_func *initfunc,
+                            void *usrarg,
+                            cimba_thread_exit_func *exitfunc)
 {
-    cmg_thread_init_func = func;
-}
-
-/* Set the termination callback function */
-void cimba_set_thread_exit_func(cimba_thread_exit_func *func)
-{
-    cmg_thread_exit_func = func;
+    cmg_thread_init_func = initfunc;
+    cmg_thread_init_usrarg = usrarg;
+    cmg_thread_exit_func = exitfunc;
 }
 
 /* Return whatever context was created by the cmg_thread_init_func, if any */
@@ -90,11 +89,11 @@ static void thread_exit_wrapper(void *context)
  */
 static void *worker_thread_func(void *arg)
 {
-    cmb_unused(arg);
+    const uint64_t tid = (uint64_t)arg;
 
     /* Any user-defined initialization needed? */
     if (cmg_thread_init_func != NULL) {
-        cmi_thread_context = cmg_thread_init_func();
+        cmi_thread_context = cmg_thread_init_func(cmg_thread_init_usrarg, tid);
     }
 
     /* Make sure we free any thread local allocations before we exit */
