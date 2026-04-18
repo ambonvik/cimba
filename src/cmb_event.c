@@ -65,38 +65,6 @@ double cmb_time(void)
     return sim_time;
 }
 
-/*
- * heap_order_check - Test if heap_tag *a should go before *b. If so, return true.
- * Prioritization corresponds to the event queue order, where lower reactivation
- * times (dsortkey) go before higher, if equal, then higher priority (isortkey) before
- * lower, and if that also is equal, FIFO order based on handle value.
- */
-static bool heap_order_check(const struct cmi_heap_tag *a,
-                             const struct cmi_heap_tag *b)
-{
-    cmb_assert_debug(a != NULL);
-    cmb_assert_debug(b != NULL);
-
-    if (a->dsortkey < b->dsortkey) {
-        return true;
-    }
-    if (a->dsortkey > b->dsortkey) {
-        return false;
-    }
-
-    if (a->isortkey > b->isortkey) {
-        return true;
-    }
-    if (a->isortkey < b->isortkey) {
-        return false;
-    }
-
-    if (a->key < b->key) {
-        return true;
-    }
-
-    return false;
-}
 
 /*
  * cmb_event_queue_initialize - Set starting simulation time, allocate and initialize
@@ -108,7 +76,8 @@ void cmb_event_queue_initialize(const double start_time)
     sim_time = start_time;
 
     event_queue = cmi_hashheap_create();
-    cmi_hashheap_initialize(event_queue, QUEUE_INIT_EXP, heap_order_check);
+    /* Use default hashheap ordering, which happens to be right for this purpose */
+    cmi_hashheap_initialize(event_queue, QUEUE_INIT_EXP, NULL);
 }
 
 /*
