@@ -192,15 +192,16 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
-    cmb_logger_info(stdout, "Acquiring resource %s", rbp->name);
+    cmb_logger_info(stdout, "Acquiring resource %s",
+                    ((struct cmi_resourcebase *)rp)->name);
 
     struct cmb_process *pp = cmb_process_current();
     if (rp->holder == NULL) {
         /* Easy, grab it */
         resource_grab(rp, pp);
         record_sample(rp);
-        cmb_logger_info(stdout, "Acquired %s", rbp->name);
+        cmb_logger_info(stdout, "Acquired %s",
+            ((struct cmi_resourcebase *)rp)->name);
         return CMB_PROCESS_SUCCESS;
     }
 
@@ -214,12 +215,13 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
         /* All good, grab the resource */
         resource_grab(rp, pp);
         record_sample(rp);
-        cmb_logger_info(stdout, "Acquired %s", rbp->name);
+        cmb_logger_info(stdout, "Acquired %s",
+            ((struct cmi_resourcebase *)rp)->name);
     }
     else {
         cmb_logger_info(stdout,
                         "Did not acquire %s, code %" PRId64,
-                        rbp->name,
+                        ((struct cmi_resourcebase *)rp)->name,
                         ret);
     }
 
