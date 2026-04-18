@@ -168,7 +168,7 @@ bool cmi_dataset_is_max_heap(const uint64_t un,
 
             if (ucl < un) {
                 if (arr[ucur] < arr[ucl]) {
-                    free(queue);
+                    cmi_free(queue);
                     return false;
                 }
 
@@ -177,14 +177,14 @@ bool cmi_dataset_is_max_heap(const uint64_t un,
 
             if (ucr < un) {
                 if (arr[ucur] < arr[ucr]) {
-                    free(queue);
+                    cmi_free(queue);
                     return false;
                 }
 
                 queue[utail++] = ucr;
             }
         }
-        free(queue);
+        cmi_free(queue);
     }
 
     /* No evidence to the contrary */
