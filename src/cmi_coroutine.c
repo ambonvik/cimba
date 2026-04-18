@@ -22,11 +22,26 @@
 #include "cmb_assert.h"
 #include "cmi_coroutine.h"
 #include "cmi_config.h"
+#include "cmi_mempool.h"
 #include "cmi_memutils.h"
 
 /* The main and current coroutine pointers */
 CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_main = NULL;
 CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_current = NULL;
+
+/*
+ * Thread local memory pool for the coroutines themselves.
+ * Note that any user-derived subclasses will not benefit from this pool.
+ */
+CMB_THREAD_LOCAL struct cmi_mempool cmi_coroutinepool
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_coroutine), 4u);
+
+/*
+ * Thread local memory pool for the coroutine stacks. Start small,
+ * allocate more stacks as needed in powers of two.
+ */
+CMB_THREAD_LOCAL struct cmi_mempool cmi_coroutine_stackpool
+    = CMI_MEMPOOL_STATIC_INIT(CMI_COROUTINE_DEFAULT_STACKSIZE, 4u);
 
 /* Assembly function, see src/port/x86-64/Linux/cmi_coroutine_context_*.asm */
 extern void *cmi_coroutine_context_switch(void **old, void **new, void *ret);
@@ -46,12 +61,13 @@ static void create_main(void)
     cmb_assert_debug(coroutine_main == NULL);
 
     /* Allocate the coroutine struct, no parent or caller */
-    coroutine_main = cmi_malloc(sizeof(*coroutine_main));
+    coroutine_main = cmi_mempool_alloc(&cmi_coroutinepool);
     coroutine_main->parent = NULL;
     coroutine_main->caller = NULL;
 
     /* Using system stack, no separate allocation */
     coroutine_main->stack = NULL;
+    coroutine_main->pool_stack = false;
 
     /* Get current extent of main thread stack */
     cmi_coroutine_stacklimits(&(coroutine_main->stack_base), &(coroutine_main->stack_limit));
@@ -70,7 +86,7 @@ static void create_main(void)
  */
 struct cmi_coroutine *cmi_coroutine_create(void)
 {
-    struct cmi_coroutine *cp = cmi_malloc(sizeof(*cp));
+    struct cmi_coroutine *cp = cmi_mempool_alloc(&cmi_coroutinepool);
     cmi_memset(cp, 0, sizeof(*cp));
 
     return cp;
@@ -92,8 +108,21 @@ void cmi_coroutine_initialize(struct cmi_coroutine *cp,
     /* Initialize the coroutine struct and allocate the stack */
     cp->parent = NULL;
     cp->caller = NULL;
-    cp->stack = cmi_malloc(stack_size);
-    cp->stack_base = cp->stack + stack_size;
+    if (stack_size == CMI_COROUTINE_USE_STACKPOOL) {
+        /* Get a stack from the pool, implicitly default-sized */
+        cp->pool_stack = true;
+        cp->stack = cmi_mempool_alloc(&cmi_coroutine_stackpool);
+        cp->stack_base = cp->stack + CMI_COROUTINE_DEFAULT_STACKSIZE;
+    }
+    else {
+        /* Allocate with requested size */
+        cp->pool_stack = false;
+        cp->stack = cmi_malloc(stack_size);
+        cp->stack_base = cp->stack + stack_size;
+    }
+
+    cp->stack_limit = NULL;
+    cp->stack_pointer = NULL;
     cp->stack_limit = NULL;
     cp->stack_pointer = NULL;
 
@@ -128,8 +157,14 @@ void cmi_coroutine_terminate(struct cmi_coroutine *cp)
     cmb_assert_debug(cp != coroutine_current);
 
     cmb_assert_debug(cp->stack != NULL);
-    cmi_free(cp->stack);
-    cp->stack = NULL;
+    if (cp->pool_stack) {
+        cmi_mempool_free(&cmi_coroutine_stackpool, cp->stack);
+    }
+    else {
+        cmi_free(cp->stack);
+    }
+
+    cmi_memset(cp, 0, sizeof(*cp));
 }
 
 /*
@@ -142,7 +177,7 @@ void cmi_coroutine_destroy(struct cmi_coroutine *cp)
     cmb_assert_debug(cp != coroutine_main);
     cmb_assert_debug(cp != coroutine_current);
 
-    cmi_free(cp);
+    cmi_mempool_free(&cmi_coroutinepool, cp);
 }
 
 /*
@@ -198,6 +233,7 @@ void cmi_coroutine_exit(void *retval)
 
     cp->exit_value = retval;
     cp->status = CMI_COROUTINE_FINISHED;
+    /* End of the current execution fiber, transfer safely somewhere else */
     cmi_coroutine_transfer(cp->parent, retval);
 }
 
@@ -215,6 +251,7 @@ void cmi_coroutine_stop(struct cmi_coroutine *cp, void *retval)
         cmi_coroutine_exit(retval);
     }
     else {
+        /* Not the current coroutine, control continues in the caller */
         cp->exit_value = retval;
         cp->status = CMI_COROUTINE_FINISHED;
     }
