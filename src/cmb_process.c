@@ -32,20 +32,27 @@
  * Thread local mempools for assorted small objects.
  */
 CMB_THREAD_LOCAL struct cmi_mempool cmi_process_awaitabletags
-    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_awaitable), 128u);
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_awaitable), 4u);
 
 CMB_THREAD_LOCAL struct cmi_mempool cmi_process_holdabletags
-    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_holdable), 256u);
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_holdable), 4u);
 
 CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags
-    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_waiter), 256u);
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_waiter), 4u);
+
+/*
+ * Thread local memory pool for the processes themselves.
+ * Note that any user-derived process subclasses will not benefit from this.
+ */
+CMB_THREAD_LOCAL struct cmi_mempool cmi_processpool
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmb_process), 4u);
 
 /*
  * cmb_process_create - Allocate memory for the process.
  */
 struct cmb_process *cmb_process_create(void)
 {
-    struct cmb_process *pp = cmi_malloc(sizeof(*pp));
+    struct cmb_process *pp = cmi_mempool_alloc(&cmi_processpool);
     cmi_memset(pp, 0, sizeof(*pp));
 
     return pp;
@@ -56,10 +63,10 @@ struct cmb_process *cmb_process_create(void)
  * coroutine stack. Does not start the process yet.
  */
 void cmb_process_initialize(struct cmb_process *pp,
-                                       const char *name,
-                                       cmb_process_func procfunc,
-                                       void *context,
-                                       const int64_t priority)
+                            const char *name,
+                            cmb_process_func procfunc,
+                            void *context,
+                            const int64_t priority)
 {
     cmb_assert_release(pp != NULL);
 
@@ -67,7 +74,7 @@ void cmb_process_initialize(struct cmb_process *pp,
                        (cmi_coroutine_func *)procfunc,
                        context,
                        (cmi_coroutine_exit_func *)cmb_process_exit,
-                       CMB_PROCESS_STACK_SIZE);
+                       CMI_COROUTINE_USE_STACKPOOL);
 
     (void)cmb_process_name_set(pp, name);
     pp->priority = priority;
@@ -105,7 +112,7 @@ void cmb_process_destroy(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    cmi_free(pp);
+    cmi_mempool_free(&cmi_processpool, pp);
 }
 
 /*
@@ -141,13 +148,13 @@ void cmb_process_start(struct cmb_process *pp)
  * Note that the name is contained in a fixed size buffer and may be truncated
  * if too long to fit into the buffer.
  */
-void cmb_process_name_set(struct cmb_process *cp, const char *name)
+void cmb_process_name_set(struct cmb_process *pp, const char *name)
 {
-    cmb_assert_release(cp != NULL);
+    cmb_assert_release(pp != NULL);
     cmb_assert_release(name != NULL);
 
-    const int r = snprintf(cp->name, CMB_PROCESS_NAMEBUF_SZ, "%s", name);
-    cmb_assert_release(r >= 0);
+    const int r = snprintf(pp->name, CMB_PROCESS_NAMEBUF_SZ, "%s", name);
+    cmb_assert_release((r >= 0) && (r < CMB_PROCESS_NAMEBUF_SZ));
 }
 
 void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
@@ -296,9 +303,8 @@ static void wakeup_event_time(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
-    const int64_t sig = (int64_t)arg;
 
-    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64, pp->name, sig);
+    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64, pp->name, (int64_t)arg);
     cmb_assert_debug(!cmi_slist_is_empty(&(pp->awaits)));
     const uint64_t thisevent = cmb_event_current();
     const bool found = cmi_process_remove_awaitable(pp,
@@ -692,7 +698,9 @@ void cmb_process_exit(void *retval)
  */
 void cmb_process_stop(struct cmb_process *tgt, void *retval)
 {
-    cmb_assert_debug(tgt != NULL);
+    cmb_assert_release(tgt != NULL);
+    cmb_assert_release(tgt != cmb_process_current());
+
     cmb_logger_info(stdout, "Stop %s value %p", tgt->name, retval);
 
     if (cmb_process_status(tgt) != CMB_PROCESS_RUNNING) {
@@ -718,9 +726,8 @@ static void resume_event(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
-    const int64_t sig = (int64_t)arg;
 
-    cmb_logger_info(stdout, "Resumes %s signal %" PRIi64, pp->name, sig);
+    cmb_logger_info(stdout, "Resumes %s signal %" PRIi64, pp->name, (int64_t)arg);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
@@ -730,9 +737,10 @@ static void resume_event(void *vp, void *arg)
 /*
  * cmb_process_resume - schedule a wakeup event at the current time
  */
-void cmb_process_resume(struct cmb_process *pp, int64_t sig)
+void cmb_process_resume(struct cmb_process *pp, const int64_t sig)
 {
     cmb_assert_debug(pp != NULL);
+
     cmb_logger_info(stdout, "Schedules resume event for %s signal %" PRIi64, pp->name, sig);
     (void)cmb_event_schedule(resume_event, pp, (void *)sig, cmb_time(), pp->priority);
 }
