@@ -104,7 +104,7 @@ static void *worker_thread_func(void *arg)
 
     while (true) {
         /* stdatomic.h broken on Windows, using gcc/clang intrinsic instead for now */
-        const uint64_t idx = __atomic_fetch_add(&cmg_next_trial_idx, 1, __ATOMIC_SEQ_CST);
+        const uint64_t idx = __atomic_fetch_add(&cmg_next_trial_idx, 1, __ATOMIC_RELAXED);
         if (idx >= cmg_total_trials) {
             break;
         }
@@ -124,7 +124,7 @@ static void *worker_thread_func(void *arg)
         }
     }
 
-    /* Made it this far, execute the cleanup functionS before exiting */
+    /* Made it this far, execute the cleanup functions before exiting */
     pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
 
