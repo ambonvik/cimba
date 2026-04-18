@@ -16,8 +16,6 @@
  * limitations under the License.
  */
 
-/* Using standard asserts here to avoid recursive calls */
-#include <assert.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -35,6 +33,32 @@
 
 /* A trial array index guaranteed not to be used any time soon */
 #define CMI_NO_TRIAL_IDX UINT32_C(0xFFFFFFFF)
+
+/*
+ * Cannot use cmb_asserts in logger output functions, since a failed cmb_assert
+ * will call the logger functions for output, potentially causing recursion.
+ * The standard assert() macro does not obey our NASSERT convention, only NDEBUG.
+ * Define file scope custom asserts to avoid unintended recursion.
+ */
+#ifndef NASSERT
+  #define do_assert(x)  do { \
+                           if (!(x)) { \
+                              fprintf(stderr, \
+                              "assert(%s) failed in file %s line %d\n", \
+                              #x, __FILE__, __LINE__); \
+                              abort(); \
+                           } \
+                        } while (0)
+  #define logger_assert_release(x)  do_assert(x)
+  #ifndef NDEBUG
+    #define logger_assert_debug(x)  do_assert(x)
+  #else
+    #define logger_assert_debug(x)  do { (void)sizeof(x); } while (0)
+  #endif
+#else
+  #define logger_assert_release(x)  do { (void)sizeof(x); } while (0)
+  #define logger_assert_debug(x)  do { (void)sizeof(x); } while (0)
+#endif
 
 /* The current logging level. Initially everything on. */
 static CMB_THREAD_LOCAL uint32_t cmi_logger_mask = UINT32_C(0xFFFFFFFF);
@@ -59,7 +83,8 @@ static const char *time_to_string(const double t)
 {
     static CMB_THREAD_LOCAL char timestrbuf[TSTRBUF_SZ];
 
-    (void)snprintf(timestrbuf, TSTRBUF_SZ, "%#10.5g", t);
+    const int r = snprintf(timestrbuf, TSTRBUF_SZ, "%#10.5g", t);
+    logger_assert_debug((r >= 0) && (r < TSTRBUF_SZ));
 
     return timestrbuf;
 }
@@ -69,7 +94,7 @@ static CMB_THREAD_LOCAL const char *(*timeformatter)(double) = time_to_string;
 
 void cmb_logger_timeformatter_set(cmb_timeformatter_func *fp)
 {
-    assert(fp != NULL);
+    logger_assert_release(fp != NULL);
 
     timeformatter = fp;
 }
@@ -80,7 +105,7 @@ void cmb_logger_timeformatter_set(cmb_timeformatter_func *fp)
  */
 void cmb_logger_flags_on(const uint32_t flags)
 {
-    cmb_assert_release(flags != 0u);
+    logger_assert_release(flags != 0u);
 
     cmi_logger_mask |= flags;
 }
@@ -89,9 +114,9 @@ void cmb_logger_flags_on(const uint32_t flags)
  * cmb_logger_flags_off : turn off logging flags according to the bitmask, for
  * example, cmb_logger_flags_off(CMB_LOGGER_INFO), or some user-defined mask.
  */
-void cmb_logger_flags_off(uint32_t flags)
+void cmb_logger_flags_off(const uint32_t flags)
 {
-    cmb_assert_release(flags != 0u);
+    logger_assert_release(flags != 0u);
 
     cmi_logger_mask &= ~flags;
 }
@@ -102,9 +127,6 @@ void cmb_logger_flags_off(uint32_t flags)
  * number as the first field if part of a multi-trial experiment. Will print the
  * random number seed for message levels warning and above to enable reproducing
  * the suspect condition in a debugger or with additional logging turned on.
- *
- * Uses standard assert calls to avoid infinite recursion, since our custom
- * cmb_assert_debug and cmb_assert_release will end up here if failed.
  *
  * Overall output format:
  * [trial_index] [seed] time process_name function (line) : [label] formatted_message
@@ -124,29 +146,29 @@ int cmb_logger_vfprintf(FILE *fp,
         int r = 0;
         if (cmi_logger_trial_idx != CMI_NO_TRIAL_IDX) {
             r = fprintf(fp, "%" PRIu64 "\t", cmi_logger_trial_idx);
-            assert(r > 0);
+            logger_assert_debug(r > 0);
             ret += r;
         }
 
         r = fprintf(fp, "%s\t", timeformatter(cmb_time()));
-        assert(r > 0);
+        logger_assert_debug(r > 0);
         ret += r;
 
         const struct cmb_process *pp = cmb_process_current();
         if (pp != NULL) {
             const char *pp_name = cmb_process_name(pp);
             r = fprintf(fp, "%s\t", pp_name);
-            assert(r > 0);
+            logger_assert_debug(r > 0);
             ret += r;
         }
         else {
             r = fprintf(fp, "dispatcher\t");
-            assert(r > 0);
+            logger_assert_debug(r > 0);
             ret += r;
         }
 
         r = fprintf(fp, "%s (%d):  ", func, line);
-        assert(r > 0);
+        logger_assert_debug(r > 0);
         ret += r;
 
         if (flags >= CMB_LOGGER_WARNING) {
@@ -159,22 +181,22 @@ int cmb_logger_vfprintf(FILE *fp,
                 label = "Warning";
 
             r = fprintf(fp, "%s: ", label);
-            assert(r > 0);
+            logger_assert_debug(r > 0);
             ret += r;
         }
 
         r = vfprintf (fp, fmtstr, args);
-        assert(r > 0);
+        logger_assert_debug(r > 0);
         ret += r;
 
         if (flags >= CMB_LOGGER_WARNING) {
             r = fprintf(fp, ", seed 0x%" PRIx64 "\t", cmb_random_curseed());
-            assert(r > 0);
+            logger_assert_debug(r > 0);
             ret += r;
         }
 
         r += fprintf(fp, "\n");
-        assert(r > 0);
+        logger_assert_debug(r > 0);
         ret += r;
 
         fflush(fp);
