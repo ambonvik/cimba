@@ -64,6 +64,8 @@
 #ifndef CIMBA_CMI_COROUTINE_H
 #define CIMBA_CMI_COROUTINE_H
 
+#include <stdbool.h>
+
 #include "cmb_assert.h"
 
 /*
@@ -77,6 +79,12 @@ enum cmi_coroutine_state {
     CMI_COROUTINE_RUNNING = 1,
     CMI_COROUTINE_FINISHED = 2
 };
+
+/* Default size of a coroutine stack in bytes  */
+#define CMI_COROUTINE_DEFAULT_STACKSIZE (32u * 1024u)
+
+/* Flag to use the default value and the associated memory pool */
+#define CMI_COROUTINE_USE_STACKPOOL (0u)
 
 /* Declare that there is such a thing */
 struct cmi_coroutine;
@@ -134,15 +142,16 @@ typedef void (cmi_coroutine_exit_func)(void *retval);
  * calculation here as in the assembly code.
  */
 struct cmi_coroutine {
-    struct cmi_coroutine *parent;
+    unsigned char *stack_pointer;
+    void *context;
     struct cmi_coroutine *caller;
+    struct cmi_coroutine *parent;
+    cmi_coroutine_func *cr_function;
+    enum cmi_coroutine_state status;
+    unsigned char *stack_limit;
+    bool pool_stack;
     unsigned char *stack;
     unsigned char *stack_base;
-    unsigned char *stack_limit;
-    unsigned char *stack_pointer;
-    enum cmi_coroutine_state status;
-    cmi_coroutine_func *cr_function;
-    void *context;
     cmi_coroutine_exit_func *cr_exit;
     void *exit_value;
 };
