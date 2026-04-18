@@ -1,5 +1,43 @@
 # test/meson.build
 
+python = import('python').find_installation()
+
+# Usage: python test_assert.py <expected_trip: true | false> <executable> [args...]
+wrapper = files('test_assert.py')
+
+matrix = [
+    # buildtype, flags, expect_assert_debug_trip, expect_assert_release_trip
+    ['debug',       ['-UNDEBUG', '-UNASSERT'],  'true',     'true'],
+    ['release',     ['-DNDEBUG', '-UNASSERT'],  'false',    'true'],
+    ['optimized',   ['-DNDEBUG', '-DNASSERT'],  'false',    'false'],
+]
+
+foreach item : matrix
+    test_buildtype = item[0]
+    test_buildflags = item[1]
+
+    # build an executable of this build type
+    exe = executable('test_assert_' + test_buildtype,
+                     files('test_assert.c', 'test.h'),
+                     c_args : test_buildflags,
+                     include_directories : [inc_api, inc_int],
+                     link_with : cimba_lib,
+                     dependencies : [project_deps],
+                     install : false,
+                     native : true
+    )
+
+    # test cmb_assert_debug in this build type
+    exp_trip = item[2]
+    test('test_build_' + test_buildtype + '_assert_debug', python,
+         args: [wrapper, exp_trip, exe, 'debug'])
+
+    # test cmb_assert_release in this build type
+    exp_trip = item[3]
+    test('test_build_' + test_buildtype + '_assert_release', python,
+         args: [wrapper, exp_trip, exe, 'release'])
+endforeach
+
 test_buffer = executable('test_buffer',
                          files('test_buffer.c', 'test.h'),
                          include_directories : [inc_api, inc_int],
