@@ -152,18 +152,20 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     stkptr -= 8u;
     *(uint64_t *)stkptr = 0x0ull;
 
-    /* Set the XMM status register MXCSR, default value (masked fp exceptions) */
-    stkptr -= 8u;
-    *(uint64_t *)(stkptr + 4) = 0x1f80u;
-    *(uint32_t *)stkptr = 0u;
+    #ifndef NMXCSR
+        /* Set the XMM status register MXCSR, default value (masked fp exceptions) */
+        stkptr -= 8u;
+        *(uint64_t *)(stkptr + 4) = 0x1f80u;
+        *(uint32_t *)stkptr = 0u;
+    #endif
 
     /* Clear RBX */
     stkptr -= 8u;
     *(uint64_t *)stkptr = 0x0ull;
 
-    /* Point RBP to start of stack frame */
+    /* Set RBP to 0 to cleanly terminate stack backtraces in debuggers */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)(cp->stack_base - 40u);
+    *(uint64_t *)stkptr = 0x0ull;
 
     /* Clear RDI */
     stkptr -= 8u;
@@ -191,12 +193,18 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
         *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_exit;
     }
     else {
-         *(uint64_t *)stkptr = (uintptr_t)(cp->cr_exit);
+        *(uint64_t *)stkptr = (uintptr_t)(cp->cr_exit);
     }
 
-    /* Add space for 10 XMM registers * 16 bytes + 8 bytes for alignment */
-    stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
-    (void)cmi_memset(stkptr, 0, 168);
+    #ifndef NMXCSR
+        /* Add space for 10 XMM registers * 16 bytes + 8 bytes for alignment */
+        stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
+        (void)cmi_memset(stkptr, 0, 168);
+    #else
+        /* Already aligned, 160 bytes for XMM registers only */
+        stkptr = (unsigned char *)((uintptr_t)stkptr - 160);
+        (void)cmi_memset(stkptr, 0, 160);
+    #endif
 
     /* Store stack pointer RSP in the coroutine struct to resume from here */
     cp->stack_pointer = stkptr;

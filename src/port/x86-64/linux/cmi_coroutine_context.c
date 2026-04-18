@@ -101,10 +101,12 @@ void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
 /* Bit pattern for last 64 bits of valid stack. */
 #define CMI_STACK_LIMIT_UNTOUCHED UINT64_C(0xFA151F1AB1E)
 
- /* Stack sanity check, Linux SysV-specific, see
-  *   https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf  */
- bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
- {
+/*
+ * Stack sanity check, Linux SysV-specific, see
+ *   https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
+ */
+bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
+{
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
     cmb_assert_debug(cp->stack_limit != NULL);
@@ -115,7 +117,13 @@ void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
         if (cp->stack_pointer != NULL) {
             cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
             cmb_assert_debug((uintptr_t *)cp->stack_pointer < (uintptr_t *)cp->stack_base);
-            cmb_assert_debug((((uintptr_t)cp->stack_pointer + 8u) % 16u) == 0u);
+            #ifndef NMXCSR
+                /* Total 9 slots pushed: Trampoline, Flags, MXCSR, RBP, RBX, R12, R13, R14, R15 */
+                cmb_assert_debug((((uintptr_t)cp->stack_pointer + 8u) % 16u) == 0u);
+            #else
+               /* Total 8 slots pushed: MXCSR is gone. */
+               cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
+            #endif
         }
     }
     else {
@@ -123,12 +131,18 @@ void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
         cmb_assert_debug(cp->stack_pointer != NULL);
         cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
         cmb_assert_debug((uintptr_t *)cp->stack_pointer < (uintptr_t *)cp->stack_base);
-        cmb_assert_debug((((uintptr_t)cp->stack_pointer + 8u) % 16u) == 0u);
+        #ifndef NMXCSR
+            /* Total 9 slots pushed: Trampoline, Flags, MXCSR, RBP, RBX, R12, R13, R14, R15 */
+            cmb_assert_debug((((uintptr_t)cp->stack_pointer + 8u) % 16u) == 0u);
+        #else
+            /* Total 8 slots pushed: MXCSR is gone. */
+            cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
+        #endif
         cmb_assert_debug(*((uint64_t *)cp->stack_limit) == CMI_STACK_LIMIT_UNTOUCHED);
     }
 
     return true;
- }
+}
 
 void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 {
@@ -159,18 +173,19 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_trampoline;
 
-    /* Clear the flags register */
+    /* Clear the flag register, enable interrupts */
+    stkptr -= 8u;
+    *(uint64_t *)stkptr = 0x0202ull;
+
+#ifndef NMXCSR
+    /* Default MXCSR value */
+    stkptr -= 8u;
+    *(uint32_t *)(stkptr + 4) = 0x1f80u;
+#endif
+
+    /* Clear RBP to terminate gdb backtrace */
     stkptr -= 8u;
     *(uint64_t *)stkptr = 0x0ull;
-
-    /* Set the XMM status register MXCSR, default value (masked fp exceptions) */
-    stkptr -= 8u;
-    *(uint64_t *)(stkptr + 4) = 0x1f80u;
-    *(uint32_t *)stkptr = 0u;
-
-    /* Point RBP to start of stack frame */
-    stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)(cp->stack_base - 40u);
 
     /* Clear RBX */
     stkptr -= 8u;
@@ -178,7 +193,7 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 
     /* Place address of coroutine function in R12 */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)(cp->cr_function);
+    *(uintptr_t *)stkptr = (uintptr_t)cp->cr_function;
 
     /* Place address of coroutine struct in R13 */
     stkptr -= 8u;

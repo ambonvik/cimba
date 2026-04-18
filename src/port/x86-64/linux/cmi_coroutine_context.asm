@@ -34,9 +34,13 @@ global cmi_coroutine_trampoline
 %macro save_context 0
     ; Save flags register
     pushfq
-    ; Allocate space and save MXCSR (SSE status register)
-    sub rsp, 8
-    stmxcsr [rsp + 4]
+
+    %ifndef NMXCSR
+        ; Allocate space and save MXCSR (SSE status register)
+        sub rsp, 8
+        stmxcsr [rsp + 4]
+    %endif
+
     ; Save general purpose registers
     push rbp
     push rbx
@@ -57,9 +61,13 @@ global cmi_coroutine_trampoline
     pop r12
     pop rbx
     pop rbp
-    ; Restore MXCSR
-    ldmxcsr [rsp + 4]
-    add rsp, 8
+
+    %ifndef NMXCSR
+        ; Restore MXCSR
+        ldmxcsr [rsp + 4]
+        add rsp, 8
+    %endif
+
     ; Restore flags
     popfq
 %endmacro

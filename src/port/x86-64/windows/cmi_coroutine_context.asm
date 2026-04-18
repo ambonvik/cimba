@@ -49,14 +49,20 @@ cmi_coroutine_stacklimit:
     ; Save NT_TIB StackBase, the start of the stack (highest address)
     mov rax, [gs:8]
     push rax
+
     ; Save NT_TIB StackLimit, the end of the stack (lowest address)
     mov rax, [gs:16]
     push rax
+
     ; Save flags register
     pushfq
-    ; Allocate space and save MXCSR (SSE status register)
-    sub rsp, 8
-    stmxcsr [rsp + 4]
+
+    %ifndef NMXCSR
+        ; Allocate space and save MXCSR (SSE status register)
+        sub rsp, 8
+        stmxcsr [rsp + 4]
+    %endif
+
     ; Save general purpose registers
     push rbx
     push rbp
@@ -66,11 +72,15 @@ cmi_coroutine_stacklimit:
     push r13
     push r14
     push r15
-    ; XMM6-15 : 10 registers, 16 bytes each, 160 bytes needed.
-    ; We have pushed 12 8-byte registers so far, plus the
-    ; implicit RIP return address. We need 8 bytes extra to align
-    ; to 16-byte boundary again.
-    sub rsp, 168
+
+    %ifndef NMXCSR
+        ; Stack off by 8: needs 160 for XMM + 8 padding
+        sub rsp, 168
+    %else
+        ; Stack already aligned: needs exactly 160 for XMM
+        sub rsp, 160
+    %endif
+
     ; Save XMM registers
     movaps [rsp + 144], xmm15
     movaps [rsp + 128], xmm14
@@ -99,7 +109,13 @@ cmi_coroutine_stacklimit:
     movaps xmm13, [rsp + 112]
     movaps xmm14, [rsp + 128]
     movaps xmm15, [rsp + 144]
-    add rsp, 168
+
+    %ifndef NMXCSR
+        add rsp, 168
+    %else
+        add rsp, 160
+    %endif
+
     ; Restore general purpose registers
     pop r15
     pop r14
@@ -109,11 +125,16 @@ cmi_coroutine_stacklimit:
     pop rdi
     pop rbp
     pop rbx
-    ; Restore MXCSR
-    ldmxcsr [rsp + 4]
-    add rsp, 8
+
+    %ifndef NMXCSR
+        ; Restore MXCSR register
+        ldmxcsr [rsp + 4]
+        add rsp, 8
+    %endif
+
     ; Restore flags
     popfq
+
     ; Restore NT_TIB stack info members.
     pop rax
     mov [gs:16], rax
