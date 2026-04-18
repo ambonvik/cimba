@@ -115,7 +115,7 @@ extern void cmb_resourcepool_destroy(struct cmb_resourcepool *rpp);
  * @param pp Pointer to a `cmb_process`
  * @return The amount from this resource pool that is held by the process.
  */
-extern uint64_t cmb_resourcepool_held_by_process(const struct cmb_resourcepool *rpp,
+extern uint64_t cmb_resourcepool_held_by_process(struct cmb_resourcepool *rpp,
                                                  const struct cmb_process *pp);
 
 /**

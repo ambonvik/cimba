@@ -137,9 +137,8 @@ extern int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
  * @param handle The handle of the object to locate
  * @return 1-based position in the queue, or 0 if not found
  */
-extern uint64_t cmb_priorityqueue_position(const struct cmb_priorityqueue *pqp,
+extern uint64_t cmb_priorityqueue_position(struct cmb_priorityqueue *pqp,
                                            uint64_t handle);
-
 
 /**
  * @brief Cancel an object in the queue
@@ -168,13 +167,13 @@ static inline bool cmb_priorityqueue_cancel(struct cmb_priorityqueue *pqp,
  * @param handle Handle of the object to reprioritize
  * @param priority New priority for the object
  */
-static inline void cmb_priorityqueue_reprioritize(const struct cmb_priorityqueue *pqp,
+static inline void cmb_priorityqueue_reprioritize(struct cmb_priorityqueue *pqp,
                                                   const uint64_t handle,
                                                   const int64_t priority)
 {
     cmb_assert_release(pqp != NULL);
 
-    const struct cmi_hashheap *hp = &(pqp->queue);
+    struct cmi_hashheap *hp = &(pqp->queue);
     cmi_hashheap_reprioritize(hp, handle, 0.0, priority);
 }
 
