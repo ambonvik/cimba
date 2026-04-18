@@ -13,18 +13,22 @@ project('cimba', 'c',
 add_languages('nasm', required : true, native : true)
 
 # Check for compiler flags availability
-# Uncomment bottom two flags for already well-tested models only, since these
-# will disable detailed info logging and function argument checking.
 # Comment out all flags from -O3 and down for debug mode.
+# DNDEBUG removes debug asserts
+# DNLOGINFO removes all internal Cimba logging
+# DNASSERT removes all asserts including argument checking
+# DNMXCSR turns off saving and restoring the MXCSR floating point
+#         state / control register in all context switches.
 cc = meson.get_compiler('c')
 desired_flags = ['-Wno-pedantic',
                  '-D_POSIX_C_SOURCE=200809L',
                  '-fno-semantic-interposition',
                  '-fno-omit-frame-pointer',
-#                 '-O3',
-#                 '-DNDEBUG',
-#                 '-DNLOGINFO',
-#                 '-DNASSERT'
+                 '-O3',
+                 '-DNDEBUG',
+                 '-DNLOGINFO',
+                 '-DNASSERT',
+                 '-DNMXCSR'
 ]
 
 if host_machine.system() == 'linux'
@@ -40,6 +44,11 @@ endif
 
 supported_flags = cc.get_supported_arguments(desired_flags)
 add_project_arguments(supported_flags, language : 'c', native : true)
+
+nasm_args = []
+if '-DNMXCSR' in supported_flags
+    nasm_args += '-DNMXCSR'
+endif
 
 # Need to link with the math library, linker flag -lm
 math_dep = cc.find_library('m', required : true)
