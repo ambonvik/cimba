@@ -111,6 +111,7 @@ struct cmi_hashheap {
     struct cmi_hash_tag *hash_map;
     uint64_t hash_size;
     uint64_t item_counter;
+    bool map_active;
 };
 
 /*
@@ -266,12 +267,12 @@ static inline bool cmi_hashheap_cancel(struct cmi_hashheap *hp, const uint64_t h
 /*
  * cmi_hash_find_index - look up the heap index for a given hash hashkey. Internal use only.
  */
-extern uint64_t cmi_hash_find_index(const struct cmi_hashheap *hp, uint64_t hashkey);
+extern uint64_t cmi_hash_find_index(struct cmi_hashheap *hp, uint64_t hashkey);
 
 /*
  * cmi_hashheap_is_enqueued - Is the given item currently in the queue?
  */
-static inline bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp,
+static inline bool cmi_hashheap_is_enqueued(struct cmi_hashheap *hp,
                                             const uint64_t hashkey)
 {
     cmb_assert_release(hp != NULL);
@@ -294,21 +295,21 @@ static inline bool cmi_hashheap_is_enqueued(const struct cmi_hashheap *hp,
  * this needs to be done atomically. Do not expect the item to be in the same
  * location later, retrieve it again before each use.
  */
-extern void **cmi_hashheap_item(const struct cmi_hashheap *hp, uint64_t hashkey);
+extern void **cmi_hashheap_item(struct cmi_hashheap *hp, uint64_t hashkey);
 
 /*
  * cmi_hashheap_dkey/isortkey - Get the dsortkey/isortkey for the given item.
  * Precondition: The item is in the priority queue, otherwise it is an error.
  * If in doubt, call cmi_hashheap_is_enqueued(hashkey) first to verify.
  */
-extern double cmi_hashheap_dkey(const struct cmi_hashheap *hp, uint64_t hashkey);
-extern int64_t cmi_hashheap_ikey(const struct cmi_hashheap *hp, uint64_t hashkey);
+extern double cmi_hashheap_dkey(struct cmi_hashheap *hp, uint64_t hashkey);
+extern int64_t cmi_hashheap_ikey(struct cmi_hashheap *hp, uint64_t hashkey);
 
 /*
  * cmi_hashheap_reprioritize - Changes one or more of the prioritization keys.
  * Precondition: The event is in the event queue.
  */
-extern void cmi_hashheap_reprioritize(const struct cmi_hashheap *hp,
+extern void cmi_hashheap_reprioritize(struct cmi_hashheap *hp,
                                       uint64_t hashkey,
                                       double dsortkey,
                                       int64_t isortkey);
