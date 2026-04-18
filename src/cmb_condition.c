@@ -67,13 +67,14 @@ int64_t cmb_condition_wait(struct cmb_condition *cvp,
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(dmnd != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)cvp;
-    cmb_logger_info(stdout, "Waiting for condition %s", rbp->name);
+    cmb_logger_info(stdout, "Waiting for condition %s",
+                    ((struct cmi_resourcebase *)cvp)->name);
     const int64_t sig =  cmb_resourceguard_wait(&(cvp->guard),
                                           (cmb_resourceguard_demand_func *)dmnd,
                                           ctx);
 
-    cmb_logger_info(stdout, "Condition %s returning signal %" PRIi64, rbp->name, sig);
+    cmb_logger_info(stdout, "Condition %s returning signal %" PRIi64,
+                    ((struct cmi_resourcebase *)cvp)->name, sig);
 
     return sig;
 }
@@ -120,13 +121,14 @@ bool cmb_condition_signal(struct cmb_condition *cvp)
 {
     cmb_assert_release(cvp != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)cvp;
-    cmb_logger_info(stdout, "Signalling condition %s", rbp->name);
+    cmb_logger_info(stdout, "Signalling condition %s",
+        ((struct cmi_resourcebase *)cvp)->name);
 
     uint64_t cnt = 0u;
     struct cmi_hashheap *hp = (struct cmi_hashheap *)&(cvp->guard);
     if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
-        cmb_logger_info(stdout, "None waiting for %s", rbp->name);
+        cmb_logger_info(stdout, "None waiting for %s",
+            ((struct cmi_resourcebase *)cvp)->name);
         return false;
     }
 
@@ -145,7 +147,7 @@ bool cmb_condition_signal(struct cmb_condition *cvp)
         if ((*demand)(cvp, pp, ctx)) {
             /* Satisfied, note it on the list, schedule wakeup event */
             cmb_logger_info(stdout, "Condition %s satisfied for process %s",
-                            rbp->name, pp->name);
+                            ((struct cmi_resourcebase *)cvp)->name, pp->name);
             tmp[cnt++] = htp->key;
             const double time = cmb_time();
             const int64_t priority = cmb_process_priority(pp);
@@ -170,9 +172,8 @@ bool cmi_condition_cancel(struct cmb_condition *cvp,
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(pp != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)cvp;
     cmb_logger_info(stdout, "Cancelling condition %s for process %s",
-                    rbp->name, pp->name);
+                    ((struct cmi_resourcebase *)cvp)->name, pp->name);
 
     return cmb_resourceguard_cancel((struct cmb_resourceguard *)cvp, pp);
 }
@@ -183,9 +184,8 @@ bool cmi_condition_remove(struct cmb_condition *cvp,
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(pp != NULL);
 
-    struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)cvp;
     cmb_logger_info(stdout, "Removing process %s from condition %s",
-                    pp->name, rbp->name);
+                    pp->name, ((struct cmi_resourcebase *)cvp)->name);
 
     return cmb_resourceguard_remove((struct cmb_resourceguard *)cvp, pp);
 }
