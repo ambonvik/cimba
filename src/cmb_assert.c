@@ -21,7 +21,6 @@
 #include "cmb_assert.h"
 #include "cmb_logger.h"
 
-#ifndef NASSERT
 /*
  * cmi_assert_failed - Report and abort in case of assert triggered.
  */
@@ -35,4 +34,3 @@ void cmi_assert_failed(const char *sourcefile,
                      "Assert \"%s\" failed, source file %s",
                      condition, sourcefile);
 }
-#endif
