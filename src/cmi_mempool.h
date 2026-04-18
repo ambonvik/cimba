@@ -44,20 +44,27 @@
  * A memory pool for reusable objects of a particular size.
  */
 struct cmi_mempool {
-    uint64_t cookie;
-    size_t obj_sz;
-    size_t incr_num;
-    size_t incr_sz;
-    uint64_t chunk_list_len;
-    uint64_t chunk_list_cnt;
-    void **chunk_list;
-    void *next_obj;
+    uint64_t cookie;            /* Indicates if this is an uninitialized static mempool */
+    size_t obj_sz;              /* Size of one object in bytes */
+    size_t incr_num;            /* Number of objects to allocate in each increment */
+    size_t incr_sz;             /* The increment size in bytes */
+    uint64_t chunk_list_len;    /* Length of the chunk list */
+    uint64_t chunk_list_cnt;    /* Current count of chunks */
+    void **chunk_list;          /* The chunk list of allocated memory */
+    void *next_obj;             /* The next object to be reused */
+    void *virgin_ptr;           /* High-water mark in the current chunk */
+    uint32_t virgin_rem;        /* Number of untouched objects left in current chunk */
+    uint32_t current_incr;      /* Current increment (doubles every expansion) */
 };
 
 /*
  * Convenience macro to simplify thread local initialization of a static mempool.
  */
-#define CMI_MEMPOOL_STATIC_INIT(sz, num) { CMI_THREAD_STATIC, (sz), (num), 0, 0, 0, NULL, NULL }
+#define CMI_MEMPOOL_STATIC_INIT(sz, num) { \
+        .cookie = CMI_THREAD_STATIC,       \
+        .obj_sz = (sz),                    \
+        .incr_num = (num)                  \
+    }
 
 /*
  * Allocate memory for a cmi_mempool struct, not yet for the objects to
@@ -109,15 +116,26 @@ static inline void *cmi_mempool_alloc(struct cmi_mempool *mp)
     cmb_assert_debug((mp->cookie == CMI_INITIALIZED)
                        || (mp->cookie == CMI_THREAD_STATIC));
 
-    if (mp->next_obj == NULL) {
-        /* Pool empty, refill it, initialize first if needed */
-        cmi_mempool_expand(mp);
+    /* Hot path A: A recycled object */
+    if (mp->next_obj != NULL) {
+        void *op = mp->next_obj;
+        mp->next_obj = *(void **)op;
+        return op;
     }
 
-    void *op = mp->next_obj;
-    cmb_assert_debug(op != NULL);
-    mp->next_obj = *(void **)op;
+    /* Hot path B: A virgin object */
+    if (mp->virgin_rem > 0u) {
+        void *op = mp->virgin_ptr;
+        mp->virgin_ptr = (unsigned char *)op + mp->obj_sz;
+        mp->virgin_rem--;
+        return op;
+    }
 
+    /* Cold path: Expand and allocate */
+    cmi_mempool_expand(mp);
+    void *op = mp->virgin_ptr;
+    mp->virgin_ptr = (unsigned char *)op + mp->obj_sz;
+    mp->virgin_rem--;
     return op;
 }
 
