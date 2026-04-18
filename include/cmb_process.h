@@ -52,12 +52,6 @@
 #define CMB_PROCESS_NAMEBUF_SZ 32
 
 /**
- * @brief Size of a process (coroutine) stack in bytes
- * @relates cmb_process
- */
-#define CMB_PROCESS_STACK_SIZE (64u * 1024u)
-
-/**
  * @brief Return code from various process context switching calls, indicating
  *        a successful return from whatever it was calling.
  * @relates cmb_process
@@ -121,11 +115,11 @@ enum cmb_process_state {
 */
 struct cmb_process {
     struct cmi_coroutine core;              /**< The parent coroutine */
-    char name[CMB_PROCESS_NAMEBUF_SZ];      /**< The process name string */
     int64_t priority;                       /**< The current process priority */
-    struct cmi_slist_head awaits;         /**< What this process is waiting for, if anything */
-    struct cmi_slist_head waiters;          /**< Any other processes waiting for this process to finish */
+    struct cmi_slist_head awaits;           /**< What this process is waiting for, if anything */
     struct cmi_slist_head resources;        /**< Any resources held by this process */
+    struct cmi_slist_head waiters;          /**< Any other processes waiting for this process to finish */
+    char name[CMB_PROCESS_NAMEBUF_SZ];      /**< The process name string */
 };
 
 /**
@@ -383,12 +377,36 @@ extern void cmb_process_interrupt(struct cmb_process *pp,
  * be restarted from the beginning by calling `cmb_process_start(tgt)` again.
  *
  * @memberof cmb_process
- * @param tgt Pointer to the target process.
- * @param retval The return value from the process, user defined meaning, often
+ * @param tgt Pointer to the target process, different from the current
+ *              (calling) process.
+ * @param retval The return value from the process. User defined meaning, often
  *               `NULL` for an externally killed process. Will be stored as the
  *               `cmb_coroutine` `exit_value`.
  */
 extern void cmb_process_stop(struct cmb_process *tgt, void *retval);
+
+/**
+ * @brief  Kill the target process, syntactic alias for cmb_process_stop().
+ *
+ * Sets the target process exit value to the argument value `retval`. The
+ * meaning of return values for an externally terminated process is application
+ * defined. Drops any resources held by the target process. Does not transfer
+ * control to the target process.
+ *
+ * Does not destroy the target's memory allocation. The target process can
+ * be restarted from the beginning by calling `cmb_process_start(tgt)` again.
+ *
+ * @memberof cmb_process
+ * @param tgt Pointer to the target process, different from the current
+ *              (calling) process.
+ * @param retval The return value from the process, user defined meaning, often
+ *               `NULL` for an externally killed process. Will be stored as the
+ *               `cmb_coroutine` `exit_value`.
+ */
+static inline void cmb_process_kill(struct cmb_process *tgt, void *retval)
+{
+    cmb_process_stop(tgt, retval);
+}
 
 /**
  * @brief  Return the process name as a `const char *`, since it is kept in a
