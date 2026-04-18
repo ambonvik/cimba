@@ -89,6 +89,11 @@ void cmi_mempool_initialize(struct cmi_mempool *mp,
     cmb_assert_debug(mp->incr_num >= obj_num);
     cmb_assert_debug((mp->incr_num * mp->obj_sz) <= mp->incr_sz);
 
+    /* The initial growth parameters */
+    mp->current_incr = 0u;
+    mp->virgin_ptr = NULL;
+    mp->virgin_rem = 0u;
+
     /* Allocate the initial array of pointers to the memory chunks */
     mp->chunk_list_len = CHUNK_LIST_SIZE;
     mp->chunk_list_cnt = 0u;
@@ -106,20 +111,25 @@ void cmi_mempool_initialize(struct cmi_mempool *mp,
 void cmi_mempool_terminate(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp != NULL);
+    cmb_assert_release(mp->cookie == CMI_INITIALIZED);
+    cmb_assert_release(mp->chunk_list != NULL);
 
-    if (mp->chunk_list != NULL) {
-        cmb_assert_debug(mp->chunk_list_cnt > 0u);
-        for (uint64_t ui = 0u; ui < mp->chunk_list_cnt; ui++) {
-            cmi_aligned_free(mp->chunk_list[ui]);
-        }
-
-        cmi_free(mp->chunk_list);
-        mp->chunk_list = NULL;
-        mp->chunk_list_cnt = 0u;
-        mp->next_obj = NULL;
+    /* Free all allocated memory chunks */
+    for (uint64_t i = 0u; i < mp->chunk_list_cnt; ++i) {
+        cmi_aligned_free(mp->chunk_list[i]);
     }
 
-    cmb_assert_debug(mp->chunk_list == NULL);
+    /* Free the list tracking the chunks */
+    cmi_free(mp->chunk_list);
+
+    /* Reset metadata to prevent double-teardown */
+    mp->chunk_list = NULL;
+    mp->chunk_list_cnt = 0;
+    mp->chunk_list_len = 0;
+    mp->next_obj = NULL;
+    mp->virgin_ptr = NULL;
+    mp->virgin_rem = 0;
+    mp->cookie = CMI_UNINITIALIZED;
 }
 
 /*
@@ -147,39 +157,42 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
                        || (mp->cookie == CMI_THREAD_STATIC));
 
     if (mp->cookie == CMI_THREAD_STATIC) {
-        /* This mempool was declared statically as a thread local for automatic
-         * initialization and termination. Add it to the list for final thread
-         * cleanup, and initialize it.
-         */
+        /* Initial lazy allocation of thread local static memory pool */
         struct static_pools_tag *stp = cmi_malloc(sizeof(*stp));
         stp->pool = mp;
         cmi_slist_push(&static_pools, &(stp->head));
+
+        /* Initialize sets cookie to CMI_INITIALIZED and allocates chunk_list */
         cmi_mempool_initialize(mp, mp->obj_sz, mp->incr_num);
     }
 
-    /* Expand the area list if necessary */
-    if (++mp->chunk_list_cnt == mp->chunk_list_len) {
+    /* Doubling on each increment */
+    if (mp->current_incr == 0u) {
+        mp->current_incr = (uint32_t)mp->incr_num;
+    } else {
+        /* Double it, up to some reasonable limit */
+        if (mp->current_incr < 1024u) {
+            mp->current_incr *= 2u;
+        }
+    }
+
+    /* Calculate total size for this new slab */
+    const size_t total_sz = (size_t)mp->current_incr * mp->obj_sz;
+
+    /* Expand the chunk list if necessary */
+    if (mp->chunk_list_cnt == mp->chunk_list_len) {
         mp->chunk_list_len += CHUNK_LIST_SIZE;
-        cmi_realloc(mp->chunk_list, mp->chunk_list_len);
+        mp->chunk_list = cmi_realloc(mp->chunk_list, mp->chunk_list_len * sizeof(void *));
     }
 
-    /* Allocate another contiguous array of objects, aligned to page size */
+    /* Allocate the new chunk */
     const size_t pagesz = cmi_pagesize();
-    void *ap = cmi_aligned_alloc(pagesz, mp->incr_sz);
-    mp->chunk_list[mp->chunk_list_cnt - 1u] = ap;
+    void *ap = cmi_aligned_alloc(pagesz, total_sz);
+    mp->chunk_list[mp->chunk_list_cnt++] = ap;
 
-    /* Initialize the objects */
-    mp->next_obj = ap;
-    void **vp = ap;
-    const unsigned uincr = mp->obj_sz / 8u;
-    for (unsigned ui = 0u; ui < mp->incr_num - 1u; ++ui) {
-        *vp = vp + uincr;
-        vp = *vp;
-    }
-
-    /* Set the next pointer in the last object to NULL, end of the list */
-    *vp = NULL;
-    cmb_assert_debug(mp->next_obj != NULL);
+    /* Set up the virgin memory tracker */
+    mp->virgin_ptr = ap;
+    mp->virgin_rem = mp->current_incr;
 }
 
 /*
