@@ -1,5 +1,5 @@
 # x86-64/Linux/meson.build
-nasm_args = ['-f', 'elf64']
+nasm_args += ['-f', 'elf64']
 
 sources += files('cmb_random_hwseed.c',
                  'cmi_coroutine_context.c',
