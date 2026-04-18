@@ -285,12 +285,12 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
     }
 }
 
-uint64_t cmb_priorityqueue_position(const struct cmb_priorityqueue *pqp,
+uint64_t cmb_priorityqueue_position(struct cmb_priorityqueue *pqp,
                                     const uint64_t handle)
 {
     cmb_assert_release(pqp != NULL);
 
-    const struct cmi_hashheap *hp = &(pqp->queue);
+    struct cmi_hashheap *hp = &(pqp->queue);
     if ((hp == NULL) || (hp->heap_count == 0u)) {
         return 0u;
     }
