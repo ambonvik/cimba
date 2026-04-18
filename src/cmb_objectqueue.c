@@ -49,7 +49,7 @@ struct queue_tag {
 
 /* Thread local mempool of queue tags */
 CMB_THREAD_LOCAL struct cmi_mempool objectqueue_tags
-    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct queue_tag), 256u);
+    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct queue_tag), 16u);
 
 struct cmb_objectqueue *cmb_objectqueue_create(void)
 {
