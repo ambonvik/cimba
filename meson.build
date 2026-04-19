@@ -24,6 +24,8 @@ desired_flags = ['-Wno-pedantic',
                  '-D_POSIX_C_SOURCE=200809L',
                  '-fno-semantic-interposition',
                  '-fno-omit-frame-pointer',
+                 '-fprofile-use',
+                 '-fprofile-correction',
                  '-O3',
                  '-DNDEBUG',
                  '-DNLOGINFO',
@@ -44,6 +46,9 @@ endif
 
 supported_flags = cc.get_supported_arguments(desired_flags)
 add_project_arguments(supported_flags, language : 'c', native : true)
+if '-fprofile-generate' in supported_flags
+    add_project_link_arguments('-fprofile-generate', language : 'c', native : true)
+endif
 
 nasm_args = []
 if '-DNMXCSR' in supported_flags

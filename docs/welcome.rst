@@ -27,10 +27,11 @@ It is fast, powerful, reliable, and free.
   intervals in your experiments and high density of data points along parameter
   variations.
 
-  In a M/M/1 queue benchmark, Cimba runs about *45 times faster* than SimPy with all
-  available cores in use. This corresponds to a 97.8 % reduction in run time. In fact,
-  Cimba runs faster on a single core (left chart, about 20 million events per second)
-  than SimPy does with all 64 cores (right chart, about 16 million events per second).
+  In a M/M/1 queue benchmark, Cimba runs about *45-50 times faster* than SimPy with all
+  available cores in use. This corresponds to a 98 % reduction in run time. In fact,
+  Cimba runs twice as fast on a single CPU core (left chart, about 32 million events per
+  second) than SimPy does with all 64 cores (right chart, about 16 million events per
+  second).
 
   .. image:: ../images/Speed_test_AMD_3970x.png
 

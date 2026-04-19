@@ -14,9 +14,9 @@ Implementation status:
 
 Cimba models run 40-50 times faster than SimPy equivalents. The chart below shows the 
 number of simulated events processed per second of wall clock time on a simple M/M/1 
-queue implemented in SimPy and Cimba. Cimba runs this scenario 45 times faster than 
-SimPy with all CPU cores in use. _Cimba runs 25 % faster (20M events/sec) on a single 
-core than SimPy using all 64 cores (16M events/sec)._
+queue implemented in SimPy and Cimba. Cimba runs this scenario 49 times faster than 
+SimPy with all CPU cores in use. _Cimba runs twice as fast (32M events/sec) on a single 
+core as SimPy using all 64 cores (16M events/sec)._
 
 ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
 
@@ -29,7 +29,7 @@ It is fast, powerful, reliable, and free.
   intervals in your experiments and a high density of data points along parameter
   variations.
 
-  In the benchmark shown above, Cimba reduces the run time by 97.8 % compared to the 
+  In the benchmark shown above, Cimba reduces the run time by 98 % compared to the 
   same model in SimPy using all CPU cores. This translates into doing your simulation 
   experiments in seconds instead of minutes, or in minutes instead of hours.
 
