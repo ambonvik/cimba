@@ -25,13 +25,13 @@ desired_flags = ['-Wno-pedantic',
                  '-fno-semantic-interposition',
 #                 '-fno-omit-frame-pointer',
 #                 '-fprofile-generate',
-                 '-fprofile-use',
-                 '-fprofile-correction',
-                 '-O3',
-                 '-DNDEBUG',
-                 '-DNLOGINFO',
-                 '-DNASSERT',
-                 '-DNMXCSR'
+#                 '-fprofile-use',
+#                 '-fprofile-correction',
+#                 '-O3',
+#                 '-DNDEBUG',
+#                 '-DNLOGINFO',
+#                 '-DNASSERT',
+#                 '-DNMXCSR'
 ]
 
 if host_machine.system() == 'linux'
