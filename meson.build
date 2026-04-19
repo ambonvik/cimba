@@ -33,8 +33,8 @@ desired_flags = ['-Wno-pedantic',
 
 if host_machine.system() == 'linux'
     desired_flags += ['-ftls-model=initial-exec',
-                 '-flto=auto',
-                 '-fuse-linker-plugin'
+                      '-flto=auto',
+                      '-fuse-linker-plugin'
     ]
 endif
 

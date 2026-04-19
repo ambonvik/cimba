@@ -148,7 +148,7 @@ bool cmb_condition_signal(struct cmb_condition *cvp)
             /* Satisfied, note it on the list, schedule wakeup event */
             cmb_logger_info(stdout, "Condition %s satisfied for process %s",
                             ((struct cmi_resourcebase *)cvp)->name, pp->name);
-            tmp[cnt++] = htp->key;
+            tmp[cnt++] = htp->hash_key;
             const double time = cmb_time();
             const int64_t priority = cmb_process_priority(pp);
             (void)cmb_event_schedule(wakeup_event_condition, pp,

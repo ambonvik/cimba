@@ -180,11 +180,11 @@ void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
             /* Waiting for some resource, reshuffle resource guard queue */
             cmb_assert_debug(awp->ptr != NULL);
             struct cmb_resourceguard *rgp = awp->ptr;
-            const struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
+            struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
             /* Resource guard hashkeys are process addresses */
             const uint64_t key = (uint64_t)pp;
             /* Do not change the other priority key, queue entry time */
-            const double etime = cmi_hashheap_dkey(hp, key);
+            const double etime = cmi_hashheap_drank(hp, key);
             cmi_hashheap_reprioritize(hp, key, etime, pri);
         }
 

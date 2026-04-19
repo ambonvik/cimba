@@ -21,7 +21,7 @@
  * processes acquiring, holding, releasing, and preempting various amounts of
  * the resource capacity. The hashheap is sorted to keep the holder most likely
  * to be preempted at the front, i.e. lowest priority and last in. The hashheap
- * uses the process pointer (memory address) as its key to get O(1) access.
+ * uses the process pointer (memory address) as its hash_key to get O(1) access.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
@@ -68,7 +68,7 @@ struct cmb_resourcepool *cmb_resourcepool_create(void)
 
 /*
  * holder_queue_check - Test if heap_tag *a should go before *b. If so, return
- * true. Ranking lower priority (dsortkey) before higher, then LIFO based on handle
+ * true. Ranking lower priority (rank_d64) before higher, then LIFO based on handle
  * value. Used to identify the most likely victim for resource preemption, hence
  * opposite order of the waiting room.
  */
@@ -79,11 +79,11 @@ static bool holder_queue_check(const struct cmi_heap_tag *a,
     cmb_assert_debug(b != NULL);
 
     bool ret = false;
-    if (a->isortkey < b->isortkey) {
+    if (a->rank_i64 < b->rank_i64) {
         ret = true;
     }
-    else if (a->isortkey == b->isortkey) {
-        if (a->key > b->key) {
+    else if (a->rank_i64 == b->rank_i64) {
+        if (a->hash_key > b->hash_key) {
             ret = true;
         }
     }
@@ -238,9 +238,8 @@ static uint64_t reset_holder(struct cmi_hashheap *hp,
 
 static void record_sample(struct cmb_resourcepool *sp) {
     cmb_assert_release(sp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)sp)->cookie == CMI_INITIALIZED);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)sp;
-    cmb_assert_debug(rbp->cookie == CMI_INITIALIZED);
     if (sp->is_recording) {
         struct cmb_timeseries *ts = &(sp->history);
         const double x = (double)(sp->in_use);
@@ -252,9 +251,8 @@ static void record_sample(struct cmb_resourcepool *sp) {
 void cmb_resourcepool_start_recording(struct cmb_resourcepool *rsp)
 {
     cmb_assert_release(rsp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     rsp->is_recording = true;
     record_sample(rsp);
 }
@@ -262,9 +260,8 @@ void cmb_resourcepool_start_recording(struct cmb_resourcepool *rsp)
 void cmb_resourcepool_stop_recording(struct cmb_resourcepool *rsp)
 {
     cmb_assert_release(rsp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     record_sample(rsp);
     rsp->is_recording = false;
 }
@@ -272,19 +269,17 @@ void cmb_resourcepool_stop_recording(struct cmb_resourcepool *rsp)
 struct cmb_timeseries *cmb_resourcepool_get_history(struct cmb_resourcepool *rsp)
 {
     cmb_assert_release(rsp != NULL);
-
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
 
     return &(rsp->history);
 }
 
 void cmb_resourcepool_print_report(struct cmb_resourcepool *rsp, FILE *fp) {
     cmb_assert_release(rsp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)rsp)->cookie == CMI_INITIALIZED);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rsp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
-    fprintf(fp, "Pool resource utilization for %s:\n", rbp->name);
+    fprintf(fp, "Pool resource utilization for %s:\n",
+                ((struct cmi_resourcebase *)rsp)->name);
     const struct cmb_timeseries *ts = &(rsp->history);
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
     (void)cmb_timeseries_summarize(ts, ws);
@@ -299,9 +294,7 @@ uint64_t cmb_resourcepool_held_by_process(struct cmb_resourcepool *rpp,
 {
     cmb_assert_release(rpp != NULL);
     cmb_assert_debug(pp != NULL);
-
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rpp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)rpp)->cookie == CMI_INITIALIZED);
 
     const uint64_t key = (uint64_t)pp;
     struct cmi_hashheap *hhp = &(rpp->holders);
@@ -336,8 +329,7 @@ static void update_record(struct cmb_resourcepool *rpp,
     cmb_assert_release(pp != NULL);
     cmb_assert_release(amount > 0u);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rpp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)rpp)->cookie == CMI_INITIALIZED);
 
     const uint64_t key = (uint64_t)pp;
     struct cmi_hashheap *hhp = &(rpp->holders);
@@ -387,10 +379,9 @@ int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rpp,
         initially_held = (uint64_t)(hhp->heap[heapidx].item[1]);
     }
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rpp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)rpp)->cookie == CMI_INITIALIZED);
     cmb_logger_info(stdout, "Has %" PRIu64 ", requests %" PRIu64 " from %s",
-                    initially_held, req_amount, rbp->name);
+                    initially_held, req_amount, ((struct cmi_resourcebase *)rpp)->name);
 
     /*
      * Greedy approach, first grab what is available, then preempt from lower
@@ -440,7 +431,7 @@ int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rpp,
         if (preempt) {
             /* Look for victims to mug for more */
             while (!cmi_hashheap_is_empty(hhp)
-                   && cmi_hashheap_peek_ikey(hhp) < caller->priority) {
+                   && cmi_hashheap_peek_irank(hhp) < caller->priority) {
                 /* There is one, pull it off the holders' hashheap */
                 const struct pool_item *pi = (struct pool_item *)cmi_hashheap_dequeue(hhp);
                 struct cmb_process *victim = pi->holder;
@@ -541,7 +532,6 @@ int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rpp,
     }
 }
 
-
 int64_t cmb_resourcepool_acquire(struct cmb_resourcepool *rpp,
                                  const uint64_t req_amount)
 {
@@ -574,10 +564,7 @@ void cmb_resourcepool_release(struct cmb_resourcepool *rpp, const uint64_t rel_a
     cmb_assert_release(rel_amount > 0u);
     cmb_assert_release(rpp->in_use >= rel_amount);
     cmb_assert_release(rel_amount <= rpp->capacity);
-
-    const struct cmi_holdable *hrp = (struct cmi_holdable *)rpp;
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rpp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)rpp)->cookie == CMI_INITIALIZED);
 
     struct cmb_process *pp = cmb_process_current();
     cmb_assert_debug(pp != NULL);
@@ -598,7 +585,7 @@ void cmb_resourcepool_release(struct cmb_resourcepool *rpp, const uint64_t rel_a
         cmb_assert_debug(found == true);
 
         /* ...and from the process */
-        found = cmi_process_remove_holdable(pp, hrp);
+        found = cmi_process_remove_holdable(pp, (struct cmi_holdable *)rpp);
         cmb_assert_debug(found == true);
     }
     else {
@@ -610,7 +597,8 @@ void cmb_resourcepool_release(struct cmb_resourcepool *rpp, const uint64_t rel_a
     rpp->in_use -= rel_amount;
     cmb_assert_debug(rpp->in_use <= rpp->capacity);
     record_sample(rpp);
-    cmb_logger_info(stdout, "Released %" PRIu64 " of %s", rel_amount, hrp->base.name);
+    cmb_logger_info(stdout, "Released %" PRIu64 " of %s", rel_amount,
+                    ((struct cmi_holdable *)rpp)->base.name);
 
     struct cmb_resourceguard *rgp = &(rpp->guard);
     cmb_resourceguard_signal(rgp);

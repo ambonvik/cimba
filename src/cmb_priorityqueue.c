@@ -38,19 +38,19 @@
 
 /*
  * compare_func - Test if heap_tag *a should go before *b. If so, return true.
- * Order by isortkey (priority), then FIFO by key for ties.
+ * Order by rank_i64 (priority), then FIFO by hash_key for ties.
  */
 static bool compare_func(const struct cmi_heap_tag *a, const struct cmi_heap_tag *b)
 {
     cmb_assert_debug(a != NULL);
     cmb_assert_debug(b != NULL);
 
-    if (a->isortkey != b->isortkey) {
-        return (a->isortkey > b->isortkey);
+    if (a->rank_i64 != b->rank_i64) {
+        return (a->rank_i64 > b->rank_i64);
     }
 
-    /* Stable FIFO within identical priority: earlier key goes first. */
-    return (a->key < b->key);
+    /* Stable FIFO within identical priority: earlier hash_key goes first. */
+    return (a->hash_key < b->hash_key);
 }
 
 struct cmb_priorityqueue *cmb_priorityqueue_create(void)
@@ -190,12 +190,11 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
 {
     cmb_assert_release(pqp != NULL);
     cmb_assert_release(objectloc != NULL);
-
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)pqp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
 
     cmb_logger_info(stdout, "Gets an object from %s, length now %" PRIu64,
-                    rbp->name, pqp->queue.heap_count);
+                    ((struct cmi_resourcebase *)pqp)->name, pqp->queue.heap_count);
+
     while (true) {
         cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
         if (pqp->queue.heap_count > 0u) {
@@ -242,10 +241,9 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
 {
     cmb_assert_release(pqp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)pqp;
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
     cmb_logger_info(stdout, "Puts object %p priority %" PRIi64 " into %s, length %" PRIu64,
-                    object, priority, rbp->name, pqp->queue.heap_count);
+                    object, priority, ((struct cmi_resourcebase *)pqp)->name, pqp->queue.heap_count);
     while (true) {
         cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
         if (pqp->queue.heap_count < pqp->capacity) {

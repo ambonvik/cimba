@@ -252,8 +252,6 @@ void *thread_init_func(void *usrarg, const uint64_t tid)
     ctx->thread_id = pthread_self();
     ctx->usrarg = usrarg;
     ctx->tid = tid;
-    // printf("Thread %p initiated\n", (void *)(ctx->thread_id));
-    // fflush(stdout);
 
     return ctx;
 }
@@ -261,8 +259,6 @@ void *thread_init_func(void *usrarg, const uint64_t tid)
 void thread_exit_func(void *vctx)
 {
     struct thread_context *ctx = vctx;
-    // printf("Thread %p terminated\n", (void *)(ctx->thread_id));
-    // fflush(stdout);
 
     free(ctx);
 }
@@ -270,7 +266,7 @@ void thread_exit_func(void *vctx)
 /*
  * Our main() function, loading the experiment and reporting the outcome.
  */
-int main(void)
+int main(int argc, char **argv)
 {
     printf("Cimba version %s\n", cimba_version());
     struct timespec start_time;
@@ -338,9 +334,11 @@ int main(void)
     elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
     printf("It took %g sec\n", elapsed);
 
-    /* ...and pop up the graphics window before exiting */
-    write_gnuplot_commands(ncvs, cvs);
-    system("gnuplot -persistent test_cimba.gp");
+    if (argc > 1 && strcmp(argv[1], "-g") == 0) {
+        /* Pop up the Gnuplot graphics window before exiting */
+        write_gnuplot_commands(ncvs, cvs);
+        system("gnuplot -persistent test_cimba.gp");
+    }
 
     return 0;
 }

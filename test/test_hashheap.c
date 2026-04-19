@@ -28,7 +28,7 @@
 /*
  * Test if heap_tag *a should go before *b. If so, return true.
  * Default heap compare function, corresponds to the event queue order, where
- * dsortkey = reactivation time, isortkey = priority, ukey = not used, uses key FIFO.
+ * rank_d64 = reactivation time, rank_i64 = priority, ukey = not used, uses hash_key FIFO.
  */
 static bool heap_order_check(const struct cmi_heap_tag *a,
                              const struct cmi_heap_tag *b)
@@ -37,15 +37,15 @@ static bool heap_order_check(const struct cmi_heap_tag *a,
     cmb_assert_debug(b != NULL);
 
     bool ret = false;
-    if (a->dsortkey < b->dsortkey) {
+    if (a->rank_d64 < b->rank_d64) {
         ret = true;
     }
-    else if (a->dsortkey == b->dsortkey) {
-        if (a->isortkey > b->isortkey) {
+    else if (a->rank_d64 == b->rank_d64) {
+        if (a->rank_i64 > b->rank_i64) {
             ret = true;
         }
-        else if (a->isortkey == b->isortkey) {
-            if (a->key < b->key) {
+        else if (a->rank_i64 == b->rank_i64) {
+            if (a->hash_key < b->hash_key) {
                 ret = true;
             }
         }
@@ -59,7 +59,7 @@ int main(void)
     cmb_random_initialize(cmb_random_hwseed());
 
     cmi_test_print_line("-");
-    printf("Testing event queue\n");
+    printf("Testing hashheap\n");
     printf("Creating hash heap: cmi_hashheap_create ...\n");
     struct cmi_hashheap *hhp = cmi_hashheap_create();
     printf("Initializing hash heap: cmi_hashheap_initialize ...\n");
@@ -73,7 +73,7 @@ int main(void)
     cmi_hashheap_initialize(hhp, 3u, heap_order_check);
     printf("Adding an item: cmi_hashheap_enqueue ... ");
     const uint64_t key = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, NULL, 0u, 1.0, 1);
-    printf("returned key %" PRIu64 "\n", key);
+    printf("returned hash_key %" PRIu64 "\n", key);
     printf("Peekaboo: cmi_hashheap_peek ... \n");
     (void)cmi_hashheap_peek_item(hhp);
     printf("Pulling out an item: cmi_hashheap_dequeue ... \n");
@@ -115,7 +115,7 @@ int main(void)
         if (cmi_hashheap_count(hhp) > 0u) {
             void **nxtitem = cmi_hashheap_peek_item(hhp);
             cmb_assert_debug(nxtitem != NULL);
-            const double d = cmi_hashheap_peek_dkey(hhp);
+            const double d = cmi_hashheap_peek_drank(hhp);
             printf("Coming next: %p %f\n", nxtitem[0], d);
         }
         else {

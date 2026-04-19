@@ -32,7 +32,7 @@
  * When scheduled, an event handle will be assigned and returned. This is
  * a unique event identifier and can be used as a reference for later
  * cancelling, rescheduling, or reprioritizing the event. Behind the scene,
- * the event queue is implemented as a hashheap where the event handle is a key
+ * the event queue is implemented as a hashheap where the event handle is a hash_key
  * in the hash map and the event's current location in the heap is the hash map
  * value. This gives O(1) cancellations and reschedules with no need to search
  * the entire heap to find a future event. The details of the data structure

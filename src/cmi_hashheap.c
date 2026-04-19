@@ -36,260 +36,8 @@
 #include "cmi_memutils.h"
 
 /*
- * hash_key - Fibonacci hash function.
- *
- * The "magic number" is approx 2^64 / phi, the golden ratio.
- * The right shift maps to the hash map size, twice the heap size.
+ * cmi_hashheap_create - Allocate memory for a new hashheap struct.
  */
-static uint64_t hash_key(const struct cmi_hashheap *hp, const uint64_t key)
-{
-    cmb_assert_debug(hp != NULL);
-
-    return (key * UINT64_C(11400714819323198485)) >> (64u - (hp->heap_exp_cur + 1));
-}
-
-/*
- * hash_find_slot - Find the first free hash map slot for the given key
- */
-static uint64_t hash_find_slot(const struct cmi_hashheap *hp, const uint64_t key)
-{
-    cmb_assert_debug(hp != NULL);
-    cmb_assert_debug(hp->hash_map != NULL);
-
-    const struct cmi_hash_tag *hm = hp->hash_map;
-    uint64_t hash = hash_key(hp, key);
-    const uint64_t bitmap = hp->hash_size - 1u;
-    for (;;) {
-        /* Guaranteed to find a slot eventually, < 50 % hash load factor */
-        if (hm[hash].heap_index == 0u) {
-            /* Found a free slot */
-            return hash;
-        }
-
-        /* Already taken, linear probing, try next, possibly looping around */
-        hash = (hash + 1u) & bitmap;
-    }
-}
-
-/*
- * Initializes hashmap from current heap for first use
- */
-static void hash_init(struct cmi_hashheap *hp)
-{
-    cmb_assert_debug(hp != NULL);
-    cmb_assert_debug(hp->heap != NULL);
-    cmb_assert_debug(hp->hash_map != NULL);
-
-    for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
-        struct cmi_heap_tag *htp = &(hp->heap[ui]);
-        htp->hash_index = hash_find_slot(hp, htp->key);
-        const uint64_t hashidx = htp->hash_index;
-        hp->hash_map[hashidx].key = htp->key;
-        hp->hash_map[hashidx].heap_index = ui;
-    }
-}
-
-/*
- * Rehash old hash entries to a new (current) hash map, removing any tombstones.
- */
-static void hash_rehash(const struct cmi_hashheap *hp,
-                        const struct cmi_hash_tag *old_hash_map,
-                        const uint64_t old_hash_size)
-{
-    cmb_assert_debug(hp != NULL);
-    cmb_assert_debug(hp->heap != NULL);
-    cmb_assert_debug(hp->hash_map != NULL);
-    cmb_assert_debug(old_hash_map != NULL);
-
-    struct cmi_heap_tag *heap = hp->heap;
-    struct cmi_hash_tag *hash = hp->hash_map;
-
-    for (uint64_t ui = 0u; ui < old_hash_size; ui++) {
-        const uint64_t key = old_hash_map[ui].key;
-        if (key != 0u) {
-            /* Something is here */
-            const uint64_t heapidx = old_hash_map[ui].heap_index;
-            if (heapidx != 0u) {
-                /* It is not a tombstone */
-                const uint64_t hashidx = hash_find_slot(hp, key);
-                hash[hashidx].key = key;
-                hash[hashidx].heap_index = heapidx;
-                heap[heapidx].hash_index = hashidx;
-            }
-        }
-    }
-}
-
-/*
- * default_compare - Test if heap_tag *a should go before *b. If so, return true.
- * Prioritization corresponds to the event queue order, where lower reactivation
- * times (dsortkey) go before higher, if equal, then higher priority (isortkey) before
- * lower, and if that also is equal, FIFO order based on handle value.
- */
-static bool default_compare(const struct cmi_heap_tag *a,
-                            const struct cmi_heap_tag *b)
-{
-    cmb_assert_debug(a != NULL);
-    cmb_assert_debug(b != NULL);
-
-    if (a->dsortkey < b->dsortkey) {
-        return true;
-    }
-    if (a->dsortkey > b->dsortkey) {
-        return false;
-    }
-
-    if (a->isortkey > b->isortkey) {
-        return true;
-    }
-    if (a->isortkey < b->isortkey) {
-        return false;
-    }
-
-    if (a->key < b->key) {
-        return true;
-    }
-
-    return false;
-}
-
-
-/* heap_up - Bubble a tag at index k upwards into its right place */
-static void heap_up(const struct cmi_hashheap *hp, uint64_t k)
-{
-    cmb_assert_debug(hp != NULL);
-    cmb_assert_debug(hp->heap != NULL);
-    cmb_assert_debug(k <= hp->heap_count);
-
-    struct cmi_heap_tag *heap = hp->heap;
-    struct cmi_hash_tag * hash = hp->hash_map;
-    cmi_heap_compare_func *compare = hp->heap_compare;
-    const struct cmi_heap_tag hole = heap[k];
-
-    /* A binary tree, parent node at k / 2 */
-    uint64_t l;
-    while ((l = (k >> 1)) > 0) {
-        if ((*compare)(&(hole), &(heap[l]))) {
-            /* Our candidate event goes before the one at l, swap them */
-            heap[k] = heap[l];
-            if (hp->map_active) {
-                const uint64_t khash = heap[k].hash_index;
-                hash[khash].heap_index = k;
-            }
-
-            k = l;
-        }
-        else {
-            break;
-        }
-    }
-
-    /* Copy the candidate into its correct slot */
-    heap[k] = hole;
-    if (hp->map_active) {
-        const uint64_t khash = heap[k].hash_index;
-        hash[khash].heap_index = k;
-    }
-}
-
-/* heap_down - Bubble a tag at index k downwards into its right place */
-static void heap_down(const struct cmi_hashheap *hp, uint64_t k)
-{
-    cmb_assert_debug(hp != NULL);
-    cmb_assert_debug(hp->heap != NULL);
-    cmb_assert_debug(k <= hp->heap_count);
-
-    struct cmi_heap_tag *heap = hp->heap;
-    struct cmi_hash_tag *hash = hp->hash_map;
-    cmi_heap_compare_func * const compare = hp->heap_compare;
-    const struct cmi_heap_tag hole = heap[k];
-
-    /* Binary heap, children at 2x and 2x + 1 */
-    const uint64_t j = (hp->heap_count >> 1);
-    while (k <= j) {
-        uint64_t l = k << 1;
-        const uint64_t r = l + 1;
-        if (r <= hp->heap_count && (*compare)(&(heap[r]), &(heap[l]))) {
-            l = r;
-        }
-
-        if ((*compare)(&(hole), &(heap[l]))) {
-            break;
-        }
-
-        /* Swap with child */
-        heap[k] = heap[l];
-        if (hp->map_active) {
-            const uint64_t khash = heap[k].hash_index;
-            hash[khash].heap_index = k;
-        }
-
-        k = l;
-    }
-
-    /* Copy the event into its correct position */
-    heap[k] = hole;
-    if (hp->map_active) {
-        const uint64_t khash = heap[k].hash_index;
-        hash[khash].heap_index = k;
-    }
-}
-
-/*
- * hashheap_grow: doubling the available heap and hash map sizes.
- * The old heap is memcpy'd into its new location, each event at the same
- * index as before. The new hash map is initialized to all zeros, the old
- * hash map is memcpy'd together with the old heap into the area that now
- * belongs to the new heap. From there, valid hash entries are rehashed into
- * their new locations in the new hash map. This works since there is no
- * memory overlap between the copy of the old hash map and the new one.
- */
-static void hashheap_grow(struct cmi_hashheap *hp)
-{
-    cmb_assert_debug(hp != NULL);
-    cmb_assert_debug(hp->heap != NULL);
-    cmb_assert_debug(hp->hash_map != NULL);
-    cmb_assert_release(hp->heap_size < (UINT32_MAX / 2u));
-    cmb_assert_debug(cmi_is_power_of_two(hp->heap_size));
-    cmb_assert_debug(cmi_is_power_of_two(hp->hash_size));
-
-    /* Set the new heap size, i.e., the max number of events in the queue */
-    hp->heap_exp_cur++;
-    const uint64_t old_heapsz = hp->heap_size;
-    hp->heap_size = 1u << hp->heap_exp_cur;
-    cmb_assert_debug(hp->heap_size == 2 * old_heapsz);
-    const uint64_t old_hashsz = hp->hash_size;
-    hp->hash_size = 2u * hp->heap_size;
-
-    /* Calculate the page-aligned memory footprint it will need */
-    const size_t heapbts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
-    const size_t hashbts = hp->hash_size * sizeof(struct cmi_hash_tag);
-    const size_t newsz = heapbts + hashbts;
-    const size_t pagesz = cmi_pagesize();
-    const size_t npages = (size_t)(newsz + pagesz - 1u) / pagesz;
-    cmb_assert_debug(npages >= 1u);
-
-    /* Save the old address and allocate the new area */
-    struct cmi_heap_tag *old_heaploc = hp->heap;
-    unsigned char *newloc = cmi_aligned_alloc(pagesz, npages * pagesz);
-
-    /* Copy the old heap straight into the new */
-    struct cmi_heap_tag *new_heaploc = (struct cmi_heap_tag *)newloc;
-    const size_t old_heapbts = (old_heapsz + 2u) * sizeof(struct cmi_heap_tag);
-    cmi_memcpy(new_heaploc, old_heaploc, old_heapbts);
-    hp->heap = new_heaploc;
-
-    /* Rehash the old hash map into the new */
-    const struct cmi_hash_tag *old_hashloc = hp->hash_map;
-    struct cmi_hash_tag *new_hashloc = (struct cmi_hash_tag *)(newloc + heapbts);
-    hp->hash_map = new_hashloc;
-    cmi_memset(hp->hash_map, 0u, hashbts);
-    hash_rehash(hp, old_hashloc, old_hashsz);
-
-    /* Free the old heap and hash map */
-    cmi_aligned_free(old_heaploc);
-}
-
 struct cmi_hashheap *cmi_hashheap_create(void)
 {
     struct cmi_hashheap *hp = cmi_malloc(sizeof(*hp));
@@ -298,10 +46,41 @@ struct cmi_hashheap *cmi_hashheap_create(void)
     return hp;
 }
 
+/*
+ * default_compare - Test if heap_tag *a should go before *b. If so, return true.
+ * Ranking corresponds to the event queue order, where lower reactivation times
+ * (rank_d64) go before higher, if equal, then higher priority (rank_i64) before
+ * lower, and if that also is equal, FIFO order based on hash key value.
+ */
+static bool default_compare(const struct cmi_heap_tag *a,
+                            const struct cmi_heap_tag *b)
+{
+    cmb_assert_debug(a != NULL);
+    cmb_assert_debug(b != NULL);
+
+    if (a->rank_d64 < b->rank_d64) {
+        return true;
+    }
+    if (a->rank_d64 > b->rank_d64) {
+        return false;
+    }
+
+    if (a->rank_i64 > b->rank_i64) {
+        return true;
+    }
+    if (a->rank_i64 < b->rank_i64) {
+        return false;
+    }
+
+    if (a->hash_key < b->hash_key) {
+        return true;
+    }
+
+    return false;
+}
 
 /*
  * cmi_hashheap_initialize - Initialize hashheap for use.
- *
  * Allocates a contiguous memory array aligned to an integer number of memory
  * pages for efficiency.
  */
@@ -314,67 +93,31 @@ void cmi_hashheap_initialize(struct cmi_hashheap *hp,
     cmb_assert_release(hp->hash_map == NULL);
     cmb_assert_release(hexp > 0u);
 
+    /* Initialize the powers-of-two growth parameters */
     hp->heap_exp_init = hexp;
     hp->heap_exp_cur = hexp;
     hp->heap_size = 1u << hp->heap_exp_cur;
-    hp->hash_size = 2u * hp->heap_size;
+
+    const size_t heap_bts = (hp->heap_size + 1u) * sizeof(struct cmi_heap_tag);
+    const size_t hash_bts = (hp->heap_size << 1u) * sizeof(struct cmi_hash_tag);
+    const size_t total_bts = heap_bts + hash_bts;
+
+    const size_t page_bts = cmi_pagesize();
+    cmb_assert_debug(page_bts > 0 && (page_bts & (page_bts - 1)) == 0);
+    const size_t rndtot_bts = (total_bts + page_bts - 1u) & ~(page_bts - 1u);
+
+    unsigned char *mem = cmi_aligned_alloc(page_bts, rndtot_bts);
+    cmi_memset(mem, 0u, rndtot_bts);
+
+    hp->heap = (struct cmi_heap_tag *)mem;
+    hp->hash_map = (struct cmi_hash_tag *)(mem + heap_bts);
+
     hp->heap_count = 0u;
-
-    if (cmp == NULL ) {
-        hp->heap_compare = default_compare;
-    }
-    else {
-        hp->heap_compare = cmp;
-    }
-
-    /* Calculate the memory size needed, page aligned */
-    const size_t heapbts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
-    const size_t hashbts = (hp->heap_size * 2u) * sizeof(struct cmi_hash_tag);
-    const size_t initsz = heapbts + hashbts;
-    const size_t pagesz = cmi_pagesize();
-    const size_t npages = (size_t)(initsz + pagesz - 1u) / pagesz;
-    cmb_assert_debug(npages >= 1u);
-
-    /* Allocate, initialize, set pointers to heap and hash parts */
-    unsigned char *abts = cmi_aligned_alloc(pagesz, npages * pagesz);
-    cmi_memset(abts, 0u, initsz);
-
-    hp->heap = (struct cmi_heap_tag *)abts;
-    hp->hash_map = (struct cmi_hash_tag *)(abts + heapbts);
+    hp->item_counter = 0u;
+    hp->heap_compare = (cmp == NULL) ? default_compare : cmp;
 
     /* Lazy initialization of hashmap, only at first actual need for it */
     hp->map_active = false;
-}
-
-/*
- * cmi_hashheap_clear - Flush out the hashheap. Does not reset the item counter
- * for issuing new keys, does not free space, does not shrink the heap to its
- * initial size, just empties it.
- */
-void cmi_hashheap_clear(struct cmi_hashheap *hp)
-{
-    cmb_assert_release(hp != NULL);
-
-    if (hp->heap != NULL) {
-        /* heap_size is the allowed number of entries, calculate size in bytes */
-        const size_t heapbts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
-        const size_t hashbts = (hp->heap_size * 2u) * sizeof(struct cmi_hash_tag);
-        const size_t initsz = heapbts + hashbts;
-        cmi_memset(hp->heap, 0u, initsz);
-        hp->heap_count = 0u;
-    }
-}
-
-void cmi_hashheap_reset(struct cmi_hashheap *hp)
-{
-    cmb_assert_release(hp != NULL);
-    cmb_assert_release(hp->heap != NULL);
-
-    const uint16_t hexp = hp->heap_exp_init;
-    cmi_heap_compare_func *cmp = hp->heap_compare;
-
-    cmi_hashheap_terminate(hp);
-    cmi_hashheap_initialize(hp, hexp, cmp);
 }
 
 /*
@@ -403,7 +146,283 @@ void cmi_hashheap_destroy(struct cmi_hashheap *hp)
 }
 
 /*
- * cmi_hashheap_enqueue - Insert item in queue, return unique event key.
+ * cmi_hashheap_clear - Flush out the hashheap. Does not reset the item counter
+ * for issuing new keys, does not free space, does not shrink the heap to its
+ * initial size, just empties it.
+ */
+void cmi_hashheap_clear(struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+
+    if (hp->heap != NULL) {
+        const size_t heap_bts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
+        const size_t hash_bts = (hp->heap_size << 1u) * sizeof(struct cmi_hash_tag);
+        const size_t total_bts = heap_bts + hash_bts;
+        cmi_memset(hp->heap, 0u, total_bts);
+
+        hp->heap_count = 0u;
+        hp->map_active = false;
+    }
+}
+
+/*
+ * cmi_hashheap_reset - Hard reset to newly initialized state
+ */
+void cmi_hashheap_reset(struct cmi_hashheap *hp)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(hp->heap != NULL);
+
+    const uint16_t hexp = hp->heap_exp_init;
+    cmi_heap_compare_func *cmp = hp->heap_compare;
+
+    cmi_hashheap_terminate(hp);
+    cmi_hashheap_initialize(hp, hexp, cmp);
+}
+
+
+/*
+ * hash_key - Fibonacci hash function.
+ * The "magic number" is approx 2^64 / phi, the golden ratio.
+ * The right shift maps to the hash map size, twice the heap size.
+ */
+static uint64_t hash_key(const struct cmi_hashheap *hp, const uint64_t key)
+{
+    cmb_assert_debug(hp != NULL);
+
+    const uint64_t hash = (key * UINT64_C(11400714819323198485))
+                            >> (64u - (hp->heap_exp_cur + 1));
+
+    cmb_assert_debug(hash < (hp->heap_size << 1u));
+    return hash;
+}
+
+/*
+ * hash_find_slot - Find the first free hash map slot for the given hash_key.
+ * Uses a bitmap to loop around efficiently.
+ */
+static uint64_t hash_find_slot(const struct cmi_hashheap *hp, const uint64_t key)
+{
+    cmb_assert_debug(hp != NULL);
+    cmb_assert_debug(hp->hash_map != NULL);
+
+    const struct cmi_hash_tag *hm = hp->hash_map;
+    uint64_t hash = hash_key(hp, key);
+    const uint64_t hash_size = hp->heap_size << 1u;
+    const uint64_t bitmap = hash_size - 1u;
+    for (;;) {
+        /* Guaranteed to find a slot eventually, < 50 % hash load factor */
+        if (hm[hash].heap_index == 0u) {
+            /* Found a free slot */
+            return hash;
+        }
+
+        /* Already taken, linear probing, try next, possibly looping around */
+        hash = (hash + 1u) & bitmap;
+    }
+}
+
+/*
+ * hash_init - Initializes hashmap from current heap for first use
+ */
+static void hash_init(const struct cmi_hashheap *hp)
+{
+    cmb_assert_debug(hp != NULL);
+    cmb_assert_debug(hp->heap != NULL);
+    cmb_assert_debug(hp->hash_map != NULL);
+
+    for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
+        struct cmi_heap_tag *htp = &(hp->heap[ui]);
+        htp->hash_index = hash_find_slot(hp, htp->hash_key);
+        const uint64_t hashidx = htp->hash_index;
+        hp->hash_map[hashidx].hash_key = htp->hash_key;
+        hp->hash_map[hashidx].heap_index = ui;
+    }
+}
+
+/*
+ * hash_rehash - Rehash old hash entries to a new hash map, removing tombstones.
+ */
+static void hash_rehash(const struct cmi_hashheap *hp,
+                        const struct cmi_hash_tag *old_hash_map,
+                        const uint64_t old_hash_size)
+{
+    cmb_assert_debug(hp != NULL);
+    cmb_assert_debug(hp->heap != NULL);
+    cmb_assert_debug(hp->hash_map != NULL);
+    cmb_assert_debug(old_hash_map != NULL);
+
+    struct cmi_heap_tag *heap = hp->heap;
+    struct cmi_hash_tag *hash = hp->hash_map;
+
+    for (uint64_t ui = 0u; ui < old_hash_size; ui++) {
+        const uint64_t key = old_hash_map[ui].hash_key;
+        if (key != 0u) {
+            /* Something is here */
+            const uint64_t heapidx = old_hash_map[ui].heap_index;
+            if (heapidx != 0u) {
+                /* It is not a tombstone */
+                const uint64_t hashidx = hash_find_slot(hp, key);
+                hash[hashidx].hash_key = key;
+                hash[hashidx].heap_index = heapidx;
+                heap[heapidx].hash_index = hashidx;
+            }
+        }
+    }
+}
+
+/*
+ * heap_up - Bubble a tag at index k upwards into its right place
+ */
+static void heap_up(const struct cmi_hashheap *hp, uint64_t k)
+{
+    cmb_assert_debug(hp != NULL);
+    cmb_assert_debug(hp->heap != NULL);
+    cmb_assert_debug(k <= hp->heap_count);
+
+    struct cmi_heap_tag *heap = hp->heap;
+    struct cmi_hash_tag *hash = hp->hash_map;
+
+    const struct cmi_heap_tag hole_tag = heap[k];
+    cmi_heap_compare_func *compare = hp->heap_compare;
+    const bool defcmp = (compare == default_compare);
+
+    /* A binary tree, parent node at k / 2 */
+    uint64_t l;
+    while ((l = (k >> 1)) > 0) {
+        /* Trading one more branch for one less redirect in the default case */
+        const bool before = (defcmp) ? default_compare(&hole_tag, &(heap[l]))
+                                     : (*compare)(&(hole_tag), &(heap[l]));
+        if (before) {
+            heap[k] = heap[l];
+            if (hp->map_active) {
+                const uint64_t khash = heap[k].hash_index;
+                hash[khash].heap_index = k;
+            }
+
+            k = l;
+        }
+        else {
+            break;
+        }
+    }
+
+    /* Copy the candidate into its correct slot */
+    heap[k] = hole_tag;
+    if (hp->map_active) {
+        const uint64_t khash = heap[k].hash_index;
+        hash[khash].heap_index = k;
+    }
+}
+
+/*
+ * heap_down - Bubble a tag at index k downwards into its right place
+ */
+static void heap_down(const struct cmi_hashheap *hp, uint64_t k)
+{
+    cmb_assert_debug(hp != NULL);
+    cmb_assert_debug(hp->heap != NULL);
+    cmb_assert_debug(k <= hp->heap_count);
+
+    struct cmi_heap_tag *heap = hp->heap;
+    struct cmi_hash_tag *hash = hp->hash_map;
+
+    const struct cmi_heap_tag hole_tag = heap[k];
+    cmi_heap_compare_func *compare = hp->heap_compare;
+    const bool defcmp = (compare == default_compare);
+
+    /* Binary heap, children at 2x and 2x + 1 */
+    const uint64_t j = (hp->heap_count >> 1);
+    bool before;
+    while (k <= j) {
+        uint64_t l = k << 1;
+        const uint64_t r = l + 1;
+        if (r <= hp->heap_count) {
+            before = (defcmp) ? default_compare(&heap[r], &(heap[l]))
+                              : (*compare)(&(heap[r]), &(heap[l]));
+            if (before) {
+                l = r;
+            }
+        }
+
+        before = (defcmp) ? default_compare(&hole_tag, &(heap[l]))
+                          : (*compare)(&(hole_tag), &(heap[l]));
+        if (before) {
+            break;
+        }
+        else {
+            heap[k] = heap[l];
+            if (hp->map_active) {
+                const uint64_t khash = heap[k].hash_index;
+                hash[khash].heap_index = k;
+            }
+
+            k = l;
+        }
+    }
+
+    /* Copy the candidate into its correct slot */
+    heap[k] = hole_tag;
+    if (hp->map_active) {
+        const uint64_t khash = heap[k].hash_index;
+        hash[khash].heap_index = k;
+    }
+}
+
+/*
+ * hashheap_grow: doubling the available heap and hash map sizes.
+ * The old heap is memcpy'd into its new location, each event at the same
+ * index as before. The new hash map is initialized to all zeros, the old
+ * hash map is memcpy'd together with the old heap into the area that now
+ * belongs to the new heap. From there, valid hash entries are rehashed into
+ * their new locations in the new hash map. This works since there is no
+ * memory overlap between the copy of the old hash map and the new one.
+ */
+static void hashheap_grow(struct cmi_hashheap *hp)
+{
+cmb_assert_debug(hp != NULL);
+    cmb_assert_debug(hp->heap != NULL);
+    cmb_assert_debug(hp->hash_map != NULL);
+
+    const uint64_t old_heapsz = hp->heap_size;
+
+    hp->heap_exp_cur++;
+    hp->heap_size = 1u << hp->heap_exp_cur;
+
+    const size_t heap_bts = (hp->heap_size + 1u) * sizeof(struct cmi_heap_tag);
+    const size_t hash_bts = (hp->heap_size << 1u) * sizeof(struct cmi_hash_tag);
+    const size_t total_bts = heap_bts + hash_bts;
+
+    const size_t pagesz = cmi_pagesize();
+    const size_t rndtot_bts = (total_bts + pagesz - 1u) & ~(pagesz - 1u);
+
+    unsigned char *mem_new = cmi_aligned_alloc(pagesz, rndtot_bts);
+    cmi_memset(mem_new, 0u, rndtot_bts);
+
+    struct cmi_heap_tag *heap_new = (struct cmi_heap_tag *)mem_new;
+    struct cmi_hash_tag *hash_new = (struct cmi_hash_tag *)(mem_new + heap_bts);
+
+    const size_t old_heap_bts = (old_heapsz + 1u) * sizeof(struct cmi_heap_tag);
+    cmi_memcpy(heap_new, hp->heap, old_heap_bts);
+
+    /* Save old pointers */
+    const struct cmi_hash_tag *hash_old = hp->hash_map;
+    struct cmi_heap_tag *heap_old_block = hp->heap;
+    hp->heap = heap_new;
+    hp->hash_map = hash_new;
+
+    if (hp->map_active) {
+        /* Rehash into new hashmap */
+        const uint64_t old_hashsz = old_heapsz << 1u;
+        hash_rehash(hp, hash_old, old_hashsz);
+    }
+
+    cmi_aligned_free(heap_old_block);
+}
+
+
+/*
+ * cmi_hashheap_enqueue - Insert item in queue, return unique event hash_key.
  * Resizes hashheap if necessary.
  */
 uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
@@ -412,22 +431,20 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
                               void *pl3,
                               void *pl4,
                               uint64_t hashkey,
-                              const double dsortkey,
-                              const int64_t isortkey)
+                              const double rank_d64,
+                              const int64_t rank_i64)
 {
     cmb_assert_release(hp != NULL);
     cmb_assert_debug(hp->heap != NULL);
     cmb_assert_debug(hp->hash_map != NULL);
     cmb_assert_release(hp->heap_count <= hp->heap_size);
-    cmb_assert_debug(cmi_is_power_of_two(hp->heap_size));
-    cmb_assert_debug(cmi_is_power_of_two(hp->hash_size));
 
     /* Do we have space? */
     if (hp->heap_count == hp->heap_size) {
        hashheap_grow(hp);
     }
 
-    /* Now we have */
+    /* Now we have, put the new entry at the end */
     cmb_assert_debug(hp->heap_count < hp->heap_size);
     const uint64_t hc = ++hp->heap_count;
     hp->item_counter += 1u;
@@ -435,27 +452,25 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
         hashkey = hp->item_counter;
     }
 
-    /* Initialize the heaptag for the event */
     struct cmi_heap_tag *heap = hp->heap;
     struct cmi_hash_tag *hash = hp->hash_map;
 
-    heap[hc].key = hashkey;
+    heap[hc].hash_key = hashkey;
+    heap[hc].rank_d64 = rank_d64;
+    heap[hc].rank_i64 = rank_i64;
     heap[hc].item[0] = pl1;
     heap[hc].item[1] = pl2;
     heap[hc].item[2] = pl3;
     heap[hc].item[3] = pl4;
-    heap[hc].dsortkey = dsortkey;
-    heap[hc].isortkey = isortkey;
 
     if (hp->map_active) {
-        /* Initialize the hashtag for the event, pointing it to the heaptag */
         const uint64_t idx = hash_find_slot(hp, hashkey);
-        hash[idx].key = hashkey;
+        hash[idx].hash_key = hashkey;
         hash[idx].heap_index = hc;
         heap[hc].hash_index = idx;
     }
 
-    /* Reshuffle the heap */
+    /* Shuffle it up into its right place */
     heap_up(hp, hc);
 
     cmb_assert_debug(hashkey > 0u);
@@ -464,13 +479,9 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
 
 /*
  * cmi_hashheap_dequeue - Remove and return the next item.
- *
- * Temporarily saves the event to location 0 of the heap. The next event is
- * always in position 1, positions 1 to heap_count are the actual events, and
- * position heap_count + 1 is the working space.
- *
- * Note that this space will be overwritten by the next call to dequeue, not a
- * valid pointer for very long.
+ * Temporarily saves the event to location 0 of the heap. Note that this space
+ * will be overwritten by the next call to dequeue. It is not a valid pointer
+ * for very long.
  */
 void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
 {
@@ -483,13 +494,12 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
     }
 
     /* Copy the event to the working space at index 0. */
-    const uint64_t tmp = 0u;
     struct cmi_heap_tag *heap = hp->heap;
-    heap[tmp] = heap[1u];
+    heap[0u] = heap[1u];
 
     if (hp->map_active) {
         /* Mark it as deleted (a tombstone) in the hash map */
-        const uint64_t idx = heap[tmp].hash_index;
+        const uint64_t idx = heap[0u].hash_index;
         hp->hash_map[idx].heap_index = 0u;
     }
 
@@ -510,8 +520,7 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
         hp->heap_count = 0u;
     }
 
-    /* Return a pointer to the start of the payload array */
-    return heap[tmp].item;
+    return heap[0u].item;
 }
 
 /*
@@ -527,7 +536,7 @@ bool cmi_hashheap_remove(struct cmi_hashheap *hp, const uint64_t hashkey)
     }
 
     if (!hp->map_active) {
-        /* Initialize hashmap */
+        /* Lazy activation, now's the time */
         hash_init(hp);
         hp->map_active = true;
     }
@@ -537,31 +546,31 @@ bool cmi_hashheap_remove(struct cmi_hashheap *hp, const uint64_t hashkey)
         return false;
     }
 
-    /* Lazy deletion, tombstone it */
-    cmb_assert_debug(hp->heap[heapidx].key == hashkey);
+    /* Lazy hashmap deletion, tombstone it */
+    cmb_assert_debug(hp->heap[heapidx].hash_key == hashkey);
     uint64_t hashidx = hp->heap[heapidx].hash_index;
     hp->hash_map[hashidx].heap_index = 0u;
 
-    /* Remove event from heap position heapidx */
+    /* Remove entry from heap */
     if (heapidx == hp->heap_count) {
         hp->heap_count--;
     }
     else {
-        const struct cmi_heap_tag *a = &(hp->heap[heapidx]);
+        /* Move the last item into the now empty slot, reshuffle */
         const uint64_t heapcnt = hp->heap_count;
+        const struct cmi_heap_tag *a = &(hp->heap[heapidx]);
         const struct cmi_heap_tag *b = &(hp->heap[heapcnt]);
-        if ((*hp->heap_compare)(a, b)) {
-            hp->heap[heapidx] = hp->heap[heapcnt];
-            hashidx = hp->heap[heapidx].hash_index;
-            hp->hash_map[hashidx].heap_index = heapidx;
-            hp->heap_count--;
+        const bool defcmp = (hp->heap_compare == default_compare);
+        const bool move_down = (defcmp) ? default_compare(a, b)
+                                     : (*hp->heap_compare)(a, b);
+        hp->heap[heapidx] = hp->heap[heapcnt];
+        hashidx = hp->heap[heapidx].hash_index;
+        hp->hash_map[hashidx].heap_index = heapidx;
+        hp->heap_count--;
+        if (move_down) {
             heap_down(hp, heapidx);
         }
         else {
-            hp->heap[heapidx] = hp->heap[heapcnt];
-            hashidx = hp->heap[heapidx].hash_index;
-            hp->hash_map[hashidx].heap_index = heapidx;
-            hp->heap_count--;
             heap_up(hp, heapidx);
         }
     }
@@ -586,18 +595,19 @@ uint64_t cmi_hash_find_index(struct cmi_hashheap *hp, const uint64_t hashkey)
         hp->map_active = true;
     }
 
-    const uint64_t bitmap = hp->hash_size - 1u;
+    const uint64_t hash_size = hp->heap_size << 1u;
+    const uint64_t bitmap = hash_size - 1u;
     const struct cmi_hash_tag *hm = hp->hash_map;
     uint64_t hash = hash_key(hp, hashkey);
     const uint64_t hash_start = hash;
     for (;;) {
-        if (hm[hash].key == hashkey) {
+        if (hm[hash].hash_key == hashkey) {
             /* Found, return the heap index (possibly a tombstone zero) */
             return hm[hash].heap_index;
         }
 
         /* If we reached a never-used slot, the hashkey is not in the hash map */
-        if (hm[hash].key == 0u) {
+        if (hm[hash].hash_key == 0u) {
             return 0u;
         }
 
@@ -627,25 +637,10 @@ void **cmi_hashheap_item(struct cmi_hashheap *hp, const uint64_t hashkey)
     return hp->heap[idx].item;
 }
 
-
 /*
- * cmi_hashheap_dkey/isortkey/ukey - Get the dsortkey/isortkey/ukey for the given item.
+ * cmi_hashheap_drank - Get the rank_d64 for the given item.
  */
-double cmi_hashheap_dkey(struct cmi_hashheap *hp,
-                         const uint64_t hashkey)
-{
-    cmb_assert_release(hp != NULL);
-    cmb_assert_release(hashkey != 0u);
-    cmb_assert_debug(hp->heap != NULL);
-    cmb_assert_debug(hp->heap_count != 0u);
-
-    const uint64_t idx = cmi_hash_find_index(hp, hashkey);
-    cmb_assert_release(idx != 0u);
-
-    return hp->heap[idx].dsortkey;
-}
-
-int64_t cmi_hashheap_ikey(struct cmi_hashheap *hp,
+double cmi_hashheap_drank(struct cmi_hashheap *hp,
                           const uint64_t hashkey)
 {
     cmb_assert_release(hp != NULL);
@@ -656,19 +651,36 @@ int64_t cmi_hashheap_ikey(struct cmi_hashheap *hp,
     const uint64_t idx = cmi_hash_find_index(hp, hashkey);
     cmb_assert_release(idx != 0u);
 
-    return hp->heap[idx].isortkey;
+    return hp->heap[idx].rank_d64;
+}
+
+/*
+ * cmi_hashheap_irank - Get the rank_i64 for the given item.
+ */
+int64_t cmi_hashheap_irank(struct cmi_hashheap *hp,
+                           const uint64_t hashkey)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(hashkey != 0u);
+    cmb_assert_debug(hp->heap != NULL);
+    cmb_assert_debug(hp->heap_count != 0u);
+
+    const uint64_t idx = cmi_hash_find_index(hp, hashkey);
+    cmb_assert_release(idx != 0u);
+
+    return hp->heap[idx].rank_i64;
 
 }
 
 /*
  * cmi_hashheap_reprioritize: Changes one or more of the prioritization keys
  * and reshuffles the heap. Turns on the hashmap if not already active.
- * Precondition: The event is in the event queue.
  */
 void cmi_hashheap_reprioritize(struct cmi_hashheap *hp,
                                const uint64_t hashkey,
-                               const double dsortkey,
-                               const int64_t isortkey) {
+                               const double drank,
+                               const int64_t irank)
+{
     cmb_assert_release(hp != NULL);
     cmb_assert_release(hashkey != 0u);
     cmb_assert_debug(hp->heap != NULL);
@@ -676,7 +688,6 @@ void cmi_hashheap_reprioritize(struct cmi_hashheap *hp,
     cmb_assert_debug(hp->heap_compare != NULL);
 
     if (!hp->map_active) {
-        /* Initialize hashmap */
         hash_init(hp);
         hp->map_active = true;
     }
@@ -684,18 +695,17 @@ void cmi_hashheap_reprioritize(struct cmi_hashheap *hp,
     const uint64_t idx = cmi_hash_find_index(hp, hashkey);
     cmb_assert_release(idx != 0u);
 
-    /* Save a copy of the old values */
-    hp->heap[0] = hp->heap[idx];
+    const struct cmi_heap_tag old_tagval = hp->heap[idx];
+    hp->heap[idx].rank_d64 = drank;
+    hp->heap[idx].rank_i64 = irank;
 
-    hp->heap[idx].dsortkey = dsortkey;
-    hp->heap[idx].isortkey = isortkey;
-
-    if ((*hp->heap_compare)(&(hp->heap[0]), &(hp->heap[idx]))) {
-        /* The old values should go before the new ones, item heading down */
+    const bool defcmp = (hp->heap_compare == default_compare);
+    const bool move_down = (defcmp) ? default_compare(&old_tagval, &(hp->heap[idx]))
+                                    : (*hp->heap_compare)(&old_tagval, &(hp->heap[idx]));
+    if (move_down) {
         heap_down(hp, idx);
     }
     else {
-        /* The other way around, item should rise in the heap */
         heap_up(hp, idx);
     }
 }
@@ -725,7 +735,7 @@ static bool item_match(const struct cmi_heap_tag *htp,
 
 /*
  * cmi_hashheap_find - Locate a specific event, using CMB_ANY_ITEM as a
- * wildcard in the respective positions. Returns the key of the event, or
+ * wildcard in the respective positions. Returns the hash_key of the item, or
  * zero if none is found. Simple linear search from the start of the heap.
  */
 uint64_t cmi_hashheap_pattern_find(const struct cmi_hashheap *hp,
@@ -736,10 +746,14 @@ uint64_t cmi_hashheap_pattern_find(const struct cmi_hashheap *hp,
 {
     cmb_assert_debug(hp != NULL);
 
+    if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
+        return 0u;
+    }
+
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
         if (item_match(htp, val1, val2, val3, val4)) {
-            return htp->key;
+            return hp->heap[ui].hash_key;
         }
     }
 
@@ -758,6 +772,10 @@ uint64_t cmi_hashheap_pattern_count(const struct cmi_hashheap *hp,
                                     const void *val4)
 {
     cmb_assert_debug(hp != NULL);
+
+    if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
+        return 0u;
+    }
 
     uint64_t cnt = 0u;
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
@@ -786,20 +804,21 @@ uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
 {
     cmb_assert_debug(hp != NULL);
 
-    uint64_t cnt = 0u;
     if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
-        return cnt;
+        return 0u;
     }
 
     /* Allocate space enough to match everything in the heap */
     uint64_t *tmp = cmi_malloc(hp->heap_count * sizeof(*tmp));
 
     /* First pass, recording the matches */
+    uint64_t cnt = 0u;
+
     for (uint64_t ui = 1; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
         if (item_match(htp, val1, val2, val3, val4)) {
             /* Matched, note it on the list */
-            tmp[cnt++] = htp->key;
+            tmp[cnt++] = hp->heap[ui].hash_key;
         }
     }
 
@@ -825,11 +844,11 @@ void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
     fprintf(fp, "---------------------------------- Hash heap -----------------------------------\n");
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
-        fprintf(fp, "%" PRIu64 ": key %" PRIu64 " %#8.4g %" PRIi64 " : hash idx %" PRIu64 " : %p %p %p %p\n",
+        fprintf(fp, "%" PRIu64 ": hash_key %" PRIu64 " %#8.4g %" PRIi64 " : hash idx %" PRIu64 " : %p %p %p %p\n",
                 ui,
-                htp->key,
-                htp->dsortkey,
-                htp->isortkey,
+                htp->hash_key,
+                htp->rank_d64,
+                htp->rank_i64,
                 htp->hash_index,
                 htp->item[0],
                 htp->item[1],

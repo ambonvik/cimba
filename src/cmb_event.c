@@ -156,7 +156,7 @@ double cmb_event_time(const uint64_t handle)
 {
     cmb_assert_release(event_queue != NULL);
 
-    return cmi_hashheap_dkey(event_queue, handle);
+    return cmi_hashheap_drank(event_queue, handle);
 }
 
 /*
@@ -166,7 +166,7 @@ int64_t cmb_event_priority(const uint64_t handle)
 {
     cmb_assert_release(event_queue != NULL);
 
-    return cmi_hashheap_ikey(event_queue, handle);
+    return cmi_hashheap_irank(event_queue, handle);
 }
 
 /*
@@ -236,7 +236,7 @@ bool cmb_event_execute_next(void)
     struct event_peek *tmp = (struct event_peek *)cmi_hashheap_dequeue(event_queue);
 
     /* Advance clock to time of the next event */
-    const double new_time = event_queue->heap[0].dsortkey;
+    const double new_time = event_queue->heap[0].rank_d64;
     cmb_assert_debug(new_time >= sim_time);
     sim_time = new_time;
 
@@ -275,7 +275,7 @@ uint64_t cmb_event_current(void)
     cmb_assert_release(event_queue != NULL);
     cmb_assert_debug(event_queue->heap != NULL);
 
-    return event_queue->heap[0].key;
+    return event_queue->heap[0].hash_key;
 }
 
 /*
@@ -312,8 +312,8 @@ void cmb_event_reschedule(const uint64_t handle, const double time)
     cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
     cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
 
-    /* Do not change the priority isortkey */
-    const int64_t pri = cmi_hashheap_ikey(event_queue, handle);
+    /* Do not change the priority rank_i64 */
+    const int64_t pri = cmi_hashheap_irank(event_queue, handle);
 
     cmi_hashheap_reprioritize(event_queue, handle, time, pri);
 }
@@ -329,7 +329,7 @@ void cmb_event_reprioritize(const uint64_t handle,
     cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
     cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
 
-    const double time = cmi_hashheap_dkey(event_queue, handle);
+    const double time = cmi_hashheap_drank(event_queue, handle);
     cmb_assert_debug(time >= sim_time);
 
     cmi_hashheap_reprioritize(event_queue, handle, time, priority);
@@ -403,7 +403,7 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
                && ((subject == htp->item[1]) || (subject == CMB_ANY_SUBJECT))
                && ((object == htp->item[2]) || (object == CMB_ANY_OBJECT))) {
              /* Matched, note it on the list */
-            tmp[cnt++] = htp->key;
+            tmp[cnt++] = event_queue->heap[ui].hash_key;
         }
     }
 
@@ -428,10 +428,10 @@ void cmb_event_queue_print(FILE *fp)
     for (uint64_t ui = 1u; ui <= hcnt; ui++) {
         const struct cmi_heap_tag *htp = &(event_queue->heap[ui]);
         fprintf(fp,
-                "time %#8.4g prio %" PRIi64 ": key %" PRIu64 " %p %p %p %p\n",
-                htp->dsortkey,
-                htp->isortkey,
-                htp->key,
+                "time %#8.4g prio %" PRIi64 ": hash_key %" PRIu64 " %p %p %p %p\n",
+                htp->rank_d64,
+                htp->rank_i64,
+                htp->hash_key,
                 htp->item[0],
                 htp->item[1],
                 htp->item[2],

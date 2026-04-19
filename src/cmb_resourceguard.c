@@ -62,8 +62,8 @@ CMB_THREAD_LOCAL struct cmi_mempool observer_tagpool
 
 /*
  * guard_queue_check - Test if heap_tag *a should go before *b. If so, return true.
- * Ranking higher priority (dsortkey) before lower, FIFO based on entry time,
- * then in key (memory address) order.
+ * Ranking higher priority (rank_d64) before lower, FIFO based on entry time,
+ * then in hash_key (memory address) order.
  */
 static bool guard_queue_check(const struct cmi_heap_tag *a,
                               const struct cmi_heap_tag *b)
@@ -71,15 +71,15 @@ static bool guard_queue_check(const struct cmi_heap_tag *a,
     cmb_assert_debug(a != NULL);
     cmb_assert_debug(b != NULL);
 
-    if (a->isortkey > b->isortkey) {
+    if (a->rank_i64 > b->rank_i64) {
         return true;
     }
 
-    if (a->dsortkey < b->dsortkey) {
+    if (a->rank_d64 < b->rank_d64) {
         return true;
     }
 
-    if (a->key < b->key) {
+    if (a->hash_key < b->hash_key) {
         return true;
     }
 

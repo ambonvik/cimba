@@ -5,10 +5,10 @@
  * dequeue, peek, and cancel operations, plus item search functions.
  *
  * Each item in the priority queue is a tuple of (up to) four 64-bit payload
- * values. The item is uniquely identified by a 64-bit non-zero key. If a
- * key (key value) is provided at enqueue, that key will be used. If not,
- * a key is generated and returned when it is enqueued. An item can be
- * cancelled or reprioritized with reference to this key.
+ * values. The item is uniquely identified by a 64-bit non-zero hash_key. If a
+ * hash_key (hash_key value) is provided at enqueue, that hash_key will be used. If not,
+ * a hash_key is generated and returned when it is enqueued. An item can be
+ * cancelled or reprioritized with reference to this hash_key.
  *
  * An item in the queue has (up to) two priority keys for determining the
  * sorting order; one double and one signed 64-bit integer. The semantics are
@@ -16,7 +16,7 @@
  * to items a and b, and returns a bool indicating if a should precede b in the
  * priority order. The compare function can use any other properties as well.
  * For example, in the main event queue, the priority keys would be reactivation
- * time (double), priority (integer), and the sequential event key. A pointer
+ * time (double), priority (integer), and the sequential event hash_key. A pointer
  * to the appropriate compare function is stored in the hashheap control
  * structure.
  *
@@ -47,19 +47,15 @@
 /*
  * struct cmi_heap_tag - The record to store an item in the priority queue.
  * These tags only exist as members of the event queue array, never alone.
- * The key is a unique event identifier, the hash_index a reference to where
- * in the hash map it is located. The item is a 4-tuple of 64-bit values, here
- * represented as void*, but could be used for any other 64-bit value depending
- * on application needs (see cmb_event.c for an example).
- *
- * Note that the heap tag is 8 * 8 = 64 bytes large.
+ * The hash_key is a unique event identifier, the hash_index a reference to where
+ * in the hash map it is located. The heap tag is 8 * 8 = 64 bytes large.
  */
 struct cmi_heap_tag {
-    uint64_t key;
-    uint64_t hash_index;
-    void *item[4];
-    double dsortkey;
-    int64_t isortkey;
+    uint64_t hash_key;    /* The unique handle/ID, sorting tiebreaker */
+    uint64_t hash_index;  /* Position in the hash map */
+    double   rank_d64;    /* Primary sort (e.g., time) */
+    int64_t  rank_i64;    /* Secondary sort (e.g., priority) */
+    void    *item[4];     /* The actual payload items */
 };
 
 /*
@@ -71,14 +67,14 @@ typedef bool (cmi_heap_compare_func)(const struct cmi_heap_tag *a,
                                      const struct cmi_heap_tag *b);
 
 /*
- * struct cmi_hash_tag - Hash mapping from event key to heap position.
+ * struct cmi_hash_tag - Hash mapping from event hash_key to heap position.
  * Heap index value zero indicates a tombstone, event is no longer in the heap.
  *
  * Note that the hashtag is 2 * 8 = 16 bytes large.
  */
 struct cmi_hash_tag {
-    uint64_t key;
-    uint64_t heap_index;
+    uint64_t hash_key;      /* The lookup handle */
+    uint64_t heap_index;    /* Current position in the heap array */
 };
 
 /*
@@ -103,15 +99,14 @@ struct cmi_hash_tag {
 
 struct cmi_hashheap {
     struct cmi_heap_tag *heap;
-    uint16_t heap_exp_init;
-    uint16_t heap_exp_cur;
-    uint64_t heap_size;
-    uint64_t heap_count;
-    cmi_heap_compare_func *heap_compare;
     struct cmi_hash_tag *hash_map;
-    uint64_t hash_size;
+    cmi_heap_compare_func *heap_compare;
+    uint64_t heap_size;     /* Max number of items */
+    uint64_t heap_count;    /* Current number of items */
     uint64_t item_counter;
     bool map_active;
+    uint16_t heap_exp_init;
+    uint16_t heap_exp_cur;
 };
 
 /*
@@ -130,7 +125,7 @@ extern struct cmi_hashheap *cmi_hashheap_create(void);
  * cmp is the application-defined compare function for this hashheap, taking
  * pointers to two heap tags and returning true if the first should go before
  * the second, using whatever consideration is appropriate for the usage. If
- * NULL, we will sort in an increasing `dsortkey` order.
+ * NULL, we will sort in an increasing `rank_d64` order.
  */
 extern void cmi_hashheap_initialize(struct cmi_hashheap *hp,
                                     uint16_t hexp,
@@ -163,10 +158,10 @@ extern void cmi_hashheap_destroy(struct cmi_hashheap *hp);
 
 /*
  * cmi_hashheap_enqueue: Insert an item (pl1, pl2, pl3, pl4) into the priority
- * queue using the priority keys dsortkey and isortkey. The exact meaning is
+ * queue using the priority keys rank_d64 and rank_i64. The exact meaning is
  * application defined, depending on the heap compare function provided.
- * If the hashkey is zero, an internal key will be generated, otherwise the one
- * given will be used. Returns the key to the new item, key > 0.
+ * If the hashkey is zero, an internal hash_key will be generated, otherwise the one
+ * given will be used. Returns the hash_key to the new item, hash_key > 0.
  */
 extern uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
                                      void *pl1,
@@ -174,8 +169,8 @@ extern uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
                                      void *pl3,
                                      void *pl4,
                                      uint64_t hashkey,
-                                     double dsortkey,
-                                     int64_t isortkey);
+                                     double rank_d64,
+                                     int64_t rank_i64);
 
 /*
  * cmi_hashheap_dequeue - Removes the highest priority item from the queue
@@ -216,18 +211,17 @@ static inline void **cmi_hashheap_peek_item(const struct cmi_hashheap *hp)
     }
 
     struct cmi_heap_tag *first = &(hp->heap[1]);
-    void **item = first->item;
 
-    return item;
+    return first->item;
 }
 
 /*
- * cmi_hashheap_peek_dkey/isortkey - Returns the dsortkey/isortkey of the first item.
+ * cmi_hashheap_peek_drank/rank_i64 - Returns the rank_d64/rank_i64 of the first item.
  *
  * These functions have no good way to return an out-of-band error value, will
  * fire an assert instead if called on an empty hashheap. Check first.
  */
-static inline double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp)
+static inline double cmi_hashheap_peek_drank(const struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
     cmb_assert_release(hp->heap != NULL);
@@ -235,10 +229,10 @@ static inline double cmi_hashheap_peek_dkey(const struct cmi_hashheap *hp)
 
     const struct cmi_heap_tag *first = &(hp->heap[1]);
 
-    return first->dsortkey;
+    return first->rank_d64;
 }
 
-static inline int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
+static inline int64_t cmi_hashheap_peek_irank(const struct cmi_hashheap *hp)
 {
     cmb_assert_release(hp != NULL);
     cmb_assert_release(hp->heap != NULL);
@@ -246,7 +240,7 @@ static inline int64_t cmi_hashheap_peek_ikey(const struct cmi_hashheap *hp)
 
     const struct cmi_heap_tag *first = &(hp->heap[1]);
 
-    return first->isortkey;
+    return first->rank_i64;
 }
 
 /*
@@ -298,12 +292,12 @@ static inline bool cmi_hashheap_is_enqueued(struct cmi_hashheap *hp,
 extern void **cmi_hashheap_item(struct cmi_hashheap *hp, uint64_t hashkey);
 
 /*
- * cmi_hashheap_dkey/isortkey - Get the dsortkey/isortkey for the given item.
+ * cmi_hashheap_drank/rank_i64 - Get the rank_d64/rank_i64 for the given item.
  * Precondition: The item is in the priority queue, otherwise it is an error.
  * If in doubt, call cmi_hashheap_is_enqueued(hashkey) first to verify.
  */
-extern double cmi_hashheap_dkey(struct cmi_hashheap *hp, uint64_t hashkey);
-extern int64_t cmi_hashheap_ikey(struct cmi_hashheap *hp, uint64_t hashkey);
+extern double cmi_hashheap_drank(struct cmi_hashheap *hp, uint64_t hashkey);
+extern int64_t cmi_hashheap_irank(struct cmi_hashheap *hp, uint64_t hashkey);
 
 /*
  * cmi_hashheap_reprioritize - Changes one or more of the prioritization keys.
@@ -311,8 +305,8 @@ extern int64_t cmi_hashheap_ikey(struct cmi_hashheap *hp, uint64_t hashkey);
  */
 extern void cmi_hashheap_reprioritize(struct cmi_hashheap *hp,
                                       uint64_t hashkey,
-                                      double dsortkey,
-                                      int64_t isortkey);
+                                      double drank,
+                                      int64_t irank);
 
 /*
  * cmi_hashheap_pattern_find - Search the priority queue for an item with values
