@@ -177,11 +177,12 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     stkptr -= 8u;
     *(uint64_t *)stkptr = 0x0202ull;
 
-#ifndef NMXCSR
-    /* Default MXCSR value */
-    stkptr -= 8u;
-    *(uint32_t *)(stkptr + 4) = 0x1f80u;
-#endif
+    #ifndef NMXCSR
+        /* Default MXCSR value */
+        stkptr -= 8u;
+        *(uint32_t *)(stkptr + 4) = 0x1f80u;
+        *(uint32_t *)stkptr = 0u;
+    #endif
 
     /* Clear RBP to terminate gdb backtrace */
     stkptr -= 8u;

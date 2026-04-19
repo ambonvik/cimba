@@ -155,7 +155,7 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     #ifndef NMXCSR
         /* Set the XMM status register MXCSR, default value (masked fp exceptions) */
         stkptr -= 8u;
-        *(uint64_t *)(stkptr + 4) = 0x1f80u;
+        *(uint32_t *)(stkptr + 4) = 0x1f80u;
         *(uint32_t *)stkptr = 0u;
     #endif
 
