@@ -51,10 +51,11 @@ void *cmi_aligned_alloc(const size_t align, const size_t sz)
     cmb_assert_release(sz > 8u);
     cmb_assert_release((sz % align) == 0u);
 
-    void *r = aligned_alloc(align, sz);
-    cmb_assert_release(r != NULL);
+    void *rp = aligned_alloc(align, sz);
+    cmb_assert_release(rp != NULL);
+    if (!rp) abort();
 
-    return r;
+    return rp;
 }
 
 /*
@@ -84,13 +85,14 @@ void *cmi_aligned_realloc(void *p, const size_t align, const size_t sz)
     cmb_assert_release((sz % align) == 0u);
 
     /* Emulate realloc behavior for aligned memory on Linux */
-    void *r = aligned_alloc(align, sz);
-    cmb_assert_release(r != NULL);
+    void *rp = aligned_alloc(align, sz);
+    cmb_assert_release(rp != NULL);
+    if (!rp) abort();
 
     const size_t old_sz = malloc_usable_size(p);
     const size_t copy_sz = (old_sz < sz) ? old_sz : sz;
-    memcpy(r, p, copy_sz);
+    memcpy(rp, p, copy_sz);
     free(p);
 
-    return r;
+    return rp;
 }

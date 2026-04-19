@@ -36,7 +36,7 @@ size_t cmi_pagesize(void)
 
 /*
  * cmi_aligned_alloc : Allocate memory aligned to some alignment value > 8
- * (as malloc gives by defeult). See also:
+ * (as malloc gives by default). See also:
  * https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/aligned-malloc
  *
  * Strict requirements to arguments, need to be powers of two, multiples of 8 (bytes),
@@ -52,10 +52,11 @@ void *cmi_aligned_alloc(const size_t align, const size_t sz)
     cmb_assert_debug((sz % align) == 0u);
 
     /* Note reversed order of arguments vs C standard aligned_alloc */
-    void *r = _aligned_malloc(sz, align);
-    cmb_assert_release(r != NULL);
+    void *rp = _aligned_malloc(sz, align);
+    cmb_assert_release(rp != NULL);
+    if (!rp) abort();
 
-    return r;
+    return rp;
 }
 
 /*
@@ -87,8 +88,9 @@ void *cmi_aligned_realloc(void *p, const size_t align, const size_t sz)
     cmb_assert_debug((sz % align) == 0u);
 
     /* Note reversed order of arguments vs C standard aligned_alloc */
-    void *r = _aligned_realloc(p, sz, align);
-    cmb_assert_release(r != NULL);
+    void *rp = _aligned_realloc(p, sz, align);
+    cmb_assert_release(rp != NULL);
+    if (!rp) abort();
 
-    return r;
+    return rp;
 }

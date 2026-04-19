@@ -1,7 +1,7 @@
 /*
  * calc.h - utility functions for calculating ziggurat lookup tables.
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@
 #ifndef CMI_CALC_H
 #define CMI_CALC_H
 
+/* Uses regular library assert.h, since this runs offline with no simulation
+ * context to report by an extended cmb_assert.h */
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>

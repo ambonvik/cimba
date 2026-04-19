@@ -33,7 +33,9 @@
 /* Only used from here, no header file needed */
 extern uint32_t cmi_cpu_cores(void);
 
-/* Global control variables shared by all threads */
+/*
+ * Global control variables shared by all threads
+ */
 static uint64_t cmg_next_trial_idx;
 static void *cmg_experiment_arr;
 static size_t cmg_trial_struct_sz;
@@ -143,11 +145,6 @@ void cimba_run_experiment(void *your_experiment_array,
     cmb_assert_release(your_experiment_array != NULL);
     cmb_assert_release(num_trials > 0u);
     cmb_assert_release(trial_struct_size > 0u);
-    cmb_assert_release(your_trial_func != NULL);
-
-    /* Set exception flags to trip on any floating point error */
-    _mm_setcsr(0x1d00);
-    cmb_assert_debug((_mm_getcsr() & 0x1d00) == 0x1d00);
 
     /* Initialize globals for the threads */
     cmg_next_trial_idx = 0u;

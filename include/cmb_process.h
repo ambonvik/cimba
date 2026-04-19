@@ -429,12 +429,10 @@ static inline const char *cmb_process_name(const struct cmb_process *pp)
  * @brief  Set a new name for the process.
  *
  * The name is held in a fixed size buffer of size `CMB_PROCESS_NAMEBUF_SZ`.
- * If the new name is too large for the buffer, it will be truncated at one less
- * than the buffer size, leaving space for the terminating zero char.
+ * Overwriting the buffer size is an error and will fire an assert.
  *
  * @memberof cmb_process
  * @param pp Pointer to a process.
- * @param name Null terminated string for the process name.
  */
 extern void cmb_process_name_set(struct cmb_process *pp,
                                  const char *name);

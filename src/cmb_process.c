@@ -144,9 +144,6 @@ void cmb_process_start(struct cmb_process *pp)
 /*
  * cmb_process_name_set - Change the process name, returning a const char *
  * to the new name.
- *
- * Note that the name is contained in a fixed size buffer and may be truncated
- * if too long to fit into the buffer.
  */
 void cmb_process_name_set(struct cmb_process *pp, const char *name)
 {
