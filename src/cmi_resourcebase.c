@@ -59,6 +59,6 @@ void cmi_resourcebase_set_name(struct cmi_resourcebase *rbp, const char *name)
     cmb_assert_release(name != NULL);
 
     const int r = snprintf(rbp->name, CMI_RESOURCEBASE_NAMEBUF_SZ, "%s", name);
-    cmb_assert_release(r >= 0);
+    cmb_assert_release((r >= 0) && (r < CMI_RESOURCEBASE_NAMEBUF_SZ));
 }
 
