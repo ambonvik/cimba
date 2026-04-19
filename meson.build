@@ -31,7 +31,7 @@ desired_flags = ['-Wno-pedantic',
 #                 '-DNDEBUG',
 #                 '-DNLOGINFO',
 #                 '-DNASSERT',
-#                 '-DNMXCSR'
+                 '-DNMXCSR'
 ]
 
 if host_machine.system() == 'linux'
