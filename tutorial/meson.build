@@ -108,13 +108,18 @@ tut_4_2 = executable('tut_4_2',
                      native : true
 )
 
-tut_5_1 = executable('tut_5_1',
-                     files('tut_5_1.c'),
-                     include_directories : [inc_api, inc_int],
-                     link_with : cimba_lib,
-                     dependencies : [project_deps],
-                     link_args : ['-lhdf5'],
-                     install : false,
-                     native : true
-)
-
+# Try to find HDF5, but don't fail if it's missing
+hdf5_dep = dependency('hdf5', required : false)
+if hdf5_dep.found()
+    tut_5_1 = executable('tut_5_1',
+                         files('tut_5_1.c'),
+                         include_directories : [inc_api, inc_int],
+                         link_with : cimba_lib,
+                         dependencies : [project_deps, hdf5_dep],
+                         link_args : ['-lhdf5'],
+                         install : false,
+                         native : true
+    )
+else
+    message('Skipping tut_5_1 because HDF5 was not found.')
+endif
