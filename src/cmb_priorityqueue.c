@@ -275,7 +275,7 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
         else {
             cmb_logger_info(stdout,
                             "Interrupted by signal %" PRIi64 ", could not put object %p into %s",
-                            sig, object, rbp->name);
+                            sig, object, ((struct cmi_resourcebase *)pqp)->name);
             cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
 
             return sig;

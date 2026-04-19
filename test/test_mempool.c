@@ -58,6 +58,7 @@ int main(void)
     printf("done\n");
 
     printf("cmi_mempool_destroy: Deleting the pool ... ");
+    cmi_mempool_terminate(mp);
     cmi_mempool_destroy(mp);
     printf("done\n");
 

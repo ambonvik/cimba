@@ -36,8 +36,6 @@ static inline void *cmi_malloc(const size_t sz)
     cmb_assert_debug(sz > 0);
 
     void *rp = malloc(sz);
-    cmb_assert_release(rp != NULL);
-    /* Hard stop also if the asserts are compiled away */
     if (!rp) abort();
 
     return rp;
@@ -49,7 +47,6 @@ static inline void *cmi_calloc(const unsigned n, const size_t sz)
     cmb_assert_debug(sz > 0);
 
     void *rp = calloc(n, sz);
-    cmb_assert_release(rp != NULL);
     if (!rp) abort();
 
     return rp;
@@ -61,7 +58,6 @@ static inline void *cmi_realloc(void* restrict p, const size_t sz)
     cmb_assert_debug(sz > 0);
 
     void *tmp = realloc(p, sz);
-    cmb_assert_release(tmp != NULL);
     if (!tmp) {
         free(p);
         abort();
@@ -84,7 +80,6 @@ static inline void *cmi_memcpy(void* restrict dest, const void* restrict src, co
     cmb_assert_debug(sz > 0);
 
     void *rp = memcpy(dest, src, sz);
-    cmb_assert_release(rp != NULL);
     if (!rp) abort();
 
     return rp;
@@ -96,8 +91,6 @@ static inline void *cmi_memset(void* restrict ptr, const int c, const size_t n)
     cmb_assert_debug(n > 0);
 
     void *rp = memset(ptr, c, n);
-    cmb_assert_release(rp != NULL);
-    cmb_assert_debug(rp == ptr);
     if (!rp) abort();
 
     return rp;

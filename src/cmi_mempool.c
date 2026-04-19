@@ -140,8 +140,8 @@ void cmi_mempool_terminate(struct cmi_mempool *mp)
 void cmi_mempool_destroy(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp != NULL);
+    cmb_assert_debug(mp->chunk_list == NULL);
 
-    cmi_mempool_terminate(mp);
     cmi_free(mp);
 }
 
@@ -177,7 +177,7 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
     }
 
     /* Calculate total size for this new slab */
-    const size_t total_sz = (size_t)mp->current_incr * mp->obj_sz;
+    const size_t total_bts = (size_t)mp->current_incr * mp->obj_sz;
 
     /* Expand the chunk list if necessary */
     if (mp->chunk_list_cnt == mp->chunk_list_len) {
@@ -187,7 +187,8 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
 
     /* Allocate the new chunk */
     const size_t pagesz = cmi_pagesize();
-    void *ap = cmi_aligned_alloc(pagesz, total_sz);
+    const size_t rndtot_bts = (total_bts + pagesz - 1u) & ~(pagesz - 1u);
+    void *ap = cmi_aligned_alloc(pagesz, rndtot_bts);
     mp->chunk_list[mp->chunk_list_cnt++] = ap;
 
     /* Set up the virgin memory tracker */
