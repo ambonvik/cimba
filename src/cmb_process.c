@@ -41,18 +41,11 @@ CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags
     = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_waiter), 4u);
 
 /*
- * Thread local memory pool for the processes themselves.
- * Note that any user-derived process subclasses will not benefit from this.
- */
-CMB_THREAD_LOCAL struct cmi_mempool cmi_processpool
-    = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmb_process), 4u);
-
-/*
  * cmb_process_create - Allocate memory for the process.
  */
 struct cmb_process *cmb_process_create(void)
 {
-    struct cmb_process *pp = cmi_mempool_alloc(&cmi_processpool);
+    struct cmb_process *pp = cmi_malloc(sizeof(*pp));
     cmi_memset(pp, 0, sizeof(*pp));
 
     return pp;
@@ -74,7 +67,7 @@ void cmb_process_initialize(struct cmb_process *pp,
                        (cmi_coroutine_func *)procfunc,
                        context,
                        (cmi_coroutine_exit_func *)cmb_process_exit,
-                       CMI_COROUTINE_USE_STACKPOOL);
+                       CMI_COROUTINE_DEFAULT_STACKSIZE);
 
     (void)cmb_process_name_set(pp, name);
     pp->priority = priority;
@@ -112,7 +105,7 @@ void cmb_process_destroy(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    cmi_mempool_free(&cmi_processpool, pp);
+    cmi_free(pp);
 }
 
 /*

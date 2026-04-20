@@ -64,8 +64,6 @@
 #ifndef CIMBA_CMI_COROUTINE_H
 #define CIMBA_CMI_COROUTINE_H
 
-#include <stdbool.h>
-
 #include "cmb_assert.h"
 
 /*
@@ -81,10 +79,7 @@ enum cmi_coroutine_state {
 };
 
 /* Default size of a coroutine stack in bytes  */
-#define CMI_COROUTINE_DEFAULT_STACKSIZE (32u * 1024u)
-
-/* Flag to use the default value and the associated memory pool */
-#define CMI_COROUTINE_USE_STACKPOOL (0u)
+#define CMI_COROUTINE_DEFAULT_STACKSIZE (24u * 1024u)
 
 /* Declare that there is such a thing */
 struct cmi_coroutine;
@@ -149,7 +144,6 @@ struct cmi_coroutine {
     cmi_coroutine_func *cr_function;
     enum cmi_coroutine_state status;
     unsigned char *stack_limit;
-    bool pool_stack;
     unsigned char *stack;
     unsigned char *stack_base;
     cmi_coroutine_exit_func *cr_exit;
