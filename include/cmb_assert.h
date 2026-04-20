@@ -28,21 +28,21 @@
 
 #include "cmi_config.h"
 
-#ifndef NASSERT
-    /**
-     * @brief The function that reports and aborts when a `cmb_assert_*`is
-     * triggered.
-     *
-     * Important advice: Place a debugger breakpoint in this
-     * function, and you will be able to see the call stack and variable
-     * values at that point.
-     */
-    extern void cmi_assert_failed(const char *sourcefile,
-                                  const char *func,
-                                  int line,
-                                  const char *condition)
-                                          __attribute__((noreturn));
+/**
+ * @brief The function that reports and aborts when a `cmb_assert_*`is
+ * triggered.
+ *
+ * Important advice: Place a debugger breakpoint in this
+ * function, and you will be able to see the call stack and variable
+ * values at that point.
+ */
+extern void cmi_assert_failed(const char *sourcefile,
+                              const char *func,
+                              int line,
+                              const char *condition)
+                                      __attribute__((noreturn));
 
+#ifndef NASSERT
     #ifndef NDEBUG
         /**
          * @brief Drop-in replacement for standard `assert()`, but reporting the
@@ -75,6 +75,13 @@
  * @brief Convenience shorthand for cmb_assert_debug()
  */
 #define cmb_assert(x) cmb_assert_debug(x)
+
+/**
+ * @brief Like `cmb_assert_debug()`, but remains in code also if `NDEBUG` and
+ * `NASSERT` are defined. Typically used for critical error checking that should
+ * never be turned off but could use the same output format as other asserts.
+ */
+#define cmb_assert_always(x) ((x) ? (void)(0) : (cmi_assert_failed(__FILE_NAME__, __func__, __LINE__, #x)))
 
 /**
  * @brief Macro to suppress "unused argument" compiler warning for functions
