@@ -142,9 +142,9 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_trampoline;
 
-    /* Clear the flags register */
+    /* Set the flags register, Interrupt Enable on */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = 0x0ull;
+    *(uint64_t *)stkptr = 0x202ull;
 
     #ifndef NMXCSR
         /* Set the XMM status register MXCSR, default value (masked fp exceptions) */

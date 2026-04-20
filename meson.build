@@ -42,7 +42,8 @@ if host_machine.system() == 'linux'
 endif
 
 if host_machine.system() == 'windows'
-    desired_flags += ['-fno-plt']
+    desired_flags += ['-fno-plt',
+                      '-fcf-protection=none']
 endif
 
 supported_flags = cc.get_supported_arguments(desired_flags)
