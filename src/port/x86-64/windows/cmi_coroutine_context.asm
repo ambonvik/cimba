@@ -24,6 +24,7 @@ global cmi_coroutine_context_switch
 global cmi_coroutine_trampoline
 global cmi_coroutine_stackbase
 global cmi_coroutine_stacklimit
+global cmi_coroutine_stackdealloc
 
 ;-------------------------------------------------------------------------------
 ; Callable function to return the current StackBase (top of allocated stack)
@@ -37,6 +38,13 @@ cmi_coroutine_stackbase:
 ;
 cmi_coroutine_stacklimit:
     mov rax, [gs:16]
+    ret
+
+;-------------------------------------------------------------------------------
+; Callable funnction to return the current DeallocationStack
+;
+cmi_coroutine_stackdealloc:
+    mov rax, [gs:1478]
     ret
 
 ;-------------------------------------------------------------------------------
@@ -85,6 +93,10 @@ cmi_coroutine_stacklimit:
     movaps [rsp + 16], xmm7
     movaps [rsp + 0], xmm6
 
+    ; Save NT_TIB DeallocationStack
+    mov rax, [gs:1478]
+    push rax
+
     ; Save NT_TIB StackBase, the start of the stack (highest address)
     mov rax, [gs:8]
     push rax
@@ -103,6 +115,8 @@ cmi_coroutine_stacklimit:
     mov [gs:16], rax
     pop rax
     mov [gs:8], rax
+    pop rax
+    mov [gs:1478], rax
 
     ; Restore XMM registers from stack
     movaps xmm6, [rsp + 0]

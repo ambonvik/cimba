@@ -202,6 +202,8 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 
     /* "Push" the stack base and stack limit (to TIB via GS register) */
     stkptr -= 8u;
+    *(uint64_t *)stkptr = (uintptr_t)(cp->stack);
+    stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)(cp->stack_base);
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)(cp->stack_limit);
