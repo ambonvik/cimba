@@ -46,14 +46,6 @@ cmi_coroutine_stacklimit:
 ; this macro (i.e. it was 16-byte aligned, then RIP got pushed, now we are here)
 ;
 %macro save_context 0
-    ; Save NT_TIB StackBase, the start of the stack (highest address)
-    mov rax, [gs:8]
-    push rax
-
-    ; Save NT_TIB StackLimit, the end of the stack (lowest address)
-    mov rax, [gs:16]
-    push rax
-
     ; Save flags register
     pushfq
 
@@ -92,12 +84,26 @@ cmi_coroutine_stacklimit:
     movaps [rsp + 32], xmm8
     movaps [rsp + 16], xmm7
     movaps [rsp + 0], xmm6
+
+    ; Save NT_TIB StackBase, the start of the stack (highest address)
+    mov rax, [gs:8]
+    push rax
+
+    ; Save NT_TIB StackLimit, the end of the stack (lowest address)
+    mov rax, [gs:16]
+    push rax
 %endmacro
 
 ;-------------------------------------------------------------------------------
 ; Macro to load relevant registers from current stack
 ;
 %macro load_context 0
+    ; Restore NT_TIB stack info members. Needs to be loaded immediately.
+    pop rax
+    mov [gs:16], rax
+    pop rax
+    mov [gs:8], rax
+
     ; Restore XMM registers from stack
     movaps xmm6, [rsp + 0]
     movaps xmm7, [rsp + 16]
@@ -134,12 +140,6 @@ cmi_coroutine_stacklimit:
 
     ; Restore flags
     popfq
-
-    ; Restore NT_TIB stack info members.
-    pop rax
-    mov [gs:16], rax
-    pop rax
-    mov [gs:8], rax
 %endmacro
 
 ;-------------------------------------------------------------------------------
@@ -189,22 +189,6 @@ cmi_coroutine_trampoline:
     ; and requiring 32 bytes of "shadow space" for the callee.
     ; Already aligned here, just add the shadow space
     sub rsp, 32
-
-    ; Update the TIB with this coroutine's stack bounds, loading from the
-    ; coroutine pointer cp in R13:
-    ; struct cmi_coroutine layout (from cmi_coroutine.h):
-    ; - parent (8 bytes, offset 0)
-    ; - caller (8 bytes, offset 8)
-    ; - stack (8 bytes, offset 16)
-    ; - stack_base (8 bytes, offset 24)
-    ; - stack_limit (8 bytes, offset 32)
-
-    ; Stack base
-    mov rax, [r13 + 24]
-    mov [gs:8], rax
-    ; Stack limit
-    mov rax, [r13 + 32]
-    mov [gs:16], rax
 
     ; Will soon call coroutine function foo(cp, arg).
     ; The address of foo is now in R12, cp in R13, and arg in R14.

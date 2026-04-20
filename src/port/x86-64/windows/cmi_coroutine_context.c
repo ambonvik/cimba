@@ -142,12 +142,6 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_trampoline;
 
-    /* "Push" the stack base and stack limit (to TIB via GS register) */
-    stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)(cp->stack_base);
-    stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)(cp->stack_limit);
-
     /* Clear the flags register */
     stkptr -= 8u;
     *(uint64_t *)stkptr = 0x0ull;
@@ -205,6 +199,12 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
         stkptr = (unsigned char *)((uintptr_t)stkptr - 160);
         (void)cmi_memset(stkptr, 0, 160);
     #endif
+
+    /* "Push" the stack base and stack limit (to TIB via GS register) */
+    stkptr -= 8u;
+    *(uint64_t *)stkptr = (uintptr_t)(cp->stack_base);
+    stkptr -= 8u;
+    *(uint64_t *)stkptr = (uintptr_t)(cp->stack_limit);
 
     /* Store stack pointer RSP in the coroutine struct to resume from here */
     cp->stack_pointer = stkptr;
