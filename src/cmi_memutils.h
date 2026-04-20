@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "cmb_assert.h"
+#include "cmb_logger.h"
 
 #define CMI_UNINITIALIZED 0xBAADF00DBAADF00D
 #define CMI_INITIALIZED   0x00FA151F1AB1E000
@@ -36,7 +37,7 @@ static inline void *cmi_malloc(const size_t sz)
     cmb_assert_debug(sz > 0);
 
     void *rp = malloc(sz);
-    if (!rp) abort();
+    cmb_assert_always(rp != NULL);
 
     return rp;
 }
@@ -47,7 +48,7 @@ static inline void *cmi_calloc(const unsigned n, const size_t sz)
     cmb_assert_debug(sz > 0);
 
     void *rp = calloc(n, sz);
-    if (!rp) abort();
+    cmb_assert_always(rp != NULL);
 
     return rp;
 }
@@ -58,9 +59,9 @@ static inline void *cmi_realloc(void* restrict p, const size_t sz)
     cmb_assert_debug(sz > 0);
 
     void *tmp = realloc(p, sz);
-    if (!tmp) {
+    if (tmp == NULL) {
         free(p);
-        abort();
+        cmb_logger_fatal(stderr, "Out of memory");
     }
 
     return tmp;
@@ -68,7 +69,7 @@ static inline void *cmi_realloc(void* restrict p, const size_t sz)
 
 static inline void cmi_free(void *p)
 {
-    cmb_assert_debug(p != NULL);
+    cmb_assert_always(p != NULL);
 
     free(p);
 }
@@ -80,7 +81,7 @@ static inline void *cmi_memcpy(void* restrict dest, const void* restrict src, co
     cmb_assert_debug(sz > 0);
 
     void *rp = memcpy(dest, src, sz);
-    if (!rp) abort();
+    cmb_assert_always(rp != NULL);
 
     return rp;
 }
@@ -91,7 +92,7 @@ static inline void *cmi_memset(void* restrict ptr, const int c, const size_t n)
     cmb_assert_debug(n > 0);
 
     void *rp = memset(ptr, c, n);
-    if (!rp) abort();
+    cmb_assert_always(rp != NULL);
 
     return rp;
 }
@@ -102,7 +103,7 @@ static inline void *cmi_memset(void* restrict ptr, const int c, const size_t n)
 static inline bool cmi_is_power_of_two(const size_t n)
 {
     /* A power of two has only one bit set */
-    return (n == 0u) ? false : (n & (n - 1)) == 0u;
+    return (n == 0u) ? false : ((n & (n - 1)) == 0u);
 }
 
 /* System-dependent utility functions in src/arch/cmi_memutils_*.c */
