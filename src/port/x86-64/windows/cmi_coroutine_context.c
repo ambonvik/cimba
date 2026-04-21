@@ -29,6 +29,7 @@
 extern void cmi_coroutine_trampoline(void);
 extern void *cmi_coroutine_stackbase(void);
 extern void *cmi_coroutine_stacklimit(void);
+extern void *cmi_coroutine_stackdealloc(void);
 
 /*
  * Windows-specific code to allocate and initialize stack for a new coroutine.
@@ -191,16 +192,16 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     }
 
     #ifndef NMXCSR
-        /* Add space for 10 XMM registers * 16 bytes + 8 bytes for alignment */
-        stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
-        (void)cmi_memset(stkptr, 0, 168);
-    #else
         /* Already aligned, 160 bytes for XMM registers only */
         stkptr = (unsigned char *)((uintptr_t)stkptr - 160);
         (void)cmi_memset(stkptr, 0, 160);
+    #else
+        /* Add space for 10 XMM registers * 16 bytes + 8 bytes for alignment */
+        stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
+        (void)cmi_memset(stkptr, 0, 168);
     #endif
 
-    /* "Push" the stack base and stack limit (to TIB via GS register) */
+    /* "Push" the stack deallocation ptr, base and stack limits (to TIB via GS register) */
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)(cp->stack);
     stkptr -= 8u;

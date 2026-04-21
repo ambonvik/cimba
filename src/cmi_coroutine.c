@@ -37,7 +37,10 @@ extern bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp);
 extern void cmi_coroutine_context_init(struct cmi_coroutine *cp);
 
 /* System dependent, in port/x86-64/.../cmi_coroutine_context.c */
-extern void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom);
+extern void cmi_coroutine_trampoline(void);
+extern unsigned char *cmi_coroutine_stackbase(void);
+extern unsigned char *cmi_coroutine_stacklimit(void);
+extern unsigned char *cmi_coroutine_deallocstack(void);
 
 /*
  * create_main - Helper function to set up the dummy main coroutine
@@ -52,10 +55,9 @@ static void create_main(void)
     coroutine_main->caller = NULL;
 
     /* Using system stack, no separate allocation */
-    coroutine_main->stack = NULL;
-
-    /* Get current extent of main thread stack */
-    cmi_coroutine_stacklimits(&(coroutine_main->stack_base), &(coroutine_main->stack_limit));
+    coroutine_main->stack = cmi_coroutine_deallocstack();
+    coroutine_main->stack_base = cmi_coroutine_stackbase();
+    coroutine_main->stack_limit = cmi_coroutine_stacklimit();
 
     /* Stack pointer will be set the first time we transfer out of it */
     coroutine_main->stack_pointer = NULL;
@@ -77,6 +79,9 @@ struct cmi_coroutine *cmi_coroutine_create(void)
     return cp;
 }
 
+/*
+ * cmi_coroutine_initialize - Create a stack context for the coroutine
+ */
 void cmi_coroutine_initialize(struct cmi_coroutine *cp,
                         cmi_coroutine_func *crfunction,
                         void *context,

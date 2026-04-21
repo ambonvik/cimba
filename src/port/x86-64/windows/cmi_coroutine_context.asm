@@ -41,7 +41,7 @@ cmi_coroutine_stacklimit:
     ret
 
 ;-------------------------------------------------------------------------------
-; Callable funnction to return the current DeallocationStack
+; Callable function to return the current DeallocationStack
 ;
 cmi_coroutine_stackdealloc:
     mov rax, [gs:1478]
@@ -73,15 +73,15 @@ cmi_coroutine_stackdealloc:
     push r14
     push r15
 
-    %ifndef NMXCSR
-        ; Stack off by 8: needs 160 for XMM + 8 padding
-        sub rsp, 168
-    %else
-        ; Stack already aligned: needs exactly 160 for XMM
-        sub rsp, 160
-    %endif
 
     ; Save XMM registers
+    %ifndef NMXCSR
+        ; Add 8 bytes padding for alignment
+        sub rsp, 168
+    %else
+        ; No padding needed, even number of pushes
+        sub rsp, 168
+    %endif
     movaps [rsp + 144], xmm15
     movaps [rsp + 128], xmm14
     movaps [rsp + 112], xmm13
@@ -129,7 +129,6 @@ cmi_coroutine_stackdealloc:
     movaps xmm13, [rsp + 112]
     movaps xmm14, [rsp + 128]
     movaps xmm15, [rsp + 144]
-
     %ifndef NMXCSR
         add rsp, 168
     %else

@@ -37,11 +37,8 @@ extern void cmi_coroutine_trampoline(void);
 /*
  * Linux-specific code to get the top and bottom of the current (main) stack
  */
-void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
+unsigned char *cmi_coroutine_stackbase(void)
 {
-    cmb_assert_debug(top != NULL);
-    cmb_assert_debug(bottom != NULL);
-
     pthread_attr_t attrs;
     pthread_attr_init(&attrs);
     int r = pthread_getattr_np(pthread_self(), &attrs);
@@ -54,11 +51,31 @@ void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
 
     pthread_attr_destroy(&attrs);
 
-    *bottom = stack_end;
-    *top = (unsigned char *)stack_end + stack_size;
-    cmb_assert_debug(*top > *bottom);
+    return (unsigned char *)stack_end + stack_size;
 }
 
+unsigned char *cmi_coroutine_stacklimit(void)
+{
+    pthread_attr_t attrs;
+    pthread_attr_init(&attrs);
+    int r = pthread_getattr_np(pthread_self(), &attrs);
+    cmb_assert_debug(r == 0);
+
+    void *stack_end;
+    size_t stack_size;
+    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
+    cmb_assert_debug(r == 0);
+
+    pthread_attr_destroy(&attrs);
+
+    return stack_end;
+}
+
+unsigned char *cmi_coroutine_deallocstack(void)
+{
+    /* Not relevant for Linux */
+    return NULL;
+}
 
 /*
  * Linux-specific code to allocate and initialize stack for a new coroutine,
