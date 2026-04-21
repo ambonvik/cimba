@@ -36,8 +36,9 @@ extern void *cmi_coroutine_context_switch(void **old, void **new, void *ret);
 extern bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp);
 extern void cmi_coroutine_context_init(struct cmi_coroutine *cp);
 
-/* System dependent, in port/x86-64/.../cmi_coroutine_context.c */
-extern void cmi_coroutine_trampoline(void);
+/*
+ * System dependent functions in port/x86-64/.../cmi_coroutine_context.c
+ */
 /* Get the stack base pointer (top of stack, grows downwards) */
 extern unsigned char *cmi_coroutine_stackbase(void);
 /* Get the stack limit pointer (bottom of stack) */

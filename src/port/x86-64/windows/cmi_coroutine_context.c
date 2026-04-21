@@ -29,9 +29,6 @@
 
 /* Assembly functions, see src/port/x86-64/windows/cmi_coroutine_context_*.asm */
 extern void cmi_coroutine_trampoline(void);
-extern void *cmi_coroutine_stackbase(void);
-extern void *cmi_coroutine_stacklimit(void);
-extern void *cmi_coroutine_stackraw(void);
 
 /*
  * Windows-specific code to allocate and initialize stack for a new coroutine.
@@ -239,47 +236,4 @@ void cmi_coroutine_stack_free(unsigned char *stack)
 {
     int r = VirtualFree(stack, 0, MEM_RELEASE);
     cmb_assert_always(r != 0);
-}
-
-/*
- * Windows-specific code to get the top and bottom of the current (main) stack
- */
-unsigned char *cmi_coroutine_stackbase(void)
-{
-    pthread_attr_t attrs;
-    pthread_attr_init(&attrs);
-    int r = pthread_getattr_np(pthread_self(), &attrs);
-    cmb_assert_debug(r == 0);
-
-    void *stack_end;
-    size_t stack_size;
-    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
-    cmb_assert_debug(r == 0);
-
-    pthread_attr_destroy(&attrs);
-
-    return (unsigned char *)stack_end + stack_size;
-}
-
-unsigned char *cmi_coroutine_stacklimit(void)
-{
-    pthread_attr_t attrs;
-    pthread_attr_init(&attrs);
-    int r = pthread_getattr_np(pthread_self(), &attrs);
-    cmb_assert_debug(r == 0);
-
-    void *stack_end;
-    size_t stack_size;
-    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
-    cmb_assert_debug(r == 0);
-
-    pthread_attr_destroy(&attrs);
-
-    return stack_end;
-}
-
-unsigned char *cmi_coroutine_stackraw(void)
-{
-    /* Not relevant for Linux */
-    return NULL;
 }
