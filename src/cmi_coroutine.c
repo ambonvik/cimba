@@ -38,9 +38,18 @@ extern void cmi_coroutine_context_init(struct cmi_coroutine *cp);
 
 /* System dependent, in port/x86-64/.../cmi_coroutine_context.c */
 extern void cmi_coroutine_trampoline(void);
+/* Get the stack base pointer (top of stack, grows downwards) */
 extern unsigned char *cmi_coroutine_stackbase(void);
+/* Get the stack limit pointer (bottom of stack) */
 extern unsigned char *cmi_coroutine_stacklimit(void);
-extern unsigned char *cmi_coroutine_stackdealloc(void);
+/* Get the raw memory address of the stack bottom */
+extern unsigned char *cmi_coroutine_stackraw(void);
+/* Allocate memory suitable for a stack */
+extern unsigned char *cmi_coroutine_stack_alloc(size_t size,
+                                                unsigned char **base,
+                                                unsigned char **limit);
+/* Free memory previously allocated for a stack */
+extern void cmi_coroutine_stack_free(unsigned char *stack);
 
 /*
  * create_main - Helper function to set up the dummy main coroutine
@@ -55,7 +64,7 @@ static void create_main(void)
     coroutine_main->caller = NULL;
 
     /* Using system stack, no separate allocation */
-    coroutine_main->stack = cmi_coroutine_stackdealloc();
+    coroutine_main->stack = cmi_coroutine_stackraw();
     coroutine_main->stack_base = cmi_coroutine_stackbase();
     coroutine_main->stack_limit = cmi_coroutine_stacklimit();
 
@@ -98,12 +107,8 @@ void cmi_coroutine_initialize(struct cmi_coroutine *cp,
     /* Initialize the coroutine struct and allocate the stack */
     cp->parent = NULL;
     cp->caller = NULL;
-    cp->stack = cmi_malloc(stack_size);
-    cp->stack_base = cp->stack + stack_size;
-
-    cp->stack_limit = NULL;
-    cp->stack_pointer = NULL;
-    cp->stack_limit = NULL;
+    cp->stack = cmi_coroutine_stack_alloc(stack_size, &(cp->stack_base), &(cp->stack_limit));
+    /* Will be set on first transfer */
     cp->stack_pointer = NULL;
 
     cp->status = CMI_COROUTINE_CREATED;
@@ -137,7 +142,7 @@ void cmi_coroutine_terminate(struct cmi_coroutine *cp)
     cmb_assert_debug(cp != coroutine_current);
 
     cmb_assert_debug(cp->stack != NULL);
-    cmi_free(cp->stack);
+    cmi_coroutine_stack_free(cp->stack);
 
     cmi_memset(cp, 0, sizeof(*cp));
 }

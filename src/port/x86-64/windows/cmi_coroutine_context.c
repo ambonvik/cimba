@@ -16,9 +16,12 @@
  * limitations under the License.
  */
 
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <windows.h>
+#include <bits/pthreadtypes.h>
 
 #include "cmb_assert.h"
 
@@ -29,7 +32,7 @@
 extern void cmi_coroutine_trampoline(void);
 extern void *cmi_coroutine_stackbase(void);
 extern void *cmi_coroutine_stacklimit(void);
-extern void *cmi_coroutine_stackdealloc(void);
+extern void *cmi_coroutine_stackraw(void);
 
 /*
  * Windows-specific code to allocate and initialize stack for a new coroutine.
@@ -216,19 +219,68 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 }
 
-/*
- * Windows specific code to get top and bottom of current (main) stack,
- * picking the addresses out of the Thread Information Block in assembly.
- */
-void cmi_coroutine_stacklimits(unsigned char **top, unsigned char **bottom)
+/* Allocate memory suitable for a stack */
+unsigned char *cmi_coroutine_stack_alloc(const size_t size,
+                                         unsigned char **base_p,
+                                         unsigned char **limit_p)
 {
-     cmb_assert_debug(top != NULL);
-     cmb_assert_debug(bottom != NULL);
+    void *raw = VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    cmb_assert_always(raw != NULL);
 
-     *top = cmi_coroutine_stackbase();
-     *bottom = cmi_coroutine_stacklimit();
+    DWORD old_protect;
+    VirtualProtect(raw, 4096u, PAGE_READWRITE | PAGE_GUARD, &old_protect);
+    *base_p = raw + size;
+    *limit_p = raw + 4096u;
 
-     /* Stack grows downward in address space */
-     cmb_assert_debug(*top > *bottom);
+    return raw;
 }
 
+/* Free memory previously allocated for a stack */
+void cmi_coroutine_stack_free(unsigned char *stack)
+{
+    int r = VirtualFree(stack, 0, MEM_RELEASE);
+    cmb_assert_always(r != 0);
+}
+
+/*
+ * Windows-specific code to get the top and bottom of the current (main) stack
+ */
+unsigned char *cmi_coroutine_stackbase(void)
+{
+    pthread_attr_t attrs;
+    pthread_attr_init(&attrs);
+    int r = pthread_getattr_np(pthread_self(), &attrs);
+    cmb_assert_debug(r == 0);
+
+    void *stack_end;
+    size_t stack_size;
+    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
+    cmb_assert_debug(r == 0);
+
+    pthread_attr_destroy(&attrs);
+
+    return (unsigned char *)stack_end + stack_size;
+}
+
+unsigned char *cmi_coroutine_stacklimit(void)
+{
+    pthread_attr_t attrs;
+    pthread_attr_init(&attrs);
+    int r = pthread_getattr_np(pthread_self(), &attrs);
+    cmb_assert_debug(r == 0);
+
+    void *stack_end;
+    size_t stack_size;
+    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
+    cmb_assert_debug(r == 0);
+
+    pthread_attr_destroy(&attrs);
+
+    return stack_end;
+}
+
+unsigned char *cmi_coroutine_stackraw(void)
+{
+    /* Not relevant for Linux */
+    return NULL;
+}

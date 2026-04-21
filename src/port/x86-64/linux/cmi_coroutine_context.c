@@ -35,49 +35,6 @@
 extern void cmi_coroutine_trampoline(void);
 
 /*
- * Linux-specific code to get the top and bottom of the current (main) stack
- */
-unsigned char *cmi_coroutine_stackbase(void)
-{
-    pthread_attr_t attrs;
-    pthread_attr_init(&attrs);
-    int r = pthread_getattr_np(pthread_self(), &attrs);
-    cmb_assert_debug(r == 0);
-
-    void *stack_end;
-    size_t stack_size;
-    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
-    cmb_assert_debug(r == 0);
-
-    pthread_attr_destroy(&attrs);
-
-    return (unsigned char *)stack_end + stack_size;
-}
-
-unsigned char *cmi_coroutine_stacklimit(void)
-{
-    pthread_attr_t attrs;
-    pthread_attr_init(&attrs);
-    int r = pthread_getattr_np(pthread_self(), &attrs);
-    cmb_assert_debug(r == 0);
-
-    void *stack_end;
-    size_t stack_size;
-    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
-    cmb_assert_debug(r == 0);
-
-    pthread_attr_destroy(&attrs);
-
-    return stack_end;
-}
-
-unsigned char *cmi_coroutine_stackdealloc(void)
-{
-    /* Not relevant for Linux */
-    return NULL;
-}
-
-/*
  * Linux-specific code to allocate and initialize stack for a new coroutine,
  * see https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
  *
@@ -235,4 +192,67 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 
     /* That should be it, a valid stack frame ready to transfer into */
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
+}
+
+/* Allocate memory suitable for a stack */
+unsigned char *cmi_coroutine_stack_alloc(const size_t size, unsigned char **base_p, unsigned char **limit_p)
+{
+    const size_t pagesz = cmi_pagesize();
+    unsigned char *raw = cmi_aligned_alloc(pagesz, size);
+    cmb_assert_always(raw != NULL);
+
+    /* Stack grows downwards, base is at the top */
+    *base_p = raw + size;
+    *limit_p = raw;
+
+    return raw;
+}
+
+/* Free memory previously allocated for a stack */
+void cmi_coroutine_stack_free(unsigned char *stack)
+{
+    cmi_aligned_free(stack);
+}
+
+/*
+ * Linux-specific code to get the top and bottom of the current (main) stack
+ */
+unsigned char *cmi_coroutine_stackbase(void)
+{
+    pthread_attr_t attrs;
+    pthread_attr_init(&attrs);
+    int r = pthread_getattr_np(pthread_self(), &attrs);
+    cmb_assert_release(r == 0);
+
+    void *stack_end;
+    size_t stack_size;
+    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
+    cmb_assert_release(r == 0);
+
+    pthread_attr_destroy(&attrs);
+
+    return (unsigned char *)stack_end + stack_size;
+}
+
+unsigned char *cmi_coroutine_stacklimit(void)
+{
+    pthread_attr_t attrs;
+    pthread_attr_init(&attrs);
+    int r = pthread_getattr_np(pthread_self(), &attrs);
+    cmb_assert_debug(r == 0);
+
+    void *stack_end;
+    size_t stack_size;
+    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
+    cmb_assert_debug(r == 0);
+
+    pthread_attr_destroy(&attrs);
+
+    return stack_end;
+}
+
+unsigned char *cmi_coroutine_stackraw(void)
+{
+    /* Not relevant for Linux */
+    return NULL;
 }
