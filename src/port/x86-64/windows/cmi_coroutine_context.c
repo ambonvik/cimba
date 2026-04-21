@@ -193,11 +193,11 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     #ifndef NMXCSR
         /* Already aligned, 160 bytes for XMM registers only */
         stkptr = (unsigned char *)((uintptr_t)stkptr - 160);
-        (void)cmi_memset(stkptr, 0, 160);
+        (void)cmi_memset(stkptr, 0, 168);
     #else
         /* Add space for 10 XMM registers * 16 bytes + 8 bytes for alignment */
         stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
-        (void)cmi_memset(stkptr, 0, 168);
+        (void)cmi_memset(stkptr, 0, 160);
     #endif
 
     /* "Push" the stack deallocation ptr, base and stack limits (to TIB via GS register) */
