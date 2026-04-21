@@ -80,7 +80,7 @@ cmi_coroutine_stackraw:
         sub rsp, 168
     %else
         ; No padding needed, even number of pushes
-        sub rsp, 168
+        sub rsp, 160
     %endif
     movaps [rsp + 144], xmm15
     movaps [rsp + 128], xmm14
