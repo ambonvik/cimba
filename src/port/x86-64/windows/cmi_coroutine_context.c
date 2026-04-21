@@ -225,7 +225,10 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size,
 
     DWORD old_protect;
     VirtualProtect(raw, 4096u, PAGE_READWRITE | PAGE_GUARD, &old_protect);
-    *base_p = raw + size;
+
+    /* Leave a little room for Windows use at the top */
+    *base_p = raw + size - 16u;
+    /* Leave room for the Windows guard page at the bottom */
     *limit_p = raw + 4096u;
 
     return raw;
