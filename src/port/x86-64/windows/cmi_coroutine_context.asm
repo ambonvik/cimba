@@ -180,7 +180,9 @@ cmi_coroutine_context_switch:
     ; Load whatever was in the third argument R8 as return value in RAX
     mov rax, r8
     ; Return to wherever the new context was transferring from earlier
-    ret
+    ; Note that we spell out the 'ret' as 'pop, jmp' for Intel CET reasons.
+    pop r8
+    jmp r8
 
 ;-------------------------------------------------------------------------------
 ; Not callable, preloaded as stack return address when activating a coroutine,
