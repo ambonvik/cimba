@@ -71,7 +71,7 @@ unsigned char *cmi_coroutine_stacklimit(void)
     return stack_end;
 }
 
-unsigned char *cmi_coroutine_deallocstack(void)
+unsigned char *cmi_coroutine_stackdealloc(void)
 {
     /* Not relevant for Linux */
     return NULL;

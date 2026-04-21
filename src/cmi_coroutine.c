@@ -40,7 +40,7 @@ extern void cmi_coroutine_context_init(struct cmi_coroutine *cp);
 extern void cmi_coroutine_trampoline(void);
 extern unsigned char *cmi_coroutine_stackbase(void);
 extern unsigned char *cmi_coroutine_stacklimit(void);
-extern unsigned char *cmi_coroutine_deallocstack(void);
+extern unsigned char *cmi_coroutine_stackdealloc(void);
 
 /*
  * create_main - Helper function to set up the dummy main coroutine
@@ -55,7 +55,7 @@ static void create_main(void)
     coroutine_main->caller = NULL;
 
     /* Using system stack, no separate allocation */
-    coroutine_main->stack = cmi_coroutine_deallocstack();
+    coroutine_main->stack = cmi_coroutine_stackdealloc();
     coroutine_main->stack_base = cmi_coroutine_stackbase();
     coroutine_main->stack_limit = cmi_coroutine_stacklimit();
 
