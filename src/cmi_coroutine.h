@@ -65,6 +65,7 @@
 #define CIMBA_CMI_COROUTINE_H
 
 #include "cmb_assert.h"
+#include "cmi_config.h"
 
 /*
  * enum cmi_coroutine_state - Possible states of a coroutine
@@ -79,7 +80,11 @@ enum cmi_coroutine_state {
 };
 
 /* Default size of a coroutine stack in bytes  */
-#define CMI_COROUTINE_DEFAULT_STACKSIZE (64u * 1024u)
+#if CMI_OS == CMI_WINDOWS
+#  define CMI_COROUTINE_DEFAULT_STACKSIZE (1024u * 1024u)
+#else
+#  define CMI_COROUTINE_DEFAULT_STACKSIZE (64u * 1024u)
+#endif
 
 /* Declare that there is such a thing */
 struct cmi_coroutine;
