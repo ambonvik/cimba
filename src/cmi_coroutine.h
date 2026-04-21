@@ -79,7 +79,7 @@ enum cmi_coroutine_state {
 };
 
 /* Default size of a coroutine stack in bytes  */
-#define CMI_COROUTINE_DEFAULT_STACKSIZE (24u * 1024u)
+#define CMI_COROUTINE_DEFAULT_STACKSIZE (64u * 1024u)
 
 /* Declare that there is such a thing */
 struct cmi_coroutine;
