@@ -99,7 +99,10 @@ cmi_coroutine_context_switch:
     ; Load whatever was in the third argument RDX as return value in RAX
     mov rax, rdx
     ; Return to wherever the new context was transferring from earlier
-    ret
+    ; Note that we spell out the 'ret' as 'pop, jmp' for Intel CET reasons.
+    pop r9
+    jmp r9
+
 
 ;-------------------------------------------------------------------------------
 ; cmi_coroutine_trampoline: Not callable, preloaded as stack return address when
