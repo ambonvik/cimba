@@ -21,7 +21,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <windows.h>
-#include <bits/pthreadtypes.h>
 
 #include "cmb_assert.h"
 
