@@ -24,7 +24,7 @@ global cmi_coroutine_context_switch
 global cmi_coroutine_trampoline
 global cmi_coroutine_stackbase
 global cmi_coroutine_stacklimit
-global cmi_coroutine_stackdealloc
+global cmi_coroutine_stackraw
 
 ;-------------------------------------------------------------------------------
 ; Callable function to return the current StackBase (top of allocated stack)
@@ -43,7 +43,7 @@ cmi_coroutine_stacklimit:
 ;-------------------------------------------------------------------------------
 ; Callable function to return the current DeallocationStack
 ;
-cmi_coroutine_stackdealloc:
+cmi_coroutine_stackraw:
     mov rax, [gs:1478]
     ret
 
