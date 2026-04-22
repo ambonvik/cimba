@@ -81,7 +81,7 @@ enum cmi_coroutine_state {
 
 /* Default size of a coroutine stack in bytes  */
 #if CMI_OS == CMI_WINDOWS
-#  define CMI_COROUTINE_DEFAULT_STACKSIZE (1024u * 1024u)
+#  define CMI_COROUTINE_DEFAULT_STACKSIZE (128u * 1024u)
 #else
 #  define CMI_COROUTINE_DEFAULT_STACKSIZE (64u * 1024u)
 #endif
