@@ -62,7 +62,7 @@ cmi_coroutine_stackraw:
         sub rsp, 8
         stmxcsr [rsp + 4]
     %endif
-
+    ;
     ; Save general purpose registers
     push rbx
     push rbp
@@ -72,8 +72,7 @@ cmi_coroutine_stackraw:
     push r13
     push r14
     push r15
-
-
+    ;
     ; Save XMM registers
     %ifndef NMXCSR
         ; Add 8 bytes padding for alignment
@@ -82,6 +81,7 @@ cmi_coroutine_stackraw:
         ; No padding needed, even number of pushes
         sub rsp, 160
     %endif
+    ;
     movaps [rsp + 144], xmm15
     movaps [rsp + 128], xmm14
     movaps [rsp + 112], xmm13
@@ -92,32 +92,12 @@ cmi_coroutine_stackraw:
     movaps [rsp + 32], xmm8
     movaps [rsp + 16], xmm7
     movaps [rsp + 0], xmm6
-
-    ; Save NT_TIB DeallocationStack
-    mov rax, [gs:1478]
-    push rax
-
-    ; Save NT_TIB StackBase, the start of the stack (highest address)
-    mov rax, [gs:8]
-    push rax
-
-    ; Save NT_TIB StackLimit, the end of the stack (lowest address)
-    mov rax, [gs:16]
-    push rax
 %endmacro
 
 ;-------------------------------------------------------------------------------
 ; Macro to load relevant registers from current stack
 ;
 %macro load_context 0
-    ; Restore NT_TIB stack info members. Needs to be loaded immediately.
-    pop rax
-    mov [gs:16], rax
-    pop rax
-    mov [gs:8], rax
-    pop rax
-    mov [gs:1478], rax
-
     ; Restore XMM registers from stack
     movaps xmm6, [rsp + 0]
     movaps xmm7, [rsp + 16]
@@ -134,7 +114,7 @@ cmi_coroutine_stackraw:
     %else
         add rsp, 160
     %endif
-
+    ;
     ; Restore general purpose registers
     pop r15
     pop r14
@@ -144,13 +124,13 @@ cmi_coroutine_stackraw:
     pop rdi
     pop rbp
     pop rbx
-
+    ;
     %ifndef NMXCSR
         ; Restore MXCSR register
         ldmxcsr [rsp + 4]
         add rsp, 8
     %endif
-
+    ;
     ; Restore flags
     popfq
 %endmacro
@@ -163,6 +143,8 @@ cmi_coroutine_stackraw:
 ;   void **old - RCX - address for storing current stack pointer
 ;   void **new - RDX - address for reading new stack pointer
 ;   void *ret  - R8  - return value passed from old to new context
+; Scratch registers used:
+;   R9, R10, R11, RAX
 ; Return value:
 ;   void *     - RAX - whatever was given as the third argument
 ; Error handling:
@@ -171,14 +153,41 @@ cmi_coroutine_stackraw:
 cmi_coroutine_context_switch:
     ; Push all callee-saved registers to current stack
     save_context
+
+    ; Push the TIB DeallocationStack, StackLimit, and StackBase entries
+    mov r9, [gs:1478]      ; DeallocationStack
+    push r9
+    mov r9, [gs:16]        ; StackLimit
+    push r9
+    mov r9, [gs:8]         ; StackBase
+    push r9
+    ;
     ; Store old stack pointer to address given as first argument RCX
     mov [rcx], rsp
-    ; Load content of the address in second argument RDX as new stack pointer
-    mov rsp, [rdx]
-    ; We are now in the new context, restore registers from new stack
+    ;
+    ; Load the new RSP from the second argument RDX into a scratch register
+    mov r9, [rdx]
+    ;
+    ; Load new stack info into scratch registers for atomic TIB change
+    mov r10, [r9]           ; New StackBase
+    mov r11, [r9 + 8]       ; New StackLimit
+    mov rax, [r9 + 16]      ; New DeallocationStack
+    ;
+    ; Write the new stack info to Windows TIB without touching the stack
+    mov [gs:8], r10         ; Update StackBase
+    mov [gs:16], r11        ; Update StackLimit
+    mov [gs:1478], rax      ; Update DeallocationStack
+    ;
+    ; Done, safe to switch to the new stack, advancing past the used TIB entries
+    mov rsp, r9
+    add rsp, 24
+    ;
+    ; We are now in the new context, restore other registers from the new stack
     load_context
+    ;
     ; Load whatever was in the third argument R8 as return value in RAX
     mov rax, r8
+    ;
     ; Return to wherever the new context was transferring from earlier
     ; Note that we spell out the 'ret' as 'pop, jmp' for Intel CET reasons.
     pop r9
