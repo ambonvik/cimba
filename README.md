@@ -8,7 +8,7 @@ Simulated processes are implemented as stackful coroutines ("fibers") inside the
 As far as we know, there is no other open source library that can provide these features.
 
 Implementation status:
-* x86-64: Stable for Linux. Encountering some Windows 11 issues, currently investigating.
+* x86-64: Stable for Linux and Windows 10 + 11.
 * Apple Silicon: Planned
 * ARM: Planned
 
