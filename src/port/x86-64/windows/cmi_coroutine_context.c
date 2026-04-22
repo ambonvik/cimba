@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+
 #include <windows.h>
 
 #include "cmb_assert.h"
@@ -78,33 +79,24 @@ extern void cmi_coroutine_trampoline(void);
  * function as its argument if that function ever returns.
  */
 
-/* Bit pattern for last 64 bits of valid stack. */
-#define CMI_STACK_LIMIT_UNTOUCHED 0xFA151F1AB1Eull
-
 /* Stack sanity check, Win64-specific */
 bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
 {
     cmb_assert_debug(cp != NULL);
-    cmb_assert_debug(cp->stack_base != NULL);
-    cmb_assert_debug(cp->stack_limit != NULL);
 
+    /* We do not worry about the main stack here., only our own. */
     const struct cmi_coroutine *cp_main = cmi_coroutine_main();
-    if (cp == cp_main) {
-        cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
-        cmb_assert_debug(cp->stack == NULL);
-        if (cp->stack_pointer != NULL) {
-            cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
-            cmb_assert_debug((uintptr_t *)cp->stack_pointer < (uintptr_t *)cp->stack_base);
-            cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
-        }
-    }
-    else {
+    if (cp != cp_main) {
         cmb_assert_debug(cp->stack != NULL);
+        cmb_assert_debug(cp->stack_base != NULL);
+        cmb_assert_debug(cp->stack_limit != NULL);
         cmb_assert_debug(cp->stack_pointer != NULL);
-        cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
-        cmb_assert_debug((uintptr_t *)cp->stack_pointer < (uintptr_t *)cp->stack_base);
-        cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
-        cmb_assert_debug(*((uint64_t *)cp->stack_limit) == CMI_STACK_LIMIT_UNTOUCHED);
+
+        cmb_assert_debug((uintptr_t)cp->stack_limit >= (uintptr_t)cp->stack);
+        cmb_assert_debug((uintptr_t)cp->stack_pointer > (uintptr_t)cp->stack_limit);
+        cmb_assert_debug((uintptr_t)cp->stack_pointer < (uintptr_t)cp->stack_base);
+
+        cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 8u);
     }
 
     return true;
@@ -116,22 +108,13 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     cmb_assert_debug(cp->stack != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
 
-    /* Make sure we can recognize if something overwrites the end of stack */
-    cp->stack_limit = cp->stack;
-    while (((uintptr_t)cp->stack_limit % 16u) != 0u) {
-        /* Counting up */
-        cp->stack_limit++;
+    /* Inform Windows that stack shenanigans are OK in this thread.
+     * 0x1e00 means "not a fiber"  */
+    if (GetCurrentFiber() == (void*)0x1e00) {
+        ConvertThreadToFiber(NULL);
     }
 
-    *(uint64_t *)cp->stack_limit = CMI_STACK_LIMIT_UNTOUCHED;
-
-    /* Top end of stack, ensure 16-byte alignment */
-    while (((uintptr_t)cp->stack_base % 16u) != 0u) {
-        /* Counting down, the way the stack grows */
-        cp->stack_base--;
-    }
-
-    /* This is our new, aligned stack base */
+    /* The new stack for this coroutine starts here */
     unsigned char *stkptr = cp->stack_base;
     cmb_assert_debug(((uintptr_t)stkptr % 16) == 0);
 
@@ -191,12 +174,12 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     }
 
     #ifndef NMXCSR
-        /* Already aligned, 160 bytes for XMM registers only */
-        stkptr = (unsigned char *)((uintptr_t)stkptr - 160);
-        (void)cmi_memset(stkptr, 0, 168);
-    #else
         /* Add space for 10 XMM registers * 16 bytes + 8 bytes for alignment */
         stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
+        (void)cmi_memset(stkptr, 0, 168);
+    #else
+        /* Already aligned, 160 bytes for XMM registers only */
+        stkptr = (unsigned char *)((uintptr_t)stkptr - 160);
         (void)cmi_memset(stkptr, 0, 160);
     #endif
 
@@ -228,6 +211,7 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size,
 
     /* The stack grows downwards, the base is at the top, less a few bytes for the OS */
     *base_p = raw + size - 16u;
+
     /* The bottom includes the guard page */
     *limit_p = raw + 4096u;
 
