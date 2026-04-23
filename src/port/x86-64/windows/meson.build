@@ -1,5 +1,5 @@
-# x86-64/Windows/meson.build
-nasm_args = ['-f', 'win64']
+# x86-64/windows/meson.build
+nasm_args += ['-f', 'win64']
 
 sources += files('cmb_random_hwseed.c',
                  'cmi_coroutine_context.c',
