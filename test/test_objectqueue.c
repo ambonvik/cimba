@@ -19,7 +19,9 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "cmb_objectqueue.h"
 #include "cmb_event.h"
@@ -150,10 +152,6 @@ void test_queue(double duration)
     struct simulation *quetst = cmi_malloc(sizeof(*quetst));
     cmi_memset(quetst, 0, sizeof(*quetst));
 
-    const uint64_t seed = cmb_random_hwseed();
-    cmb_random_initialize(seed);
-    printf("seed: %" PRIx64 "\n", seed);
-
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
@@ -201,7 +199,7 @@ void test_queue(double duration)
     printf("Execute simulation...\n");
     cmb_event_queue_execute();
 
-    printf("Report statistics...\n");
+    printf("\nReport statistics\n");
     cmb_objectqueue_recording_stop(quetst->queue);
     cmb_objectqueue_report_print(quetst->queue, stdout);
 
@@ -220,15 +218,43 @@ void test_queue(double duration)
     cmi_free(quetst);
 }
 
-int main(void)
+int main(const int argc, char *argv[])
 {
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
+
+    int opt;
+    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+        switch (opt) {
+            case 's':
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    const clock_t start_time = clock();
+    cmb_random_initialize(seed);
+
     cmi_test_print_line("*");
     printf("**************************   Testing object queues   ***************************\n");
     cmi_test_print_line("*");
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
 
     test_queue(1000000);
 
     cmi_test_print_line("*");
+    const clock_t end_time = clock();
+    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    if (timing_enabled) {
+        printf("\nIt took %g sec\n", elapsed_time);
+    }
+
     return 0;
 }
 

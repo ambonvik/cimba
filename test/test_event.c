@@ -1,5 +1,7 @@
 /*
  * Test script for event queue and simulation clock.
+ * Usage:
+ *      test_event [-s <seed>][-g][-t]
  *
  * Uses random number generation from cmb_random as test data.
  *
@@ -21,6 +23,9 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "cmb_event.h"
 #include "cmb_random.h"
@@ -48,16 +53,37 @@ static void end_sim(void *subject, void *object)
 static const char *subjects[] = {"this", "self", "me"};
 static const char *objects[] = {"that thing", "some thing", "the other thing"};
 
-int main(void)
+int main(const int argc, char *argv[])
 {
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
+
+    int opt;
+    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+        switch (opt) {
+            case 's':
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    const clock_t start_time = clock();
+
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
+    cmb_random_initialize(seed);
     cmi_test_print_line("-");
     printf("Testing event queue\n");
-    const double start_time = 3.0;
-    printf("Creating queue, start time %g\n", start_time);
-    cmb_event_queue_initialize(start_time);
+    const double start = 3.0;
+    printf("Creating queue, start time %g\n", start);
+    cmb_event_queue_initialize(start);
     printf("Current simulation time %g\n", cmb_time());
 
-    cmb_random_initialize(cmb_random_hwseed());
     printf("Scheduling 3x3 events\n");
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
@@ -72,9 +98,7 @@ int main(void)
 
     printf("Scheduling end event\n");
     (void)cmb_event_schedule(end_sim, NULL, NULL, 100.0, 0);
-    cmi_test_print_line("-");
     cmb_event_queue_print(stdout);
-    cmi_test_print_line("-");
 
     printf("\nSearching for an event (%p, %p, %p)...", (void *)test_action, subjects[1], objects[0]);
     uint64_t handle = cmb_event_pattern_find(test_action, (void *)subjects[1], (void *)objects[0]);
@@ -93,9 +117,7 @@ int main(void)
         printf("not found???\n");
     }
 
-    cmi_test_print_line("-");
     cmb_event_queue_print(stdout);
-    cmi_test_print_line("-");
 
     printf("\nWildcard search, searching for test action events with subject %p, any object\n", subjects[2]);
     while ((handle = cmb_event_pattern_find(test_action, (void *)subjects[2], CMB_ANY_OBJECT))) {
@@ -103,18 +125,14 @@ int main(void)
         cmb_event_cancel(handle);
     }
 
-    cmi_test_print_line("-");
     cmb_event_queue_print(stdout);
-    cmi_test_print_line("-");
 
     printf("\nScheduling new events with subject %p\n", subjects[2]);
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[0], 20.0, 1);
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[1], 20.0, 1);
     cmb_event_schedule(test_action, (void *)subjects[2], (void *)objects[2], 20.0, 1);
 
-    cmi_test_print_line("-");
     cmb_event_queue_print(stdout);
-    cmi_test_print_line("-");
 
     printf("\nRescheduling and reprioritizing two events with subject %p\n", subjects[2]);
     handle = cmb_event_pattern_find(test_action, (void *)subjects[2], (void *)objects[0]);
@@ -122,37 +140,35 @@ int main(void)
     handle = cmb_event_pattern_find(test_action, (void *)subjects[2], (void *)objects[1]);
     cmb_event_reprioritize(handle, 3);
 
-    cmi_test_print_line("-");
     cmb_event_queue_print(stdout);
-    cmi_test_print_line("-");
 
     printf("\nWildcard search, counting events with subject %p, any object\n", subjects[1]);
     uint64_t cnt = cmb_event_pattern_count(CMB_ANY_ACTION, subjects[1], CMB_ANY_OBJECT);
     printf("Found %" PRIu64 " events\n", cnt);
 
-    cmi_test_print_line("-");
     cmb_event_queue_print(stdout);
-    cmi_test_print_line("-");
 
     printf("\nWildcard search, cancelling any events with subject %p, any object\n", subjects[1]);
     cnt = cmb_event_pattern_cancel(CMB_ANY_ACTION, subjects[1], CMB_ANY_OBJECT);
     printf("Cancelled %" PRIu64 " events\n", cnt);
-    cmi_test_print_line("-");
 
-    cmi_test_print_line("-");
     cmb_event_queue_print(stdout);
-    cmi_test_print_line("-");
 
     printf("\nExecuting the simulation, starting time %#g\n", cmb_time());
+    cmi_test_print_line("-");
     printf("Time:\t\tType:\tAction: \t\tSubject:\t\tObject:\n");
     cmb_event_queue_execute();
-
     cmi_test_print_line("-");
+
     cmb_event_queue_print(stdout);
-    cmi_test_print_line("-");
-
     cmb_event_queue_terminate();
-    cmi_test_print_line("=");
+    cmi_test_print_line("*");
+
+    const clock_t end_time = clock();
+    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    if (timing_enabled) {
+        printf("\nIt took %g sec\n", elapsed_time);
+    }
 
     return 0;
 }

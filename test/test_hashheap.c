@@ -19,6 +19,9 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "cmb_random.h"
 
@@ -54,11 +57,31 @@ static bool heap_order_check(const struct cmi_heap_tag *a,
     return ret;
 }
 
-int main(void)
+int main(const int argc, char *argv[])
 {
-    cmb_random_initialize(cmb_random_hwseed());
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
 
-    cmi_test_print_line("-");
+    int opt;
+    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+        switch (opt) {
+            case 's':
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    const clock_t start_time = clock();
+
+    cmb_random_initialize(seed);
+
+    cmi_test_print_line("*");
     printf("Testing hashheap\n");
     printf("Creating hash heap: cmi_hashheap_create ...\n");
     struct cmi_hashheap *hhp = cmi_hashheap_create();
@@ -127,6 +150,13 @@ int main(void)
     cmi_hashheap_destroy(hhp);
 
 
-    cmi_test_print_line("=");
+    cmi_test_print_line("*");
+
+    const clock_t end_time = clock();
+    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    if (timing_enabled) {
+        printf("\nIt took %g sec\n", elapsed_time);
+    }
+
     return 0;
 }

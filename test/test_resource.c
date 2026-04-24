@@ -19,6 +19,9 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "cmb_event.h"
 #include "cmb_random.h"
@@ -89,10 +92,6 @@ void *procfunc2(struct cmb_process *me, void *ctx)
 
 void test_resource(void)
 {
-    const uint64_t seed = cmb_random_hwseed();
-    cmb_random_initialize(seed);
-
-    printf("seed: %" PRIu64 "\n", seed);
     cmb_event_queue_initialize(0.0);
 
     printf("Create a resource\n");
@@ -120,7 +119,9 @@ void test_resource(void)
     (void)cmb_event_schedule(end_sim_evt, cpp, (void *)4u, 25.0, 0);
 
     printf("Execute simulation\n");
+    cmi_test_print_line("-");
     cmb_event_queue_execute();
+    cmi_test_print_line("-");
 
     printf("Report statistics...\n");
     cmb_resource_stop_recording(rp);
@@ -136,14 +137,43 @@ void test_resource(void)
     cmb_event_queue_terminate();
 }
 
-int main(void)
+int main(const int argc, char *argv[])
 {
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
+
+    int opt;
+    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+        switch (opt) {
+            case 's':
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    const clock_t start_time = clock();
+    cmb_random_initialize(seed);
+
     cmi_test_print_line("*");
     printf("****************************   Testing resources   *****************************\n");
     cmi_test_print_line("*");
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
 
     test_resource();
 
     cmi_test_print_line("*");
+    const clock_t end_time = clock();
+    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+
+    if (timing_enabled) {
+        printf("\nIt took %g sec\n", elapsed_time);
+    }
+
     return 0;
 }

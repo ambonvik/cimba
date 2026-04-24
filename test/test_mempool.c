@@ -28,8 +28,9 @@ CMB_THREAD_LOCAL struct cmi_mempool mempool_32b = CMI_MEMPOOL_STATIC_INIT(32u, 1
 
 int main(void)
 {
-    cmi_test_print_line("=");
+    cmi_test_print_line("*");
     printf("Testing automatic memory pools\n");
+    cmi_test_print_line("-");
 
     printf("cmi_mempool_alloc(&mempool_32b): ... ");
     void *vp = cmi_mempool_alloc(&mempool_32b);
@@ -42,6 +43,7 @@ int main(void)
     cmi_test_print_line("-");
 
     printf("Testing created memory pools\n");
+    cmi_test_print_line("-");
     size_t obj_sz = 32u;
     uint64_t obj_num = 16u;
     printf("cmi_mempool_create: %" PRIu64 " objects size %" PRIu64 "\n",
@@ -88,5 +90,5 @@ int main(void)
     cmi_mempool_destroy(mp);
     printf("done\n");
 
-    cmi_test_print_line("=");
+    cmi_test_print_line("*");
 }

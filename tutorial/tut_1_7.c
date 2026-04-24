@@ -30,7 +30,7 @@
 #define USERFLAG2 0x00000002
 
 /*
- * Our simulateed world consists of these entities.
+ * Our simulated world consists of these entities.
  */
 struct simulation {
     struct cmb_process *arr;
@@ -167,7 +167,6 @@ void run_MM1_trial(void *vtrl)
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
-    trl->seed_used = cmb_random_hwseed();
     cmb_random_initialize(trl->seed_used);
     cmb_logger_user(stdout, USERFLAG2,
                     "seed: 0x%016" PRIx64 " rho: %f",
@@ -230,6 +229,7 @@ int main(void)
     const double rho_start = 0.025;
     const double rho_step = 0.025;
     const unsigned n_reps = 10;
+    const uint64_t master_seed = cmb_random_hwseed();
 
     const double srv_rate = 1.0;
     const double warmup_time = 1000.0;
@@ -247,7 +247,7 @@ int main(void)
             experiment[ui_exp].srv_rate = srv_rate;
             experiment[ui_exp].warmup_time = warmup_time;
             experiment[ui_exp].duration = duration;
-            experiment[ui_exp].seed_used = 0u;
+            experiment[ui_exp].seed_used = cmb_random_fmix64(master_seed, ui_exp);
             experiment[ui_exp].avg_queue_length = 0.0;
 
             ui_exp++;

@@ -18,6 +18,10 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "cmb_event.h"
 #include "cmb_logger.h"
@@ -119,15 +123,34 @@ void *procfunc3(struct cmb_process *me, void *ctx)
     return NULL;
 }
 
-int main(void)
+int main(const int argc, char *argv[])
 {
-    const uint64_t seed = cmb_random_hwseed();
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
+
+    int opt;
+    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+        switch (opt) {
+            case 's':
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    const clock_t start_time = clock();
     cmb_random_initialize(seed);
 
     cmi_test_print_line("*");
     printf("****************************   Testing processes   *****************************\n");
     cmi_test_print_line("*");
-    printf("seed: 0x%" PRIx64 "\n", seed);
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
+
     printf("cmb_event_queue_initialize ...\n");
     cmb_event_queue_initialize(0.0);
     printf("cmb_process_create ...\n");
@@ -177,5 +200,11 @@ int main(void)
     printf("cmb_event_queue_terminate ...\n");
     cmb_event_queue_terminate();
     cmi_test_print_line("*");
+    const clock_t end_time = clock();
+    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    if (timing_enabled) {
+        printf("\nIt took %g sec\n", elapsed_time);
+    }
+
     return 0;
 }

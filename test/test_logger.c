@@ -1,9 +1,12 @@
 /*
  * Test script for logger functions.
+ * Usage:
+ *      test_logger [-s <seed>]
  *
- * Uses random number generation from cmb_random as test data.
+ * Will normally return a non-zero exit code, since we end by testing the
+ * error functions. An "abnormal" exit with abort() is actually successful.
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +22,11 @@
  */
 
 #include <assert.h>
-#include <stdio.h>
-#include <time.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <unistd.h>
 
 #include "cmb_event.h"
 #include "cmb_random.h"
@@ -71,9 +76,23 @@ static const char *hhhmmss_formatter(const double t)
     return fmtbuf;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
-    cmb_random_initialize(cmb_random_hwseed());
+    uint64_t seed = cmb_random_hwseed();
+
+    int opt;
+    while ((opt = getopt(argc, argv, "s:")) != -1) {
+        switch (opt) {
+            case 's':
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    cmb_random_initialize(seed);
     cmb_event_queue_initialize(0.0);
     cmb_logger_timeformatter_set(hhhmmss_formatter);
 
@@ -92,8 +111,14 @@ int main(void)
     const double two_days = 2.0 * 24.0 * 60.0;
     cmb_event_schedule(end_sim, NULL, NULL, two_days, 0);
     while (cmb_event_execute_next()) { }
+
+    /* Test the error function, successful test means non-zero exit code */
     cmb_logger_error(stdout, "We ran out of time here. (This was a test.)");
+
     /* Not reached */
     cmb_logger_fatal(stdout, "How did this happen?");
     cmb_assert_release(false);
+
+    /* If we ever reach here, much has failed */
+    return EXIT_SUCCESS;
 }

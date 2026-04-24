@@ -1,5 +1,7 @@
 /*
  * Test/demo program for parallel execution in Cimba.
+ * Usage:
+ *      test_cimba [-s <seed>][-g][-t]
  *
  * The simulation is a simple M/G/1 queuing system for parameterization
  * of utilization (interarrival mean time) and variability (service time
@@ -33,8 +35,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "cimba.h"
+#include "test.h"
 
 #define USERFLAG1 0x00000001
 #define USERFLAG2 0x00000002
@@ -169,21 +173,16 @@ void *service_proc(struct cmb_process *me, void *vctx)
 }
 
 /*
- * Our trial function, setting up the simulation, obtaining trial parameters,
+ * Our trial function, setting up the simulation, obtaining trial parameters
  */
 void run_mg1_trial(void *vtrl)
 {
     struct trial *trl = vtrl;
-    if (trl->seed == 0u) {
-        const uint64_t seed = cmb_random_hwseed();
-        cmb_random_initialize(seed);
-        trl->seed = seed;
-    }
-
     cmb_logger_user(stdout, USERFLAG2, "Trial seed: 0x%016" PRIx64, trl->seed);
 
     struct context *ctx = malloc(sizeof(*ctx));
     ctx->trl = trl;
+    cmb_random_initialize(trl->seed);
 
     struct simulation *sim = malloc(sizeof(*sim));
     ctx->sim = sim;
@@ -266,11 +265,39 @@ void thread_exit_func(void *vctx)
 /*
  * Our main() function, loading the experiment and reporting the outcome.
  */
-int main(int argc, char **argv)
+int main(const int argc, char **argv)
 {
+    bool plot_graphics = false;
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
+
+    int opt;
+    while ((opt = getopt(argc, argv, "gs:t")) != -1) {
+        switch (opt) {
+            case 'g':
+                plot_graphics = true;
+                break;
+            case 's':
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-g][-s <seed>]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    cmi_test_print_line("*");
+    printf("*************************   Testing trial execution   **************************\n");
+    cmi_test_print_line("*");
     printf("Cimba version %s\n", cimba_version());
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
     struct timespec start_time;
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
+    if (timing_enabled) {
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
+    }
 
     /* Experiment design parameters */
     const unsigned nreps = 10;
@@ -291,7 +318,7 @@ int main(int argc, char **argv)
                 experiment[ui_exp].warmup = 1000.0;
                 experiment[ui_exp].duration = 1.0e6;
                 experiment[ui_exp].cooldown = 1.0;
-                experiment[ui_exp].seed = 0u;
+                experiment[ui_exp].seed = cmb_random_fmix64(seed, ui_exp);
                 experiment[ui_exp].avg_queue_length = 0.0;
                 ui_exp++;
             }
@@ -301,45 +328,71 @@ int main(int argc, char **argv)
     printf("Setting thread hooks\n");
     cimba_set_thread_hooks(thread_init_func, NULL, thread_exit_func);
 
-    printf("Executing experiment\n");
+    printf("Running experiment\n");
+    cmi_test_print_line("-");
     cimba_run_experiment(experiment,
                          ntrials,
                          sizeof(*experiment),
                          run_mg1_trial);
 
-    printf("Finished experiment, writing results to file\n");
-    ui_exp = 0u;
-    FILE *datafp = fopen("test_cimba.dat", "w");
-    fprintf(datafp, "# CV utilization avg_queue_length\n");
-    for (unsigned ui_cv = 0u; ui_cv < ncvs; ui_cv++) {
-        for (unsigned ui_rho = 0u; ui_rho < nrhos; ui_rho++) {
-             for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
-                 fprintf(datafp, "%f %f %f\n",
-                    experiment[ui_exp].service_cv,
-                    experiment[ui_exp].utilization,
-                    experiment[ui_exp].avg_queue_length);
-                 ui_exp++;
-             }
-             fprintf(datafp, "\n");
+    cmi_test_print_line("-");
+    if (plot_graphics) {
+        printf("Finished experiment, writing results to file\n");
+        ui_exp = 0u;
+        FILE *datafp = fopen("test_cimba.dat", "w");
+        fprintf(datafp, "# CV utilization avg_queue_length\n");
+        for (unsigned ui_cv = 0u; ui_cv < ncvs; ui_cv++) {
+            for (unsigned ui_rho = 0u; ui_rho < nrhos; ui_rho++) {
+                for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
+                    fprintf(datafp, "%f %f %f\n",
+                       experiment[ui_exp].service_cv,
+                       experiment[ui_exp].utilization,
+                       experiment[ui_exp].avg_queue_length);
+                    ui_exp++;
+                }
+                fprintf(datafp, "\n");
+            }
+            fprintf(datafp, "\n");
         }
-        fprintf(datafp, "\n");
+
+        fclose(datafp);
+    }
+    else {
+        printf("Finished experiment, results:\n");
+        ui_exp = 0u;
+        printf("cv: \trho:\tn_avg:\n");
+        for (unsigned ui_cv = 0u; ui_cv < ncvs; ui_cv++) {
+            const double cv = experiment[ui_exp].service_cv;
+            for (unsigned ui_rho = 0u; ui_rho < nrhos; ui_rho++) {
+                const double rho = experiment[ui_exp].utilization;
+                double sum = 0.0;
+                for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
+                    sum += experiment[ui_exp].avg_queue_length;
+                    ui_exp++;
+                }
+                const double avg = sum / (double)nreps;
+                printf("%5.3f\t%5.3f\t%5.3f\n", cv, rho, avg);
+            }
+        }
     }
 
-    fclose(datafp);
     free(experiment);
 
     struct timespec end_time;
-    clock_gettime(CLOCK_MONOTONIC, &end_time);
-    double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
-    elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
-    printf("It took %g sec\n", elapsed);
+    if (timing_enabled) {
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
+        elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
+        printf("It took %g sec\n", elapsed);
+    }
 
-    if (argc > 1 && strcmp(argv[1], "-g") == 0) {
+    if (plot_graphics) {
         /* Pop up the Gnuplot graphics window before exiting */
         write_gnuplot_commands(ncvs, cvs);
         system("gnuplot -persistent test_cimba.gp");
     }
 
+    cmi_test_print_line("*");
     return 0;
 }
 

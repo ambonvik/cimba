@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "cmb_dataset.h"
 #include "cmb_random.h"
@@ -187,9 +188,7 @@ static double exponential_inv(const double m)
 
 static void test_speed_exponential(const double m)
 {
-    const uint64_t seed = cmb_random_hwseed();
-    printf("\nSpeed testing standard exponential distribution, seed = %#" PRIx64 "\n", seed);
-    cmb_random_initialize(seed);
+    printf("\nSpeed testing standard exponential distribution\n");
     printf("\nInversion method, drawing %" PRIu64 " samples...", MAX_ITER);
 
     const clock_t csi = clock();
@@ -200,7 +199,6 @@ static void test_speed_exponential(const double m)
     const double ti = (double)(cei - csi) / CLOCKS_PER_SEC;
     printf("\t%.3e samples per second\n", (double)MAX_ITER / ti);
 
-    cmb_random_initialize(seed);
     printf("Ziggurat method, drawing %" PRIu64 " samples...", MAX_ITER);
     const clock_t csz = clock();
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
@@ -340,9 +338,7 @@ static void test_quality_normal(const double m, const double s)
 
 static void test_speed_normal(const double m, const double s)
 {
-    const uint64_t seed = cmb_random_hwseed();
-    printf("\nSpeed testing normal distribution, seed = %#" PRIx64 "\n", seed);
-    cmb_random_initialize(seed);
+    printf("\nSpeed testing normal distribution\n");
     printf("\nBox Muller method, drawing %" PRIu64 " samples...", MAX_ITER);
 
     const clock_t csi = clock();
@@ -353,7 +349,6 @@ static void test_speed_normal(const double m, const double s)
     const double ti = (double)(cei - csi) / CLOCKS_PER_SEC;
     printf("\t%.3e samples per second\n", (double)MAX_ITER / ti);
 
-    cmb_random_initialize(seed);
     printf("Ziggurat method, drawing %" PRIu64 " samples...", MAX_ITER);
     const clock_t csz = clock();
     for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
@@ -876,9 +871,7 @@ static void test_quality_vose_alias(const unsigned n, const double pa[n])
 
 static void test_speed_vose_alias(const unsigned init, const unsigned end, const unsigned step)
 {
-    const uint64_t seed = cmb_random_hwseed();
-    cmb_random_initialize(seed);
-    printf("\nSpeed testing vose alias sampling, %" PRIu64 " samples, seed = %#" PRIx64 ".\n", MAX_ITER, seed);
+    printf("\nSpeed testing vose alias sampling, %" PRIu64 " samples\n", MAX_ITER);
     printf("Iterations per second (ips)\n");
     printf("n\tips simple\tips alias\tspeedup\n");
     for (unsigned n = init; n <= end; n += step) {
@@ -922,16 +915,37 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
     cmi_test_print_line("=");
 }
 
-int main(void)
+int main(const int argc, char *argv[])
 {
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
+
+    int opt;
+    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+        switch (opt) {
+            case 's':
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
     struct timespec start_time;
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
+    if (timing_enabled) {
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
+    }
+
+    cmb_random_initialize(seed);
 
     cmi_test_print_line("*");
     printf("************** Testing random number generators and distributions **************\n");
     cmi_test_print_line("*");
-
-    test_getsetseed();
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
 
     test_quality_random();
     test_quality_uniform(-1.0, 2.0);
@@ -991,6 +1005,8 @@ int main(void)
     test_quality_loaded_dice(7, q);
     test_quality_vose_alias(7, q);
     test_speed_vose_alias(5, 50, 5);
+
+    cmb_random_terminate();
 
     cmi_test_print_line("*");
 

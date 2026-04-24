@@ -1,5 +1,7 @@
 /*
  * Test script for condition variables.
+ * Usage:
+ *      test_condition [-s <seed>][-t]
  *
  * Creates a complex mixed state simulation of a harbor, where tides and wind
  * conditions are state variables. Tugs and berths are modelled as resource
@@ -30,6 +32,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "cimba.h"
 
@@ -446,13 +449,8 @@ void set_test_parameters(struct trial *trl)
 }
 
 /* The test function running the simulation */
-void test_condition(void)
+void test_condition()
 {
-    /* Get a suitable seed from a hardware entropy source */
-    const uint64_t seed = cmb_random_hwseed();
-    printf("seed: 0x%" PRIx64 "\n", seed);
-    cmb_random_initialize(seed);
-
     /* Start the simulation clock from 0.0 and prepare the event queue */
     cmb_event_queue_initialize(0.0);
 
@@ -576,22 +574,45 @@ void test_condition(void)
 }
 
 
-int main(void)
+int main(const int argc, char *argv[])
 {
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
+
+    int opt;
+    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+        switch (opt) {
+            case 's':
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    const clock_t start_time = clock();
+
     cmi_test_print_line("*");
     printf("***********************   Testing condition variables  *************************\n");
     cmi_test_print_line("*");
 
     printf("Cimba version %s\n", cimba_version());
-    const clock_t start_time = clock();
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
+    cmb_random_initialize(seed);
 
     test_condition();
 
+    cmi_test_print_line("*");
+
     const clock_t end_time = clock();
     const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-
-    cmi_test_print_line("*");
-    printf("\nIt took %g sec\n", elapsed_time);
+    if (timing_enabled) {
+        printf("\nIt took %g sec\n", elapsed_time);
+    }
 
     return 0;
 }

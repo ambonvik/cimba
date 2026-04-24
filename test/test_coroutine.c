@@ -36,6 +36,7 @@ static void test_simple_event(void)
 {
     /* First, create a coroutine, which is straightforward memory allocation. */
     printf("Test simple coroutine call\n");
+    cmi_test_print_line("-");
     const size_t stksz = 24 * 1024;
     printf("Create a coroutine\n");
     struct cmi_coroutine *cp = cmi_coroutine_create();
@@ -59,8 +60,7 @@ static void test_simple_event(void)
     /* Destroy the coroutine to free its memory allocation*/
     printf("Delete coroutine %p\n", (void *)cp);
     cmi_coroutine_destroy(cp);
-
-    cmi_test_print_line("=");
+    cmi_test_print_line("-");
 }
 
 /* A coroutine that transfers control to a partner coroutine and back */
@@ -119,6 +119,7 @@ static void *corofunc_1(struct cmi_coroutine *myself, void *context)
 static void test_asymmetric(void)
 {
     printf("Test asymmetric coroutines\n");
+    cmi_test_print_line("-");
     const size_t stksz = 16 * 1024;
     printf("Create two coroutines, stack size %" PRIu64 "\n", stksz);
     struct cmi_coroutine *cp1 = cmi_coroutine_create();
@@ -136,11 +137,8 @@ static void test_asymmetric(void)
     cmi_coroutine_destroy(cp1);
     printf("Delete coroutine %p\n", (void *)cp2);
     cmi_coroutine_destroy(cp2);
-
-    cmi_test_print_line("=");
+    cmi_test_print_line("-");
 }
-
-
 
 int main(void)
 {
@@ -150,6 +148,8 @@ int main(void)
 
     test_simple_event();
     test_asymmetric();
+
+    cmi_test_print_line("*");
 
     return 0;
 }

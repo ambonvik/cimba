@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "cmb_dataset.h"
 #include "cmb_datasummary.h"
@@ -387,15 +388,36 @@ void test_timeseries(void)
     cmi_test_print_line("=");
 }
 
-int main(void)
+int main(const int argc, char *argv[])
 {
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
+
+    int opt;
+    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+        switch (opt) {
+            case 's':
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
     struct timespec start_time;
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
+    if (timing_enabled) {
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
+    }
 
     cmi_test_print_line("*");
     printf("**********************      Testing data collectors       **********************\n");
     cmi_test_print_line("*");
-    cmb_random_initialize(cmb_random_hwseed());
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
+    cmb_random_initialize(seed);
 
     test_summary();
     test_wsummary();
@@ -404,11 +426,13 @@ int main(void)
 
     cmi_test_print_line("*");
 
-    struct timespec end_time;
-    clock_gettime(CLOCK_MONOTONIC, &end_time);
-    double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
-    elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
-    printf("It took %g sec\n", elapsed);
+    if (timing_enabled) {
+        struct timespec end_time;
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
+        elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
+        printf("It took %g sec\n", elapsed);
+    }
 
     return 0;
 }

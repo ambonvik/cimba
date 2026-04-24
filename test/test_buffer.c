@@ -1,7 +1,9 @@
 /*
  * Test script for buffers
+ * Usage:
+ *      test_buffer [-s <seed>]
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +21,9 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <time.h>
+#include <unistd.h>
 
+#include "cimba.h"
 #include "cmb_event.h"
 #include "cmb_random.h"
 #include "cmb_logger.h"
@@ -150,15 +153,12 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
     }
 }
 
-void test_queue(const double duration)
+void test_queue(const double duration, const uint64_t seed)
 {
     struct simulation *thesim = cmi_malloc(sizeof(*thesim));
     cmi_memset(thesim, 0, sizeof(*thesim));
 
-    const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
-    printf("seed: %" PRIx64 "\n", seed);
-
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
@@ -225,13 +225,33 @@ void test_queue(const double duration)
     cmi_free(thesim);
 }
 
-int main(void)
+int main(const int argc, char *argv[])
 {
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
+
+    int opt;
+    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+        switch (opt) {
+            case 's':
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
     cmi_test_print_line("*");
     printf("*****************************   Testing buffers   ******************************\n");
     cmi_test_print_line("*");
+    printf("Cimba version %s\n", cimba_version());
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
 
-    test_queue(100000);
+    test_queue(100000, seed);
 
     cmi_test_print_line("*");
     return 0;
