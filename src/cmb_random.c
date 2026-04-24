@@ -62,6 +62,24 @@ uint64_t cmb_random_sfc64(void)
 }
 
 /*
+ * The MurmurHash3 finalizer function, used e.g. for bootstrapping thread seeds
+ * from a common master seed, e.g. from command line input.
+ *
+ * See: https://github.com/aappleby/smhasher/wiki/MurmurHash3
+ */
+uint64_t cmb_random_fmix64(const uint64_t seed, const uint64_t nonce)
+{
+    uint64_t h = seed + nonce;
+    h ^= h >> 33;
+    h *= 0xff51afd7ed558ccd;
+    h ^= h >> 33;
+    h *= 0xc4ceb9fe1a85ec53;
+    h ^= h >> 33;
+
+    return h;
+}
+
+/*
  * Auxiliary pseudo-random number generator - 64-bit output, 64-bit state.
  * Only used internally to bootstrap the sfc64 generator state from a single
  * seed. It is an implementation of Sebastiano Vigna & Guy Steele's splitmix64.

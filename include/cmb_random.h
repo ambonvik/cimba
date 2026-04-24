@@ -123,6 +123,21 @@ extern uint64_t cmb_random_curseed(void);
 extern uint64_t cmb_random_sfc64(void);
 
 /**
+ * @brief MurmurHash3 finalizer function, used for bootstrapping statistically
+ *        independent thread seeds from a master seed. Use some deterministic
+ *        trial counter as the nonce argument to get reproducible results. Using
+ *        random nonce values like time or OS thread ID works, but it will not be
+ *        reproducible, and then you would probably be better off calling
+ *        cmb_random_hwseed() instead for proper machine-generated entropy.
+ *
+ * @param   seed    The master seed
+ * @param   nonce   The hash key to be mixed into the seed
+ *
+ * @return A new 64-bit seed, apparently uncorrelated with the original.
+ */
+extern uint64_t cmb_random_fmix64(uint64_t seed, uint64_t nonce);
+
+/**
  * @brief Continuous uniform distribution on the interval [0, 1].
  *
  * A 64-bit double has a 53-bit significand. We discard the bottom 11 bits and

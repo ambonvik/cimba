@@ -7,9 +7,10 @@ changes, and bug fixes below. For complete details, see the git commit history.
 
 ### Incremental changes on the way to the official 3.0.0 release
 * Bug fixes and approx 50 % speed improvement
-* Adds cmb_priorityqueue, cmb_process_timer, cmb_process_yield/resume
-* Adds cimba_set_thread_hooks() and cimba_thread_context() for managing CUDA streams
+* Added cmb_priorityqueue, cmb_process_timer, cmb_process_yield/resume
+* Added cimba_set_thread_hooks() and cimba_thread_context() for managing CUDA streams
 * Coroutines adapted for Windows 11 with its improved stack security measures
+* Added cmb_random_fmix64 to bootstrap deterministic thread seeds from a master seed
 
 ### 2025-12-27: 3.0.0 beta
 * Initial public version

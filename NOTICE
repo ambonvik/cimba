@@ -77,3 +77,8 @@ Philippe Pébay (2008), "Formulas for Robust, One-Pass Parallel Computation of
      Covariances and Arbitrary-Order Statistical Moments",
      https://www.osti.gov/servlets/purl/1028931
      (Sandia report SAND2008-6212, U.S. Government work, hence public domain.)
+
+Austin Appleby (2011), MurmurHash3,
+    https://github.com/aappleby/smhasher/wiki/MurmurHash3
+    https://github.com/aappleby/smhasher
+    Placed in public domain by its author.
