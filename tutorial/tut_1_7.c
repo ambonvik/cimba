@@ -21,7 +21,9 @@
 #include <cimba.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
 /*
  * Bit masks to distinguish between two types of user-defined logging messages.
@@ -219,21 +221,49 @@ void run_MM1_trial(void *vtrl)
 
 void write_gnuplot_commands(void);
 
-int main(void)
+int main(const int argc, char *argv[])
 {
-    printf("Cimba version %s\n", cimba_version());
-    struct timespec start_time;
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
+    /* Can be set on command line */
+    bool timing_enabled = false;
+    uint64_t master_seed = cmb_random_hwseed();
+    unsigned n_reps = 10;
+    double warmup_time = 1000.0;
+    double duration = 1.0e6;
 
+    /* Not yet added to command line params */
     const unsigned n_rhos = 39;
     const double rho_start = 0.025;
     const double rho_step = 0.025;
-    const unsigned n_reps = 10;
-    const uint64_t master_seed = cmb_random_hwseed();
-
     const double srv_rate = 1.0;
-    const double warmup_time = 1000.0;
-    const double duration = 1.0e6;
+
+    int opt;
+    while ((opt = getopt(argc, argv, "d:n:s:tw:")) != -1) {
+        switch (opt) {
+            case 'd':
+                duration = (double)strtod(optarg, NULL);
+                break;
+            case 'n':
+                n_reps = (unsigned)strtoul(optarg, NULL, 0);
+                break;
+            case 's':
+                master_seed = (uint64_t)strtoul(optarg, NULL, 0);
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            case 'w':
+                warmup_time = (double)strtod(optarg, NULL);
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-d <duration>][-n <num_replications>][-s <seed>][-t][-w <warmup_time>]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+    printf("Cimba version %s\n", cimba_version());
+    struct timespec start_time;
+    if (timing_enabled) {
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
+    }
 
     printf("Setting up experiment\n");
     const unsigned n_trials = n_rhos * n_reps;
@@ -286,11 +316,13 @@ int main(void)
     fclose(datafp);
     free(experiment);
 
-    struct timespec end_time;
-    clock_gettime(CLOCK_MONOTONIC, &end_time);
-    double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
-    elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
-    printf("It took %g sec\n", elapsed);
+    if (timing_enabled) {
+        struct timespec end_time;
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
+        elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
+        printf("It took %g sec\n", elapsed);
+    }
 
     write_gnuplot_commands();
     system("gnuplot -persistent tut_1_6.gp");
