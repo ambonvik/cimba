@@ -1422,9 +1422,9 @@ version takes 25.5 seconds to do the same thing with all available cores in use.
 runs this scenario about *45 times faster* than SimPy. Equivalently, the Cimba running
 time is *97.8 % less* than SimPy's for this simple model.
 
-Cimba even processes 25 % more simulated events per second *on a single core* (approx 20
-million events / second) than what SimPy can do if it has all 64 logical cores to itself
-(approx 16 million events / second).
+Cimba even processes twice as many simulated events per second *on a single core*
+(approx 32 million events / second) than what SimPy can do if it has all 64 logical cores
+to itself (approx 16 million events / second).
 
 .. image:: ../images/Speed_test_AMD_3970x.png
 

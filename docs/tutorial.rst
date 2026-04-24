@@ -1066,7 +1066,8 @@ code for each stage of development. The version
 `tutorial/tut_1_7.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_7.c>`__
 is functionally the same as our final
 `tutorial/tut_1_6.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_6.c>`__
-but with additional inline explanatory comments.
+but with additional inline explanatory comments and simulation parameters settable from
+the command line using 'getopt()' for argument parsing.
 
 For additional variations of this theme, see also
 `benchmark/MM1_multi.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_multi.c>`__
