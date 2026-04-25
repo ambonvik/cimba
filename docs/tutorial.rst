@@ -3071,6 +3071,8 @@ built that way, consider reading :ref:`the background section <background>` next
 Adding CUDA GPU power for simulation physics
 --------------------------------------------
 
+[Work in progress]
+
 So far, our models have mostly used simple math. Important simulation tasks may
 require even more computing power than what we have used so far. For example, there might
 be complex physical and/or geometrical calculations, optimization algorithms to guide
@@ -3112,12 +3114,12 @@ staging (medium detectability), firing (high detectability), and driving (medium
 detectability). This represents some kind of mobile missile launcher operating in a
 shoot-and-scoot pattern.
 
-In the image above, the target sizes represent the current state (actually radar cross
-section on a logarithmic scale). The smallest target spheres are hiding targets. The
+In the image above, the target sizes represent the current radar cross
+section (on a logarithmic scale). The smallest target spheres are hiding targets. The
 large red ball just right of the racetrack is one that is firing.
 
 The target color represents the detection state, where the dark purple targets are
-beyond the radar horizon due to Earth's curvature, the read ones are shielded by
+beyond the radar horizon due to Earth's curvature, the red ones are shielded by
 terrain, the orange are too weak to be detected in elevation-dependent ground clutter,
 and the light yellow ones are successful detections.
 
@@ -3132,5 +3134,6 @@ seconds on a single CPU core.
 Instead of parallelizing trials, we will first corral available CUDA power to speed up
 the physics calculations.
 
+[...to be continued]
 
 
