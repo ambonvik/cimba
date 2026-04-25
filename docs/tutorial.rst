@@ -869,8 +869,7 @@ queuing theory by testing utilization factors from 0.025 to 0.975 in steps of 0.
 and that we want to run 10 replications of each parameter combination. We then
 want to calculate and plot the mean and 95 % confidence bands for each parameter
 combination, and compare that to the analytically calculated value in publication
-ready graphics. (Not that any famous journal would accept an article purporting to confirm
-the queue length formula for the M/M/1 queue, but this is only a tutorial after all.)
+ready graphics.
 
 We can set up the experiment like this:
 
