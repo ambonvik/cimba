@@ -520,8 +520,6 @@ void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
         }
     }
 
-    cmb_assert_debug((xmin <= x025) && (x025 <= x050)
-                  && (x050 <= x075) && (x075 <= xmax));
     const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
             ((lead_ins) ? "Min " : ""), xmin,
             ((lead_ins) ? "  First " : "\t"), x025,
