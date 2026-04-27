@@ -36,6 +36,11 @@ extern uint32_t cmi_cpu_cores(void);
 /*
  * Global control variables shared by all threads
  */
+
+/* Using GCC/Clang __atomic built-in rather than C11 stdatomic.h due to clangd
+ * false positives that have no clean workaround as of early 2026. Hence
+ * declaring cmg_next_trial_idx as plain static uint64_t instead of _Atomic
+ */
 static uint64_t cmg_next_trial_idx;
 static void *cmg_experiment_arr;
 static size_t cmg_trial_struct_sz;
@@ -44,6 +49,7 @@ static uint64_t cmg_total_trials;
 static cimba_thread_init_func *cmg_thread_init_func = NULL;
 static void *cmg_thread_init_usrarg = NULL;
 static cimba_thread_exit_func *cmg_thread_exit_func = NULL;
+pthread_mutex_t cmg_experiment_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* User-defined context per thread */
 CMB_THREAD_LOCAL void *cmi_thread_context = NULL;
@@ -105,7 +111,8 @@ static void *worker_thread_func(void *arg)
     pthread_cleanup_push(thread_exit_wrapper, cmi_thread_context);
 
     while (true) {
-        /* stdatomic.h broken on Windows, using gcc/clang intrinsic instead for now */
+        /* Using GCC/Clang __atomic built-in rather than C11 stdatomic.h due to
+         * clangd false positives with no clean workaround */
         const uint64_t idx = __atomic_fetch_add(&cmg_next_trial_idx, 1, __ATOMIC_RELAXED);
         if (idx >= cmg_total_trials) {
             break;
@@ -136,6 +143,11 @@ static void *worker_thread_func(void *arg)
 /*
  * cimba_run_experiment - The main simulation executive function. Initiates the
  * worker threads and waits for them to finish. That's all.
+ *
+ * The intended use case is to have only one instance of this function running
+ * at a time, while the individual trials are multithreaded below it. However,
+ * we'll put in a mutex to protect it against hard-to-debug consequences of
+ * unintentional misuse.
  */
 void cimba_run_experiment(void *your_experiment_array,
                           const uint64_t num_trials,
@@ -145,6 +157,9 @@ void cimba_run_experiment(void *your_experiment_array,
     cmb_assert_release(your_experiment_array != NULL);
     cmb_assert_release(num_trials > 0u);
     cmb_assert_release(trial_struct_size > 0u);
+
+    /* A mutex to make sure the Cimba globals are protected */
+   pthread_mutex_lock(&cmg_experiment_mutex);
 
     /* Initialize globals for the threads */
     cmg_next_trial_idx = 0u;
@@ -168,4 +183,7 @@ void cimba_run_experiment(void *your_experiment_array,
     }
 
     cmi_free(threads);
+
+    /* Only unlock when all is said and done */
+    pthread_mutex_unlock(&cmg_experiment_mutex);
 }
