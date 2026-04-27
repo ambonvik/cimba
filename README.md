@@ -3,8 +3,9 @@
 ## A multithreaded discrete event simulation library in C
 
 ### What is it?
-A fast discrete event simulation library written in C and assembly with POSIX pthreads.
-Simulated processes are implemented as stackful coroutines ("fibers") inside the pthreads.
+A fast discrete event simulation library written in C and assembly with POSIX pthreads 
+for running multiple trials in parallel on multi-core CPUs. Simulated processes are 
+implemented as stackful coroutines ("fibers") inside the pthreads.
 As far as we know, there is no other open source library that can provide these features.
 
 Implementation status:
