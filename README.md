@@ -98,7 +98,7 @@ As an example, this screen shot shows one frame from a simulation of an AWACS
 trying to detect 1000 ground targets across a 1000 x 1000 nm synthetic map. The size of 
 each target is its current radar cross section, the color is the current detection status. 
 The vectors on the sphere representing the AWACS indicate the current direction of the 
-platform and the current direction of the radar lobe.
+platform and the current direction of the radar lobe. The visualization was done in ParaView.
 
 ![AWACS racetrack](images/tut_5_1.png)
 
