@@ -34,14 +34,8 @@
 extern uint32_t cmi_cpu_cores(void);
 
 /*
- * Global control variables shared by all threads
+ * Global control variables shared by all threads but static to this file
  */
-
-/* Using GCC/Clang __atomic built-in rather than C11 stdatomic.h due to clangd
- * false positives that have no clean workaround as of early 2026. Hence
- * declaring cmg_next_trial_idx as plain static uint64_t instead of _Atomic
- */
-static uint64_t cmg_next_trial_idx;
 static void *cmg_experiment_arr;
 static size_t cmg_trial_struct_sz;
 static cimba_trial_func *cmg_trial_func = NULL;
@@ -49,7 +43,12 @@ static uint64_t cmg_total_trials;
 static cimba_thread_init_func *cmg_thread_init_func = NULL;
 static void *cmg_thread_init_usrarg = NULL;
 static cimba_thread_exit_func *cmg_thread_exit_func = NULL;
-pthread_mutex_t cmg_experiment_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t cmg_experiment_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Using GCC/Clang __atomic built-in rather than C11 stdatomic.h due to clangd
+ * false positives that have no clean workaround as of early 2026. Hence
+ * declaring cmg_next_trial_idx as plain static uint64_t instead of _Atomic */
+static uint64_t cmg_next_trial_idx;
 
 /* User-defined context per thread */
 CMB_THREAD_LOCAL void *cmi_thread_context = NULL;
