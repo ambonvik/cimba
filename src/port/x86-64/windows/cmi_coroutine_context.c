@@ -203,17 +203,18 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size,
                                          unsigned char **base_p,
                                          unsigned char **limit_p)
 {
-    void *raw = VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    const size_t pagesz = cmi_pagesize();
+    void *raw = VirtualAlloc(NULL, size + pagesz, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     cmb_assert_always(raw != NULL);
 
     DWORD old_protect;
-    VirtualProtect(raw, 4096u, PAGE_READWRITE | PAGE_GUARD, &old_protect);
+    VirtualProtect(raw, pagesize, PAGE_READWRITE | PAGE_GUARD, &old_protect);
 
-    /* The stack grows downwards, the base is at the top, less a few bytes for the OS */
-    *base_p = raw + size - 16u;
+    /* The stack grows downwards; the base is at the top */
+    *base_p = raw + size + pagesz;
 
     /* The bottom includes the guard page */
-    *limit_p = raw + 4096u;
+    *limit_p = raw + pagesz;
 
     return raw;
 }
