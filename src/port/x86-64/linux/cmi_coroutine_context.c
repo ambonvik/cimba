@@ -25,6 +25,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/mman.h>
 
 #include "cmb_assert.h"
 
@@ -72,9 +73,6 @@ extern void cmi_coroutine_trampoline(void);
  * function as its argument if that function ever returns.
  */
 
-/* Bit pattern for last 64 bits of valid stack. */
-#define CMI_STACK_LIMIT_UNTOUCHED UINT64_C(0xFA151F1AB1E)
-
 /*
  * Stack sanity check, Linux SysV-specific, see
  *   https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
@@ -112,7 +110,6 @@ bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
             /* Total 8 slots pushed: MXCSR is gone. */
             cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
         #endif
-        cmb_assert_debug(*((uint64_t *)cp->stack_limit) == CMI_STACK_LIMIT_UNTOUCHED);
     }
 
     return true;
@@ -123,15 +120,7 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     cmb_assert_release(cp != NULL);
     cmb_assert_debug(cp->stack != NULL);
     cmb_assert_debug(cp->stack_base != NULL);
-
-    /* Make sure we can recognize if something overwrites the end of stack */
-    cp->stack_limit = cp->stack;
-    while (((uintptr_t)cp->stack_limit % 16u) != 0u) {
-        /* Counting up */
-        cp->stack_limit++;
-    }
-
-    *(uint64_t *)cp->stack_limit = CMI_STACK_LIMIT_UNTOUCHED;
+    cmb_assert_debug(cp->stack_limit != NULL);
 
     /* Top end of stack, ensure 16-byte alignment */
     while (((uintptr_t)cp->stack_base % 16u) != 0u) {
@@ -194,16 +183,19 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 }
 
-/* Allocate memory suitable for a stack */
+/* Allocate memory suitable for a stack, including one extra guard page */
 unsigned char *cmi_coroutine_stack_alloc(const size_t size, unsigned char **base_p, unsigned char **limit_p)
 {
     const size_t pagesz = cmi_pagesize();
-    unsigned char *raw = cmi_aligned_alloc(pagesz, size);
+    unsigned char *raw = cmi_aligned_alloc(pagesz, size + pagesz);
     cmb_assert_always(raw != NULL);
 
+    const int r = mprotect(raw, pagesz, PROT_NONE);
+    cmb_assert_always(r == 0);
+
     /* Stack grows downwards, base is at the top */
-    *base_p = raw + size;
-    *limit_p = raw;
+    *base_p = raw + size + pagesz;
+    *limit_p = raw + pagesz;
 
     return raw;
 }
@@ -211,6 +203,12 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size, unsigned char **base
 /* Free memory previously allocated for a stack */
 void cmi_coroutine_stack_free(unsigned char *stack)
 {
+    cmb_assert_release(stack != NULL);
+
+    /* Unprotect guard page to avoid complaints */
+    const size_t pagesz = cmi_pagesize();
+    mprotect(stack, pagesz, PROT_READ | PROT_WRITE | PROT_EXEC);
+
     cmi_aligned_free(stack);
 }
 
