@@ -464,6 +464,11 @@ double cmb_timeseries_median(const struct cmb_timeseries *tsp)
     return r;
 }
 
+static double clamp(const double xval, const double xmin, const double xmax)
+{
+    return (xval < xmin) ? xmin : ((xval > xmax) ? xmax : xval);
+}
+
 void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
                                   FILE *fp,
                                   const bool lead_ins)
@@ -494,31 +499,36 @@ void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
     const double w050 = 0.50 * wsum;
     const double w075 = 0.75 * wsum;
 
-    double x025 = 0.0;
-    double x050 = 0.0;
-    double x075 = 0.0;
+    double x025 = xmin;
+    double x050 = xmin;
+    double x075 = xmin;
+
     for (uint64_t ui = 0u; ui < un - 1; ui++) {
-        if ((wcum[ui] <= w025) && (wcum[ui + 1] > w025)) {
-            cmb_assert_debug(wcum[ui + 1] > wcum[ui]);
-            x025 = dsp->xa[ui] + (dsp->xa[ui + 1]
-                               - dsp->xa[ui]) * (w025 - wcum[ui])
-                                  / (wcum[ui + 1] - wcum[ui]);
-        }
+        const double w_low = wcum[ui];
+        const double w_high = wcum[ui + 1];
 
-        if ((wcum[ui] <= w050) && (wcum[ui + 1] > w050)) {
-            cmb_assert_debug(wcum[ui + 1] > wcum[ui]);
-            x050 = dsp->xa[ui] + (dsp->xa[ui + 1]
-                               - dsp->xa[ui]) * (w050 - wcum[ui])
-                                  / (wcum[ui + 1] - wcum[ui]);
-        }
+        if (w_high > w_low) {
+            const double gap = dsp->xa[ui + 1] - dsp->xa[ui];
+            const double wgap = w_high - w_low;
 
-        if ((wcum[ui] <= w075) && (wcum[ui + 1] > w075)) {
-            cmb_assert_debug(wcum[ui + 1] > wcum[ui]);
-            x075 = dsp->xa[ui] + (dsp->xa[ui + 1]
-                               - dsp->xa[ui]) * (w075 - wcum[ui])
-                                  / (wcum[ui + 1] - wcum[ui]);
+            if ((w_low <= w025) && (w_high > w025)) {
+                const double xint = dsp->xa[ui] + (gap * (w025 - w_low) / wgap);
+                x025 = clamp(xint, dsp->xa[ui], dsp->xa[ui + 1]);
+            }
+
+            if ((w_low <= w050) && (w_high > w050)) {
+                const double xint = dsp->xa[ui] + (gap * (w050 - w_low) / wgap);
+                x050 = clamp(xint, dsp->xa[ui], dsp->xa[ui + 1]);
+            }
+
+            if ((w_low <= w075) && (w_high > w075)) {
+                const double xint = dsp->xa[ui] + (gap * (w075 - w_low) / wgap);
+                x075 = clamp(xint, dsp->xa[ui], dsp->xa[ui + 1]);
+            }
         }
     }
+
+    cmb_assert_debug((xmin <= x025) && (x025 <= x050) && (x050 <= x075) && (x075 <= xmax));
 
     const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
             ((lead_ins) ? "Min " : ""), xmin,
