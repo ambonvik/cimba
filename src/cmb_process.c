@@ -686,16 +686,17 @@ void cmb_process_exit(void *retval)
  * The stop event will deal with any processes waiting for the target and
  * release any resources held by the target.
  */
-void cmb_process_stop(struct cmb_process *tgt, void *retval)
+int cmb_process_stop(struct cmb_process *tgt, void *retval)
 {
     cmb_assert_release(tgt != NULL);
     cmb_assert_release(tgt != cmb_process_current());
 
     cmb_logger_info(stdout, "Stop %s value %p", tgt->name, retval);
 
-    if (cmb_process_status(tgt) != CMB_PROCESS_RUNNING) {
+    int status = cmb_process_status(tgt);
+    if (status != CMB_PROCESS_RUNNING) {
         cmb_logger_warning(stdout, "cmb_process_stop: tgt %s not running", tgt->name);
-        return;
+        return CMB_PROCESS_STOPPED;
     }
 
     /* Stop the underlying coroutine, set its exit value */
@@ -706,6 +707,8 @@ void cmb_process_stop(struct cmb_process *tgt, void *retval)
     cmi_process_cancel_awaiteds(tgt);
     cmi_process_drop_resources(tgt);
     wake_process_waiters(&(tgt->waiters), CMB_PROCESS_STOPPED);
+
+    return CMB_PROCESS_SUCCESS;
 }
 
 /*

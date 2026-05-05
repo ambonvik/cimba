@@ -382,8 +382,9 @@ extern void cmb_process_interrupt(struct cmb_process *pp,
  * @param retval The return value from the process. User defined meaning, often
  *               `NULL` for an externally killed process. Will be stored as the
  *               `cmb_coroutine` `exit_value`.
+ * @return CMB_PROCESS_SUCCESS (0) for successful stop, non-zero otherwise.
  */
-extern void cmb_process_stop(struct cmb_process *tgt, void *retval);
+extern int cmb_process_stop(struct cmb_process *tgt, void *retval);
 
 /**
  * @brief  Kill the target process, syntactic alias for cmb_process_stop().
@@ -402,10 +403,11 @@ extern void cmb_process_stop(struct cmb_process *tgt, void *retval);
  * @param retval The return value from the process, user defined meaning, often
  *               `NULL` for an externally killed process. Will be stored as the
  *               `cmb_coroutine` `exit_value`.
+ * @return CMB_PROCESS_SUCCESS (0) for successful stop, non-zero otherwise.
  */
-static inline void cmb_process_kill(struct cmb_process *tgt, void *retval)
+static inline int cmb_process_kill(struct cmb_process *tgt, void *retval)
 {
-    cmb_process_stop(tgt, retval);
+    return cmb_process_stop(tgt, retval);
 }
 
 /**
