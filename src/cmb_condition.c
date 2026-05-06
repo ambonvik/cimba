@@ -117,7 +117,7 @@ static void wakeup_event_condition(void *vp, void *arg)
  * chooses to yield it. Hence, safe to schedule the wakeup events in the first
  * iteration where the process pointers are easily available.
  */
-bool cmb_condition_signal(struct cmb_condition *cvp)
+uint64_t cmb_condition_signal(struct cmb_condition *cvp)
 {
     cmb_assert_release(cvp != NULL);
 
@@ -129,7 +129,7 @@ bool cmb_condition_signal(struct cmb_condition *cvp)
     if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
         cmb_logger_info(stdout, "None waiting for %s",
             ((struct cmi_resourcebase *)cvp)->name);
-        return false;
+        return 0u;
     }
 
     /* Allocate space enough to reactivate everything in the heap */
@@ -163,7 +163,7 @@ bool cmb_condition_signal(struct cmb_condition *cvp)
     }
 
     cmi_free(tmp);
-    return (cnt > 0u);
+    return cnt;
 }
 
 bool cmi_condition_cancel(struct cmb_condition *cvp,

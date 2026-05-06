@@ -139,8 +139,9 @@ extern int64_t cmb_condition_wait(struct cmb_condition *cvp,
  *
  * @memberof cmb_condition
  * @param cvp Pointer to a condition variable.
+ * @return Number of waiting processes reactivated
  */
-extern bool cmb_condition_signal(struct cmb_condition *cvp);
+extern uint64_t cmb_condition_signal(struct cmb_condition *cvp);
 
 /**
  * @brief Remove the process from the priority queue and resume it with a
