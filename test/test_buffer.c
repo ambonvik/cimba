@@ -47,6 +47,7 @@ struct simulation {
 
 static void end_sim_evt(void *subject, void *object)
 {
+    cmb_assert_always(subject != NULL);
     cmb_unused(object);
 
     const struct simulation *thesim = subject;
@@ -54,6 +55,7 @@ static void end_sim_evt(void *subject, void *object)
 
     for (unsigned ui = 0; ui < NUM_PUTTERS; ui++) {
         struct cmb_process *putter = thesim->putters[ui];
+        cmb_assert_always(putter != NULL);
         cmb_assert_always(cmb_process_status(putter) == CMB_PROCESS_RUNNING);
         const int r = cmb_process_stop(putter, NULL);
         cmb_assert_always(r == CMB_PROCESS_SUCCESS);
@@ -62,7 +64,8 @@ static void end_sim_evt(void *subject, void *object)
 
     for (unsigned ui = 0; ui < NUM_GETTERS; ui++) {
         struct cmb_process *getter = thesim->getters[ui];
-       cmb_assert_always(cmb_process_status(getter) == CMB_PROCESS_RUNNING);
+        cmb_assert_always(getter != NULL);
+        cmb_assert_always(cmb_process_status(getter) == CMB_PROCESS_RUNNING);
         const int r = cmb_process_stop(getter, NULL);
         cmb_assert_always(r == CMB_PROCESS_SUCCESS);
         cmb_assert_always(cmb_process_status(getter) == CMB_PROCESS_FINISHED);
@@ -194,6 +197,7 @@ void test_buffer(const double duration, const uint64_t seed)
     thesim->buf = cmb_buffer_create();
     cmb_assert_always(thesim->buf != NULL);
     cmb_buffer_initialize(thesim->buf, "Buf", 10u);
+    cmb_assert_always(cmb_buffer_level(thesim->buf) == 0u);
     cmb_buffer_recording_start(thesim->buf);
 
     char scratchpad[32];

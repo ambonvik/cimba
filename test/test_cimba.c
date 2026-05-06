@@ -82,13 +82,26 @@ struct context {
  */
 static void end_sim_evt(void *subject, void *object)
 {
+    cmb_assert_always(subject != NULL);
     cmb_unused(object);
 
-    const struct simulation *sim = subject;
     cmb_logger_info(stdout, "===> end_sim_evt <===");
-    cmb_process_stop(sim->arrival, NULL);
-    cmb_process_stop(sim->service, NULL);
-    cmb_event_queue_clear();
+
+    const struct simulation *sim = subject;
+    cmb_assert_always(sim->arrival != NULL);
+    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_RUNNING);
+    int r = cmb_process_stop(sim->arrival, NULL);
+    cmb_assert_always(r == CMB_PROCESS_SUCCESS);
+    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_FINISHED);
+
+
+    cmb_assert_always(sim->service != NULL);
+    cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_RUNNING);
+    r = cmb_process_stop(sim->service, NULL);
+    cmb_assert_always(r == CMB_PROCESS_SUCCESS);
+    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_FINISHED);
+
+    cmb_assert_always(cmb_event_queue_is_empty());
 }
 
 /*
@@ -96,10 +109,12 @@ static void end_sim_evt(void *subject, void *object)
  */
 static void start_rec_evt(void *subject, void *object)
 {
+    cmb_assert_always(subject != NULL);
     cmb_unused(object);
 
     const struct simulation *sim = subject;
     cmb_buffer_recording_start(sim->queue);
+    cmb_assert_always(sim->queue->is_recording);
 }
 
 /*
@@ -107,10 +122,12 @@ static void start_rec_evt(void *subject, void *object)
  */
 static void stop_rec_evt(void *subject, void *object)
 {
+    cmb_assert_always(subject != NULL);
     cmb_unused(object);
 
     const struct simulation *sim = subject;
     cmb_buffer_recording_stop(sim->queue);
+    cmb_assert_always(!(sim->queue->is_recording));
 }
 
 /*
@@ -120,22 +137,29 @@ static void stop_rec_evt(void *subject, void *object)
 void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
 
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
+    cmb_assert_always(bp != NULL);
     cmb_logger_user(stdout,
                     USERFLAG1,
                     "Started arrival, queue %s",
                     cmb_buffer_get_name(bp));
+    cmb_assert_always(ctx->trl->utilization > 0.0);
     const double mean_interarr = 1.0 / ctx->trl->utilization;
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         cmb_logger_user(stdout, USERFLAG1, "Holding");
-        (void)cmb_process_hold(cmb_random_exponential(mean_interarr));
+        const double ht = cmb_random_exponential(mean_interarr);
+        cmb_assert_always(ht >= 0.0);
+        (void)cmb_process_hold(ht);
         cmb_logger_user(stdout, USERFLAG1, "Arrival");
         uint64_t n = 1u;
-        (void)cmb_buffer_put(bp, &n);
+        const int64_t r = cmb_buffer_put(bp, &n);
+        cmb_assert_always(r == CMB_PROCESS_SUCCESS);
+        cmb_assert_always(n == 0u);
     }
 }
 
@@ -146,15 +170,18 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
 void *service_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
 
     const struct context *ctx = vctx;
     struct cmb_buffer *bp = ctx->sim->queue;
+    cmb_assert_always(bp != NULL);
     cmb_logger_user(stdout,
                     USERFLAG1,
                     "Started service, queue %s",
                     cmb_buffer_get_name(bp));
 
     const double cv = ctx->trl->service_cv;
+    cmb_assert_always(cv > 0.0);
     const double shape = 1.0 / (cv * cv);
     const double scale = cv * cv;
 
@@ -162,14 +189,19 @@ void *service_proc(struct cmb_process *me, void *vctx)
     while (true) {
         cmb_logger_user(stdout,
                         USERFLAG1,
-                        "Holding shape %f scale %f",
+                        "Holding gamma shape %f scale %f",
                         shape,
                         scale);
-        (void)cmb_process_hold(cmb_random_gamma(shape, scale));
+        const double ht = cmb_random_gamma(shape, scale);
+        cmb_assert_always(ht >= 0.0);
+        int64_t r = cmb_process_hold(ht);
+        cmb_assert_always(r == CMB_PROCESS_SUCCESS);
         cmb_logger_user(stdout, USERFLAG1, "Getting");
         uint64_t n = 1u;
-        (void)cmb_buffer_get(bp, &n);
-    }
+        r = cmb_buffer_get(bp, &n);
+        cmb_assert_always(r == CMB_PROCESS_SUCCESS);
+        cmb_assert_always(n == 1u);
+   }
 }
 
 /*
@@ -177,14 +209,18 @@ void *service_proc(struct cmb_process *me, void *vctx)
  */
 void run_mg1_trial(void *vtrl)
 {
+    cmb_assert_always(vtrl != NULL);
+
     struct trial *trl = vtrl;
     cmb_logger_user(stdout, USERFLAG2, "Trial seed: 0x%016" PRIx64, trl->seed);
 
     struct context *ctx = malloc(sizeof(*ctx));
+    cmb_assert_always(ctx != NULL);
     ctx->trl = trl;
     cmb_random_initialize(trl->seed);
 
     struct simulation *sim = malloc(sizeof(*sim));
+    cmb_assert_always(sim != NULL);
     ctx->sim = sim;
 
     /* Do not disturb, except for significant warnings and errors */
@@ -196,29 +232,44 @@ void run_mg1_trial(void *vtrl)
 
     /* Set the data collection period */
     double t = trl->warmup;
-    (void)cmb_event_schedule(start_rec_evt, sim, NULL, t, 0);
+    uint64_t ev_hdle = cmb_event_schedule(start_rec_evt, sim, NULL, t, 0);
+    cmb_assert_always(ev_hdle != 0u);
     t += trl->duration;
-    (void)cmb_event_schedule(stop_rec_evt, sim, NULL, t, 0);
+    ev_hdle = cmb_event_schedule(stop_rec_evt, sim, NULL, t, 0);
+    cmb_assert_always(ev_hdle != 0u);
     t += trl->cooldown;
-    (void)cmb_event_schedule(end_sim_evt, sim, NULL, t, 0);
+    ev_hdle = cmb_event_schedule(end_sim_evt, sim, NULL, t, 0);
+    cmb_assert_always(ev_hdle != 0u);
 
     /* Create the simulation entities */
     sim->queue = cmb_buffer_create();
+    cmb_assert_always(sim->queue != NULL);
     cmb_buffer_initialize(sim->queue, "Queue", UINT64_MAX);
+    cmb_assert_always(cmb_buffer_level(sim->queue) == 0u);
 
     sim->arrival = cmb_process_create();
+    cmb_assert_always(sim->arrival != NULL);
+    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_CREATED);
     cmb_process_initialize(sim->arrival, "Arrivals", arrival_proc, ctx, 0);
+    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_CREATED);
+    /* Non-blocking, just schedules the start event to run when we yield from here */
     cmb_process_start(sim->arrival);
+    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_CREATED);
 
     sim->service = cmb_process_create();
+    cmb_assert_always(sim->service != NULL);
+    cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_CREATED);
     cmb_process_initialize(sim->service, "Service", service_proc, ctx, 0);
+    cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_CREATED);
     cmb_process_start(sim->service);
+    cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_CREATED);
 
     /* Execute the trial */
     cmb_event_queue_execute();
 
     /* Collect and save statistics into the trial struct */
     const struct cmb_timeseries *tsp = cmb_buffer_history(sim->queue);
+    cmb_assert_always(tsp != NULL);
     struct cmb_wtdsummary ws;
     cmb_wtdsummary_initialize(&ws);
     cmb_timeseries_summarize(tsp, &ws);
@@ -227,7 +278,9 @@ void run_mg1_trial(void *vtrl)
     /* Clean up */
     cmb_event_queue_terminate();
 
+    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_FINISHED);
     cmb_process_destroy(sim->arrival);
+    cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_FINISHED);
     cmb_process_destroy(sim->service);
     cmb_buffer_destroy(sim->queue);
 
@@ -248,6 +301,7 @@ struct thread_context {
 void *thread_init_func(void *usrarg, const uint64_t tid)
 {
     struct thread_context *ctx = malloc(sizeof *ctx);
+    cmb_assert_always(ctx != NULL);
     ctx->thread_id = pthread_self();
     ctx->usrarg = usrarg;
     ctx->tid = tid;
@@ -257,8 +311,8 @@ void *thread_init_func(void *usrarg, const uint64_t tid)
 
 void thread_exit_func(void *vctx)
 {
+    cmb_assert_always(vctx != NULL);
     struct thread_context *ctx = vctx;
-
     free(ctx);
 }
 
@@ -270,10 +324,15 @@ int main(const int argc, char **argv)
     bool plot_graphics = false;
     bool timing_enabled = false;
     uint64_t seed = cmb_random_hwseed();
+    double dur = 1.0e6;
+    double wup = 1.0e-3;
 
     int opt;
     while ((opt = getopt(argc, argv, "gs:t")) != -1) {
         switch (opt) {
+            case 'd':
+                dur = strtod(optarg, NULL);
+                break;
             case 'g':
                 plot_graphics = true;
                 break;
@@ -282,6 +341,9 @@ int main(const int argc, char **argv)
                 break;
             case 't':
                 timing_enabled = true;
+                break;
+            case 'w':
+                wup = strtod(optarg, NULL);
                 break;
             default:
                 fprintf(stderr, "Usage: %s [-g][-s <seed>]\n", argv[0]);
@@ -315,8 +377,8 @@ int main(const int argc, char **argv)
             for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
                 experiment[ui_exp].service_cv = cvs[ui_cv];
                 experiment[ui_exp].utilization = rhos[ui_rho];
-                experiment[ui_exp].warmup = 1000.0;
-                experiment[ui_exp].duration = 1.0e6;
+                experiment[ui_exp].warmup = wup;
+                experiment[ui_exp].duration = dur;
                 experiment[ui_exp].cooldown = 1.0;
                 experiment[ui_exp].seed = cmb_random_fmix64(seed, ui_exp);
                 experiment[ui_exp].avg_queue_length = 0.0;
@@ -325,7 +387,7 @@ int main(const int argc, char **argv)
         }
     }
 
-    printf("Setting thread hooks\n");
+    printf("Baiting thread hooks\n");
     cimba_set_thread_hooks(thread_init_func, NULL, thread_exit_func);
 
     printf("Running experiment\n");
