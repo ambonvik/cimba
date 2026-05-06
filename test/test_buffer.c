@@ -18,6 +18,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -284,13 +285,23 @@ int main(const int argc, char *argv[])
     double dur = 10000.0;
 
     int opt;
-    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+    while ((opt = getopt(argc, argv, "d:s:t")) != -1) {
         switch (opt) {
             case 'd':
+                errno = 0;
                 dur = strtod(optarg, NULL);
+                if (errno != 0 || dur <= 0.0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
                 break;
             case 's':
+                errno = 0;
                 seed = (uint64_t)strtoul(optarg, NULL, 0);
+                if (errno != 0 || seed == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
                 break;
             case 't':
                 timing_enabled = true;

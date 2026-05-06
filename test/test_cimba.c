@@ -29,6 +29,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -328,16 +329,26 @@ int main(const int argc, char **argv)
     double wup = 1.0e-3;
 
     int opt;
-    while ((opt = getopt(argc, argv, "gs:t")) != -1) {
+    while ((opt = getopt(argc, argv, "d:gs:tw:")) != -1) {
         switch (opt) {
             case 'd':
+                errno = 0;
                 dur = strtod(optarg, NULL);
+                if (errno != 0 || dur <= 0.0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
                 break;
             case 'g':
                 plot_graphics = true;
                 break;
             case 's':
+                errno = 0;
                 seed = (uint64_t)strtoul(optarg, NULL, 0);
+                if (errno != 0 || seed == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
                 break;
             case 't':
                 timing_enabled = true;
