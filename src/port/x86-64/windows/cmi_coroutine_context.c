@@ -208,7 +208,7 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size,
     cmb_assert_always(raw != NULL);
 
     DWORD old_protect;
-    VirtualProtect(raw, pagesize, PAGE_READWRITE | PAGE_GUARD, &old_protect);
+    VirtualProtect(raw, pagesz, PAGE_READWRITE | PAGE_GUARD, &old_protect);
 
     /* The stack grows downwards; the base is at the top */
     *base_p = raw + size + pagesz;
