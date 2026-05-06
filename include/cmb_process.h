@@ -384,7 +384,7 @@ extern void cmb_process_interrupt(struct cmb_process *pp,
  *               `cmb_coroutine` `exit_value`.
  * @return CMB_PROCESS_SUCCESS (0) for successful stop, non-zero otherwise.
  */
-extern int cmb_process_stop(struct cmb_process *tgt, void *retval);
+extern int64_t cmb_process_stop(struct cmb_process *tgt, void *retval);
 
 /**
  * @brief  Kill the target process, syntactic alias for cmb_process_stop().
@@ -405,7 +405,7 @@ extern int cmb_process_stop(struct cmb_process *tgt, void *retval);
  *               `cmb_coroutine` `exit_value`.
  * @return CMB_PROCESS_SUCCESS (0) for successful stop, non-zero otherwise.
  */
-static inline int cmb_process_kill(struct cmb_process *tgt, void *retval)
+static inline int64_t cmb_process_kill(struct cmb_process *tgt, void *retval)
 {
     return cmb_process_stop(tgt, retval);
 }

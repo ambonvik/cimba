@@ -688,7 +688,7 @@ void cmb_process_exit(void *retval)
  * The stop event will deal with any processes waiting for the target and
  * release any resources held by the target.
  */
-int cmb_process_stop(struct cmb_process *tgt, void *retval)
+int64_t cmb_process_stop(struct cmb_process *tgt, void *retval)
 {
     cmb_assert_release(tgt != NULL);
     cmb_assert_release(tgt != cmb_process_current());
