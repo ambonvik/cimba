@@ -672,6 +672,8 @@ void cmb_process_exit(void *retval)
     cmi_process_cancel_awaiteds(pp);
     wake_process_waiters(&(pp->waiters), CMB_PROCESS_SUCCESS);
     cmi_coroutine_exit(retval);
+    /* Not reached */
+    cmb_assert_debug(false);
 }
 
 /*
@@ -693,7 +695,7 @@ int cmb_process_stop(struct cmb_process *tgt, void *retval)
 
     cmb_logger_info(stdout, "Stop %s value %p", tgt->name, retval);
 
-    int status = cmb_process_status(tgt);
+    const int status = cmb_process_status(tgt);
     if (status != CMB_PROCESS_RUNNING) {
         cmb_logger_warning(stdout, "cmb_process_stop: tgt %s not running", tgt->name);
         return CMB_PROCESS_STOPPED;
@@ -702,6 +704,7 @@ int cmb_process_stop(struct cmb_process *tgt, void *retval)
     /* Stop the underlying coroutine, set its exit value */
     struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
     cmi_coroutine_stop(cp, retval);
+    cmb_assert_debug(cmb_process_status(tgt) == CMB_PROCESS_FINISHED);
 
     /* Clean up unfinished business */
     cmi_process_cancel_awaiteds(tgt);
