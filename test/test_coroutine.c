@@ -40,6 +40,7 @@ static void test_simple_event(void)
     const size_t stksz = 24 * 1024;
     printf("Create a coroutine\n");
     struct cmi_coroutine *cp = cmi_coroutine_create();
+    cmb_assert_always(cp != NULL);
     printf("Got %p, initialize it, stack size %" PRIu64 "\n", (void *)cp, stksz);
     cmi_coroutine_initialize(cp, corofunc, (void *)0x5EAF00D, NULL, stksz);
 
@@ -71,13 +72,15 @@ static void *corofunc_2(struct cmi_coroutine *myself, void *context)
 
     for (unsigned ui = 0; ui < 5; ui++) {
         /* Wrap the index number in a fortune cookie and pass it back */
-        uint64_t *cookie = cmi_malloc(sizeof(*cookie));
+        uint64_t *cookie = malloc(sizeof(*cookie));
+        cmb_assert_always(cookie != NULL);
         *cookie = ui;
         printf("corofunc_2: Yields cookie %" PRIu64 " back to boss\n", *cookie);
         uint64_t *ticket = cmi_coroutine_yield(cookie);
+        cmb_assert_always(ticket != NULL);
         printf("corofunc_2: Received ticket %" PRIu64 " in return\n", *ticket);
         /* Toss it and try again */
-        cmi_free(ticket);
+        free(ticket);
     }
 
     printf("corofunc_2: Done, exit value NULL\n");
@@ -104,8 +107,9 @@ static void *corofunc_1(struct cmi_coroutine *myself, void *context)
         uint64_t *cookie = ret;
         printf("corofunc_1: Got cookie %" PRIu64 "\n", *cookie);
         /* Inedible, toss it */
-        cmi_free(cookie);
-        uint64_t *ticket = cmi_malloc(sizeof(*ticket));
+        free(cookie);
+        uint64_t *ticket = malloc(sizeof(*ticket));
+        cmb_assert_always(ticket != NULL);
         *ticket = cntr++;
         printf("corofunc_1: Returns ticket %" PRIu64 "\n", *ticket);
         ret = cmi_coroutine_resume(buddy, ticket);
@@ -123,19 +127,31 @@ static void test_asymmetric(void)
     const size_t stksz = 16 * 1024;
     printf("Create two coroutines, stack size %" PRIu64 "\n", stksz);
     struct cmi_coroutine *cp1 = cmi_coroutine_create();
+    cmb_assert_always(cp1 != NULL);
+    cmb_assert_always(cp1->status == CMI_COROUTINE_CREATED);
     struct cmi_coroutine *cp2 = cmi_coroutine_create();
+    cmb_assert_always(cp2 != NULL);
+    cmb_assert_always(cp2->status == CMI_COROUTINE_CREATED);
     cmi_coroutine_initialize(cp2, corofunc_2, NULL, NULL, stksz);
+    cmb_assert_always(cp2->status == CMI_COROUTINE_CREATED);
     cmi_coroutine_initialize(cp1, corofunc_1, cp2, NULL, stksz);
+    cmb_assert_always(cp1->status == CMI_COROUTINE_CREATED);
 
     /* Start cp1 and hence the entire circus */
     printf("Start %p\n", (void *)cp1);
     void *ret = cmi_coroutine_start(cp1, (void *)0x5EAF00D);
+    cmb_assert_always(ret == (void *)0x5EAF00D);
     printf("Survived, now back in main coroutine, received %p\n", ret);
 
     /* Destroy the coroutine to free its memory allocation*/
     printf("Delete coroutine %p\n", (void *)cp1);
+    cmb_assert_always(cp1->status == CMI_COROUTINE_FINISHED);
+    cmi_coroutine_terminate(cp1);
     cmi_coroutine_destroy(cp1);
+
     printf("Delete coroutine %p\n", (void *)cp2);
+    cmb_assert_always(cp2->status == CMI_COROUTINE_FINISHED);
+    cmi_coroutine_terminate(cp2);
     cmi_coroutine_destroy(cp2);
     cmi_test_print_line("-");
 }
