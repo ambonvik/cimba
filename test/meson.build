@@ -3,7 +3,7 @@
 python = import('python').find_installation()
 
 # Usage: python test_assert.py <expected_trip: true | false> <executable> [args...]
-wrapper = files('test_assert.py')
+wrapper = files('tools/test_assert.py')
 
 matrix = [
     # buildtype, flags, expect_assert_debug_trip, expect_assert_release_trip
