@@ -28,6 +28,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -102,7 +103,7 @@ struct context {
 void *weather_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
-    cmb_assert_debug(vctx != NULL);
+    cmb_assert_always(vctx != NULL);
 
     const struct context *ctx = vctx;
     struct env_state *env = ctx->state;
@@ -112,12 +113,15 @@ void *weather_proc(struct cmb_process *me, void *vctx)
     while (true) {
         /* Wind magnitude in meters per second */
         const double wmag = cmb_random_rayleigh(5.0);
+        cmb_assert_always(wmag >= 0.0);
         const double wold = env->wind_magnitude;
         env->wind_magnitude = 0.5 * wmag + 0.5 * wold;
 
         /* Wind direction in compass degrees, dominant from the southwest */
         const double wdir1 = cmb_random_PERT(0.0, 225.0, 360.0);
+        cmb_assert_always((wdir1 >= 0.0) && (wdir1 <= 360.0));
         const double wdir2 = cmb_random_PERT(0.0,  45.0, 360.0);
+        cmb_assert_always((wdir2 >= 0.0) && (wdir2 <= 360.0));
         env->wind_direction = 0.75 * wdir1 + 0.25 * wdir2;
 
         cmb_logger_user(stdout, USERFLAG2,
@@ -126,10 +130,12 @@ void *weather_proc(struct cmb_process *me, void *vctx)
                         env->wind_direction);
 
         /* Requesting the harbormaster to read the new weather bulletin */
-        cmb_condition_signal(sim->harbormaster);
+        const uint64_t r = cmb_condition_signal(sim->harbormaster);
+        cmb_logger_user(stdout, USERFLAG2, "Reactivated %" PRIu64 " ships", r);
 
         /* ... and wait until the next hour */
-        cmb_process_hold(1.0);
+        const int64_t sig = cmb_process_hold(1.0);
+        cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
     }
 }
 
@@ -137,11 +143,13 @@ void *weather_proc(struct cmb_process *me, void *vctx)
 void *tide_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
-    cmb_assert_debug(vctx != NULL);
+    cmb_assert_always(vctx != NULL);
 
     const struct context *ctx = vctx;
     struct env_state *env = ctx->state;
+    cmb_assert_always(ctx->state != NULL);
     const struct simulation *sim = ctx->sim;
+    cmb_assert_always(sim != NULL);
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
@@ -165,10 +173,12 @@ void *tide_proc(struct cmb_process *me, void *vctx)
                         env->water_depth);
 
         /* Requesting the harbormaster to read the tide dial as well */
-        cmb_condition_signal(sim->harbormaster);
+        const uint64_t r = cmb_condition_signal(sim->harbormaster);
+        cmb_logger_user(stdout, USERFLAG2, "Reactivated %" PRIu64 " ships", r);
 
         /* ... and wait until the next hour */
-        cmb_process_hold(1.0);
+        const int64_t sig = cmb_process_hold(1.0);
+        cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
     }
 }
 
@@ -177,13 +187,15 @@ bool is_ready_to_dock(const struct cmb_condition *cvp,
                       const struct cmb_process *pp,
                       const void *vctx) {
     cmb_unused(cvp);
-    cmb_assert_debug(pp != NULL);
-    cmb_assert_debug(vctx != NULL);
+    cmb_assert_always(pp != NULL);
+    cmb_assert_always(vctx != NULL);
 
     const struct ship *shp = (struct ship *)pp;
     const struct context *ctx = vctx;
     const struct env_state *env = ctx->state;
+    cmb_assert_always(env != NULL);
     const struct simulation *sim = ctx->sim;
+    cmb_assert_always(sim != NULL);
 
     if (env->water_depth < shp->min_depth) {
         cmb_logger_user(stdout, USERFLAG1,
@@ -220,49 +232,63 @@ bool is_ready_to_dock(const struct cmb_condition *cvp,
 /* The ship process function */
 void *ship_proc(struct cmb_process *me, void *vctx)
 {
-    cmb_assert_debug(me != NULL);
-    cmb_assert_debug(vctx != NULL);
+    cmb_assert_always(me != NULL);
+    cmb_assert_always(vctx != NULL);
 
     /* Unpack some convenient shortcut names */
     struct ship *shp = (struct ship *)me;
     const struct context *ctx = vctx;
-    struct simulation *sim = ctx->sim;
+    const struct simulation *sim = ctx->sim;
+    cmb_assert_always(sim != NULL);
     struct cmb_condition *hbm = sim->harbormaster;
+    cmb_assert_always(hbm != NULL);
     const struct trial *trl = ctx->trial;
+    cmb_assert_always(trl != NULL);
 
     /* Note ourselves as active */
     cmb_logger_user(stdout, USERFLAG1, "Ship %s arrives", me->name);
     const double t_arr = cmb_time();
     const uint64_t hndl = (uint64_t)shp;
+    cmb_assert_always(hndl != 0u);
     cmi_hashheap_enqueue(sim->active_ships, shp,
                          NULL, NULL, NULL, hndl, t_arr, 0u);
 
     /* Wait for suitable conditions to dock */
+    int64_t sig = 0;
     while (!is_ready_to_dock(NULL, me, ctx)) {
         /* Loop to catch any spurious wakeups, such as several ships waiting for
          * the tide and one of them grabbing the tugs before we can react. */
-        cmb_condition_wait(hbm, is_ready_to_dock, ctx);
+        sig = cmb_condition_wait(hbm, is_ready_to_dock, ctx);
+        cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
     }
 
     /* Resources are ready, grab them for ourselves */
     cmb_logger_user(stdout, USERFLAG1, "Ship %s cleared to dock", me->name);
-    cmb_resourcepool_acquire(sim->berths[shp->size], 1u);
-    cmb_resourcepool_acquire(sim->tugs, shp->tugs);
+    sig = cmb_resourcepool_acquire(sim->berths[shp->size], 1u);
+    cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
+    sig = cmb_resourcepool_acquire(sim->tugs, shp->tugs);
+    cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
     const double docking_time = cmb_random_PERT(0.4, 0.5, 0.8);
-    cmb_process_hold(docking_time);
+    cmb_assert_always((docking_time >= 0.4) && (docking_time <= 0.8));
+    sig = cmb_process_hold(docking_time);
+    cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
 
     /* Safely at the quay to unload cargo, dismiss the tugs for now */
     cmb_logger_user(stdout, USERFLAG1, "Ship %s docked, unloading", me->name);
     cmb_resourcepool_release(sim->tugs, shp->tugs);
     const double tua = trl->unloading_time_avg[shp->size];
     const double unloading_time = cmb_random_PERT(0.75 * tua, tua, 2 * tua);
-    cmb_process_hold(unloading_time);
+    cmb_assert_always((unloading_time >= 0.75 * tua) && (unloading_time <= 2 * tua));
+    sig = cmb_process_hold(unloading_time);
+    cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
 
     /* Need the tugs again to get out of here */
     cmb_logger_user(stdout, USERFLAG1, "Ship %s ready to leave", me->name);
-    cmb_resourcepool_acquire(sim->tugs, shp->tugs);
+    sig = cmb_resourcepool_acquire(sim->tugs, shp->tugs);
+    cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
     const double undocking_time = cmb_random_PERT(0.4, 0.5, 0.8);
-    cmb_process_hold(undocking_time);
+    sig = cmb_process_hold(undocking_time);
+    cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
 
     /* Cleared berth, done with the tugs */
     cmb_logger_user(stdout, USERFLAG1, "Ship %s left harbor", me->name);
@@ -270,17 +296,20 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     cmb_resourcepool_release(sim->tugs, shp->tugs);
 
     /* One pass process, remove ourselves from the active set */
-    cmi_hashheap_remove(sim->active_ships, hndl);
+    const bool found = cmi_hashheap_remove(sim->active_ships, hndl);
+    cmb_assert_always(found);
     /* List ourselves as departed instead */
     cmi_slist_push(sim->departed_ships, &(shp->listhead));
     /* Inform Davy Jones that we are coming his way */
-    cmb_condition_signal(sim->davyjones);
+    uint64_t r = cmb_condition_signal(sim->davyjones);
+    cmb_assert_always(r == 1u);
 
-    /* Store the time we spent as an exit value in a separate heap object.
+    /* Store the time we spent working as an exit value in a separate heap object.
      * The exit value is a void*, so we could store anything there, but for this
      * demo, we keep it simple. */
     const double t_dep = cmb_time();
     double *t_sys_p = malloc(sizeof(double));
+    cmb_assert_always(t_sys_p != NULL);
     *t_sys_p = t_dep - t_arr;
 
     cmb_logger_user(stdout, USERFLAG1, "Ship %s arr %g dep %f time in system %f",
@@ -295,10 +324,12 @@ void *ship_proc(struct cmb_process *me, void *vctx)
 void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
-    cmb_assert_debug(vctx != NULL);
+    cmb_assert_always(vctx != NULL);
 
     const struct context *ctx = vctx;
     const struct trial *trl = ctx->trial;
+    cmb_assert_always(trl != NULL);
+    cmb_assert_always(trl->arrival_rate > 0.0);
     const double mean = 1.0 / trl->arrival_rate;
     const double p_large = trl->percent_large;
 
@@ -310,6 +341,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
         /* The ship class is a derived subclass of cmb_process, we malloc it
          * directly instead of calling cmb_process_create() */
         struct ship *shp = malloc(sizeof(struct ship));
+        cmb_assert_always(shp != NULL);
 
         /* Remember to zero-initialize it if malloc'ing on your own! */
         memset(shp, 0, sizeof(struct ship));
@@ -332,13 +364,16 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
 
         /* A ship needs a name */
         char namebuf[20];
-        snprintf(namebuf, sizeof(namebuf),
-                 "Ship_%04" PRIu64 "%s",
-                 ++cnt, ((shp->size == SMALL) ? "_small" : "_large"));
+        const int r = snprintf(namebuf, sizeof(namebuf),
+                         "Ship_%04" PRIu64 "%s",
+                         ++cnt, ((shp->size == SMALL) ? "_small" : "_large"));
+        cmb_assert_always((r >= 0) && (r < (int)sizeof(namebuf)) && (namebuf[r] == '\0'));
         cmb_process_initialize((struct cmb_process *)shp, namebuf, ship_proc, vctx, 0);
+        cmb_assert_always(cmb_process_status((struct cmb_process *)shp) == CMB_PROCESS_CREATED);
 
         /* Start our new ship heading into the harbor */
         cmb_process_start((struct cmb_process *)shp);
+        cmb_assert_always(cmb_process_status((struct cmb_process *)shp) == CMB_PROCESS_CREATED);
         cmb_logger_user(stdout, USERFLAG1, "Ship %s started", namebuf);
     }
 }
@@ -350,10 +385,11 @@ bool is_departed(const struct cmb_condition *cvp,
 {
     cmb_unused(cvp);
     cmb_unused(pp);
-    cmb_assert_debug(vctx != NULL);
+    cmb_assert_always(vctx != NULL);
 
     const struct context *ctx = vctx;
     const struct simulation *sim = ctx->sim;
+    cmb_assert_always(sim != NULL);
 
     /* Simple: One or more ships in the list of departed ships */
     return (sim->departed_ships != NULL);
@@ -363,23 +399,28 @@ bool is_departed(const struct cmb_condition *cvp,
 void *departure_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
-    cmb_assert_debug(vctx != NULL);
+    cmb_assert_always(vctx != NULL);
 
     const struct context *ctx = vctx;
     const struct simulation *sim = ctx->sim;
+    cmb_assert_always(sim != NULL);
     const struct trial *trl = ctx->trial;
+    cmb_assert_always(trl != NULL);
     struct cmi_slist_head *dep_head = sim->departed_ships;
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         /* We do not need to loop here, since this is the only process waiting */
-        cmb_condition_wait(sim->davyjones, is_departed, vctx);
+        const int64_t sig = cmb_condition_wait(sim->davyjones, is_departed, vctx);
+        cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
 
         /* Got one, collect its exit value */
         struct cmi_slist_head *shead = cmi_slist_pop(dep_head);
+        cmb_assert_always(shead != NULL);
         struct ship *shp = cmi_container_of(shead, struct ship, listhead);
+        cmb_assert_always(shp != NULL);
         double *t_sys_p = cmb_process_exit_value((struct cmb_process *)shp);
-        cmb_assert_debug(t_sys_p != NULL);
+        cmb_assert_always(t_sys_p != NULL);
         cmb_logger_user(stdout, USERFLAG1,
                         "Recycling ship %s, time in system %f",
                         ((struct cmb_process *)shp)->name,
@@ -405,7 +446,8 @@ void *entertainment_proc(struct cmb_process *me, void *vctx)
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         /* Print one dot per simulated year */
-        cmb_process_hold(24.0 * 7 * 52);
+        const int64_t sig = cmb_process_hold(24.0 * 7 * 52);
+        cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
         printf(".");
         fflush(stdout);
     }
@@ -414,7 +456,7 @@ void *entertainment_proc(struct cmb_process *me, void *vctx)
 /* An event to shut down the simulation */
 void end_sim_evt(void *subject, void *object)
 {
-    cmb_assert_debug(subject != NULL);
+    cmb_assert_always(subject != NULL);
     cmb_unused(object);
 
     const struct simulation *sim = subject;
@@ -427,15 +469,20 @@ void end_sim_evt(void *subject, void *object)
     /* Also stop and recycle any still active ships */
     while (cmi_hashheap_count(sim->active_ships) > 0u) {
         void **item = cmi_hashheap_dequeue(sim->active_ships);
+        cmb_assert_always(item != NULL);
         struct ship *shp = item[0];
-        cmb_process_stop((struct cmb_process *)shp, NULL);
+        cmb_assert_always(shp != NULL);
+        cmb_assert_always(cmb_process_status((struct cmb_process *)shp) == CMB_PROCESS_RUNNING);
+        const int64_t r = cmb_process_stop((struct cmb_process *)shp, NULL);
+        cmb_assert_always(r == CMB_PROCESS_SUCCESS);
+        cmb_assert_always(cmb_process_status((struct cmb_process *)shp) == CMB_PROCESS_FINISHED);
         cmb_process_terminate((struct cmb_process *)shp);
         free(shp);
     }
 }
 
 /* For now, set params here instead of in an external experiment array */
-void set_test_parameters(struct trial *trl)
+void set_test_parameters(struct trial *trl, double dur)
 {
     trl->arrival_rate = 0.5;
     trl->percent_large = 0.25;
@@ -445,11 +492,11 @@ void set_test_parameters(struct trial *trl)
     trl->unloading_time_avg[SMALL] = 8.0;
     trl->unloading_time_avg[LARGE] = 12.0;
 
-    trl->duration = 24.0 * 7 * 52 * 100;
+    trl->duration = dur;
 }
 
 /* The test function running the simulation */
-void test_condition()
+void test_condition(double dur)
 {
     /* Start the simulation clock from 0.0 and prepare the event queue */
     cmb_event_queue_initialize(0.0);
@@ -464,29 +511,39 @@ void test_condition()
     cmi_memset(&sim, 0, sizeof(sim));
     struct env_state state = { 0.0, 0.0, 0.0 };
     struct trial trl;
-    set_test_parameters(&trl);
+    set_test_parameters(&trl, dur);
     struct context ctx = { &sim, &state, &trl };
 
     /* Create the statistics collectors */
     for (int i = 0; i < 2; i++) {
         trl.system_time[i] = cmb_dataset_create();
+        cmb_assert_always(trl.system_time[i] != NULL);
         cmb_dataset_initialize(trl.system_time[i]);
     }
 
     /* Create weather and tide processes */
     sim.weather = cmb_process_create();
+    cmb_assert_always(cmb_process_status(sim.weather) == CMB_PROCESS_CREATED);
+    cmb_assert_always(sim.weather != NULL);
+    cmb_assert_always(cmb_process_status(sim.weather) == CMB_PROCESS_CREATED);
     cmb_process_initialize(sim.weather, "Wind", weather_proc, &ctx, 0);
     cmb_process_start(sim.weather);
+
     sim.tide = cmb_process_create();
+    cmb_assert_always(sim.tide != NULL);
+    cmb_assert_always(cmb_process_status(sim.weather) == CMB_PROCESS_CREATED);
     cmb_process_initialize(sim.tide, "Depth", tide_proc, &ctx, 0);
+    cmb_assert_always(cmb_process_status(sim.tide) == CMB_PROCESS_CREATED);
     cmb_process_start(sim.tide);
 
     /* Create the resources, turn on history recording with no warmup period */
     sim.tugs = cmb_resourcepool_create();
+    cmb_assert_always(sim.tugs != NULL);
     cmb_resourcepool_initialize(sim.tugs, "Tugs", trl.num_tugs);
     cmb_resourcepool_start_recording(sim.tugs);
     for (int i = 0; i < 2; i++) {
         sim.berths[i] = cmb_resourcepool_create();
+        cmb_assert_always(sim.berths[i] != NULL);
         cmb_resourcepool_initialize(sim.berths[i],
             ((i == 0)? "Small berth" : "Large berth"),
             trl.num_berths[i]);
@@ -495,29 +552,38 @@ void test_condition()
 
     /* Create the harbormaster and Davy Jones himself */
     sim.harbormaster = cmb_condition_create();
+    cmb_assert_always(sim.harbormaster != NULL);
     cmb_condition_initialize(sim.harbormaster, "Harbormaster");
     sim.davyjones = cmb_condition_create();
+    cmb_assert_always(sim.davyjones != NULL);
     cmb_condition_initialize(sim.davyjones, "Davy Jones");
 
     /* Create the arrival and departure processes */
     sim.arrivals = cmb_process_create();
+    cmb_assert_always(sim.arrivals != NULL);
+    cmb_assert_always(cmb_process_status(sim.arrivals) == CMB_PROCESS_CREATED);
     cmb_process_initialize(sim.arrivals, "Arrivals", arrival_proc, &ctx, 0);
     cmb_process_start(sim.arrivals);
     sim.departures = cmb_process_create();
+    cmb_assert_always(sim.departures != NULL);
+    cmb_assert_always(cmb_process_status(sim.departures) == CMB_PROCESS_CREATED);
     cmb_process_initialize(sim.departures, "Departures", departure_proc, &ctx, 0);
     cmb_process_start(sim.departures);
 
     /* Create the collections of active and departed ships */
     sim.active_ships = cmi_hashheap_create();
+    cmb_assert_always(sim.active_ships != NULL);
     cmi_hashheap_initialize(sim.active_ships, 3u, NULL);
     sim.departed_ships = cmi_slist_create();
+    cmb_assert_always(sim.departed_ships != NULL);
     cmi_slist_initialize(sim.departed_ships);
 
-    /* Schedule the end event at a fixed time a hundred years from now. */
-    (void)cmb_event_schedule(end_sim_evt, &sim, NULL, 24.0 * 7 * 52 * 100, 0);
+    uint64_t evt_hdle = cmb_event_schedule(end_sim_evt, &sim, NULL, dur, 0);
+    cmb_assert_always(evt_hdle != 0u);
 
-    /* Keep ourselves amused in the meantime */
     sim.entertainment = cmb_process_create();
+    cmb_assert_always(sim.entertainment != NULL);
+    cmb_assert_always(cmb_process_status(sim.entertainment) == CMB_PROCESS_CREATED);
     cmb_process_initialize(sim.entertainment, "Dot", entertainment_proc, NULL, 0);
     cmb_process_start(sim.entertainment);
 
@@ -578,12 +644,26 @@ int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
     uint64_t seed = cmb_random_hwseed();
+    double dur = 24.0 * 7 * 52 * 100;
 
     int opt;
-    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+    while ((opt = getopt(argc, argv, "d:s:t")) != -1) {
         switch (opt) {
+            case 'd':
+                errno = 0;
+                dur = strtod(optarg, NULL);
+                if (errno != 0 || dur <= 0.0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
+                break;
             case 's':
+                errno = 0;
                 seed = (uint64_t)strtoul(optarg, NULL, 0);
+                if (errno != 0 || seed == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
                 break;
             case 't':
                 timing_enabled = true;
@@ -604,7 +684,7 @@ int main(const int argc, char *argv[])
     printf("Using seed: 0x%" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
 
-    test_condition();
+    test_condition(dur);
 
     cmi_test_print_line("*");
 
