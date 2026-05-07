@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+
 jobs:
   # Linux Job
   linux-build:
@@ -15,8 +18,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build python3-pip nasm
-          pip3 install meson
+          sudo apt-get install -y ninja-build python3-pip nasm meson
       - name: Configure and Build
         run: |
           meson setup build
