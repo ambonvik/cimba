@@ -222,21 +222,21 @@ extern bool cmb_event_cancel(uint64_t handle);
 
 /**
  * @brief  Reschedules event at index to another (absolute) time. The event is
-*          assumed to be in the event queue, error if not. Call
-*         `cmb_event_is_scheduled` first if not sure.
+ *          assumed to be in the event queue, error if not. Call
+ *         `cmb_event_is_scheduled` first if not sure.
  * @param handle The `handle` of some event in the event queue.
  * @param time The new scheduled time of the event.
+ * @return `true` if the event was found, `false` if not.
  */
-extern void cmb_event_reschedule(uint64_t handle, double time);
+extern bool cmb_event_reschedule(uint64_t handle, double time);
 
 /**
-* @brief  Reprioritizes event to another priority level. The event is
-*         assumed to be in the event queue, error if not. Call
-*         `cmb_event_is_scheduled` first if not sure.
+ * @brief  Reprioritizes event to another priority level.
  * @param handle The `handle` of some event in the event queue.
  * @param priority The new priority of the event.
+ * @return `true` if the event was found, `false` if not.
  */
-extern void cmb_event_reprioritize(uint64_t handle, int64_t priority);
+extern bool cmb_event_reprioritize(uint64_t handle, int64_t priority);
 
 /**
  * @brief Wildcard pattern that matches any `cmb_event_func` (action) when searching
@@ -307,13 +307,19 @@ extern uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
                                          const void *object);
 
 /**
+ * Prototype for the event print formatting function
+ */
+typedef char *(cmb_event_print_formatter)(cmb_event_func *a, void *s, void *o);
+
+/**
  * @brief Print the current content of the event queue.
  *
  * Intended for debugging use only, will print hexadecimal pointer values and
  * similar raw data values from the event tag structs.
  *
  * @param fp A file pointer to print to, perhaps `stdout`.
+ * @param epf A callback function to print a single event
  */
-extern void cmb_event_queue_print(FILE *fp);
+extern void cmb_event_queue_print(FILE *fp, cmb_event_print_formatter *epf);
 
 #endif /* CIMBA_CMB_EVENT_H */

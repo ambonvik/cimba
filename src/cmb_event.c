@@ -305,34 +305,42 @@ bool cmb_event_cancel(const uint64_t handle)
  * cmb_event_reschedule - Reschedule the given event to the given absolute time.
  * Precondition: The event must be in heap.
  */
-void cmb_event_reschedule(const uint64_t handle, const double time)
+bool cmb_event_reschedule(const uint64_t handle, const double time)
 {
     cmb_assert_release(time >= sim_time);
     cmb_assert_release(event_queue != NULL);
     cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
-    cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
+    if (!cmi_hashheap_is_enqueued(event_queue, handle)) {
+        return false;
+    }
 
     /* Do not change the priority rank_i64 */
     const int64_t pri = cmi_hashheap_irank(event_queue, handle);
 
     cmi_hashheap_reprioritize(event_queue, handle, time, pri);
+
+    return true;
 }
 
 /*
  * Reprioritize the given event and reshuffle heap
  * Precondition: The event must be in heap.
  */
-void cmb_event_reprioritize(const uint64_t handle,
+bool cmb_event_reprioritize(const uint64_t handle,
                             const int64_t priority)
 {
     cmb_assert_release(event_queue != NULL);
     cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
-    cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, handle));
+    if (!cmi_hashheap_is_enqueued(event_queue, handle)) {
+        return false;
+    }
 
     const double time = cmi_hashheap_drank(event_queue, handle);
     cmb_assert_debug(time >= sim_time);
 
     cmi_hashheap_reprioritize(event_queue, handle, time, priority);
+
+    return true;
 }
 
 /*
@@ -419,25 +427,22 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
 /*
  * cmb_event_queue_print - Print content of event heap, useful for debugging
  */
-void cmb_event_queue_print(FILE *fp)
+void cmb_event_queue_print(FILE *fp, cmb_event_print_formatter *epf)
 {
     cmb_assert_release(event_queue != NULL);
     const uint64_t hcnt = event_queue->heap_count;
 
-    fprintf(fp, "---------------- Event queue ----------------\n");
+    fprintf(fp, "--------------------- Event queue ---------------------\n");
     for (uint64_t ui = 1u; ui <= hcnt; ui++) {
         const struct cmi_heap_tag *htp = &(event_queue->heap[ui]);
         fprintf(fp,
-                "time %#8.4g prio %" PRIi64 ": hash_key %" PRIu64 " %p %p %p %p\n",
+                "time %#8.4g prio %" PRIi64 ": hash_key %" PRIu64 "\t%s\n",
                 htp->rank_d64,
                 htp->rank_i64,
                 htp->hash_key,
-                htp->item[0],
-                htp->item[1],
-                htp->item[2],
-                htp->item[3]);
+                (*epf)(htp->item[0], htp->item[1], htp->item[2]));
     }
-    fprintf(fp, "---------------------------------------------\n");
+    fprintf(fp, "-------------------------------------------------------\n");
     fflush(fp);
 }
 
