@@ -284,7 +284,7 @@ void terrain_init(struct terrain *tp,
     printf("\tAverage elevation:  %4.0f meters\n", cmb_datasummary_mean(&tds));
     printf("\tStandard deviation: %4.0f meters\n", cmb_datasummary_stddev(&tds));
     printf("\tSize in memory:     %4.2f GB\n",
-              (float)(tp->cols * tp->rows * sizeof(float)) / 1024 / 1024 / 1024.0f);
+              (float)((size_t)tp->cols * (size_t)tp->rows * sizeof(float)) / 1024.0f / 1024.0f / 1024.0f);
     cmb_datasummary_terminate(&tds);
 
     printf("Writing decimated terrain map to file %s...", terrain_h5name);
@@ -1478,7 +1478,7 @@ void terrain_vtkhdf_write(const char *const h5_filename,
     H5_CHECK(pd_group);
     write_attr_string(pd_group, "Scalars", "Elevation");
 
-    float *vis_map = malloc(vis_cols * vis_rows * sizeof(float));
+    float *vis_map = malloc((size_t)vis_cols * (size_t)vis_rows * sizeof(float));
     for (uint32_t r = 0; r < vis_rows; r++) {
         for (uint32_t c = 0; c < vis_cols; c++) {
             const uint32_t src_idx = (r * stride_step * cols) + (c * stride_step);
