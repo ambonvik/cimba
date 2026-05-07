@@ -147,11 +147,15 @@ static void test_asymmetric(void)
     printf("Delete coroutine %p\n", (void *)cp1);
     cmb_assert_always(cp1->status == CMI_COROUTINE_FINISHED);
     cmi_coroutine_terminate(cp1);
+    cmb_assert_always(cp1->status == CMI_COROUTINE_CREATED);
+    cmb_assert_always(cp1->stack == NULL);
     cmi_coroutine_destroy(cp1);
 
     printf("Delete coroutine %p\n", (void *)cp2);
     cmb_assert_always(cp2->status == CMI_COROUTINE_FINISHED);
     cmi_coroutine_terminate(cp2);
+    cmb_assert_always(cp2->status == CMI_COROUTINE_CREATED);
+    cmb_assert_always(cp2->stack == NULL);
     cmi_coroutine_destroy(cp2);
     cmi_test_print_line("-");
 }

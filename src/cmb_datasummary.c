@@ -31,6 +31,7 @@ struct cmb_datasummary *cmb_datasummary_create(void)
     struct cmb_datasummary *dsp = cmi_malloc(sizeof *dsp);
     dsp->cookie = CMI_UNINITIALIZED;
 
+    /* For convenience, although not entirely consistent with our create-initialize-terminate-destroy cycle */
     cmb_datasummary_initialize(dsp);
 
     return dsp;
@@ -125,7 +126,7 @@ uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
                      + 4.0 * (n1 * dsp2->m3 - n2 * dsp1->m3) * d21_n;
 
     *tgt = cs;
-    
+
     return tgt->count;
 }
 
