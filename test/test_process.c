@@ -180,7 +180,7 @@ int main(const int argc, char *argv[])
     }
 
     cmi_test_print_line("-");
-    cmb_event_queue_print(stdout);
+    cmb_event_queue_print(stdout, NULL);
     cmi_test_print_line("-");
 
     printf("cmb_event_queue_execute ...\n");

@@ -424,14 +424,28 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
     return cnt;
 }
 
+static char *default_formatter(cmb_event_func *a, void *s, void *o)
+{
+    CMB_THREAD_LOCAL static char buf[1024];
+
+    int r = snprintf(buf, 1024, "%p\t%p\t%p", a, s, o);
+    cmb_assert_debug((r >= 0)&& (r < 1024));
+
+    return buf;
+}
+
 /*
  * cmb_event_queue_print - Print content of event heap, useful for debugging
  */
 void cmb_event_queue_print(FILE *fp, cmb_event_print_formatter *epf)
 {
     cmb_assert_release(event_queue != NULL);
-    const uint64_t hcnt = event_queue->heap_count;
 
+    if (epf == NULL) {
+        epf = default_formatter;
+    }
+
+    const uint64_t hcnt = event_queue->heap_count;
     fprintf(fp, "--------------------- Event queue ---------------------\n");
     for (uint64_t ui = 1u; ui <= hcnt; ui++) {
         const struct cmi_heap_tag *htp = &(event_queue->heap[ui]);
