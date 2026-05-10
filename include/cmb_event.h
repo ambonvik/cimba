@@ -309,7 +309,7 @@ extern uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
 /**
  * Prototype for the event print formatting function
  */
-typedef char *(cmb_event_print_formatter)(cmb_event_func *a, void *s, void *o);
+typedef char *(cmb_event_print_formatter)(cmb_event_func *a, const void *s, const void *o);
 
 /**
  * @brief Print the current content of the event queue.

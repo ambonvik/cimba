@@ -424,13 +424,15 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
     return cnt;
 }
 
-static char *default_formatter(cmb_event_func *a, void *s, void *o)
+static char *default_formatter(cmb_event_func *a, const void *s, const void *o)
 {
-    CMB_THREAD_LOCAL static char buf[1024];
+    #define BUF_SIZE 128
+    CMB_THREAD_LOCAL static char buf[BUF_SIZE];
 
-    int r = snprintf(buf, 1024, "%p\t%p\t%p", a, s, o);
-    cmb_assert_debug((r >= 0)&& (r < 1024));
+    const int r = snprintf(buf, BUF_SIZE, "%p\t%p\t%p", a, s, o);
+    cmb_assert_debug((r >= 0)&& (r < BUF_SIZE));
 
+    #undef BUF_SIZE
     return buf;
 }
 
