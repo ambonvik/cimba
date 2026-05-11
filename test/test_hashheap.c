@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -57,6 +58,155 @@ static bool heap_order_check(const struct cmi_heap_tag *a,
     return ret;
 }
 
+void test_hashheap(uint64_t seed)
+{
+    cmb_random_initialize(seed);
+
+    cmi_test_print_line("*");
+    printf("Testing empty hashheap\n");
+    printf("Create a hash heap\n");
+    struct cmi_hashheap *hhp = cmi_hashheap_create();
+    cmb_assert_always(hhp != NULL);
+    printf("Initialize hash heap\n");
+    cmi_hashheap_initialize(hhp, 3u, heap_order_check);
+    printf("Terminate hash heap\n");
+    cmi_hashheap_terminate(hhp);
+    printf("Destroy hash heap\n");
+    cmi_hashheap_destroy(hhp);
+
+    printf("\nCreate another hash heap\n");
+    hhp = cmi_hashheap_create();
+    cmb_assert_always(hhp != NULL);
+    printf("Initialize hash heap\n");
+    cmi_hashheap_initialize(hhp, 3u, heap_order_check);
+    cmb_assert_always(cmi_hashheap_is_empty(hhp) == true);
+    cmb_assert_always(cmi_hashheap_count(hhp) == 0u);
+
+    printf("Add an item, ");
+    uint64_t key = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, NULL, 0u, 1.0, 1);
+    printf("returned hash_key %" PRIu64 "\n", key);
+    cmb_assert_always(key != 0u);
+    cmb_assert_always(cmi_hashheap_is_empty(hhp) == false);
+    cmb_assert_always(cmi_hashheap_count(hhp) == 1u);
+
+    printf("Pull an item\n");
+    void **item = cmi_hashheap_dequeue(hhp);
+    cmb_assert_always(item != NULL);
+    cmb_assert_always(item[0] == NULL);
+    cmb_assert_always(cmi_hashheap_is_empty(hhp) == true);
+    cmb_assert_always(cmi_hashheap_count(hhp) == 0u);
+
+    printf("Adding 5 items\n");
+    uint64_t itemcnt = 0u;
+    for (unsigned ui = 0; ui < 5; ui++) {
+        const double d = cmb_random();
+        cmb_assert_always((d >= 0.0) && (d <= 1.0));
+        const int64_t i = cmb_random_dice(0, 1000);
+        cmb_assert_always((i >= 0) && (i <= 1000));
+        void *val = (void *)(++itemcnt);
+        uint64_t key_found = cmi_hashheap_pattern_find(hhp, val, CMI_ANY_ITEM, CMI_ANY_ITEM, CMI_ANY_ITEM);
+        cmb_assert_always(key_found == 0u);
+        key = cmi_hashheap_enqueue(hhp, val, NULL, NULL, NULL, 0u, d, i);
+        cmb_assert_always(key != 0u);
+        key_found = cmi_hashheap_pattern_find(hhp, val, CMI_ANY_ITEM, CMI_ANY_ITEM, CMI_ANY_ITEM);
+        cmb_assert_always(key_found == key);
+    }
+
+    /* Have not done anything to turn it on yet */
+    cmb_assert_always(hhp->map_active == false);
+    cmi_hashheap_print(hhp, stdout, NULL);
+
+    while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {
+        const double dcur = hhp->heap[0].rank_d64;
+        printf("Dequeued item: %p\n", item[0]);
+        if (cmi_hashheap_count(hhp) > 0u) {
+            void **nxtitem = cmi_hashheap_peek_item(hhp);
+            cmb_assert_always(nxtitem != NULL);
+            const double dnxt = cmi_hashheap_peek_drank(hhp);
+            cmb_assert_always(dnxt >= dcur);
+        }
+    }
+
+    cmb_assert_always(cmi_hashheap_count(hhp) == 0u);
+    printf("Adding 10 items, forcing a resizing ... \n");
+    for (unsigned ui = 0; ui < 10; ui++) {
+        const double d = cmb_random();
+        const int64_t i = cmb_random_dice(0, 1000);
+        void *val = (void *)(++itemcnt);
+        uint64_t key_found = cmi_hashheap_pattern_find(hhp, val, NULL, NULL, NULL);
+        cmb_assert_always(key_found == 0u);
+        key = cmi_hashheap_enqueue(hhp, val, NULL, NULL, NULL, 0u, d, i);
+        cmb_assert_always(key != 0u);
+        cmb_assert_always(cmi_hashheap_count(hhp) == ui + 1u);
+        /* This will switch on the hash map */
+        cmb_assert_always(cmi_hashheap_is_enqueued(hhp, key) == true);
+        item = cmi_hashheap_item(hhp, key);
+        cmb_assert_always(item != NULL);
+        cmb_assert_always(item[0] == val);
+        cmb_assert_always(cmi_hashheap_drank(hhp, key) == d);
+        cmb_assert_always(cmi_hashheap_irank(hhp, key) == i);
+        key_found = cmi_hashheap_pattern_find(hhp, val, CMI_ANY_ITEM, CMI_ANY_ITEM, CMI_ANY_ITEM);
+        cmb_assert_always(key_found == key);
+    }
+
+    cmb_assert_always(hhp->map_active == true);
+    cmb_assert_always(cmi_hashheap_count(hhp) == 10u);
+    cmi_hashheap_print(hhp, stdout, NULL);
+
+    /* We started the index count from 1, have used 1 + 5, should have hash keys 7 through 16 in heap */
+    for (unsigned ui = 7; ui <= 16; ui ++) {
+        cmb_assert_always(cmi_hashheap_is_enqueued(hhp, ui) == true);
+        item = cmi_hashheap_item(hhp, ui);
+        cmb_assert_always(item != NULL);
+    }
+
+    printf("Removing hash keys 8u and 10u\n");
+    cmb_assert_always(cmi_hashheap_remove(hhp, 8u) == true);
+    cmb_assert_always(cmi_hashheap_is_enqueued(hhp, 8u) == false);
+    cmb_assert_always(cmi_hashheap_cancel(hhp, 10u) == true);
+    cmb_assert_always(cmi_hashheap_is_enqueued(hhp, 10u) == false);
+
+    printf("Reprioritizing hash key 9u\n");
+    cmi_hashheap_reprioritize(hhp, 9u, 100.0, 10);
+    cmb_assert_always(cmi_hashheap_is_enqueued(hhp, 9u) == true);
+    cmb_assert_always(cmi_hashheap_drank(hhp, 9u) == 100.0);
+    cmb_assert_always(cmi_hashheap_irank(hhp, 9u) == 10);
+
+    cmi_hashheap_print(hhp, stdout, NULL);
+
+    void *val = (void *)0xc;
+    const uint64_t uidx = cmi_hashheap_pattern_find(hhp, (void *)0xc, CMI_ANY_ITEM, CMI_ANY_ITEM, CMI_ANY_ITEM);
+    printf("Cancelling value %p (hash key %" PRIu64 ")\n", val, uidx);
+    uint64_t n_found = cmi_hashheap_pattern_count(hhp, (void *)0xc, CMI_ANY_ITEM, CMI_ANY_ITEM, CMI_ANY_ITEM);
+    cmb_assert_always(n_found == 1u);
+    uint64_t n_cnsl = cmi_hashheap_pattern_cancel(hhp, (void *)0xc, CMI_ANY_ITEM, CMI_ANY_ITEM, CMI_ANY_ITEM);
+    cmb_assert_always(n_cnsl == 1u);
+    n_found = cmi_hashheap_pattern_count(hhp, (void *)0xc, CMI_ANY_ITEM, CMI_ANY_ITEM, CMI_ANY_ITEM);
+    cmb_assert_always(n_found == 0u);
+
+    cmi_hashheap_print(hhp, stdout, NULL);
+
+    while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {
+        printf("Dequeued item: %p\n", item[0]);
+        const double dcur = hhp->heap[0].rank_d64;
+        if (cmi_hashheap_count(hhp) > 0u) {
+            void **nxtitem = cmi_hashheap_peek_item(hhp);
+            cmb_assert_always(nxtitem != NULL);
+            const double dnxt = cmi_hashheap_peek_drank(hhp);
+            cmb_assert_always(dnxt >= dcur);
+            printf("Next item: %p\n", nxtitem[0]);
+        }
+        else {
+            printf("No more items\n");
+        }
+    }
+
+    printf("Cleaning up\n");
+    cmi_hashheap_terminate(hhp);
+    cmi_hashheap_destroy(hhp);
+    cmi_test_print_line("*");
+}
+
 int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
@@ -66,7 +216,12 @@ int main(const int argc, char *argv[])
     while ((opt = getopt(argc, argv, "s:t")) != -1) {
         switch (opt) {
             case 's':
+                errno = 0;
                 seed = (uint64_t)strtoul(optarg, NULL, 0);
+                if (errno != 0 || seed == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
                 break;
             case 't':
                 timing_enabled = true;
@@ -79,78 +234,7 @@ int main(const int argc, char *argv[])
 
     const clock_t start_time = clock();
 
-    cmb_random_initialize(seed);
-
-    cmi_test_print_line("*");
-    printf("Testing hashheap\n");
-    printf("Creating hash heap: cmi_hashheap_create ...\n");
-    struct cmi_hashheap *hhp = cmi_hashheap_create();
-    printf("Initializing hash heap: cmi_hashheap_initialize ...\n");
-    cmi_hashheap_initialize(hhp, 3u, heap_order_check);
-    printf("Destroying hash heap: cmi_hashheap_destroy ...\n");
-    cmi_hashheap_destroy(hhp);
-
-    printf("\nCreating another hash heap: cmi_hashheap_create ...\n");
-    hhp = cmi_hashheap_create();
-    printf("Initializing hash heap: cmi_hashheap_initialize ...\n");
-    cmi_hashheap_initialize(hhp, 3u, heap_order_check);
-    printf("Adding an item: cmi_hashheap_enqueue ... ");
-    const uint64_t key = cmi_hashheap_enqueue(hhp, NULL, NULL, NULL, NULL, 0u, 1.0, 1);
-    printf("returned hash_key %" PRIu64 "\n", key);
-    printf("Peekaboo: cmi_hashheap_peek ... \n");
-    (void)cmi_hashheap_peek_item(hhp);
-    printf("Pulling out an item: cmi_hashheap_dequeue ... \n");
-    (void)cmi_hashheap_dequeue(hhp);
-    printf("Destroying hash heap: cmi_hashheap_destroy ...\n");
-    cmi_hashheap_destroy(hhp);
-
-    printf("\nCreating another hash heap: cmi_hashheap_create ...\n");
-    hhp = cmi_hashheap_create();
-    printf("Initializing hash heap: cmi_hashheap_initialize ...\n");
-    cmi_hashheap_initialize(hhp, 3u, heap_order_check);
-    printf("Adding 5 items: cmi_hashheap_enqueue ... \n");
-    uint64_t itemcnt = 0u;
-    for (unsigned ui = 0; ui < 5; ui++) {
-        const double d = cmb_random();
-        const int64_t i = cmb_random_dice(0, 1000);
-        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, NULL, 0u, d, i);
-    }
-
-    cmi_hashheap_print(hhp, stdout);
-    void **item = NULL;
-    while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {
-        printf("Dequeued item: %p\n", item[0]);
-        cmi_hashheap_print(hhp, stdout);
-   }
-
-    printf("Adding 10 items, forcing a resizing ... \n");
-    for (unsigned ui = 0; ui < 10; ui++) {
-        const double d = cmb_random();
-        const int64_t i = cmb_random_dice(0, 1000);
-        (void)cmi_hashheap_enqueue(hhp, (void *)(++itemcnt), NULL, NULL, NULL, 0u, d, i);
-    }
-
-    printf("We now have %" PRIu64 " items\n", cmi_hashheap_count(hhp));
-    cmi_hashheap_print(hhp, stdout);
-
-    while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {
-        printf("Dequeued item: %p\n", item[0]);
-        if (cmi_hashheap_count(hhp) > 0u) {
-            void **nxtitem = cmi_hashheap_peek_item(hhp);
-            cmb_assert_debug(nxtitem != NULL);
-            const double d = cmi_hashheap_peek_drank(hhp);
-            printf("Coming next: %p %f\n", nxtitem[0], d);
-        }
-        else {
-            printf("No more items\n");
-        }
-    }
-
-    printf("Destroying hash heap: cmi_hashheap_destroy ...\n");
-    cmi_hashheap_destroy(hhp);
-
-
-    cmi_test_print_line("*");
+    test_hashheap(seed);
 
     const clock_t end_time = clock();
     const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
