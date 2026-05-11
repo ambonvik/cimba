@@ -44,8 +44,7 @@ endif
 if host_machine.system() == 'windows'
     desired_flags += ['-fno-plt',
                       '-fcf-protection=none',
-                      '-fno-stack-protector',
-                      '-ftls-model=local-dynamic']
+                      '-fno-stack-protector']
 endif
 
 supported_flags = cc.get_supported_arguments(desired_flags)
