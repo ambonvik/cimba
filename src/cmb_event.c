@@ -424,7 +424,7 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
     return cnt;
 }
 
-static char *default_formatter(cmb_event_func *a, const void *s, const void *o)
+static const char *default_formatter(cmb_event_func *a, const void *s, const void *o)
 {
     #define BUF_SIZE 128
     CMB_THREAD_LOCAL static char buf[BUF_SIZE];
@@ -442,6 +442,7 @@ static char *default_formatter(cmb_event_func *a, const void *s, const void *o)
 void cmb_event_queue_print(FILE *fp, cmb_event_print_formatter *epf)
 {
     cmb_assert_release(event_queue != NULL);
+    cmb_assert_release(fp != NULL);
 
     if (epf == NULL) {
         epf = default_formatter;
