@@ -329,6 +329,7 @@ int main(const int argc, char *argv[])
     if (timing_enabled) {
         printf("\nIt took %g sec\n", elapsed_time);
     }
+
     return 0;
 }
 
