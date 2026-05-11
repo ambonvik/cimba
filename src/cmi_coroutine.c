@@ -304,3 +304,13 @@ void *cmi_coroutine_resume(struct cmi_coroutine *cp, void *msg)
     /* Possibly much later */
     return ret;
 }
+
+struct cmi_coroutine *cmi_coroutine_current(void)
+{
+    return coroutine_current;
+}
+
+struct cmi_coroutine *cmi_coroutine_main(void)
+{
+    return coroutine_main;
+}

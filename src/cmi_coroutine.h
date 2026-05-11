@@ -90,20 +90,6 @@ enum cmi_coroutine_state {
 struct cmi_coroutine;
 
 /*
- * coroutine_main - A dummy coroutine to keep track of the main stack
- * pointer in context switches. No stack allocated, but has pointers into the
- * normal system stack to simplify transfers back there.
- */
-extern CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_main;
-
-/*
- * coroutine_current - The currently executing coroutine, if any.
- * Initially NULL before any coroutines have been created, then the current
- * coroutine (including main when it has the CPU).
- */
-extern CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_current;
-
-/*
  * typedef cmi_coroutine_func - The generic coroutine function type,
  * a function taking two arguments, a pointer to a coroutine (itself) and
  * a pointer to some application-defined context, returning a pointer to void.
@@ -283,18 +269,12 @@ static inline void *cmi_coroutine_exit_value(const struct cmi_coroutine *cp)
  * coroutine, i.e., a self-pointer for where the function is called from.
  * Will return NULL if no coroutines have yet been initiated.
  */
-static inline struct cmi_coroutine *cmi_coroutine_current(void)
-{
-    return coroutine_current;
-}
+extern struct cmi_coroutine *cmi_coroutine_current(void);
 
 /*
  * cmi_coroutine_main - Return a pointer to the main coroutine, possibly
  * NULL if it has not yet been created.
  */
-static inline struct cmi_coroutine *cmi_coroutine_main(void)
-{
-    return coroutine_main;
-}
+extern struct cmi_coroutine *cmi_coroutine_main(void);
 
 #endif /* CIMBA_CMI_COROUTINE_H */
