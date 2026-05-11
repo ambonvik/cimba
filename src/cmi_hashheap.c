@@ -835,25 +835,61 @@ uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
 }
 
 /*
- * cmi_hashheap_print - Print content of event heap, useful for debugging
+ * Print the hashheap content to output stream
  */
-void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp)
+static const char *default_item_formatter(const void *val1,
+                                          const void *val2,
+                                          const void *val3,
+                                          const void *val4)
 {
-    cmb_assert_debug(hp != NULL);
+#define BUF_SIZE 128
+    CMB_THREAD_LOCAL static char buf[BUF_SIZE];
 
-    fprintf(fp, "---------------------------------- Hash heap -----------------------------------\n");
+    const int r = snprintf(buf, BUF_SIZE, "%p\t%p\t%p\t%p", val1, val2, val3, val4);
+    cmb_assert_debug((r >= 0)&& (r < BUF_SIZE));
+
+#undef BUF_SIZE
+    return buf;
+}
+
+void cmi_hashheap_heap_print(const struct cmi_hashheap *hp, FILE *fp,
+                             cmi_hashheap_item_formatter *hif)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(fp != NULL);
+
+    if (hif == NULL) {
+        hif = default_item_formatter;
+    }
+
+    fprintf(fp, "------------------------------------- Heap -------------------------------------\n");
+    fprintf(fp, "Heap idx\tHash key\tHash idx\tDbl rank\tInt rank\tValues\n");
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
-        fprintf(fp, "%" PRIu64 ": hash_key %" PRIu64 " %#8.4g %" PRIi64 " : hash idx %" PRIu64 " : %p %p %p %p\n",
+        fprintf(fp, "%8" PRIu64 "\t%8" PRIu64 "\t%8" PRIu64 "\t%#8.4g\t%8" PRIi64 "\t%s\n",
                 ui,
                 htp->hash_key,
+                htp->hash_index,
                 htp->rank_d64,
                 htp->rank_i64,
-                htp->hash_index,
-                htp->item[0],
-                htp->item[1],
-                htp->item[2],
-                htp->item[3]);
+                (*hif)(htp->item[0], htp->item[1], htp->item[2], htp->item[3]));
+    }
+
+    fprintf(fp, "--------------------------------------------------------------------------------\n");
+    fflush(fp);
+}
+
+void cmi_hashheap_hash_print(const struct cmi_hashheap *hp, FILE *fp)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(fp != NULL);
+
+    fprintf(fp, "Hash map %s\n", hp->map_active ? "active" : "inactive");
+    fprintf(fp, "------------------------------------- Hash -------------------------------------\n");
+    fprintf(fp, "Hash idx\tHash key\tHeap idx\n");
+    for (uint64_t ui = 1u; ui <= 2 * hp->heap_size; ui++) {
+        const struct cmi_hash_tag *htp = &(hp->hash_map[ui]);
+        fprintf(fp, "%8" PRIu64 "\t%8" PRIu64 "\t%8" PRIu64 "\n", ui, htp->hash_key, htp->heap_index);
     }
 
     fprintf(fp, "--------------------------------------------------------------------------------\n");

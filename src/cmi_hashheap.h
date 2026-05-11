@@ -259,7 +259,7 @@ static inline bool cmi_hashheap_cancel(struct cmi_hashheap *hp, const uint64_t h
 }
 
 /*
- * cmi_hash_find_index - look up the heap index for a given hash hashkey. Internal use only.
+ * cmi_hash_find_index - look up the heap index for a given hash hashkey.
  */
 extern uint64_t cmi_hash_find_index(struct cmi_hashheap *hp, uint64_t hashkey);
 
@@ -350,10 +350,31 @@ extern uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
                                             const void *val4);
 
 /*
+ * Prototype for the item print formatting function
+ */
+typedef const char *(cmi_hashheap_item_formatter)(const void *val1,
+                                                  const void *val2,
+                                                  const void *val3,
+                                                  const void *val4);
+
+/*
  * cmi_hashheap_print - Print the current content of the heap and hash map.
  * Intended for debugging use, will print hexadecimal pointer values and
  * similar raw data values from the event tag structs.
  */
-extern void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp);
+extern void cmi_hashheap_heap_print(const struct cmi_hashheap *hp, FILE *fp,
+                                    cmi_hashheap_item_formatter *hif);
+
+extern void cmi_hashheap_hash_print(const struct cmi_hashheap *hp, FILE *fp);
+
+static inline void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp,
+                                      cmi_hashheap_item_formatter *hif)
+{
+    cmb_assert_release(hp != NULL);
+    cmb_assert_release(fp != NULL);
+
+    cmi_hashheap_heap_print(hp, fp, hif);
+    cmi_hashheap_hash_print(hp, fp);
+}
 
 #endif /* CIMBA_CMI_HASHHEAP_H */
