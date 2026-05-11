@@ -35,7 +35,7 @@
 #include "test.h"
 
 /* Soon to be defined */
-static char *event_formatter(cmb_event_func *a, const void *s, const void *o);
+static const char *event_formatter(cmb_event_func *a, const void *s, const void *o);
 
 /* An event: Prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object)
@@ -68,7 +68,7 @@ struct sym_tab_item sym_tab[] = {
 
 static const char *evstrs[] = {"foo", "bar", "yuk"};
 
-static char *event_formatter(cmb_event_func *a, const void *s, const void *o)
+static const char *event_formatter(cmb_event_func *a, const void *s, const void *o)
 {
     static char buf[128];
     for (unsigned ui = 0; ui < sizeof(sym_tab) / sizeof(sym_tab[0]); ui++) {
