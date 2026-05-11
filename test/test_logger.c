@@ -22,10 +22,12 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "cmb_event.h"
@@ -35,16 +37,20 @@
 /* An event: Prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object)
 {
-    cmb_logger_info(stdout, "%p\t%p\t%p", (void *)test_action, subject, object);
-    cmb_event_schedule(test_action, subject, object,
-                       cmb_time() + cmb_random_exponential(3600),
-                       (int16_t)cmb_random_dice(1, 5));
+    cmb_logger_info(stdout, "%p\t%s\t%s", (void *)test_action,  (char *)subject, (char *)object);
+    const double dt = cmb_random_exponential(3600);
+    cmb_assert_always(dt >= 0.0);
+    const int64_t pri = cmb_random_dice(1, 5);
+    cmb_assert_always((pri >= 1) && (pri <= 5));
+    const uint64_t hndl = cmb_event_schedule(test_action, subject, object,
+                                             cmb_time() + dt, pri);
+    cmb_assert_always(hndl != 0u);
 }
 
 /* Another event: Closes the bar for good */
 static void end_sim(void *subject, void *object)
 {
-    cmb_logger_info(stdout, "%p\t%p\t%p", (void *)end_sim, subject, object);
+    cmb_logger_info(stdout, "%p\t%s\t%s", (void *)end_sim, (char *)subject, (char *)object);
     cmb_logger_warning(stdout, "===> end_sim: game over <===");
     cmb_event_queue_clear();
 }
@@ -76,22 +82,8 @@ static const char *hhhmmss_formatter(const double t)
     return fmtbuf;
 }
 
-int main(int argc, char *argv[])
+void test_logger(uint64_t seed)
 {
-    uint64_t seed = cmb_random_hwseed();
-
-    int opt;
-    while ((opt = getopt(argc, argv, "s:")) != -1) {
-        switch (opt) {
-            case 's':
-                seed = (uint64_t)strtoul(optarg, NULL, 0);
-                break;
-            default:
-                fprintf(stderr, "Usage: %s [-s <seed>]\n", argv[0]);
-                return EXIT_FAILURE;
-        }
-    }
-
     cmb_random_initialize(seed);
     cmb_event_queue_initialize(0.0);
     cmb_logger_timeformatter_set(hhhmmss_formatter);
@@ -99,7 +91,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             const char *objects[] = {"that thing", "some thing", "other thing"};
-            const char *subjects[] = {"this", "self", "me"};
+            const char *subjects[] = {"this", "self", "me  "};
             cmb_event_schedule(test_action,
                                (void *)subjects[i],
                                (void *)objects[j],
@@ -112,13 +104,37 @@ int main(int argc, char *argv[])
     cmb_event_schedule(end_sim, NULL, NULL, two_days, 0);
     while (cmb_event_execute_next()) { }
 
-    /* Test the error function, successful test means non-zero exit code */
-    cmb_logger_error(stdout, "We ran out of time here. (This was a test.)");
+    /* Note that cmb_logger_error exits the current thread, exit code 0 */
+    cmb_logger_error(stdout, "Hard stop (intentional)");
+}
 
-    /* Not reached */
-    cmb_logger_fatal(stdout, "How did this happen?");
-    cmb_assert_release(false);
+int main(int argc, char *argv[])
+{
+     uint64_t seed = cmb_random_hwseed();
 
-    /* If we ever reach here, much has failed */
-    return EXIT_SUCCESS;
+    int opt;
+    while ((opt = getopt(argc, argv, "s:")) != -1) {
+        switch (opt) {
+            case 's':
+                errno = 0;
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                if (errno != 0 || seed == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    const clock_t start_time = clock();
+
+    test_logger(seed);
+
+    /* If we got here, something failed */
+    cmb_logger_fatal(stderr, "Returned from test_logger, cmb_logger_error() ignored!");
+
+    /* not reached */
 }
