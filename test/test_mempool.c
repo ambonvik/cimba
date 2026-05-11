@@ -16,25 +16,31 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 
+#include "cmb_assert.h"
+
 #include "cmi_mempool.h"
+#include "cmi_memutils.h"
 
 #include "test.h"
 
 CMB_THREAD_LOCAL struct cmi_mempool mempool_32b = CMI_MEMPOOL_STATIC_INIT(32u, 128u);
 
-int main(void)
+void test_mempool(void)
 {
     cmi_test_print_line("*");
     printf("Testing automatic memory pools\n");
     cmi_test_print_line("-");
 
+    /* Statically initialized, no need to call cmi_mempool_initialize() */
     printf("cmi_mempool_alloc(&mempool_32b): ... ");
     void *vp = cmi_mempool_alloc(&mempool_32b);
-    printf("got %p\n", vp);
+    cmb_assert_always(vp != NULL);
+    printf("done\n");
 
     printf("cmi_mempool_free(&mempool_32b): ... ");
     cmi_mempool_free(&mempool_32b, vp);
@@ -46,15 +52,17 @@ int main(void)
     cmi_test_print_line("-");
     size_t obj_sz = 32u;
     uint64_t obj_num = 16u;
-    printf("cmi_mempool_create: %" PRIu64 " objects size %" PRIu64 "\n",
-           obj_num, obj_sz);
+    const size_t page_sz = cmi_pagesize();
+    printf("cmi_mempool_create: %" PRIu64 " objects size %" PRIu64 ", total %" PRIu64 " (page size %" PRIu64 ")\n",
+           obj_num, obj_sz, obj_num * obj_sz, page_sz);
     struct cmi_mempool *mp = cmi_mempool_create();
+    cmb_assert_always(mp != NULL);
     cmi_mempool_initialize(mp, obj_sz, obj_num);
 
     printf("cmi_mempool_alloc: ... ");
     vp = cmi_mempool_alloc(mp);
-    printf("got %p\n", vp);
-
+    cmb_assert_always(vp != NULL);
+    printf("done\n");
     printf("cmi_mempool_free: ... ");
     cmi_mempool_free(mp, vp);
     printf("done\n");
@@ -66,21 +74,21 @@ int main(void)
 
     obj_sz = 64u;
     obj_num = 57u;
-    printf("cmi_mempool_create: %" PRIu64 " objects size %" PRIu64 "\n",
-           obj_num, obj_sz);
+    printf("cmi_mempool_create: %" PRIu64 " objects size %" PRIu64 ", total %" PRIu64 " (page size %" PRIu64 ")\n",
+           obj_num, obj_sz, obj_num * obj_sz, page_sz);
     mp = cmi_mempool_create();
+    cmb_assert_always(mp != NULL);
     cmi_mempool_initialize(mp, obj_sz, obj_num);
 
     printf("cmi_mempool_alloc: pulling out 101 of them, forcing a pool expand ... ");
     void *vp_first = cmi_mempool_alloc(mp);
     for (unsigned ui = 0; ui < 100; ui++) {
         vp = cmi_mempool_alloc(mp);
+        cmb_assert_always(vp != NULL);
     }
     printf("done\n");
-    printf("First %p\n", vp_first);
-    printf("Last %p\n", vp);
 
-    printf("cmi_mempool_free: returning the first and last ... ");
+    printf("cmi_mempool_free: returning the first and last object to the pool ... ");
     cmi_mempool_free(mp, vp_first);
     cmi_mempool_free(mp, vp);
     printf("done\n");
@@ -91,4 +99,11 @@ int main(void)
     printf("done\n");
 
     cmi_test_print_line("*");
+}
+
+int main(void)
+{
+    test_mempool();
+
+    return 0;
 }
