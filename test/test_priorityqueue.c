@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -48,24 +49,29 @@ struct simulation {
 
 static void end_sim_evt(void *subject, void *object)
 {
+    cmb_assert_release(subject != NULL);
     cmb_unused(object);
 
-    struct simulation *texp = subject;
+    const struct simulation *texp = subject;
     cmb_logger_info(stdout, "===> end_sim: game over <===");
     for (unsigned ui = 0; ui < NUM_PUTTERS; ui++) {
-        cmb_process_stop(texp->putters[ui], NULL);
+        const int64_t r = cmb_process_stop(texp->putters[ui], NULL);
+        cmb_assert_always(r == CMB_PROCESS_SUCCESS);
     }
 
     for (unsigned ui = 0; ui < NUM_GETTERS; ui++) {
-        cmb_process_stop(texp->getters[ui], NULL);
+        const int64_t r = cmb_process_stop(texp->getters[ui], NULL);
+        cmb_assert_always(r == CMB_PROCESS_SUCCESS);
     }
 
-    cmb_process_stop(texp->nuisance, NULL);
+    const int64_t r = cmb_process_stop(texp->nuisance, NULL);
+    cmb_assert_always(r == CMB_PROCESS_SUCCESS);
 }
 
 void *putterfunc(struct cmb_process *me, void *vctx)
 {
     cmb_assert_release(vctx != NULL);
+
     struct cmb_priorityqueue *qp = (struct cmb_priorityqueue *)vctx;
     const int64_t pri = cmb_process_priority(me);
 
@@ -81,18 +87,26 @@ void *putterfunc(struct cmb_process *me, void *vctx)
         }
 
         void *object = cmi_mempool_alloc(&objectpool);
+        cmb_assert_always(object != NULL);
         cmb_logger_user(stdout,
                         USERFLAG1,
                         "Putting object %p priority %" PRIi64 " into %s...",
                         object, pri,
                         cmb_priorityqueue_name(qp));
-        uint64_t handle;
+        cmb_assert_always(cmb_priorityqueue_length(qp) <= qp->capacity);
+        cmb_assert_always(cmb_priorityqueue_space(qp) <= qp->capacity);
+        uint64_t handle = 0u;
         sig = cmb_priorityqueue_put(qp, &object, pri, &handle);
+        cmb_assert_always(cmb_priorityqueue_length(qp) <= qp->capacity);
+        cmb_assert_always(cmb_priorityqueue_space(qp) <= qp->capacity);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Put succeeded");
+            cmb_assert_always(handle != 0u);
         }
         else {
             cmb_logger_user(stdout, USERFLAG1, "Put returned signal %" PRIi64, sig);
+            cmb_assert_always(handle == 0u);
+            cmb_assert_always(object != NULL);
             cmi_mempool_free(&objectpool, object);
         }
     }
@@ -103,7 +117,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
 
-    struct cmb_priorityqueue *qp = (struct cmb_priorityqueue *) ctx;
+    struct cmb_priorityqueue *qp = (struct cmb_priorityqueue *)ctx;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
@@ -120,14 +134,20 @@ void *getterfunc(struct cmb_process *me, void *ctx)
                         USERFLAG1,
                         "Getting object from %s...",
                         cmb_priorityqueue_name(qp));
+        cmb_assert_always(cmb_priorityqueue_length(qp) <= qp->capacity);
+        cmb_assert_always(cmb_priorityqueue_space(qp) <= qp->capacity);
         void *object = NULL;
         sig = cmb_priorityqueue_get(qp, &object);
+        cmb_assert_always(cmb_priorityqueue_length(qp) <= qp->capacity);
+        cmb_assert_always(cmb_priorityqueue_space(qp) <= qp->capacity);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Get succeeded");
+            cmb_assert_always(object != NULL);
             cmi_mempool_free(&objectpool, object);
         }
         else {
             cmb_logger_user(stdout, USERFLAG1, "Get returned signal %" PRIi64, sig);
+            cmb_assert_always(object == NULL);
         }
     }
 }
@@ -137,17 +157,24 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
     cmb_unused(me);
     cmb_assert_release(ctx != NULL);
 
-    /* Abuse internal knowledge of the content of the simulation struct */
+    /* Abuse internal knowledge of the content of the simulation struct,
+     * treating it as one-dimensional array of all processes */
     struct cmb_process **tgt = (struct cmb_process **)ctx;
-    unsigned nproc = NUM_PUTTERS + NUM_GETTERS;
+    const unsigned nproc = NUM_PUTTERS + NUM_GETTERS;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         cmb_logger_user(stdout, USERFLAG1, "Holding ...");
-        (void)cmb_process_hold(cmb_random_exponential(1.0));
+        double dt = cmb_random_exponential(1.0);
+        cmb_assert_always(dt >= 0.0);
+        int64_t sig = cmb_process_hold(dt);
+        cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
         const uint16_t vic = cmb_random_dice(0, (long)(nproc - 1u));
-        const int64_t sig = cmb_random_dice(1, 10);
+        cmb_assert_always(vic < (uint16_t)nproc);
+        sig = cmb_random_dice(1, 10);
+        cmb_assert_always((sig >= 1) && (sig <= 10));
         const int64_t pri = cmb_random_dice(-5, 5);
+        cmb_assert_always((pri >= -5) && (pri <= 5));
         cmb_logger_user(stdout,
                         USERFLAG1,
                         "Interrupting %s with signal %" PRIi64,
@@ -157,8 +184,15 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
     }
 }
 
-void test_priorityqueue(const double duration)
+void test_priorityqueue(const uint64_t seed, const double duration)
 {
+    cmb_random_initialize(seed);
+
+    cmi_test_print_line("*");
+    printf("*************************   Testing priority queues   **************************\n");
+    cmi_test_print_line("*");
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
+
     struct simulation *quetst = cmi_malloc(sizeof(*quetst));
     cmi_memset(quetst, 0, sizeof(*quetst));
 
@@ -226,18 +260,34 @@ void test_priorityqueue(const double duration)
     cmb_priorityqueue_destroy(quetst->queue);
     cmb_event_queue_terminate();
     cmi_free(quetst);
+    cmb_random_terminate();
+    cmi_test_print_line("*");
 }
 
 int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
     uint64_t seed = cmb_random_hwseed();
+    double dur = 1.0e6;
 
     int opt;
-    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+    while ((opt = getopt(argc, argv, "d: s:t")) != -1) {
         switch (opt) {
+            case 'd':
+                errno = 0;
+                dur = strtod(optarg, NULL);
+                if (errno != 0 || dur <= 0.0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
+                break;
             case 's':
+                errno = 0;
                 seed = (uint64_t)strtoul(optarg, NULL, 0);
+                if (errno != 0 || seed == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
                 break;
             case 't':
                 timing_enabled = true;
@@ -249,19 +299,12 @@ int main(const int argc, char *argv[])
     }
 
     const clock_t start_time = clock();
-    cmb_random_initialize(seed);
 
-    cmi_test_print_line("*");
-    printf("*************************   Testing priority queues   **************************\n");
-    cmi_test_print_line("*");
-    printf("Using seed: 0x%" PRIx64 "\n", seed);
+    test_priorityqueue(seed, dur);
 
-    test_priorityqueue(1000000);
-
-    cmi_test_print_line("*");
-    const clock_t end_time = clock();
-    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     if (timing_enabled) {
+        const clock_t end_time = clock();
+        const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
         printf("\nIt took %g sec\n", elapsed_time);
     }
 

@@ -101,12 +101,16 @@ static void print_expected(const uint64_t n,
 
 /**** Start of test scripts ****/
 
-static void test_getsetseed(void)
+static uint64_t  test_getsetseed(void)
 {
     printf("Getting hardware entropy seed ... ");
     const uint64_t seed = cmb_random_hwseed();
     printf("%#" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
+    /* Just clear it again, will set it again in the next test */
+    cmb_random_terminate();
+
+    return seed;
 }
 
 static void test_quality_random(void)
@@ -918,7 +922,7 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
 int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
-    uint64_t seed = cmb_random_hwseed();
+    uint64_t seed = test_getsetseed();
 
     int opt;
     while ((opt = getopt(argc, argv, "s:t")) != -1) {

@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -49,11 +50,12 @@ void cnclevtfunc(void *sub, void *obj)
 
     cmb_assert_release(cuckoo_clock_handle != 0u);
      if (cmb_event_is_scheduled(cuckoo_clock_handle)) {
-        cmb_logger_user(stdout, USERFLAG1, "Cancelling cuckoo event");
-        cmb_event_cancel(cuckoo_clock_handle);
+         cmb_logger_user(stdout, USERFLAG1, "Cancelling cuckoo event");
+         const bool found = cmb_event_cancel(cuckoo_clock_handle);
+         cmb_assert_always(found);
      }
      else {
-        cmb_logger_user(stdout, USERFLAG1, "Cuckoo event already cancelled");
+         cmb_logger_user(stdout, USERFLAG1, "Cuckoo event already cancelled");
      }
 }
 
@@ -66,6 +68,7 @@ void *procfunc1(struct cmb_process *me, void *ctx)
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         const double dur = cmb_random_exponential(5.0);
+        cmb_assert_always(dur >= 0.0);
         const int64_t sig = cmb_process_hold(dur);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1,
@@ -86,12 +89,16 @@ void *procfunc2(struct cmb_process *me, void *ctx)
     const int64_t pri = cmb_process_priority(me);
     for (unsigned ui = 0u; ui < 5u; ui++) {
         const double dur = cmb_random_exponential(10.0);
-        (void)cmb_process_hold(dur);
+        cmb_assert_always(dur >= 0.0);
+        const int64_t sig = cmb_process_hold(dur);
+        cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
         cmb_process_interrupt(tgt, CMB_PROCESS_INTERRUPTED, pri);
     }
 
     const double dur = cmb_random_exponential(10.0);
-    (void)cmb_process_hold(dur);
+    cmb_assert_always(dur >= 0.0);
+    const int64_t sig = cmb_process_hold(dur);
+    cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
     cmb_process_stop(tgt, (void *)0xABBA);
 
     cmb_process_exit((void *)0x5EAF00D);
@@ -109,10 +116,12 @@ void *procfunc3(struct cmb_process *me, void *ctx)
     int64_t r = cmb_process_wait_event(cuckoo_clock_handle);
     cmb_logger_user(stdout, USERFLAG1, "Got cuckoo clock signal %" PRIi64, r);
 
-    cmb_process_hold(cmb_random());
+    r = cmb_process_hold(cmb_random());
+    cmb_assert_always(r == CMB_PROCESS_SUCCESS);
     cmb_logger_user(stdout, USERFLAG1,
                     "Waiting for process %s", cmb_process_name(tgt));
     r = cmb_process_wait_process(tgt);
+    cmb_assert_always(r == CMB_PROCESS_SUCCESS);
     cmb_logger_user(stdout, USERFLAG1,
                     "Tgt %s ended, we received signal %" PRIi64,
                     cmb_process_name(tgt), r);
@@ -123,27 +132,8 @@ void *procfunc3(struct cmb_process *me, void *ctx)
     return NULL;
 }
 
-int main(const int argc, char *argv[])
+void test_process(uint64_t seed)
 {
-    bool timing_enabled = false;
-    uint64_t seed = cmb_random_hwseed();
-
-    int opt;
-    while ((opt = getopt(argc, argv, "s:t")) != -1) {
-        switch (opt) {
-            case 's':
-                seed = (uint64_t)strtoul(optarg, NULL, 0);
-                break;
-            case 't':
-                timing_enabled = true;
-                break;
-            default:
-                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
-                return EXIT_FAILURE;
-        }
-    }
-
-    const clock_t start_time = clock();
     cmb_random_initialize(seed);
 
     cmi_test_print_line("*");
@@ -153,9 +143,12 @@ int main(const int argc, char *argv[])
 
     printf("cmb_event_queue_initialize ...\n");
     cmb_event_queue_initialize(0.0);
+    cmb_assert_always(cmb_time() == 0.0);
     printf("cmb_process_create ...\n");
     struct cmb_process *cpp1 = cmb_process_create();
+    cmb_assert_always(cpp1 != NULL);
     struct cmb_process *cpp2 = cmb_process_create();
+    cmb_assert_always(cpp2 != NULL);
     printf("cmb_process_initialize ...\n");
     cmb_process_initialize(cpp1, "Testproc", procfunc1, NULL, 0);
     cmb_process_initialize(cpp2,"Nuisance", procfunc2, cpp1, 1);
@@ -167,7 +160,9 @@ int main(const int argc, char *argv[])
     printf("Creating an event and a race condition to cancel it...\n");
     cuckoo_clock_handle = cmb_event_schedule(cuckooevtfunc, NULL, NULL,
                                              cmb_random_exponential(25.0), 0);
-    cmb_event_schedule(cnclevtfunc, NULL, NULL, cmb_random_exponential(25.0), 0);
+    cmb_assert_always(cuckoo_clock_handle != 0u);
+    uint64_t cnclhdl = cmb_event_schedule(cnclevtfunc, NULL, NULL, cmb_random_exponential(25.0), 0);
+    cmb_assert_always(cnclhdl != 0u);
 
     printf("Creating waiting processes ...\n");
     char buf[32];
@@ -175,6 +170,7 @@ int main(const int argc, char *argv[])
     for (unsigned ui = 0u; ui < 3u; ui++) {
         sprintf(buf, "Waiter_%u", ui);
         cpp3 = cmb_process_create();
+        cmb_assert_always(cpp3 != NULL);
         cmb_process_initialize(cpp3, buf, procfunc3, cpp2, cmb_random_dice(-5, 5));
         cmb_process_start(cpp3);
     }
@@ -193,16 +189,51 @@ int main(const int argc, char *argv[])
            cmb_process_name(cpp2),
            cmb_process_exit_value(cpp2));
 
+    printf("cmb_process_terminate ...\n");
+    cmb_process_terminate(cpp1);
+    cmb_process_terminate(cpp2);
     printf("cmb_process_destroy ...\n");
     cmb_process_destroy(cpp1);
     cmb_process_destroy(cpp2);
 
     printf("cmb_event_queue_terminate ...\n");
     cmb_event_queue_terminate();
+    cmb_random_terminate();
     cmi_test_print_line("*");
-    const clock_t end_time = clock();
-    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+}
+
+int main(const int argc, char *argv[])
+{
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
+
+    int opt;
+    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+        switch (opt) {
+            case 's':
+                errno = 0;
+                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                if (errno != 0 || seed == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    const clock_t start_time = clock();
+
+    test_process(seed);
+
     if (timing_enabled) {
+        const clock_t end_time = clock();
+        const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
         printf("\nIt took %g sec\n", elapsed_time);
     }
 

@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -47,25 +48,30 @@ CMB_THREAD_LOCAL struct cmi_mempool objectpool = CMI_MEMPOOL_STATIC_INIT(8u, 512
 
 static void end_sim_evt(void *subject, void *object)
 {
+    cmb_assert_release(subject != NULL);
     cmb_unused(object);
 
-    struct simulation *texp = subject;
+    const struct simulation *texp = subject;
     cmb_logger_info(stdout, "===> end_sim: game over <===");
     for (unsigned ui = 0; ui < NUM_PUTTERS; ui++) {
-        cmb_process_stop(texp->putters[ui], NULL);
+        const int64_t r = cmb_process_stop(texp->putters[ui], NULL);
+        cmb_assert_always(r == CMB_PROCESS_SUCCESS);
     }
 
     for (unsigned ui = 0; ui < NUM_GETTERS; ui++) {
-        cmb_process_stop(texp->getters[ui], NULL);
+        const int64_t r = cmb_process_stop(texp->getters[ui], NULL);
+        cmb_assert_always(r == CMB_PROCESS_SUCCESS);
     }
 
-    cmb_process_stop(texp->nuisance, NULL);
+    const int64_t r = cmb_process_stop(texp->nuisance, NULL);
+    cmb_assert_always(r == CMB_PROCESS_SUCCESS);
 }
 
 void *putterfunc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     cmb_assert_release(vctx != NULL);
+
     struct cmb_objectqueue *qp = (struct cmb_objectqueue *)vctx;
 
     // ReSharper disable once CppDFAEndlessLoop
@@ -80,10 +86,15 @@ void *putterfunc(struct cmb_process *me, void *vctx)
         }
 
         void *object = cmi_mempool_alloc(&objectpool);
+        cmb_assert_always(object != NULL);
         cmb_logger_user(stdout, USERFLAG1, "Putting object %p into %s...",
                         object, cmb_objectqueue_name(qp));
 
+        cmb_assert_always(cmb_objectqueue_length(qp) <= qp->capacity);
+        cmb_assert_always(cmb_objectqueue_space(qp) <= qp->capacity);
         sig = cmb_objectqueue_put(qp, object);
+        cmb_assert_always(cmb_objectqueue_length(qp) <= qp->capacity);
+        cmb_assert_always(cmb_objectqueue_space(qp) <= qp->capacity);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Put succeeded");
         }
@@ -112,15 +123,22 @@ void *getterfunc(struct cmb_process *me, void *ctx)
             cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
         }
 
-        cmb_logger_user(stdout, USERFLAG1,"Getting object from %s...", cmb_objectqueue_name(qp));
+        cmb_logger_user(stdout, USERFLAG1,"Getting object from %s...",
+                        cmb_objectqueue_name(qp));
+        cmb_assert_always(cmb_objectqueue_length(qp) <= qp->capacity);
+        cmb_assert_always(cmb_objectqueue_space(qp) <= qp->capacity);
         void *object = NULL;
         sig = cmb_objectqueue_get(qp, &object);
+        cmb_assert_always(cmb_objectqueue_length(qp) <= qp->capacity);
+        cmb_assert_always(cmb_objectqueue_space(qp) <= qp->capacity);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_user(stdout, USERFLAG1, "Get succeeded");
+            cmb_assert_always(object != NULL);
             cmi_mempool_free(&objectpool, object);
         }
         else {
             cmb_logger_user(stdout, USERFLAG1, "Get returned signal %" PRIi64, sig);
+            cmb_assert_always(object == NULL);
         }
     }
 }
@@ -132,24 +150,35 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
 
     /* Abuse internal knowledge of the content of the simulation struct */
     struct cmb_process **tgt = (struct cmb_process **)ctx;
-    unsigned nproc = NUM_PUTTERS + NUM_GETTERS;
+    const unsigned nproc = NUM_PUTTERS + NUM_GETTERS;
 
     // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         cmb_logger_user(stdout, USERFLAG1, "Holding ...");
-        (void)cmb_process_hold(cmb_random_exponential(1.0));
+        const int64_t ret = cmb_process_hold(cmb_random_exponential(1.0));
+        cmb_assert_always(ret == CMB_PROCESS_SUCCESS);
         const uint16_t vic = cmb_random_dice(0, (long)(nproc - 1u));
+        cmb_assert_always(vic < (uint16_t)nproc);
         const int64_t sig = cmb_random_dice(1, 10);
+        cmb_assert_always(sig >= 1 && sig <= 10);
         const int64_t pri = cmb_random_dice(-5, 5);
+        cmb_assert_always((pri >= -5) && (pri <= 5));
         cmb_logger_user(stdout, USERFLAG1, "Interrupting %s with signal %" PRIi64,
                         tgt[vic]->name, sig);
         cmb_process_interrupt(tgt[vic], sig, pri);
     }
 }
 
-void test_queue(double duration)
+void test_queue(const uint64_t seed, const double dur)
 {
+    cmb_random_initialize(seed);
+
+    cmi_test_print_line("*");
+    printf("**************************   Testing object queues   ***************************\n");
+    cmi_test_print_line("*");
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
     struct simulation *quetst = cmi_malloc(sizeof(*quetst));
+    cmb_assert_always(quetst != NULL);
     cmi_memset(quetst, 0, sizeof(*quetst));
 
     cmb_logger_flags_off(CMB_LOGGER_INFO);
@@ -158,43 +187,63 @@ void test_queue(double duration)
 
     printf("Create a queue\n");
     quetst->queue = cmb_objectqueue_create();
+    cmb_assert_always(quetst->queue != NULL);
     cmb_objectqueue_initialize(quetst->queue, "Queue", 10u);
+    cmb_assert_always(cmb_objectqueue_length(quetst->queue) == 0u);
     cmb_objectqueue_recording_start(quetst->queue);
 
     char scratchpad[32];
     printf("Create three processes feeding into the queue\n");
     for (unsigned ui = 0; ui < 3; ui++) {
         quetst->putters[ui] = cmb_process_create();
-        snprintf(scratchpad, sizeof(scratchpad), "Putter_%u", ui + 1u);
+        cmb_assert_always(quetst->putters[ui] != NULL);
+        const int r = snprintf(scratchpad, sizeof(scratchpad), "Putter_%u", ui + 1u);
+        cmb_assert_always((r >= 0) && (r < (int)sizeof(scratchpad)));
         const int64_t pri = cmb_random_dice(-5, 5);
+        cmb_assert_always((pri >= -5) && (pri <= 5));
         cmb_process_initialize(quetst->putters[ui],
                                scratchpad,
                                putterfunc,
                                quetst->queue,
                                pri);
+        cmb_assert_always(cmb_process_priority(quetst->putters[ui]) == pri);;
+        cmb_assert_always(cmb_process_status(quetst->putters[ui]) == CMB_PROCESS_CREATED);
+        cmb_assert_always(cmb_process_context(quetst->putters[ui]) == quetst->queue);
         cmb_process_start(quetst->putters[ui]);
     }
 
     printf("Create three processes consuming from the queue\n");
     for (unsigned ui = 0; ui < 3; ui++) {
         quetst->getters[ui] = cmb_process_create();
-        snprintf(scratchpad, sizeof(scratchpad), "Getter_%u", ui + 1u);
+        cmb_assert_always(quetst->getters[ui] != NULL);
+        int r = snprintf(scratchpad, sizeof(scratchpad), "Getter_%u", ui + 1u);
+        cmb_assert_always((r >= 0) && (r < (int)sizeof(scratchpad)));
         const int64_t pri = cmb_random_dice(-5, 5);
+        cmb_assert_always((pri >= -5) && (pri <= 5));
         cmb_process_initialize(quetst->getters[ui],
                                scratchpad,
                                getterfunc,
                                quetst->queue,
                                pri);
+        cmb_assert_always(cmb_process_priority(quetst->getters[ui]) == pri);
+        cmb_assert_always(cmb_process_status(quetst->getters[ui]) == CMB_PROCESS_CREATED);
+        cmb_assert_always(cmb_process_context(quetst->getters[ui]) == quetst->queue);
         cmb_process_start(quetst->getters[ui]);
     }
 
     printf("Create a nuisance\n");
     quetst->nuisance = cmb_process_create();
+    cmb_assert_always(quetst->nuisance != NULL);
     cmb_process_initialize(quetst->nuisance, "Nuisance", nuisancefunc, quetst, 0);
+    cmb_assert_always(cmb_process_status(quetst->nuisance) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_context(quetst->nuisance) == quetst);
+    cmb_assert_always(cmb_process_priority(quetst->nuisance) == 0);
     cmb_process_start(quetst->nuisance);
 
     printf("Schedule end event\n");
-    (void)cmb_event_schedule(end_sim_evt, quetst, NULL, duration, 0);
+    uint64_t hndl = cmb_event_schedule(end_sim_evt, quetst, NULL, dur, 0);
+    cmb_assert_always(hndl != 0u);
+    cmb_assert_always(cmb_event_is_scheduled(hndl) == true);
 
     printf("Execute simulation...\n");
     cmb_event_queue_execute();
@@ -205,29 +254,49 @@ void test_queue(double duration)
 
     printf("Clean up\n");
     for (unsigned ui = 0; ui < 3; ui++) {
+        cmb_assert_always(cmb_process_status(quetst->putters[ui]) == CMB_PROCESS_FINISHED);
         cmb_process_terminate(quetst->putters[ui]);
-        cmb_process_terminate(quetst->getters[ui]);
         cmb_process_destroy(quetst->putters[ui]);
+        cmb_assert_always(cmb_process_status(quetst->getters[ui]) == CMB_PROCESS_FINISHED);
+        cmb_process_terminate(quetst->getters[ui]);
         cmb_process_destroy(quetst->getters[ui]);
     }
 
     cmb_process_terminate(quetst->nuisance);
     cmb_process_destroy(quetst->nuisance);
     cmb_objectqueue_destroy(quetst->queue);
-    cmb_event_queue_terminate();
     cmi_free(quetst);
+
+    cmb_event_queue_terminate();
+    cmb_random_terminate();
+
+    cmi_test_print_line("*");
 }
 
 int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
     uint64_t seed = cmb_random_hwseed();
+    double dur = 1.0e6;
 
     int opt;
-    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+    while ((opt = getopt(argc, argv, "d:s:t")) != -1) {
         switch (opt) {
+            case 'd':
+                errno = 0;
+                dur = strtod(optarg, NULL);
+                if (errno != 0 || dur <= 0.0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
+                break;
             case 's':
+                errno = 0;
                 seed = (uint64_t)strtoul(optarg, NULL, 0);
+                if (errno != 0 || seed == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
                 break;
             case 't':
                 timing_enabled = true;
@@ -239,19 +308,12 @@ int main(const int argc, char *argv[])
     }
 
     const clock_t start_time = clock();
-    cmb_random_initialize(seed);
 
-    cmi_test_print_line("*");
-    printf("**************************   Testing object queues   ***************************\n");
-    cmi_test_print_line("*");
-    printf("Using seed: 0x%" PRIx64 "\n", seed);
+    test_queue(seed, dur);
 
-    test_queue(1000000);
-
-    cmi_test_print_line("*");
-    const clock_t end_time = clock();
-    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     if (timing_enabled) {
+        const clock_t end_time = clock();
+        const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
         printf("\nIt took %g sec\n", elapsed_time);
     }
 

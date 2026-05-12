@@ -496,9 +496,15 @@ void set_test_parameters(struct trial *trl, double dur)
 }
 
 /* The test function running the simulation */
-void test_condition(double dur)
+void test_condition(uint64_t seed, double dur)
 {
-    /* Start the simulation clock from 0.0 and prepare the event queue */
+    cmi_test_print_line("*");
+    printf("***********************   Testing condition variables  *************************\n");
+    cmi_test_print_line("*");
+
+    printf("Cimba version %s\n", cimba_version());
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
+    cmb_random_initialize(seed);
     cmb_event_queue_initialize(0.0);
 
     /* Turn off/on selected logging levels */
@@ -637,6 +643,8 @@ void test_condition(double dur)
     cmb_process_destroy(sim.tide);
 
     cmb_event_queue_terminate();
+    cmb_random_terminate();
+    cmi_test_print_line("*");
 }
 
 
@@ -676,21 +684,11 @@ int main(const int argc, char *argv[])
 
     const clock_t start_time = clock();
 
-    cmi_test_print_line("*");
-    printf("***********************   Testing condition variables  *************************\n");
-    cmi_test_print_line("*");
+    test_condition(seed, dur);
 
-    printf("Cimba version %s\n", cimba_version());
-    printf("Using seed: 0x%" PRIx64 "\n", seed);
-    cmb_random_initialize(seed);
-
-    test_condition(dur);
-
-    cmi_test_print_line("*");
-
-    const clock_t end_time = clock();
-    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     if (timing_enabled) {
+        const clock_t end_time = clock();
+        const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
         printf("\nIt took %g sec\n", elapsed_time);
     }
 

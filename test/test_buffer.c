@@ -185,6 +185,12 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
 
 void test_buffer(const double duration, const uint64_t seed)
 {
+    cmi_test_print_line("*");
+    printf("*****************************   Testing buffers   ******************************\n");
+    cmi_test_print_line("*");
+    printf("Cimba version %s\n", cimba_version());
+    printf("Using seed: 0x%" PRIx64 "\n", seed);
+
     struct simulation *thesim = cmi_malloc(sizeof(*thesim));
     cmb_assert_always(thesim != NULL);
     cmi_memset(thesim, 0, sizeof(*thesim));
@@ -273,9 +279,12 @@ void test_buffer(const double duration, const uint64_t seed)
     cmb_process_terminate(thesim->nuisance);
     cmb_process_destroy(thesim->nuisance);
     cmb_buffer_destroy(thesim->buf);
+    cmi_free(thesim);
+
     cmb_event_queue_terminate();
     cmb_random_terminate();
-    cmi_free(thesim);
+
+    cmi_test_print_line("*");
 }
 
 int main(const int argc, char *argv[])
@@ -314,19 +323,11 @@ int main(const int argc, char *argv[])
 
     const clock_t start_time = clock();
 
-    cmi_test_print_line("*");
-    printf("*****************************   Testing buffers   ******************************\n");
-    cmi_test_print_line("*");
-    printf("Cimba version %s\n", cimba_version());
-    printf("Using seed: 0x%" PRIx64 "\n", seed);
-
     test_buffer(dur, seed);
 
-    cmi_test_print_line("*");
-
-    const clock_t end_time = clock();
-    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     if (timing_enabled) {
+        const clock_t end_time = clock();
+        const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
         printf("\nIt took %g sec\n", elapsed_time);
     }
 

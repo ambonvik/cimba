@@ -204,6 +204,7 @@ void test_hashheap(uint64_t seed)
     printf("Cleaning up\n");
     cmi_hashheap_terminate(hhp);
     cmi_hashheap_destroy(hhp);
+    cmb_random_terminate();
     cmi_test_print_line("*");
 }
 
@@ -236,9 +237,9 @@ int main(const int argc, char *argv[])
 
     test_hashheap(seed);
 
-    const clock_t end_time = clock();
-    const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     if (timing_enabled) {
+        const clock_t end_time = clock();
+        const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
         printf("\nIt took %g sec\n", elapsed_time);
     }
 

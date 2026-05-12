@@ -202,8 +202,8 @@ void test_events(const uint64_t seed)
 
     cmb_event_queue_print(stdout, event_formatter);
     cmb_event_queue_terminate();
+    cmb_random_terminate();
     cmi_test_print_line("*");
-
 }
 
 int main(const int argc, char *argv[])

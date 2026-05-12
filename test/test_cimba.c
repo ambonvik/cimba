@@ -277,16 +277,18 @@ void run_mg1_trial(void *vtrl)
     trl->avg_queue_length = cmb_wtdsummary_mean(&ws);
 
     /* Clean up */
-    cmb_event_queue_terminate();
 
     cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_FINISHED);
+    cmb_process_terminate(sim->arrival);
     cmb_process_destroy(sim->arrival);
     cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_FINISHED);
+    cmb_process_terminate(sim->service);
     cmb_process_destroy(sim->service);
     cmb_buffer_destroy(sim->queue);
-
     free(sim);
     free(ctx);
+
+    cmb_event_queue_terminate();
 }
 
 /* Declare for later use, do not want to digress with that here */
