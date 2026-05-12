@@ -622,6 +622,8 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
 /*
  * wakeup_event_interrupt - The event that actually interrupts the
  * process coroutine after being scheduled by cmb_process_interrupt.
+ * Throw away the _resume return value, since we do not have
+ * anywhere to return it to from here.
  */
 static void wakeup_event_interrupt(void *vp, void *arg)
 {
@@ -644,6 +646,9 @@ static void wakeup_event_interrupt(void *vp, void *arg)
  * cmb_process_interrupt - Schedule an interrupt event for the target process
  * at the current time with priority pri. Non-blocking call, it will return to
  * the calling process immediately.
+ * We throw away the _schedule return value, since it would be confusing
+ * to have some cmb_ functions return zero (CMB_PROCESS_SUCCESS) for success
+ * and some such as this noe return zero on failure.
  */
 void cmb_process_interrupt(struct cmb_process *pp,
                            const int64_t sig,
@@ -655,7 +660,9 @@ void cmb_process_interrupt(struct cmb_process *pp,
                     pp->name, sig, pri);
 
     const double t = cmb_time();
-    (void)cmb_event_schedule(wakeup_event_interrupt, pp, (void *)sig, t, pri);
+    const uint64_t hndl = cmb_event_schedule(wakeup_event_interrupt, pp,
+                                             (void *)sig, t, pri);
+    cmb_assert_debug(hndl != 0u);
 }
 
 /*
@@ -697,7 +704,8 @@ int64_t cmb_process_stop(struct cmb_process *tgt, void *retval)
 
     const int status = cmb_process_status(tgt);
     if (status != CMB_PROCESS_RUNNING) {
-        cmb_logger_warning(stdout, "cmb_process_stop: tgt %s not running", tgt->name);
+        cmb_logger_warning(stdout,
+                           "cmb_process_stop: tgt %s not running", tgt->name);
         return CMB_PROCESS_STOPPED;
     }
 
@@ -717,26 +725,36 @@ int64_t cmb_process_stop(struct cmb_process *tgt, void *retval)
 /*
  * resume_event - The event that actually resumes the process,
  * since this only can be done by the dispatcher
+ * Throw away the _resume return value, since we do not have
+ * anywhere to return it to from here.
  */
 static void resume_event(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
 
-    cmb_logger_info(stdout, "Resumes %s signal %" PRIi64, pp->name, (int64_t)arg);
+    cmb_logger_info(stdout, "Resumes %s signal %" PRIi64,
+                    pp->name, (int64_t)arg);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
+
     (void)cmi_coroutine_resume(cp, arg);
 }
 
 /*
- * cmb_process_resume - schedule a wakeup event at the current time
+ * cmb_process_resume - schedule a wakeup event at the current time.
+ * We throw away the _schedule return value, since it would be confusing
+ * to have some cmb_ functions return zero (CMB_PROCESS_SUCCESS) for success
+ * and some such as this noe return zero on failure.
  */
 void cmb_process_resume(struct cmb_process *pp, const int64_t sig)
 {
     cmb_assert_debug(pp != NULL);
 
-    cmb_logger_info(stdout, "Schedules resume event for %s signal %" PRIi64, pp->name, sig);
-    (void)cmb_event_schedule(resume_event, pp, (void *)sig, cmb_time(), pp->priority);
+    cmb_logger_info(stdout, "Schedules resume event for %s signal %" PRIi64,
+                    pp->name, sig);
+    const uint64_t hndl = cmb_event_schedule(resume_event, pp, (void *)sig,
+                                             cmb_time(), pp->priority);
+    cmb_assert_debug(hndl != 0u);
 }
