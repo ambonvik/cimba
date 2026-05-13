@@ -20,6 +20,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include "cmb_event.h"
 #include "cmb_process.h"
@@ -239,7 +240,6 @@ void cmi_logger_error(FILE *fp,
 
     pthread_exit(NULL);
     /* Not reached */
-    abort();
 }
 
 void cmi_logger_warning(FILE *fp,
