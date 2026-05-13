@@ -3,3 +3,10 @@ option('enable_docs',
        value : true,
        description : 'Build the docs'
 )
+
+option('benchopt',
+       type    : 'combo',
+       choices : ['none', 'generate', 'use'],
+       value   : 'none',
+       description : 'Profile-guided optimisation: generate profiles, use them, or neither'
+)

@@ -4,7 +4,7 @@ project('cimba', 'c',
         version : '3.0.0',
         default_options : [
             'warning_level=3',
-            'c_std=c17',
+            'c_std=c23',
             'buildtype=release'
         ]
 )
@@ -13,26 +13,54 @@ project('cimba', 'c',
 add_languages('nasm', required : true, native : true)
 
 # Check for compiler flags availability
-# Comment out all flags from -O3 and down for debug mode.
 # DNDEBUG removes debug asserts
 # DNLOGINFO removes all internal Cimba logging
-# DNASSERT removes all asserts including argument checking
+# DNASSERT removes all debug and release asserts (including argument checking)
 # DNMXCSR turns off saving and restoring the MXCSR floating point
 #         state / control register in all context switches.
 cc = meson.get_compiler('c')
-desired_flags = ['-Wno-pedantic',
-                 '-D_POSIX_C_SOURCE=200809L',
-                 '-fno-semantic-interposition',
-#                 '-fno-omit-frame-pointer',
-#                 '-fprofile-generate',
-#                 '-fprofile-use',
-#                 '-fprofile-correction',
-#                 '-O3',
-#                 '-DNDEBUG',
-#                 '-DNLOGINFO',
-#                 '-DNASSERT',
-                 '-DNMXCSR'
+
+# Flags common to all build types
+common_flags = [
+    '-Wno-pedantic',
+    '-D_POSIX_C_SOURCE=200809L',
+    '-fno-semantic-interposition',
+    '-DNMXCSR',
 ]
+
+# Flags per build type
+# 'debug'    : full asserts and logging, no optimization
+# 'release'  : standard optimized build, release asserts only
+buildtype_flags = {
+    'debug'   : ['-fno-omit-frame-pointer'],
+    'release' : ['-DNDEBUG', '-DNLOGINFO'],
+    'plain'   : [],
+}
+
+# No-holds-barred optimized build: meson setup --buildtype=release -Dbenchopt=true
+benchopt_flags = [
+    '-O3',
+    '-DNDEBUG',
+    '-DNLOGINFO',
+    '-DNASSERT',
+    '-fprofile-use',
+    '-fprofile-correction',
+]
+
+benchopt_gen_flags = [
+    '-O3',
+    '-fprofile-generate',
+    '-fno-omit-framepointer',
+]
+
+buildtype = get_option('buildtype')
+desired_flags = common_flags + buildtype_flags.get(buildtype, [])
+
+if get_option('benchopt') == 'generate'
+    desired_flags += benchopt_gen_flags
+elif get_option('benchopt') == 'use'
+    desired_flags += benchopt_flags
+endif
 
 if host_machine.system() == 'linux'
     desired_flags += ['-ftls-model=initial-exec',
