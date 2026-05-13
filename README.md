@@ -110,7 +110,7 @@ a binary heap and an open addressing hash map using Fibonacci hashing. Although 
 of the public Cimba API, these components can also be used in your model if needed.
 
 ### What does the code look like?
-It is C11/C17. As an illustration, this is the entire code for [our multithreaded M/M/1 
+It is C code. As an illustration, this is the entire code for [our multithreaded M/M/1 
 benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned above:
 
 ```
