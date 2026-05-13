@@ -22,6 +22,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -39,7 +40,6 @@
 /* Test macros */
 #define MOMENTS 15
 #define ACFS 15
-#define MAX_ITER UINT64_C(100000000)
 #define LEADINS true
 
 #define QTEST_PREPARE() \
@@ -47,8 +47,8 @@
     cmb_dataset_initialize(&ds)
 
 #define QTEST_EXECUTE(DUT) \
-    printf("Drawing %" PRIu64 " samples...\n", MAX_ITER); \
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) { \
+    printf("Drawing %" PRIu64 " samples...\n", nsamples); \
+    for (uint32_t ui = 0; ui < nsamples; ui++) { \
         cmb_dataset_add(&ds, DUT); \
     }
 
@@ -101,7 +101,7 @@ static void print_expected(const uint64_t n,
 
 /**** Start of test scripts ****/
 
-static uint64_t  test_getsetseed(void)
+static uint64_t test_getsetseed(void)
 {
     printf("Getting hardware entropy seed ... ");
     const uint64_t seed = cmb_random_hwseed();
@@ -113,15 +113,15 @@ static uint64_t  test_getsetseed(void)
     return seed;
 }
 
-static void test_quality_random(void)
+static void test_quality_random(uint64_t nsamples)
 {
     printf("\nQuality testing basic random number generator cmb_random(), uniform on [0,1]\n");
     QTEST_PREPARE();
 
     /* Handle test execution outside macro to capture moments as well */
-    printf("Drawing %" PRIu64 " samples...\n", MAX_ITER);
+    printf("Drawing %" PRIu64 " samples...\n", nsamples);
     double moment_r[MOMENTS] = { 0.0 };
-    for (uint64_t ui = 0; ui < MAX_ITER; ui++) {
+    for (uint64_t ui = 0; ui < nsamples; ui++) {
         const double xi = cmb_random();
         cmb_dataset_add(&ds, xi);
 
@@ -132,7 +132,7 @@ static void test_quality_random(void)
         }
     }
 
-    print_expected(MAX_ITER, true, 0.5, true, 1.0 / 12.0, true, 0.0, true, -6.0 / 5.0);
+    print_expected(nsamples, true, 0.5, true, 1.0 / 12.0, true, 0.0, true, -6.0 / 5.0);
 
     QTEST_REPORT();
     QTEST_REPORT_ACFS();
@@ -142,7 +142,7 @@ static void test_quality_random(void)
     cmi_test_print_line("-");
     for (uint16_t ui = 0; ui < MOMENTS; ui++) {
         const double expmom = 1.0 / (double)(ui + 2u);
-        const double avgmom = moment_r[ui] / (double)MAX_ITER;
+        const double avgmom = moment_r[ui] / (double)nsamples;
         printf("%5d        %8.5g    %8.5g   %6.3f %%\n", ui + 1u,
                expmom, avgmom, 100.0 * (avgmom - expmom) / expmom);
     }
@@ -151,7 +151,7 @@ static void test_quality_random(void)
     QTEST_FINISH();
 }
 
-static void test_quality_uniform(const double a, const double b)
+static void test_quality_uniform(uint64_t nsamples, const double a, const double b)
 {
     printf("\nQuality testing cmb_random_uniform(%g,%g)\n", a, b);
     QTEST_PREPARE();
@@ -159,19 +159,19 @@ static void test_quality_uniform(const double a, const double b)
 
     const double var = (b - a) * (b - a) / 12;
 
-    print_expected(MAX_ITER, true, 0.5 * (a + b), true, var, true, 0.0, true, -6.0 / 5.0);
+    print_expected(nsamples, true, 0.5 * (a + b), true, var, true, 0.0, true, -6.0 / 5.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_std_exponential(void)
+static void test_quality_std_exponential(uint64_t nsamples)
 {
     printf("\nQuality testing standard exponential distribution, mean = 1\n");
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_std_exponential());
 
-    print_expected(MAX_ITER, true, 1.0, true, 1.0, true, 2.0, true, 6.0);
+    print_expected(nsamples, true, 1.0, true, 1.0, true, 2.0, true, 6.0);
 
     QTEST_REPORT();
     QTEST_REPORT_ACFS();
@@ -190,27 +190,27 @@ static double exponential_inv(const double m)
     return -log(x) * m;
 }
 
-static void test_speed_exponential(const double m)
+static void test_speed_exponential(uint64_t nsamples, const double m)
 {
     printf("\nSpeed testing standard exponential distribution\n");
-    printf("\nInversion method, drawing %" PRIu64 " samples...", MAX_ITER);
+    printf("\nInversion method, drawing %" PRIu64 " samples...", nsamples);
 
     const clock_t csi = clock();
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
+    for (uint32_t ui = 0; ui < nsamples; ui++) {
         (void)exponential_inv(m);
     }
     const clock_t cei = clock();
     const double ti = (double)(cei - csi) / CLOCKS_PER_SEC;
-    printf("\t%.3e samples per second\n", (double)MAX_ITER / ti);
+    printf("\t%.3e samples per second\n", (double)nsamples / ti);
 
-    printf("Ziggurat method, drawing %" PRIu64 " samples...", MAX_ITER);
+    printf("Ziggurat method, drawing %" PRIu64 " samples...", nsamples);
     const clock_t csz = clock();
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
+    for (uint32_t ui = 0; ui < nsamples; ui++) {
         (void)cmb_random_exponential(m);
     }
     const clock_t cez = clock();
     const double tz = (double)(cez - csz) / CLOCKS_PER_SEC;
-    printf("\t%.3e samples per second\n", (double)MAX_ITER / tz);
+    printf("\t%.3e samples per second\n", (double)nsamples / tz);
 
     printf("\nSpeedup for ziggurat vs inversion method %.1fx, %4.1f %% less time per sample.\n",
            ti / tz, 100.0 * (ti - tz) / ti);
@@ -218,13 +218,13 @@ static void test_speed_exponential(const double m)
     cmi_test_print_line("=");
 }
 
-static void test_quality_exponential(const double m)
+static void test_quality_exponential(uint64_t nsamples, const double m)
 {
     printf("\nQuality testing exponential distribution, mean = %f\n", m);
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_exponential(m));
 
-    print_expected(MAX_ITER, true, m, true, m * m, true, 2.0, true, 6.0);
+    print_expected(nsamples, true, m, true, m * m, true, 2.0, true, 6.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -269,15 +269,15 @@ static double normal_raw_moment(const uint16_t n, const double mu, const double 
     }
 }
 
-static void test_quality_std_normal(void)
+static void test_quality_std_normal(uint64_t nsamples)
 {
     printf("\nQuality testing standard normal distribution, mean = 0, sigma = 1\n");
     QTEST_PREPARE();
 
     double moment_r[MOMENTS] = { 0.0 };
     double moment_bm[MOMENTS] = { 0.0 };
-    printf("Drawing %" PRIu64 " samples...\n", MAX_ITER);
-    for (uint64_t ui = 0; ui < MAX_ITER; ui++) {
+    printf("Drawing %" PRIu64 " samples...\n", nsamples);
+    for (uint64_t ui = 0; ui < nsamples; ui++) {
         const double xi = cmb_random_std_normal();
         cmb_dataset_add(&ds, xi);
 
@@ -295,7 +295,7 @@ static void test_quality_std_normal(void)
         }
     }
 
-    print_expected(MAX_ITER, true, 0.0, true, 1.0, true, 0.0, true, 0.0);
+    print_expected(nsamples, true, 0.0, true, 1.0, true, 0.0, true, 0.0);
 
     QTEST_REPORT();
     QTEST_REPORT_ACFS();
@@ -305,8 +305,8 @@ static void test_quality_std_normal(void)
     cmi_test_print_line("-");
     for (uint16_t ui = 0; ui < MOMENTS; ui++) {
         const double expmom = normal_raw_moment(ui + 1u, 0.0, 1.0);
-        const double avgmom = moment_r[ui] / (double)MAX_ITER;
-        const double bmmom = moment_bm[ui] / (double)MAX_ITER;
+        const double avgmom = moment_r[ui] / (double)nsamples;
+        const double bmmom = moment_bm[ui] / (double)nsamples;
         printf("%5d        %10.4g    %10.4g", ui + 1u,
                expmom, avgmom);
         if (expmom != 0.0) {
@@ -328,39 +328,39 @@ static void test_quality_std_normal(void)
     QTEST_FINISH();
 }
 
-static void test_quality_normal(const double m, const double s)
+static void test_quality_normal(uint64_t nsamples, const double m, const double s)
 {
     printf("\nQuality testing normal distribution, mean = %f, sigma = %f\n", m, s);
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_normal(m, s));
 
-    print_expected(MAX_ITER, true, m, true, s * s, true, 0.0, true, 0.0);
+    print_expected(nsamples, true, m, true, s * s, true, 0.0, true, 0.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_speed_normal(const double m, const double s)
+static void test_speed_normal(uint64_t nsamples, const double m, const double s)
 {
     printf("\nSpeed testing normal distribution\n");
-    printf("\nBox Muller method, drawing %" PRIu64 " samples...", MAX_ITER);
+    printf("\nBox Muller method, drawing %" PRIu64 " samples...", nsamples);
 
     const clock_t csi = clock();
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
+    for (uint32_t ui = 0; ui < nsamples; ui++) {
         (void)normal_bm(m, s);
     }
     const clock_t cei = clock();
     const double ti = (double)(cei - csi) / CLOCKS_PER_SEC;
-    printf("\t%.3e samples per second\n", (double)MAX_ITER / ti);
+    printf("\t%.3e samples per second\n", (double)nsamples / ti);
 
-    printf("Ziggurat method, drawing %" PRIu64 " samples...", MAX_ITER);
+    printf("Ziggurat method, drawing %" PRIu64 " samples...", nsamples);
     const clock_t csz = clock();
-    for (uint32_t ui = 0; ui < MAX_ITER; ui++) {
+    for (uint32_t ui = 0; ui < nsamples; ui++) {
         (void)cmb_random_normal(m, s);
     }
     clock_t cez = clock();
     double tz = (double)(cez - csz) / CLOCKS_PER_SEC;
-    printf("\t%.3e samples per second\n", (double)MAX_ITER / tz);
+    printf("\t%.3e samples per second\n", (double)nsamples / tz);
 
     printf("\nSpeedup for ziggurat vs Box Muller method %.1fx, %4.1f %% less time per sample\n",
            ti / tz, 100.0 * (ti - tz) / ti);
@@ -368,7 +368,7 @@ static void test_speed_normal(const double m, const double s)
     cmi_test_print_line("=");
 }
 
-static void test_quality_triangular(const double a, const double b, const double c)
+static void test_quality_triangular(uint64_t nsamples, const double a, const double b, const double c)
 {
     printf("\nQuality testing cmb_random_triangular(%g, %g, %g)\n", a, b, c);
     QTEST_PREPARE();
@@ -380,25 +380,25 @@ static void test_quality_triangular(const double a, const double b, const double
     const double snum = ((sqrt(2.0) * (a + b - 2.0 * c) * (2.0 * a - b - c) * (a - 2.0 * b + c)));
     const double sden = 5.0 * pow(g, 1.5);
 
-    print_expected(MAX_ITER, true, mean, true, var, true, snum / sden, true, -3.0 / 5.0);
+    print_expected(nsamples, true, mean, true, var, true, snum / sden, true, -3.0 / 5.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_erlang(const unsigned k, const double m)
+static void test_quality_erlang(uint64_t nsamples, const unsigned k, const double m)
 {
     printf("\nQuality testing cmb_random_erlang(%u, %g)\n", k, m);
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_erlang(k, m));
 
-    print_expected(MAX_ITER, true, k * m, true, k * m * m, true, 2.0 / sqrt((double)k), true, 6.0 / (double)k);
+    print_expected(nsamples, true, k * m, true, k * m * m, true, 2.0 / sqrt((double)k), true, 6.0 / (double)k);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_hypoexponential(const unsigned k, const double m[k])
+static void test_quality_hypoexponential(uint64_t nsamples, const unsigned k, const double m[k])
 {
     printf("\nQuality testing cmb_random_hypoexponential, k = %u, m = [", k);
     for (unsigned ui = 0; ui < k-1; ui++) {
@@ -418,13 +418,14 @@ static void test_quality_hypoexponential(const unsigned k, const double m[k])
         msumcube += m[i] * m[i] * m[i];
     }
 
-    print_expected(MAX_ITER, true, msum, true, msumsq, true, 2.0 * msumcube / pow(msumsq, 1.5), false, 0.0);
+    print_expected(nsamples, true, msum, true, msumsq, true, 2.0 * msumcube / pow(msumsq, 1.5), false, 0.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_hyperexponential(const unsigned k,
+static void test_quality_hyperexponential(const uint64_t nsamples,
+                                          const unsigned k,
                                           const double m[k],
                                           const double p[k])
 {
@@ -450,13 +451,15 @@ static void test_quality_hyperexponential(const unsigned k,
         }
     }
 
-    print_expected(MAX_ITER, true, msum, true, msum * msum + msumsq, false,  0.0, false, 0.0);
+    print_expected(nsamples, true, msum, true, msum * msum + msumsq, false,  0.0, false, 0.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_weibull(const double shape, const double scale)
+static void test_quality_weibull(const uint64_t nsamples,
+                                 const double shape,
+                                 const double scale)
 {
     printf("\nQuality testing cmb_random_weibull(%g, %g)\n", shape, scale);
     QTEST_PREPARE();
@@ -468,13 +471,13 @@ static void test_quality_weibull(const double shape, const double scale)
 
     /* Skewness exists in closed form but is complicated, left out for now */
     /* No closed form expression for kurtosis */
-    print_expected(MAX_ITER, true, mean, true, var, false, 0.0, false, 0.0);
+    print_expected(nsamples, true, mean, true, var, false, 0.0, false, 0.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_lognormal(const double m, const double s)
+static void test_quality_lognormal(const uint64_t nsamples,const double m, const double s)
 {
     printf("\nQuality testing log-normal distribution, m %g, s %g\n", m, s);
     QTEST_PREPARE();
@@ -485,13 +488,13 @@ static void test_quality_lognormal(const double m, const double s)
     const double skew = (exp(s * s) + 2.0) * sqrt(exp(s * s) - 1);
     const double kurt = exp(4.0 * s * s) + 2.0 * exp(3.0 * s * s) + 3.0 * exp (2.0 * s * s) - 6;
 
-    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_logistic(const double m, const double s)
+static void test_quality_logistic(const uint64_t nsamples,const double m, const double s)
 {
     printf("\nQuality testing logistic distribution, m %g, s %g\n", m, s);
     QTEST_PREPARE();
@@ -499,25 +502,25 @@ static void test_quality_logistic(const double m, const double s)
 
     const double var = s * s * M_PI * M_PI / 3.0;
 
-    print_expected(MAX_ITER, true, m, true,var,true, 0.0, true, 6.0 / 5.0);
+    print_expected(nsamples, true, m, true,var,true, 0.0, true, 6.0 / 5.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_cauchy(const double m, const double s)
+static void test_quality_cauchy(const uint64_t nsamples,const double m, const double s)
 {
     printf("\nQuality testing cauchy distribution, m %g, s %g\n", m, s);
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_cauchy(m, s));
 
-    print_expected(MAX_ITER, false, 0.0, false,0.0,false, 0.0, false, 0.0);
+    print_expected(nsamples, false, 0.0, false,0.0,false, 0.0, false, 0.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_gamma(const double shape, const double scale)
+static void test_quality_gamma(const uint64_t nsamples,const double shape, const double scale)
 {
     printf("\nQuality testing gamma distribution, shape %g, scale %g\n", shape, scale);
     QTEST_PREPARE();
@@ -528,13 +531,13 @@ static void test_quality_gamma(const double shape, const double scale)
     const double skew = 2.0 / sqrt(shape);
     const double kurt = 6.0 / shape;
 
-    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_pareto(const double a, const double b)
+static void test_quality_pareto(const uint64_t nsamples,const double a, const double b)
 {
     printf("\nQuality testing Pareto distribution, shape %g, scale %g\n", a, b);
     QTEST_PREPARE();
@@ -546,13 +549,13 @@ static void test_quality_pareto(const double a, const double b)
     const double kurt = (a > 3.0) ? 6.0 * ( a * a * a + a * a - 6.0 * a - 2.0)
                                         / (a * (a - 3.0) * (a - 4)) : HUGE_VAL;
 
-    print_expected(MAX_ITER, (a > 1.0), mean, (a > 2.0),var,(a > 3.0), skew, (a > 3.0), kurt);
+    print_expected(nsamples, (a > 1.0), mean, (a > 2.0),var,(a > 3.0), skew, (a > 3.0), kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_beta(const double a, const double b, const double l, const double r)
+static void test_quality_beta(const uint64_t nsamples,const double a, const double b, const double l, const double r)
 {
     printf("\nQuality testing beta distribution, shape %g, scale %g, left %g, right %g\n", a, b, l, r);
     QTEST_PREPARE();
@@ -564,14 +567,14 @@ static void test_quality_beta(const double a, const double b, const double l, co
     const double kurt = 6.0 * ((a - b) * (a - b) * (a + b + 1.0) - a * b * (a + b + 2.0))
                             / (a * b * (a + b + 2.0) * (a + b + 3.0));
 
-    print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true, var,true, skew, true, kurt);
 
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_std_beta(const double a, const double b)
+static void test_quality_std_beta(const uint64_t nsamples,const double a, const double b)
 {
     printf("\nQuality testing beta distribution, shape %g, scale %g\n", a, b);
     QTEST_PREPARE();
@@ -583,13 +586,13 @@ static void test_quality_std_beta(const double a, const double b)
     const double kurt = 6.0 * ((a - b) * (a - b) * (a + b + 1.0) - a * b * (a + b + 2.0))
                             / (a * b * (a + b + 2.0) * (a + b + 3.0));
 
-    print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_PERT(const double left, const double mode, const double right)
+static void test_quality_PERT(const uint64_t nsamples,const double left, const double mode, const double right)
 {
     printf("\nQuality testing PERT distribution, left %g, mode %g, right %g\n", left, mode, right);
     QTEST_PREPARE();
@@ -611,25 +614,25 @@ static void test_quality_PERT(const double left, const double mode, const double
                                    - alpha * beta * (alpha + beta + 2.0))
                             / (alpha * beta * (alpha + beta + 2.0) * (alpha + beta + 3.0));
 
-    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_chisquare(const double v)
+static void test_quality_chisquare(const uint64_t nsamples, const double v)
 {
     printf("\nQuality testing chisquare distribution, v %g\n", v);
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_chisquared(v));
 
-    print_expected(MAX_ITER, true, v, true, 2.0 * v,
+    print_expected(nsamples, true, v, true, 2.0 * v,
                                  true, sqrt(8.0 / v), true, 12.0 / v);
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_f_dist(const double a, const double b) {
+static void test_quality_f_dist(const uint64_t nsamples, const double a, const double b) {
     printf("\nQuality testing f distribution, a %g, b %g\n", a, b);
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_F_dist(a, b));
@@ -639,13 +642,13 @@ static void test_quality_f_dist(const double a, const double b) {
     const double skew = (b > 6.0) ? ((2.0 * a + b - 2.0) * sqrt(8.0 * (b - 4.0)))
                                     / ((b - 6.0) * sqrt(a * (a + b - 2.0))) : HUGE_VAL;
 
-    print_expected(MAX_ITER, (b > 2.0), mean, (b > 4.0),var,(b > 6.0), skew, false, 0.0);
+    print_expected(nsamples, (b > 2.0), mean, (b > 4.0),var,(b > 6.0), skew, false, 0.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_std_t_dist(const double v)
+static void test_quality_std_t_dist(const uint64_t nsamples, const double v)
 {
     printf("\nQuality testing Student's t distribution, v %g\n", v);
     QTEST_PREPARE();
@@ -656,13 +659,13 @@ static void test_quality_std_t_dist(const double v)
     const double skew = (v > 3.0) ? 0.0 : HUGE_VAL;
     const double kurt = (v > 4.0) ? 6.0 / (v - 4.0) : HUGE_VAL;
 
-    print_expected(MAX_ITER, (v > 1.0), mean, (v > 2.0),var,(v > 3.0), skew, (v > 4.0), kurt);
+    print_expected(nsamples, (v > 1.0), mean, (v > 2.0),var,(v > 3.0), skew, (v > 4.0), kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_t_dist(const double m, const double s, const double v)
+static void test_quality_t_dist(const uint64_t nsamples, const double m, const double s, const double v)
 {
     printf("\nQuality testing t distribution, m %g, s %g, v %g,\n", m, s, v);
     QTEST_PREPARE();
@@ -671,13 +674,13 @@ static void test_quality_t_dist(const double m, const double s, const double v)
     const double mean = (v > 1.0) ? m : HUGE_VAL;
     const double var = (v > 2.0) ? (s * s * v) / (v - 2.0) : HUGE_VAL;
 
-    print_expected(MAX_ITER, (v > 1.0), mean, (v > 2.0),var,false, 0.0, false, 0.0);
+    print_expected(nsamples, (v > 1.0), mean, (v > 2.0),var,false, 0.0, false, 0.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_rayleigh(const double s)
+static void test_quality_rayleigh(const uint64_t nsamples, const double s)
 {
     printf("\nQuality testing Rayleigh distribution, s %g\n", s);
     QTEST_PREPARE();
@@ -688,14 +691,14 @@ static void test_quality_rayleigh(const double s)
     const double skew = 2.0 * sqrt(M_PI) * (M_PI - 3.0) / pow((4.0 - M_PI), 1.5);
     const double kurt = -(6.0 * M_PI * M_PI - 24.0 * M_PI + 16.0) / ((4.0 - M_PI) * (4.0 - M_PI));
 
-    print_expected(MAX_ITER, true, mean, true, var, true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
 
-static void test_quality_flip(void)
+static void test_quality_flip(const uint64_t nsamples)
 {
     printf("\nQuality testing unbiased coin flip, p = 0.5\n");
     QTEST_PREPARE();
@@ -706,13 +709,13 @@ static void test_quality_flip(void)
     const double skew = 0.0;
     const double kurt = (1.0 - 6.0 * 0.5 * 0.5) / (0.5 * 0.5);
 
-    print_expected(MAX_ITER, true, mean, true, var, true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_bernoulli(const double p)
+static void test_quality_bernoulli(const uint64_t nsamples, const double p)
 {
     printf("\nQuality testing biased Bernoulli trials, p = %g\n", p);
     QTEST_PREPARE();
@@ -724,13 +727,13 @@ static void test_quality_bernoulli(const double p)
     const double skew = (q - p) / sqrt(p * q);
     const double kurt = (1.0 - 6.0 * p * q) / (p * q);
 
-    print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_geometric(const double p)
+static void test_quality_geometric(const uint64_t nsamples, const double p)
 {
     printf("\nQuality testing geometric distribution, p = %g\n", p);
     QTEST_PREPARE();
@@ -742,13 +745,13 @@ static void test_quality_geometric(const double p)
     const double skew = (q - p) / sqrt(p * q);
     const double kurt = (1.0 - 6.0 * p * q) / (p * q);
 
-    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_binomial(const unsigned n, const double p)
+static void test_quality_binomial(const uint64_t nsamples, const unsigned n, const double p)
 {
     printf("\nQuality testing binomial distribution, n = %d, p = %g\n", n, p);
     QTEST_PREPARE();
@@ -760,13 +763,13 @@ static void test_quality_binomial(const unsigned n, const double p)
     const double skew = (q - p) / sqrt(n * p * q);
     const double kurt = (1.0 - 6.0 * p * q) / (n * p * q);
 
-    print_expected(MAX_ITER, true, mean, true, var,true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_pascal(const unsigned m, const double p)
+static void test_quality_pascal(const uint64_t nsamples, const unsigned m, const double p)
 {
     printf("\nQuality testing negative binomial (Pascal) distribution, m = %d, p = %g\n", m, p);
     QTEST_PREPARE();
@@ -778,43 +781,43 @@ static void test_quality_pascal(const unsigned m, const double p)
     const double skew = (2.0 - p) / sqrt(q * (double)m);
     const double kurt = 6.0 / (double)m + (p * p) / (q * (double)m);
 
-    print_expected(MAX_ITER, true, mean, true, var, true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_poisson(const double r)
+static void test_quality_poisson(const uint64_t nsamples, const double r)
 {
     printf("\nQuality testing Poisson distribution, r = %g\n", r);
     QTEST_PREPARE();
     QTEST_EXECUTE((double)cmb_random_poisson(r));
 
-    print_expected(MAX_ITER, true, r, true, r, true, 1.0 / sqrt(r), true, 1.0 / r);
+    print_expected(nsamples, true, r, true, r, true, 1.0 / sqrt(r), true, 1.0 / r);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_dice(const long a, const long b)
+static void test_quality_dice(const uint64_t nsamples, const long a, const long b)
 {
     printf("\nQuality testing dice (discrete uniform) distribution, a = %ld, b = %ld\n", a, b);
     QTEST_PREPARE();
     QTEST_EXECUTE((double)cmb_random_dice(a, b));
 
-    const double mean = (a + b) / 2.0;
-    const double var = ((b - a + 1) * (b - a + 1) - 1.0) / 12.0;
+    const double mean = (double)(a + b) / 2.0;
+    const double var = ((double)(b - a + 1) * (double)(b - a + 1) - 1.0) / 12.0;
     const double skew = 0.0;
     const double n = (double)(b - a + 1);
     const double kurt = - (6.0 *(n * n  + 1.0)) / (5.0 * ((n * n - 1.0)));
 
-    print_expected(MAX_ITER, true, mean, true,var,true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void print_discrete_expects(const unsigned n, const double pa[n])
+static void print_discrete_expects(const uint64_t nsamples, const unsigned n, const double pa[n])
 {
     double m1 = 0.0;
     double m2 = 0.0;
@@ -844,38 +847,38 @@ static void print_discrete_expects(const unsigned n, const double pa[n])
         kurt = mu4 / (var * var) - 3.0;
     }
 
-    print_expected(MAX_ITER, true, mean, true, var, has_skew, skew, has_kurt, kurt);
+    print_expected(nsamples, true, mean, true, var, has_skew, skew, has_kurt, kurt);
 }
 
-static void test_quality_loaded_dice(const unsigned n, double pa[n])
+static void test_quality_loaded_dice(const uint64_t nsamples, const unsigned n, double pa[n])
 {
     printf("\nQuality testing loaded dice distribution, n = %u\n", n);
     QTEST_PREPARE();
     QTEST_EXECUTE((double)cmb_random_loaded_dice(n, pa));
 
-    print_discrete_expects(n, pa);
+    print_discrete_expects(nsamples, n, pa);
 
     QTEST_REPORT();
     QTEST_FINISH();
 }
 
-static void test_quality_vose_alias(const unsigned n, const double pa[n])
+static void test_quality_vose_alias(const uint64_t nsamples, const unsigned n, const double pa[n])
 {
     printf("\nQuality testing vose alias sampling, n = %u\n", n);
     QTEST_PREPARE();
     struct cmb_random_alias *alp = cmb_random_alias_create(n, pa);
     QTEST_EXECUTE((double)cmb_random_alias_sample(alp));
 
-    print_discrete_expects(n, pa);
+    print_discrete_expects(nsamples, n, pa);
 
     QTEST_REPORT();
     cmb_random_alias_destroy(alp);
     QTEST_FINISH();
 }
 
-static void test_speed_vose_alias(const unsigned init, const unsigned end, const unsigned step)
+static void test_speed_vose_alias(const uint64_t nsamples, const unsigned init, const unsigned end, const unsigned step)
 {
-    printf("\nSpeed testing vose alias sampling, %" PRIu64 " samples\n", MAX_ITER);
+    printf("\nSpeed testing vose alias sampling, %" PRIu64 " samples\n", nsamples);
     printf("Iterations per second (ips)\n");
     printf("n\tips simple\tips alias\tspeedup\n");
     for (unsigned n = init; n <= end; n += step) {
@@ -892,7 +895,7 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
         }
 
         const clock_t cs_simple = clock();
-        for (unsigned ui = 0; ui < MAX_ITER; ui++) {
+        for (unsigned ui = 0; ui < nsamples; ui++) {
             (void)cmb_random_loaded_dice(n, pa);
         }
 
@@ -900,7 +903,7 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
 
         const clock_t cs_alias = clock();
         struct cmb_random_alias *alp = cmb_random_alias_create(n, pa);
-        for (unsigned i = 0; i < MAX_ITER; i++) {
+        for (unsigned i = 0; i < nsamples; i++) {
             (void)cmb_random_alias_sample(alp);
         }
 
@@ -909,9 +912,9 @@ static void test_speed_vose_alias(const unsigned init, const unsigned end, const
         free(pa);
 
         const double t_simple = (double)(ce_simple - cs_simple) / CLOCKS_PER_SEC;
-        const double ips_simple = MAX_ITER / t_simple;
+        const double ips_simple = (double)nsamples / t_simple;
         const double t_alias = (double)(ce_alias - cs_alias) / CLOCKS_PER_SEC;
-        const double ips_alias = MAX_ITER / t_alias;
+        const double ips_alias = (double)nsamples / t_alias;
         const double speedup = (ips_alias - ips_simple) / ips_simple;
         printf("%u\t%9.4g\t%9.4g\t%8.4g%%\n", n, ips_simple, ips_alias, 100.0 * speedup);
     }
@@ -923,12 +926,26 @@ int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
     uint64_t seed = test_getsetseed();
+    uint64_t nsamples = 10000000;
 
     int opt;
-    while ((opt = getopt(argc, argv, "s:t")) != -1) {
+    while ((opt = getopt(argc, argv, "n:s:t")) != -1) {
         switch (opt) {
+            case 'n':
+                errno = 0;
+                nsamples = (uint64_t)strtoul(optarg, NULL, 0);
+                if (errno != 0 || nsamples == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
+                break;
             case 's':
+                errno = 0;
                 seed = (uint64_t)strtoul(optarg, NULL, 0);
+                if (errno != 0 || seed == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
                 break;
             case 't':
                 timing_enabled = true;
@@ -951,74 +968,76 @@ int main(const int argc, char *argv[])
     cmi_test_print_line("*");
     printf("Using seed: 0x%" PRIx64 "\n", seed);
 
-    test_quality_random();
-    test_quality_uniform(-1.0, 2.0);
-    test_quality_triangular(-1.0, 2.0, 3.0);
+    test_quality_random(nsamples);
+    test_quality_uniform(nsamples, -1.0, 2.0);
+    test_quality_triangular(nsamples, -1.0, 2.0, 3.0);
 
-    test_quality_std_normal();
-    test_quality_normal(2.0, 1.0);
-    test_speed_normal(2.0, 1.0);
+    test_quality_std_normal(nsamples);
+    test_quality_normal(nsamples, 2.0, 1.0);
+    test_speed_normal(nsamples, 2.0, 1.0);
 
-    test_quality_std_exponential();
-    test_quality_exponential(2.0);
-    test_speed_exponential(2.0);
+    test_quality_std_exponential(nsamples);
+    test_quality_exponential(nsamples, 2.0);
+    test_speed_exponential(nsamples, 2.0);
 
-    test_quality_erlang(5, 1.0);
+    test_quality_erlang(nsamples, 5, 1.0);
 
     const double m[4] = { 1.0, 2.0, 4.0, 8.0 };
-    test_quality_hypoexponential(4, m);
+    test_quality_hypoexponential(nsamples, 4, m);
 
     const double p[4] = { 0.1, 0.2, 0.3, 0.4 };
-    test_quality_hyperexponential(4, m, p);
+    test_quality_hyperexponential(nsamples, 4, m, p);
 
-    test_quality_weibull(2.0, 3.0);
+    test_quality_weibull(nsamples, 2.0, 3.0);
 
-    test_quality_gamma(3.0, 0.5);
-    test_quality_gamma(1.0, 1.0);
-    test_quality_gamma(0.5, 2.0);
+    test_quality_gamma(nsamples, 3.0, 0.5);
+    test_quality_gamma(nsamples, 1.0, 1.0);
+    test_quality_gamma(nsamples, 0.5, 2.0);
 
-    test_quality_lognormal(1.0, 0.5);
-    test_quality_logistic(1.0, 0.5);
-    test_quality_cauchy(1.0, 0.5);
+    test_quality_lognormal(nsamples, 1.0, 0.5);
+    test_quality_logistic(nsamples, 1.0, 0.5);
+    test_quality_cauchy(nsamples, 1.0, 0.5);
 
-    test_quality_std_beta(2.0, 5.0);
-    test_quality_beta(2.0, 5.0, 0.0, 1.0);
-    test_quality_beta(0.5, 2.0, 0.0, 1.0);
-    test_quality_beta(0.5, 0.5, 2.0, 5.0);
-    test_quality_PERT(2.0, 5.0, 10.0);
-    test_quality_pareto(3.0, 2.0);
+    test_quality_std_beta(nsamples, 2.0, 5.0);
+    test_quality_beta(nsamples, 2.0, 5.0, 0.0, 1.0);
+    test_quality_beta(nsamples, 0.5, 2.0, 0.0, 1.0);
+    test_quality_beta(nsamples, 0.5, 0.5, 2.0, 5.0);
+    test_quality_PERT(nsamples, 2.0, 5.0, 10.0);
+    test_quality_pareto(nsamples, 3.0, 2.0);
 
-    test_quality_chisquare(4);
-    test_quality_f_dist(3.0, 5.0);
-    test_quality_std_t_dist(3.0);
-    test_quality_t_dist(1.0, 2.0, 3.0);
-    test_quality_rayleigh(1.5);
+    test_quality_chisquare(nsamples, 4);
+    test_quality_f_dist(nsamples, 3.0, 5.0);
+    test_quality_std_t_dist(nsamples, 3.0);
+    test_quality_t_dist(nsamples, 1.0, 2.0, 3.0);
+    test_quality_rayleigh(nsamples, 1.5);
 
     printf("************************* Integer-valued distributions *************************\n");
 
-    test_quality_flip();
-    test_quality_bernoulli(0.6);
-    test_quality_geometric(0.1);
-    test_quality_binomial(10, 0.1);
-    test_quality_pascal(10, 0.1);
-    test_quality_poisson(10.0);
+    test_quality_flip(nsamples);
+    test_quality_bernoulli(nsamples, 0.6);
+    test_quality_geometric(nsamples, 0.1);
+    test_quality_binomial(nsamples, 10, 0.1);
+    test_quality_pascal(nsamples, 10, 0.1);
+    test_quality_poisson(nsamples, 10.0);
 
-    test_quality_dice(1, 6);
+    test_quality_dice(nsamples, 1, 6);
 
     double q[7] = { 0.05, 0.05, 0.1, 0.1, 0.2, 0.2, 0.3 };
-    test_quality_loaded_dice(7, q);
-    test_quality_vose_alias(7, q);
-    test_speed_vose_alias(5, 50, 5);
+    test_quality_loaded_dice(nsamples, 7, q);
+    test_quality_vose_alias(nsamples, 7, q);
+    test_speed_vose_alias(nsamples, 5, 50, 5);
 
     cmb_random_terminate();
 
     cmi_test_print_line("*");
 
-    struct timespec end_time;
-    clock_gettime(CLOCK_MONOTONIC, &end_time);
-    double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
-    elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
-    printf("It took %g sec\n", elapsed);
+    if (timing_enabled) {
+        struct timespec end_time;
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
+        elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
+        printf("It took %g sec\n", elapsed);
+    }
 
     return 0;
 }
