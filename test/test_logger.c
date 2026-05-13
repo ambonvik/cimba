@@ -129,8 +129,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    const clock_t start_time = clock();
-
     test_logger(seed);
 
     /* If we got here, something failed */
