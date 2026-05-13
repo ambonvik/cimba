@@ -4,7 +4,6 @@ project('cimba', 'c',
         version : '3.0.0',
         default_options : [
             'warning_level=3',
-            'c_std=c23',
             'buildtype=release'
         ]
 )
@@ -19,7 +18,6 @@ add_languages('nasm', required : true, native : true)
 # DNMXCSR turns off saving and restoring the MXCSR floating point
 #         state / control register in all context switches.
 cc = meson.get_compiler('c')
-
 # Flags common to all build types
 common_flags = [
     '-Wno-pedantic',
@@ -27,6 +25,14 @@ common_flags = [
     '-fno-semantic-interposition',
     '-DNMXCSR',
 ]
+
+if cc.has_argument('-std=c23')
+    common_flags += '-std=c23'
+elif cc.has_argument('-std=c2x')
+    common_flags += '-std=c2x'
+else
+    error('Compiler does not support C23/C2x standard')
+endif
 
 # Flags per build type
 # 'debug'    : full asserts and logging, no optimization
