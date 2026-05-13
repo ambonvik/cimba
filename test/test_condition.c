@@ -161,7 +161,7 @@ void *tide_proc(struct cmb_process *me, void *vctx)
         const double da3 = 0.25 * sin(2.0 * M_PI * t / (0.5 * 29.5 * 24));
         const double da = da0 + da1 + da2 + da3;
 
-        /* Use wind speed as a proxy for air pressure, assume on a west coast */
+        /* Use wind speed as a proxy for air pressure, assume a west coast */
         const double dw1 = 0.5 * env->wind_magnitude;
         const double dw2 = 0.5 * env->wind_magnitude
                          * sin(env->wind_direction * M_PI / 180.0);

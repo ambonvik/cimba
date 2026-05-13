@@ -59,7 +59,7 @@ void cnclevtfunc(void *sub, void *obj)
      }
 }
 
-void *procfunc1(struct cmb_process *me, void *ctx)
+void *preemptable(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
     cmb_unused(ctx);
@@ -81,7 +81,7 @@ void *procfunc1(struct cmb_process *me, void *ctx)
     }
 }
 
-void *procfunc2(struct cmb_process *me, void *ctx)
+void *preempter(struct cmb_process *me, void *ctx)
 {
     struct cmb_process *tgt = (struct cmb_process *)ctx;
 
@@ -150,8 +150,8 @@ void test_process(uint64_t seed)
     struct cmb_process *cpp2 = cmb_process_create();
     cmb_assert_always(cpp2 != NULL);
     printf("cmb_process_initialize ...\n");
-    cmb_process_initialize(cpp1, "Testproc", procfunc1, NULL, 0);
-    cmb_process_initialize(cpp2,"Nuisance", procfunc2, cpp1, 1);
+    cmb_process_initialize(cpp1, "Testproc", preemptable, NULL, 0);
+    cmb_process_initialize(cpp2,"Nuisance", preempter, cpp1, 1);
 
     printf("cmb_process_start ...\n");
     cmb_process_start(cpp1);
