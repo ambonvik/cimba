@@ -159,6 +159,7 @@ extern uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
  * @param dsp Pointer to a dataset object.
  * @return The number of data values in the data set.
  */
+[[maybe_unused]]
 static inline uint64_t cmb_dataset_count(const struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
@@ -173,6 +174,7 @@ static inline uint64_t cmb_dataset_count(const struct cmb_dataset *dsp)
  * @param dsp Pointer to a dataset object.
  * @return The minimum data value in the data set, `DBL_MAX` if no data yet.
  */
+[[maybe_unused]]
 static inline double cmb_dataset_min(const struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
@@ -187,6 +189,7 @@ static inline double cmb_dataset_min(const struct cmb_dataset *dsp)
  * @param dsp Pointer to a dataset object.
  * @return The maximum data value in the data set, `-DBL_MAX` if no data yet.
  */
+[[maybe_unused]]
 static inline double cmb_dataset_max(const struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);

@@ -146,8 +146,9 @@ extern uint64_t cmb_priorityqueue_position(struct cmb_priorityqueue *pqp,
  * @memberof cmb_priorityqueue
  * @param pqp Pointer to an object queue
  * @param handle Handle of the object to reprioritize
- * @param priority New priority for the object
+ * @return true if found, false if not
  */
+[[maybe_unused]]
 static inline bool cmb_priorityqueue_cancel(struct cmb_priorityqueue *pqp,
                                             const uint64_t handle)
 {
@@ -167,6 +168,7 @@ static inline bool cmb_priorityqueue_cancel(struct cmb_priorityqueue *pqp,
  * @param handle Handle of the object to reprioritize
  * @param priority New priority for the object
  */
+[[maybe_unused]]
 static inline void cmb_priorityqueue_reprioritize(struct cmb_priorityqueue *pqp,
                                                   const uint64_t handle,
                                                   const int64_t priority)
@@ -184,6 +186,7 @@ static inline void cmb_priorityqueue_reprioritize(struct cmb_priorityqueue *pqp,
  * @param pqp Pointer to an object queue
  * @return A null-terminated string containing the name of the object queue.
  */
+[[maybe_unused]]
 static inline const char *cmb_priorityqueue_name(struct cmb_priorityqueue *pqp)
 {
     cmb_assert_debug(pqp != NULL);
@@ -201,6 +204,7 @@ static inline const char *cmb_priorityqueue_name(struct cmb_priorityqueue *pqp)
  * @param pqp Pointer to an object queue
  * @return The current queue length
  */
+[[maybe_unused]]
 static inline uint64_t cmb_priorityqueue_length(struct cmb_priorityqueue *pqp)
 {
     cmb_assert_debug(pqp != NULL);
@@ -216,6 +220,7 @@ static inline uint64_t cmb_priorityqueue_length(struct cmb_priorityqueue *pqp)
  * @param pqp Pointer to an object queue
  * @return The available space in the queue
  */
+[[maybe_unused]]
 static inline uint64_t cmb_priorityqueue_space(struct cmb_priorityqueue *pqp)
 {
     cmb_assert_release(pqp != NULL);

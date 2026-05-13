@@ -26,8 +26,6 @@
 #ifndef CIMBA_CMB_ASSERT_H
 #define CIMBA_CMB_ASSERT_H
 
-#include "cmi_config.h"
-
 /**
  * @brief The function that reports and aborts when a `cmb_assert_*`is
  * triggered.
@@ -36,11 +34,11 @@
  * function, and you will be able to see the call stack and variable
  * values at that point.
  */
+[[noreturn]]
 extern void cmi_assert_failed(const char *sourcefile,
                               const char *func,
                               int line,
-                              const char *condition)
-                                      __attribute__((noreturn));
+                              const char *condition);
 
 #ifndef NASSERT
     #ifndef NDEBUG
@@ -86,11 +84,6 @@ extern void cmi_assert_failed(const char *sourcefile,
 /**
  * @brief Macro to suppress "unused argument" compiler warning for functions
  * where some generic argument is intentionally unused in that instance.
- *
- * `__attribute__ ((unused))` could be used instead, but it is a GCC extension,
- * not portable. In C23 `[[maybe_unused]]` will also do the trick.
- * Cimba is written in C17 and avoids C23 innovations until more widely
- * supported by compilers.
  *
  * Placed in this header file because it typically will be used together with
  * the precondition asserts at the start of a function.

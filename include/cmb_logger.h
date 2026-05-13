@@ -42,8 +42,6 @@
 #ifndef CIMBA_CMB_LOGGER_H
 #define CIMBA_CMB_LOGGER_H
 
-#include <inttypes.h>
-#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 
