@@ -1,0 +1,3 @@
+Diagnostics:
+  Suppress:
+    - unused-local-typedef
