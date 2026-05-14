@@ -31,7 +31,7 @@ if cc.has_argument('-std=c23')
 elif cc.has_argument('-std=c2x')
     common_flags += '-std=c2x'
 else
-    error('Compiler does not support C23/C2x standard')
+    warning('Compiler does not support C23/C2x standard')
 endif
 
 # Flags per build type
