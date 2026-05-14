@@ -7,7 +7,7 @@
  * Some alternative implementations of certain distributions in this
  * file for performance comparison purposes, e.g. Box Muller normal.
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,6 @@
 #include "cmb_dataset.h"
 #include "cmb_random.h"
 
-/* Utilities for the testing */
 #include "test.h"
 
 /* Test macros */
@@ -46,10 +45,12 @@
     struct cmb_dataset ds = { 0 }; \
     cmb_dataset_initialize(&ds)
 
-#define QTEST_EXECUTE(DUT) \
+#define QTEST_EXECUTE(DUT, ASRT) \
     printf("Drawing %" PRIu64 " samples...\n", nsamples); \
     for (uint32_t ui = 0; ui < nsamples; ui++) { \
-        cmb_dataset_add(&ds, DUT); \
+        const double x = (DUT); \
+        cmb_assert_always((ASRT)); \
+        cmb_dataset_add(&ds, x); \
     }
 
 #define QTEST_REPORT() \
@@ -123,6 +124,7 @@ static void test_quality_random(uint64_t nsamples)
     double moment_r[MOMENTS] = { 0.0 };
     for (uint64_t ui = 0; ui < nsamples; ui++) {
         const double xi = cmb_random();
+        cmb_assert_always(((xi >= 0.0) && (xi <= 1.0)));
         cmb_dataset_add(&ds, xi);
 
         double xij = xi;
@@ -155,7 +157,7 @@ static void test_quality_uniform(uint64_t nsamples, const double a, const double
 {
     printf("\nQuality testing cmb_random_uniform(%g,%g)\n", a, b);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_uniform(a, b));
+    QTEST_EXECUTE(cmb_random_uniform(a, b), (x >= a) && (x <= b));
 
     const double var = (b - a) * (b - a) / 12;
 
@@ -169,7 +171,7 @@ static void test_quality_std_exponential(uint64_t nsamples)
 {
     printf("\nQuality testing standard exponential distribution, mean = 1\n");
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_std_exponential());
+    QTEST_EXECUTE(cmb_random_std_exponential(), x >= 0.0);
 
     print_expected(nsamples, true, 1.0, true, 1.0, true, 2.0, true, 6.0);
 
@@ -222,7 +224,7 @@ static void test_quality_exponential(uint64_t nsamples, const double m)
 {
     printf("\nQuality testing exponential distribution, mean = %f\n", m);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_exponential(m));
+    QTEST_EXECUTE(cmb_random_exponential(m), x >= 0.0);
 
     print_expected(nsamples, true, m, true, m * m, true, 2.0, true, 6.0);
 
@@ -332,7 +334,7 @@ static void test_quality_normal(uint64_t nsamples, const double m, const double 
 {
     printf("\nQuality testing normal distribution, mean = %f, sigma = %f\n", m, s);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_normal(m, s));
+    QTEST_EXECUTE(cmb_random_normal(m, s), true);
 
     print_expected(nsamples, true, m, true, s * s, true, 0.0, true, 0.0);
 
@@ -372,7 +374,7 @@ static void test_quality_triangular(uint64_t nsamples, const double a, const dou
 {
     printf("\nQuality testing cmb_random_triangular(%g, %g, %g)\n", a, b, c);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_triangular(a, b, c));
+    QTEST_EXECUTE(cmb_random_triangular(a, b, c), (x >= a) && (x <= c));
 
     const double mean = (a + b + c) / 3.0;
     const double g = (a * a) + (b * b) + (c * c) - (a * b) - (a * c) - (b * c);
@@ -390,7 +392,7 @@ static void test_quality_erlang(uint64_t nsamples, const unsigned k, const doubl
 {
     printf("\nQuality testing cmb_random_erlang(%u, %g)\n", k, m);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_erlang(k, m));
+    QTEST_EXECUTE(cmb_random_erlang(k, m), x >= 0.0);
 
     print_expected(nsamples, true, k * m, true, k * m * m, true, 2.0 / sqrt((double)k), true, 6.0 / (double)k);
 
@@ -407,7 +409,7 @@ static void test_quality_hypoexponential(uint64_t nsamples, const unsigned k, co
     printf("%g]\n", m[k-1]);
 
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_hypoexponential(k, m));
+    QTEST_EXECUTE(cmb_random_hypoexponential(k, m), x >= 0.0);
 
     double msum = 0.0;
     double msumsq = 0.0;
@@ -440,7 +442,7 @@ static void test_quality_hyperexponential(const uint64_t nsamples,
     printf("%g]\n", p[k-1]);
 
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_hyperexponential(k, m, p));
+    QTEST_EXECUTE(cmb_random_hyperexponential(k, m, p), x >= 0.0);
 
     double msum = 0.0;
     double msumsq = 0.0;
@@ -463,7 +465,7 @@ static void test_quality_weibull(const uint64_t nsamples,
 {
     printf("\nQuality testing cmb_random_weibull(%g, %g)\n", shape, scale);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_weibull(shape, scale));
+    QTEST_EXECUTE(cmb_random_weibull(shape, scale), x >= 0.0);
 
     const double z = tgamma(1.0 + 1.0 / shape);
     const double mean = scale * z;
@@ -481,7 +483,7 @@ static void test_quality_lognormal(const uint64_t nsamples,const double m, const
 {
     printf("\nQuality testing log-normal distribution, m %g, s %g\n", m, s);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_lognormal(m, s));
+    QTEST_EXECUTE(cmb_random_lognormal(m, s), x >= 0.0);
 
     const double mean = exp(m + 0.5 * s * s);
     const double var = (exp(s * s) - 1.0) * exp(2 * m + s * s);
@@ -498,7 +500,7 @@ static void test_quality_logistic(const uint64_t nsamples,const double m, const 
 {
     printf("\nQuality testing logistic distribution, m %g, s %g\n", m, s);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_logistic(m, s));
+    QTEST_EXECUTE(cmb_random_logistic(m, s), true);
 
     const double var = s * s * M_PI * M_PI / 3.0;
 
@@ -512,7 +514,7 @@ static void test_quality_cauchy(const uint64_t nsamples,const double m, const do
 {
     printf("\nQuality testing cauchy distribution, m %g, s %g\n", m, s);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_cauchy(m, s));
+    QTEST_EXECUTE(cmb_random_cauchy(m, s), true);
 
     print_expected(nsamples, false, 0.0, false,0.0,false, 0.0, false, 0.0);
 
@@ -524,7 +526,7 @@ static void test_quality_gamma(const uint64_t nsamples,const double shape, const
 {
     printf("\nQuality testing gamma distribution, shape %g, scale %g\n", shape, scale);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_gamma(shape, scale));
+    QTEST_EXECUTE(cmb_random_gamma(shape, scale), x >= 0.0);
 
     const double mean = shape * scale;
     const double var = shape * scale * scale;
@@ -541,7 +543,7 @@ static void test_quality_pareto(const uint64_t nsamples,const double a, const do
 {
     printf("\nQuality testing Pareto distribution, shape %g, scale %g\n", a, b);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_pareto(a, b));
+    QTEST_EXECUTE(cmb_random_pareto(a, b), x >= b);
 
     const double mean = (a > 1.0) ? (a * b / (a - 1.0)) : HUGE_VAL;
     const double var = (a > 2.0) ? ((a * b * b) / ((a - 1.0) * (a - 1.0) * (a - 2.0))) : HUGE_VAL;
@@ -559,7 +561,7 @@ static void test_quality_beta(const uint64_t nsamples,const double a, const doub
 {
     printf("\nQuality testing beta distribution, shape %g, scale %g, left %g, right %g\n", a, b, l, r);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_beta(a, b, l, r));
+    QTEST_EXECUTE(cmb_random_beta(a, b, l, r), (x >= l) && (x <= r));
 
     const double mean = l + (r - l) * (a / (a + b));
     const double var = ((r - l) * (r - l) * (a * b)) / ((a + b) * (a + b) * (a + b + 1));
@@ -578,7 +580,7 @@ static void test_quality_std_beta(const uint64_t nsamples,const double a, const 
 {
     printf("\nQuality testing beta distribution, shape %g, scale %g\n", a, b);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_std_beta(a, b));
+    QTEST_EXECUTE(cmb_random_std_beta(a, b), (x >= 0.0) && (x <= 1.0));
 
     const double mean = a / (a + b);
     const double var = (a * b) / ((a + b) * (a + b) * (a + b + 1));
@@ -596,7 +598,7 @@ static void test_quality_PERT(const uint64_t nsamples,const double left, const d
 {
     printf("\nQuality testing PERT distribution, left %g, mode %g, right %g\n", left, mode, right);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_PERT(left, mode, right));
+    QTEST_EXECUTE(cmb_random_PERT(left, mode, right), (x >= left) && (x <= right));
 
     const double a = left;
     const double b = mode;
@@ -624,7 +626,7 @@ static void test_quality_chisquare(const uint64_t nsamples, const double v)
 {
     printf("\nQuality testing chisquare distribution, v %g\n", v);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_chisquared(v));
+    QTEST_EXECUTE(cmb_random_chisquared(v), x >= 0.0);
 
     print_expected(nsamples, true, v, true, 2.0 * v,
                                  true, sqrt(8.0 / v), true, 12.0 / v);
@@ -635,7 +637,7 @@ static void test_quality_chisquare(const uint64_t nsamples, const double v)
 static void test_quality_f_dist(const uint64_t nsamples, const double a, const double b) {
     printf("\nQuality testing f distribution, a %g, b %g\n", a, b);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_F_dist(a, b));
+    QTEST_EXECUTE(cmb_random_F_dist(a, b), x >= 0.0);
 
     const double mean = (b > 2.0) ? b / (b - 2.0) : HUGE_VAL;
     const double var = (b > 4.0) ? (2.0 * (b * b) * (a + b - 2.0)) / (a * (b - 2) * (b - 2) * (b - 4.0)) : HUGE_VAL;
@@ -652,7 +654,7 @@ static void test_quality_std_t_dist(const uint64_t nsamples, const double v)
 {
     printf("\nQuality testing Student's t distribution, v %g\n", v);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_std_t_dist(v));
+    QTEST_EXECUTE(cmb_random_std_t_dist(v), true);
 
     const double mean = (v > 1.0) ? 0.0 : HUGE_VAL;
     const double var = (v > 2.0) ? (v / (v - 2)) : HUGE_VAL;
@@ -669,7 +671,7 @@ static void test_quality_t_dist(const uint64_t nsamples, const double m, const d
 {
     printf("\nQuality testing t distribution, m %g, s %g, v %g,\n", m, s, v);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_t_dist(m, s, v));
+    QTEST_EXECUTE(cmb_random_t_dist(m, s, v), true);
 
     const double mean = (v > 1.0) ? m : HUGE_VAL;
     const double var = (v > 2.0) ? (s * s * v) / (v - 2.0) : HUGE_VAL;
@@ -684,7 +686,7 @@ static void test_quality_rayleigh(const uint64_t nsamples, const double s)
 {
     printf("\nQuality testing Rayleigh distribution, s %g\n", s);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_rayleigh(s));
+    QTEST_EXECUTE(cmb_random_rayleigh(s), x >= 0.0);
 
     const double mean = s * sqrt(0.5 * M_PI);
     const double var = 0.5 * (4.0 - M_PI) * s * s;
@@ -702,7 +704,7 @@ static void test_quality_flip(const uint64_t nsamples)
 {
     printf("\nQuality testing unbiased coin flip, p = 0.5\n");
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_flip());
+    QTEST_EXECUTE((double)cmb_random_flip(), (x == 0) || (x == 1));
 
     const double mean = 0.5;
     const double var = 0.5 * 0.5;
@@ -719,7 +721,7 @@ static void test_quality_bernoulli(const uint64_t nsamples, const double p)
 {
     printf("\nQuality testing biased Bernoulli trials, p = %g\n", p);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_bernoulli(p));
+    QTEST_EXECUTE((double)cmb_random_bernoulli(p), (x == 0) || (x == 1));
 
     const double mean = p;
     const double q = 1.0 - p;
@@ -737,7 +739,7 @@ static void test_quality_geometric(const uint64_t nsamples, const double p)
 {
     printf("\nQuality testing geometric distribution, p = %g\n", p);
     QTEST_PREPARE();
-    QTEST_EXECUTE(cmb_random_geometric(p));
+    QTEST_EXECUTE((double)cmb_random_geometric(p), x >= 1);
 
     const double mean = 1.0 / p;
     const double q = 1.0 - p;
@@ -755,7 +757,7 @@ static void test_quality_binomial(const uint64_t nsamples, const unsigned n, con
 {
     printf("\nQuality testing binomial distribution, n = %d, p = %g\n", n, p);
     QTEST_PREPARE();
-    QTEST_EXECUTE((double)cmb_random_binomial(n, p));
+    QTEST_EXECUTE((double)cmb_random_binomial(n, p), x >= 0);
 
     const double mean = n * p;
     const double q = 1.0 - p;
@@ -773,7 +775,7 @@ static void test_quality_pascal(const uint64_t nsamples, const unsigned m, const
 {
     printf("\nQuality testing negative binomial (Pascal) distribution, m = %d, p = %g\n", m, p);
     QTEST_PREPARE();
-    QTEST_EXECUTE((double)cmb_random_pascal(m, p));
+    QTEST_EXECUTE((double)cmb_random_pascal(m, p), x >= 0);
 
     const double q = 1.0 - p;
     const double mean = (double)m * q / p;
@@ -791,7 +793,7 @@ static void test_quality_poisson(const uint64_t nsamples, const double r)
 {
     printf("\nQuality testing Poisson distribution, r = %g\n", r);
     QTEST_PREPARE();
-    QTEST_EXECUTE((double)cmb_random_poisson(r));
+    QTEST_EXECUTE((double)cmb_random_poisson(r), x >= 0);
 
     print_expected(nsamples, true, r, true, r, true, 1.0 / sqrt(r), true, 1.0 / r);
 
@@ -803,7 +805,7 @@ static void test_quality_dice(const uint64_t nsamples, const long a, const long 
 {
     printf("\nQuality testing dice (discrete uniform) distribution, a = %ld, b = %ld\n", a, b);
     QTEST_PREPARE();
-    QTEST_EXECUTE((double)cmb_random_dice(a, b));
+    QTEST_EXECUTE((double)cmb_random_dice(a, b), (x >= a) && (x <= b));
 
     const double mean = (double)(a + b) / 2.0;
     const double var = ((double)(b - a + 1) * (double)(b - a + 1) - 1.0) / 12.0;
@@ -854,7 +856,7 @@ static void test_quality_loaded_dice(const uint64_t nsamples, const unsigned n, 
 {
     printf("\nQuality testing loaded dice distribution, n = %u\n", n);
     QTEST_PREPARE();
-    QTEST_EXECUTE((double)cmb_random_loaded_dice(n, pa));
+    QTEST_EXECUTE((double)cmb_random_loaded_dice(n, pa), (x >= 0) && (x <= (n - 1)));
 
     print_discrete_expects(nsamples, n, pa);
 
@@ -867,7 +869,7 @@ static void test_quality_vose_alias(const uint64_t nsamples, const unsigned n, c
     printf("\nQuality testing vose alias sampling, n = %u\n", n);
     QTEST_PREPARE();
     struct cmb_random_alias *alp = cmb_random_alias_create(n, pa);
-    QTEST_EXECUTE((double)cmb_random_alias_sample(alp));
+    QTEST_EXECUTE((double)cmb_random_alias_sample(alp), (x >= 0) && (x <= (n - 1)));
 
     print_discrete_expects(nsamples, n, pa);
 
