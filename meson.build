@@ -69,6 +69,9 @@ elif get_option('benchopt') == 'use'
 endif
 
 if host_machine.system() == 'linux'
+    # The initial-exec model is faster than the default global-dynamic for TLS
+    # access  and is safe as long as the library is loaded at program startup
+    # (i.e. linked directly, not via dlopen at runtime).
     desired_flags += ['-ftls-model=initial-exec',
                       '-flto=auto',
                       '-fuse-linker-plugin'
