@@ -212,10 +212,10 @@ python = find_program('python3', required: true)
 test('stochastic',
      python,
      args: [
-         meson.source_root() / 'test' / 'tools' / 'test_stochastic.py',
+         meson.project_source_root() / 'test' / 'tools' / 'test_stochastic.py',
          '--build-dir', meson.current_build_dir() ,
      ],
      timeout: 600,
-     workdir: meson.source_root(),
+     workdir: meson.project_source_root(),
 )
 
