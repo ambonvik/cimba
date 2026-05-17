@@ -205,3 +205,17 @@ test_resourcepool = executable('test_resourcepool',
 )
 
 test('resourcepool', test_resourcepool)
+
+# Stochastic regression tests (seed-fixed, reference output comparison)
+python = find_program('python3', required: true)
+
+test('stochastic',
+     python,
+     args: [
+         meson.source_root() / 'test' / 'tools' / 'test_stochastic.py',
+         '--build-dir', meson.current_build_dir() ,
+     ],
+     timeout: 600,
+     workdir: meson.source_root(),
+)
+

@@ -102,18 +102,6 @@ static void print_expected(const uint64_t n,
 
 /**** Start of test scripts ****/
 
-static uint64_t test_getsetseed(void)
-{
-    printf("Getting hardware entropy seed ... ");
-    const uint64_t seed = cmb_random_hwseed();
-    printf("%#" PRIx64 "\n", seed);
-    cmb_random_initialize(seed);
-    /* Just clear it again, will set it again in the next test */
-    cmb_random_terminate();
-
-    return seed;
-}
-
 static void test_quality_random(uint64_t nsamples)
 {
     printf("\nQuality testing basic random number generator cmb_random(), uniform on [0,1]\n");
@@ -927,7 +915,8 @@ static void test_speed_vose_alias(const uint64_t nsamples, const unsigned init, 
 int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
-    uint64_t seed = test_getsetseed();
+    bool fixed_seed = false;
+    uint64_t seed = cmb_random_hwseed();
     uint64_t nsamples = 10000000;
 
     int opt;
@@ -944,6 +933,7 @@ int main(const int argc, char *argv[])
             case 's':
                 errno = 0;
                 seed = (uint64_t)strtoul(optarg, NULL, 0);
+                fixed_seed = true;
                 if (errno != 0 || seed == 0u) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
@@ -976,11 +966,16 @@ int main(const int argc, char *argv[])
 
     test_quality_std_normal(nsamples);
     test_quality_normal(nsamples, 2.0, 1.0);
-    test_speed_normal(nsamples, 2.0, 1.0);
+    if (fixed_seed == false) {
+        /* Probably trying to compare outputs, and this one is not deterministic */
+        test_speed_normal(nsamples, 2.0, 1.0);
+    }
 
     test_quality_std_exponential(nsamples);
     test_quality_exponential(nsamples, 2.0);
-    test_speed_exponential(nsamples, 2.0);
+    if (fixed_seed == false) {
+         test_speed_exponential(nsamples, 2.0);
+    }
 
     test_quality_erlang(nsamples, 5, 1.0);
 
@@ -1027,7 +1022,9 @@ int main(const int argc, char *argv[])
     double q[7] = { 0.05, 0.05, 0.1, 0.1, 0.2, 0.2, 0.3 };
     test_quality_loaded_dice(nsamples, 7, q);
     test_quality_vose_alias(nsamples, 7, q);
-    test_speed_vose_alias(nsamples, 5, 50, 5);
+    if (fixed_seed == false) {
+        test_speed_vose_alias(nsamples, 5, 50, 5);
+    }
 
     cmb_random_terminate();
 
