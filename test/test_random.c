@@ -924,7 +924,7 @@ int main(const int argc, char *argv[])
         switch (opt) {
             case 'n':
                 errno = 0;
-                nsamples = (uint64_t)strtoul(optarg, NULL, 0);
+                nsamples = (uint64_t)strtoull(optarg, NULL, 0);
                 if (errno != 0 || nsamples == 0u) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
@@ -932,7 +932,7 @@ int main(const int argc, char *argv[])
                 break;
             case 's':
                 errno = 0;
-                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                seed = (uint64_t)strtoull(optarg, NULL, 0);
                 fixed_seed = true;
                 if (errno != 0 || seed == 0u) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);

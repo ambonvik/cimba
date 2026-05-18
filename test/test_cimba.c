@@ -346,7 +346,7 @@ int main(const int argc, char **argv)
                 break;
             case 's':
                 errno = 0;
-                seed = (uint64_t)strtoul(optarg, NULL, 0);
+                seed = (uint64_t)strtoull(optarg, NULL, 0);
                 if (errno != 0 || seed == 0u) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
@@ -464,7 +464,7 @@ int main(const int argc, char **argv)
     if (plot_graphics) {
         /* Pop up the Gnuplot graphics window before exiting */
         write_gnuplot_commands(ncvs, cvs);
-        system("gnuplot -persistent test_cimba.gp");
+        (void)system("gnuplot -persistent test_cimba.gp");
     }
 
     cmi_test_print_line("*");
