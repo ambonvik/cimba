@@ -155,7 +155,10 @@ void *tide_proc(struct cmb_process *me, void *vctx)
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         /* A simple tide model with astronomical and weather-driven tides */
-        const double t = cmb_time();
+        const double t_raw = cmb_time();
+        const double period_month = 0.5 * 29.5 * 24.0;
+        const double t = fmod(t_raw, period_month);  /* keeps argument small */
+
         const double da0 = 15.0;
         const double da1 = 1.0 * sin(2.0 * M_PI * t / 12.4);
         const double da2 = 0.5 * sin(2.0 * M_PI * t / 24.0);
