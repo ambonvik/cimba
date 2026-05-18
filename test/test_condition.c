@@ -85,6 +85,7 @@ struct trial {
 /* A ship is a derived class from cmb_process */
 struct ship {
     struct cmb_process core;       /* <= Note: The real thing, not a pointer */
+    uint64_t id;
     double max_wind;
     double min_depth;
     unsigned tugs;
@@ -346,6 +347,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
         /* Remember to zero-initialize it if malloc'ing on your own! */
         memset(shp, 0, sizeof(struct ship));
 
+        shp->id = ++cnt;
         /* We started the ship size enum from 0 to match array indexes. If we
          * had more size classes, we could use cmb_random_dice(0, n) instead. */
         shp->size = cmb_random_bernoulli(p_large);
@@ -366,7 +368,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
         char namebuf[20];
         const int r = snprintf(namebuf, sizeof(namebuf),
                          "Ship_%04" PRIu64 "%s",
-                         ++cnt, ((shp->size == SMALL) ? "_small" : "_large"));
+                         cnt, ((shp->size == SMALL) ? "_small" : "_large"));
         cmb_assert_always((r >= 0) && (r < (int)sizeof(namebuf)) && (namebuf[r] == '\0'));
         cmb_process_initialize((struct cmb_process *)shp, namebuf, ship_proc, vctx, 0);
         cmb_assert_always(cmb_process_status((struct cmb_process *)shp) == CMB_PROCESS_CREATED);
