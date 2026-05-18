@@ -106,16 +106,20 @@ def normalise(raw: bytes) -> list[str]:
 
 def run_binary(test: StochasticTest) -> tuple[int, bytes, bytes]:
     env = os.environ.copy()
-    if sys.platform == "win32":
-        # Add the build directory to PATH so libcimba.dll can be found
-        dll_dir = str(BUILD_DIR.parent / "src")
-        env["PATH"] = dll_dir + os.pathsep + env.get("PATH", "")
+
+    # Check for .dll rather than sys.platform, since MSYS2 Python
+    # reports sys.platform as 'msys' not 'win32'
+    dll_path = BUILD_DIR.parent / "src" / "libcimba-1.dll"
+    if dll_path.exists():
+        env["PATH"] = str(dll_path.parent) + os.pathsep + env.get("PATH", "")
+
     try:
         result = subprocess.run(
             test.argv(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=test.timeout,
+            env=env,
         )
         return result.returncode, result.stdout, result.stderr
     except FileNotFoundError:
@@ -124,7 +128,6 @@ def run_binary(test: StochasticTest) -> tuple[int, bytes, bytes]:
     except subprocess.TimeoutExpired:
         print(fail(f"  [ERROR] Timed out after {test.timeout}s"))
         return -1, b"", b""
-
 
 def diff_lines(expected: list[str], actual: list[str]) -> list[str]:
     """
