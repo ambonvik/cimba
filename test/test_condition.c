@@ -249,10 +249,8 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     /* Note ourselves as active */
     cmb_logger_user(stdout, USERFLAG1, "Ship %s arrives", me->name);
     const double t_arr = cmb_time();
-    const uint64_t hndl = (uint64_t)shp;
-    cmb_assert_always(hndl != 0u);
     cmi_hashheap_enqueue(sim->active_ships, shp,
-                         NULL, NULL, NULL, hndl, t_arr, 0u);
+                         NULL, NULL, NULL, shp->id, t_arr, 0u);
 
     /* Wait for suitable conditions to dock */
     int64_t sig = 0;
@@ -297,7 +295,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     cmb_resourcepool_release(sim->tugs, shp->tugs);
 
     /* One pass process, remove ourselves from the active set */
-    const bool found = cmi_hashheap_remove(sim->active_ships, hndl);
+    const bool found = cmi_hashheap_remove(sim->active_ships, shp->id);
     cmb_assert_always(found);
     /* List ourselves as departed instead */
     cmi_slist_push(sim->departed_ships, &(shp->listhead));
