@@ -8,7 +8,7 @@ Create a fourth process trying to preempt the resource
 Schedule end event
 Execute simulation
 --------------------------------------------------------------------------------
-    6.4576	Target_2	preemptable (72):  Someone stole Resource_1 from me, signal -1
+    6.3280	Target_3	preemptable (72):  Someone stole Resource_1 from me, signal -1
     25.000	dispatcher	end_sim_evt (44):  ===> end_sim: game over <===
     25.000	dispatcher	end_sim_evt (46):  Stopping process Target_1
     25.000	dispatcher	end_sim_evt (46):  Stopping process Target_2

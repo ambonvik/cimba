@@ -10,7 +10,7 @@ Schedule end event
 Execute simulation...
 Report statistics...
 Queue lengths for Queue:
-N  5688771  Mean    5.013  StdDev    1.544  Variance    2.383  Skewness -0.01306  Kurtosis    5.789
+N  5689021  Mean    5.008  StdDev    1.543  Variance    2.380  Skewness -0.006541  Kurtosis    5.798
 --------------------------------------------------------------------------------
 ( -Infinity,      0.000)   |
 [     0.000,      1.000)   |#################################################=

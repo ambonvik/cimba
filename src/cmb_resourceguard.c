@@ -60,6 +60,9 @@ struct observer_tag {
 CMB_THREAD_LOCAL struct cmi_mempool observer_tagpool
     = CMI_MEMPOOL_STATIC_INIT(sizeof(struct observer_tag), 16u);
 
+/* Counter for assigning hash map handles and ensuring FIFO order */
+static CMB_THREAD_LOCAL uint64_t enqueue_seq = 0u;
+
 /*
  * guard_queue_check - Test if heap_tag *a should go before *b. If so, return true.
  * Ranking higher priority (rank_d64) before lower, FIFO based on entry time,
@@ -132,15 +135,16 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
 
     const double entry_time = cmb_time();
     const int64_t priority = cmb_process_priority(pp);
+    const uint64_t hash_key = ++enqueue_seq;
     const uint64_t key = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
                                               (void *)pp,
                                               (void *)demand,
                                               (void *)ctx,
                                               NULL,
-                                              (uint64_t)pp,
+                                              hash_key,
                                               entry_time,
                                               priority);
-    cmb_assert_debug(key == (uint64_t)pp);
+
     cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_RESOURCE, rgp);
     cmb_logger_info(stdout, "Waits for %s", rgp->guarded_resource->name);
 
