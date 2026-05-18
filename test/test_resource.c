@@ -32,7 +32,7 @@
 
 #include "test.h"
 
-#define USERFLAG1 0x00000001
+#define USERFLAG 0x00000001
 
 static void end_sim_evt(void *subject, void *object)
 {
@@ -41,9 +41,9 @@ static void end_sim_evt(void *subject, void *object)
 
     struct cmb_process **cpp = subject;
     const uint64_t n = (uint64_t)object;
-    cmb_logger_info(stdout, "===> end_sim: game over <===");
+    cmb_logger_user(stdout, USERFLAG, "===> end_sim: game over <===");
     for (unsigned ui = 0; ui < n; ui++) {
-        cmb_logger_info(stdout, "Stopping process %s", cpp[ui]->name);
+        cmb_logger_user(stdout, USERFLAG, "Stopping process %s", cpp[ui]->name);
         const int64_t r = cmb_process_stop(cpp[ui], NULL);
         cmb_assert_always(r == CMB_PROCESS_SUCCESS);
         cmb_assert_always(cmb_process_status(cpp[ui]) == CMB_PROCESS_FINISHED);
@@ -69,7 +69,7 @@ void *preemptable(struct cmb_process *me, void *ctx)
             }
             else {
                 cmb_assert_always(cmb_resource_held_by_process(rp, me) == 0u);
-                cmb_logger_user(stdout, USERFLAG1,
+                cmb_logger_user(stdout, USERFLAG,
                                 "Someone stole %s from me, signal %" PRIi64,
                                 cmb_resource_name(rp),  sig);
             }
@@ -116,6 +116,7 @@ void test_resource(const uint64_t seed, const double dur)
     printf("Using seed: 0x%" PRIx64 "\n", seed);
 
     cmb_random_initialize(seed);
+    cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_event_queue_initialize(0.0);
 
     printf("Create a resource\n");

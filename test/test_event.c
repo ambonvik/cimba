@@ -34,13 +34,15 @@
 
 #include "test.h"
 
+#define USERFLAG 0x00000001
+
 /* Soon to be defined */
 static const char *event_formatter(cmb_event_func *a, const void *s, const void *o);
 
 /* An event: Prints a line of info and reschedules itself */
 static void test_action(void *subject, void *object)
 {
-    cmb_logger_info(stdout, "%s", event_formatter(test_action, subject, object));
+    cmb_logger_user(stdout, USERFLAG, "%s", event_formatter(test_action, subject, object));
     const uint64_t hdl = cmb_event_schedule(test_action, subject, object,
                                             cmb_time() + cmb_random_exponential(10),
                                             (int16_t)cmb_random_dice(1, 5));
@@ -50,8 +52,8 @@ static void test_action(void *subject, void *object)
 /* Another event: Closes the bar for good */
 static void end_sim(void *subject, void *object)
 {
-    cmb_logger_info(stdout, "%s", event_formatter(end_sim, subject, object));
-    cmb_logger_warning(stdout, "===> end_sim: game over <===");
+    cmb_logger_user(stdout, USERFLAG, "%s", event_formatter(end_sim, subject, object));
+    cmb_logger_user(stdout, USERFLAG, "===> end_sim: game over <===");
     cmb_event_queue_clear();
 }
 
@@ -87,6 +89,7 @@ void test_events(const uint64_t seed)
 {
     printf("Using seed: 0x%" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
+    cmb_logger_flags_off(CMB_LOGGER_INFO);
 
     cmi_test_print_line("-");
     printf("Testing event queue\n");

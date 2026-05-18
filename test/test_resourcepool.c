@@ -33,7 +33,7 @@
 #include "cmi_memutils.h"
 #include "test.h"
 
-#define USERFLAG1 0x00000001
+#define USERFLAG 0x0000000
 
 #define NUM_MICE 3u
 #define NUM_RATS 2u
@@ -53,7 +53,7 @@ static void end_sim_evt(void *subject, void *object)
     cmb_assert_release(object != NULL);
 
     struct simulation *tstexp = object;
-    cmb_logger_info(stdout, "===> end_sim: game over <===");
+    cmb_logger_user(stdout, USERFLAG, "===> end_sim: game over <===");
     for (unsigned ui = 0; ui < NUM_MICE; ui++) {
         const int64_t r = cmb_process_stop(tstexp->mice[ui], NULL);
         cmb_assert_always(r == CMB_PROCESS_SUCCESS);
@@ -81,7 +81,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
-        cmb_logger_user(stdout, USERFLAG1,
+        cmb_logger_user(stdout, USERFLAG,
                          "Own calc amount %" PRIu64 ", library calc %" PRIu64,
                          amount_held, cmb_resourcepool_held_by_process(sp, me));
         cmb_assert_debug(cmb_resourcepool_held_by_process(sp, me) == amount_held);
@@ -90,19 +90,19 @@ void *mousefunc(struct cmb_process *me, void *ctx)
         const int64_t pri = cmb_random_dice(-10, 10);
         cmb_assert_always((pri >= -10) && (pri <= 10));
         cmb_process_priority_set(me, pri);
-        cmb_logger_user(stdout, USERFLAG1, "Acquiring %" PRIu64, amount_req);
+        cmb_logger_user(stdout, USERFLAG, "Acquiring %" PRIu64, amount_req);
         int64_t sig = cmb_resourcepool_acquire(sp, amount_req);
-        cmb_logger_user(stdout, USERFLAG1, "Acquire returned signal %" PRIi64, sig);
+        cmb_logger_user(stdout, USERFLAG, "Acquire returned signal %" PRIi64, sig);
         if (sig == CMB_PROCESS_SUCCESS) {
             /* Acquire succeeded, got all we wanted */
             amount_held += amount_req;
             cmb_assert_always(cmb_resourcepool_held_by_process(sp, me) == amount_held);
             cmb_logger_user(stdout,
-                            USERFLAG1,
+                            USERFLAG,
                             "Success, new amount held: %" PRIu64,
                             amount_held);
             sig = cmb_process_hold(cmb_random_exponential(1.0));
-            cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
+            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %" PRIi64, sig);
 
             if (sig == CMB_PROCESS_SUCCESS) {
                 uint64_t amount_rel = cmb_random_dice(1, 10);
@@ -111,7 +111,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
                     amount_rel = amount_held;
                 }
                 cmb_logger_user(stdout,
-                                USERFLAG1,
+                                USERFLAG,
                                 "Holds %" PRIu64 ", releasing %" PRIu64,
                                 amount_held,
                                 amount_rel);
@@ -121,7 +121,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
             }
             else if (sig == CMB_PROCESS_PREEMPTED) {
                 cmb_logger_user(stdout,
-                                USERFLAG1,
+                                USERFLAG,
                                 "Someone stole all my %s from me!",
                                 cmb_resourcepool_get_name(sp));
                 amount_held = 0u;
@@ -129,7 +129,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
             }
             else {
                 cmb_logger_user(stdout,
-                                USERFLAG1,
+                                USERFLAG,
                                 "Interrupted by signal %" PRIi64,
                                 sig);
             }
@@ -137,7 +137,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
         else if (sig == CMB_PROCESS_PREEMPTED) {
             /* Acquire preempted, we lost everything */
             cmb_logger_user(stdout,
-                            USERFLAG1,
+                            USERFLAG,
                             "Preempted during acquire, all my %s is gone",
                             cmb_resourcepool_get_name(sp));
             amount_held = 0u;
@@ -146,13 +146,13 @@ void *mousefunc(struct cmb_process *me, void *ctx)
         else {
             /* Acquire interrupted */
             cmb_logger_user(stdout,
-                            USERFLAG1,
+                            USERFLAG,
                             "Interrupted by signal %" PRIi64,
                             sig);
         }
 
         cmb_logger_user(stdout,
-                        USERFLAG1,
+                        USERFLAG,
                         "Holding, amount held: %" PRIu64,
                         amount_held);
         cmb_assert_always(cmb_resourcepool_held_by_process(sp, me) == amount_held);
@@ -160,10 +160,10 @@ void *mousefunc(struct cmb_process *me, void *ctx)
         const double dt = cmb_random_exponential(1.0);
         cmb_assert_always(dt >= 0.0);
         sig = cmb_process_hold(dt);
-        cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
+        cmb_logger_user(stdout, USERFLAG, "Hold returned signal %" PRIi64, sig);
         if (sig == CMB_PROCESS_PREEMPTED) {
             cmb_logger_user(stdout,
-                            USERFLAG1,
+                            USERFLAG,
                             "Someone stole the rest of my %s, signal %" PRIi64,
                             cmb_resourcepool_get_name(sp), sig);
 
@@ -184,34 +184,34 @@ void *ratfunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
-        cmb_logger_user(stdout, USERFLAG1,
+        cmb_logger_user(stdout, USERFLAG,
                         "Own calc amount %" PRIu64 ", library calc %" PRIu64,
                         amount_held, cmb_resourcepool_held_by_process(sp, me));
         uint64_t calc_held = cmb_resourcepool_held_by_process(sp, me);
-        cmb_logger_user(stdout, USERFLAG1, "Reported %" PRIu64 " own calc %" PRIu64,
+        cmb_logger_user(stdout, USERFLAG, "Reported %" PRIu64 " own calc %" PRIu64,
                         calc_held, amount_held);
         cmb_assert_always(calc_held == amount_held);
 
         const uint64_t amount_req = cmb_random_dice(1, 10);
         cmb_assert_always((amount_req >= 1) && (amount_req <= 10));
-        cmb_logger_user(stdout, USERFLAG1, "Preempting %" PRIu64, amount_req);
+        cmb_logger_user(stdout, USERFLAG, "Preempting %" PRIu64, amount_req);
         int64_t sig = cmb_resourcepool_preempt(sp, amount_req);
-        cmb_logger_user(stdout, USERFLAG1, "Preempt returned signal %" PRIi64, sig);
+        cmb_logger_user(stdout, USERFLAG, "Preempt returned signal %" PRIi64, sig);
 
         if (sig == CMB_PROCESS_SUCCESS) {
             amount_held += amount_req;
             calc_held = cmb_resourcepool_held_by_process(sp, me);
-            cmb_logger_user(stdout, USERFLAG1, "Own calc amount %" PRIu64 " library calc %" PRIu64,
+            cmb_logger_user(stdout, USERFLAG, "Own calc amount %" PRIu64 " library calc %" PRIu64,
                             amount_held, calc_held);
             cmb_assert_always(calc_held == amount_held);
             cmb_logger_user(stdout,
-                            USERFLAG1,
+                            USERFLAG,
                             "Holding, amount held: %" PRIu64,
                             amount_held);
             const double dt = cmb_random_exponential(1.0);
             cmb_assert_always(dt >= 0.0);;
             sig = cmb_process_hold(dt);
-            cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
+            cmb_logger_user(stdout, USERFLAG, "Hold returned signal %" PRIi64, sig);
 
             if (sig == CMB_PROCESS_SUCCESS) {
                 uint64_t amount_rel = cmb_random_dice(1, 10);
@@ -220,7 +220,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
                 }
 
                 cmb_logger_user(stdout,
-                                USERFLAG1,
+                                USERFLAG,
                                 "Holds %" PRIu64 ", releasing %" PRIu64,
                                 amount_held,
                                 amount_rel);
@@ -229,41 +229,41 @@ void *ratfunc(struct cmb_process *me, void *ctx)
                 cmb_assert_always(cmb_resourcepool_held_by_process(sp, me) == amount_held);
             }
             else if (sig == CMB_PROCESS_PREEMPTED) {
-                cmb_logger_user(stdout, USERFLAG1,
+                cmb_logger_user(stdout, USERFLAG,
                                 "Someone stole my %s from me, signal %" PRIi64,
                                 cmb_resourcepool_get_name(sp), sig);
                 amount_held = 0u;
                 cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
             }
             else {
-                cmb_logger_user(stdout, USERFLAG1,
+                cmb_logger_user(stdout, USERFLAG,
                                 "Interrupted by signal %" PRIi64, sig);
             }
         }
         else if (sig == CMB_PROCESS_PREEMPTED) {
-            cmb_logger_user(stdout, USERFLAG1,
+            cmb_logger_user(stdout, USERFLAG,
                             "Preempted during own preempt, all my %s is gone",
                             cmb_resourcepool_get_name(sp));
             amount_held = 0u;
             cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
         }
         else {
-            cmb_logger_user(stdout, USERFLAG1,
+            cmb_logger_user(stdout, USERFLAG,
                             "Interrupted by signal %" PRIi64, sig);
         }
 
         cmb_logger_user(stdout,
-                        USERFLAG1,
+                        USERFLAG,
                         "Holding, amount held: %" PRIu64,
                         amount_held);
 
         const double dt = cmb_random_exponential(1.0);
         cmb_assert_always(dt >= 0.0);
         sig = cmb_process_hold(dt);
-        cmb_logger_user(stdout, USERFLAG1, "Hold returned signal %" PRIi64, sig);
+        cmb_logger_user(stdout, USERFLAG, "Hold returned signal %" PRIi64, sig);
         if (sig == CMB_PROCESS_PREEMPTED) {
             cmb_logger_user(stdout,
-                            USERFLAG1,
+                            USERFLAG,
                             "Someone stole the rest of my %s, signal %" PRIi64,
                             cmb_resourcepool_get_name(sp),
                             sig);
@@ -284,7 +284,7 @@ void *catfunc(struct cmb_process *me, void *ctx)
 
     // ReSharper disable once CppDFAEndlessLoop
     while (true) {
-        cmb_logger_user(stdout, USERFLAG1, "Looking for rodents");
+        cmb_logger_user(stdout, USERFLAG, "Looking for rodents");
         const double dt = cmb_random_exponential(1.0);
         cmb_assert_always(dt >= 0.0);
         int64_t sig = cmb_process_hold(dt);
@@ -294,7 +294,7 @@ void *catfunc(struct cmb_process *me, void *ctx)
         struct cmb_process *tgt = cpp[tgt_ind];
         cmb_assert_always(tgt != NULL);
         cmb_logger_user(stdout,
-                        USERFLAG1,
+                        USERFLAG,
                         "Chasing %s",
                         cmb_process_name(tgt));
 
@@ -307,8 +307,6 @@ void *catfunc(struct cmb_process *me, void *ctx)
 
 void test_pool(const uint64_t seed, const double dur)
 {
-    cmb_random_initialize(seed);
-
     cmi_test_print_line("*");
     printf("****************************   Testing pools   *****************************\n");
     cmi_test_print_line("*");
@@ -317,7 +315,8 @@ void test_pool(const uint64_t seed, const double dur)
     cmb_assert_always(pooltest != NULL);
     cmi_memset(pooltest, 0, sizeof(*pooltest));
 
-    // cmb_logger_flags_off(CMB_LOGGER_INFO);
+    cmb_random_initialize(seed);
+    cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_event_queue_initialize(0.0);
 
     printf("Create a pool\n");
