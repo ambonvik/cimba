@@ -118,7 +118,7 @@ void test_hashheap(uint64_t seed)
 
     while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {
         const double dcur = hhp->heap[0].rank_d64;
-        printf("Dequeued item: %p\n", item[0]);
+        printf("Dequeued item: 0x%" PRIXPTR "\n", (uintptr_t)item[0]);
         if (cmi_hashheap_count(hhp) > 0u) {
             void **nxtitem = cmi_hashheap_peek_item(hhp);
             cmb_assert_always(nxtitem != NULL);
@@ -176,7 +176,7 @@ void test_hashheap(uint64_t seed)
 
     void *val = (void *)0xc;
     const uint64_t uidx = cmi_hashheap_pattern_find(hhp, (void *)0xc, CMI_ANY_ITEM, CMI_ANY_ITEM, CMI_ANY_ITEM);
-    printf("Cancelling value %p (hash key %" PRIu64 ")\n", val, uidx);
+    printf("Cancelling value 0x%" PRIXPTR " (hash key %" PRIu64 ")\n", (uintptr_t)val, uidx);
     uint64_t n_found = cmi_hashheap_pattern_count(hhp, (void *)0xc, CMI_ANY_ITEM, CMI_ANY_ITEM, CMI_ANY_ITEM);
     cmb_assert_always(n_found == 1u);
     uint64_t n_cnsl = cmi_hashheap_pattern_cancel(hhp, (void *)0xc, CMI_ANY_ITEM, CMI_ANY_ITEM, CMI_ANY_ITEM);
@@ -187,14 +187,14 @@ void test_hashheap(uint64_t seed)
     cmi_hashheap_print(hhp, stdout, NULL);
 
     while ((item = cmi_hashheap_dequeue(hhp)) != NULL) {
-        printf("Dequeued item: %p\n", item[0]);
+        printf("Dequeued item: 0x%" PRIXPTR "\n", (uintptr_t)item[0]);
         const double dcur = hhp->heap[0].rank_d64;
         if (cmi_hashheap_count(hhp) > 0u) {
             void **nxtitem = cmi_hashheap_peek_item(hhp);
             cmb_assert_always(nxtitem != NULL);
             const double dnxt = cmi_hashheap_peek_drank(hhp);
             cmb_assert_always(dnxt >= dcur);
-            printf("Next item: %p\n", nxtitem[0]);
+            printf("Next item: 0x%" PRIXPTR "\n", (uintptr_t)nxtitem[0]);
         }
         else {
             printf("No more items\n");

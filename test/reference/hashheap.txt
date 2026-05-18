@@ -12,11 +12,11 @@ Pull an item
 Adding 5 items
 ------------------------------------- Heap -------------------------------------
 Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
-       1	       6	       0	 0.09784	     906	0x5	(nil)	(nil)	(nil)
-       2	       4	       0	  0.3633	     576	0x3	(nil)	(nil)	(nil)
-       3	       3	       0	  0.5374	     314	0x2	(nil)	(nil)	(nil)
-       4	       2	       0	  0.9382	     467	0x1	(nil)	(nil)	(nil)
-       5	       5	       0	  0.5479	     124	0x4	(nil)	(nil)	(nil)
+       1	       6	       0	 0.09784	     906	0x5	0x0	0x0	0x0
+       2	       4	       0	  0.3633	     576	0x3	0x0	0x0	0x0
+       3	       3	       0	  0.5374	     314	0x2	0x0	0x0	0x0
+       4	       2	       0	  0.9382	     467	0x1	0x0	0x0	0x0
+       5	       5	       0	  0.5479	     124	0x4	0x0	0x0	0x0
 --------------------------------------------------------------------------------
 Hash map inactive
 ------------------------------------- Hash -------------------------------------
@@ -46,16 +46,16 @@ Dequeued item: 0x1
 Adding 10 items, forcing a resizing ... 
 ------------------------------------- Heap -------------------------------------
 Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
-       1	      12	      13	 0.03374	     510	0xb	(nil)	(nil)	(nil)
-       2	      16	      28	  0.2294	     977	0xf	(nil)	(nil)	(nil)
-       3	       7	      10	 0.06223	     724	0x6	(nil)	(nil)	(nil)
-       4	      15	       8	  0.5122	     140	0xe	(nil)	(nil)	(nil)
-       5	      10	       5	  0.3716	     279	0x9	(nil)	(nil)	(nil)
-       6	       9	      17	  0.5166	     789	0x8	(nil)	(nil)	(nil)
-       7	      13	       1	  0.4807	     557	0xc	(nil)	(nil)	(nil)
-       8	      14	      20	  0.7869	      89	0xd	(nil)	(nil)	(nil)
-       9	       8	      30	  0.6972	     588	0x7	(nil)	(nil)	(nil)
-      10	      11	      25	  0.6704	     477	0xa	(nil)	(nil)	(nil)
+       1	      12	      13	 0.03374	     510	0xB	0x0	0x0	0x0
+       2	      16	      28	  0.2294	     977	0xF	0x0	0x0	0x0
+       3	       7	      10	 0.06223	     724	0x6	0x0	0x0	0x0
+       4	      15	       8	  0.5122	     140	0xE	0x0	0x0	0x0
+       5	      10	       5	  0.3716	     279	0x9	0x0	0x0	0x0
+       6	       9	      17	  0.5166	     789	0x8	0x0	0x0	0x0
+       7	      13	       1	  0.4807	     557	0xC	0x0	0x0	0x0
+       8	      14	      20	  0.7869	      89	0xD	0x0	0x0	0x0
+       9	       8	      30	  0.6972	     588	0x7	0x0	0x0	0x0
+      10	      11	      25	  0.6704	     477	0xA	0x0	0x0	0x0
 --------------------------------------------------------------------------------
 Hash map active
 ------------------------------------- Hash -------------------------------------
@@ -97,14 +97,14 @@ Removing hash keys 8u and 10u
 Reprioritizing hash key 9u
 ------------------------------------- Heap -------------------------------------
 Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
-       1	      12	      13	 0.03374	     510	0xb	(nil)	(nil)	(nil)
-       2	      16	      28	  0.2294	     977	0xf	(nil)	(nil)	(nil)
-       3	       7	      10	 0.06223	     724	0x6	(nil)	(nil)	(nil)
-       4	      15	       8	  0.5122	     140	0xe	(nil)	(nil)	(nil)
-       5	      11	      25	  0.6704	     477	0xa	(nil)	(nil)	(nil)
-       6	       9	      17	   100.0	      10	0x8	(nil)	(nil)	(nil)
-       7	      13	       1	  0.4807	     557	0xc	(nil)	(nil)	(nil)
-       8	      14	      20	  0.7869	      89	0xd	(nil)	(nil)	(nil)
+       1	      12	      13	 0.03374	     510	0xB	0x0	0x0	0x0
+       2	      16	      28	  0.2294	     977	0xF	0x0	0x0	0x0
+       3	       7	      10	 0.06223	     724	0x6	0x0	0x0	0x0
+       4	      15	       8	  0.5122	     140	0xE	0x0	0x0	0x0
+       5	      11	      25	  0.6704	     477	0xA	0x0	0x0	0x0
+       6	       9	      17	   100.0	      10	0x8	0x0	0x0	0x0
+       7	      13	       1	  0.4807	     557	0xC	0x0	0x0	0x0
+       8	      14	      20	  0.7869	      89	0xD	0x0	0x0	0x0
 --------------------------------------------------------------------------------
 Hash map active
 ------------------------------------- Hash -------------------------------------
@@ -142,16 +142,16 @@ Hash idx	Hash key	Heap idx
       31	       0	       0
       32	       0	       0
 --------------------------------------------------------------------------------
-Cancelling value 0xc (hash key 13)
+Cancelling value 0xC (hash key 13)
 ------------------------------------- Heap -------------------------------------
 Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
-       1	      12	      13	 0.03374	     510	0xb	(nil)	(nil)	(nil)
-       2	      16	      28	  0.2294	     977	0xf	(nil)	(nil)	(nil)
-       3	       7	      10	 0.06223	     724	0x6	(nil)	(nil)	(nil)
-       4	      15	       8	  0.5122	     140	0xe	(nil)	(nil)	(nil)
-       5	      11	      25	  0.6704	     477	0xa	(nil)	(nil)	(nil)
-       6	       9	      17	   100.0	      10	0x8	(nil)	(nil)	(nil)
-       7	      14	      20	  0.7869	      89	0xd	(nil)	(nil)	(nil)
+       1	      12	      13	 0.03374	     510	0xB	0x0	0x0	0x0
+       2	      16	      28	  0.2294	     977	0xF	0x0	0x0	0x0
+       3	       7	      10	 0.06223	     724	0x6	0x0	0x0	0x0
+       4	      15	       8	  0.5122	     140	0xE	0x0	0x0	0x0
+       5	      11	      25	  0.6704	     477	0xA	0x0	0x0	0x0
+       6	       9	      17	   100.0	      10	0x8	0x0	0x0	0x0
+       7	      14	      20	  0.7869	      89	0xD	0x0	0x0	0x0
 --------------------------------------------------------------------------------
 Hash map active
 ------------------------------------- Hash -------------------------------------
@@ -189,17 +189,17 @@ Hash idx	Hash key	Heap idx
       31	       0	       0
       32	       0	       0
 --------------------------------------------------------------------------------
-Dequeued item: 0xb
+Dequeued item: 0xB
 Next item: 0x6
 Dequeued item: 0x6
-Next item: 0xf
-Dequeued item: 0xf
-Next item: 0xe
-Dequeued item: 0xe
-Next item: 0xa
-Dequeued item: 0xa
-Next item: 0xd
-Dequeued item: 0xd
+Next item: 0xF
+Dequeued item: 0xF
+Next item: 0xE
+Dequeued item: 0xE
+Next item: 0xA
+Dequeued item: 0xA
+Next item: 0xD
+Dequeued item: 0xD
 Next item: 0x8
 Dequeued item: 0x8
 No more items

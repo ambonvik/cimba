@@ -845,7 +845,9 @@ static const char *default_item_formatter(const void *val1,
 #define BUF_SIZE 128
     CMB_THREAD_LOCAL static char buf[BUF_SIZE];
 
-    const int r = snprintf(buf, BUF_SIZE, "%p\t%p\t%p\t%p", val1, val2, val3, val4);
+    const int r = snprintf(buf, BUF_SIZE,
+        "0x%" PRIXPTR "\t0x%" PRIXPTR "\t0x%" PRIXPTR "\t0x%" PRIXPTR,
+        (uintptr_t)val1, (uintptr_t)val2, (uintptr_t)val3, (uintptr_t)val4);
     cmb_assert_debug((r >= 0)&& (r < BUF_SIZE));
 
 #undef BUF_SIZE
