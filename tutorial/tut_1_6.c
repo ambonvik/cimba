@@ -233,7 +233,7 @@ int main(void)
     printf("It took %g sec\n", elapsed);
 
     write_gnuplot_commands();
-    system("gnuplot -persistent tut_1_6.gp");
+    (void)system("gnuplot -persistent tut_1_6.gp");
 
     return 0;
 }

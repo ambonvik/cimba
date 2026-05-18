@@ -243,10 +243,10 @@ int main(const int argc, char *argv[])
                 duration = (double)strtod(optarg, NULL);
                 break;
             case 'n':
-                n_reps = (unsigned)strtoul(optarg, NULL, 0);
+                n_reps = (unsigned)strtoull(optarg, NULL, 0);
                 break;
             case 's':
-                master_seed = (uint64_t)strtoul(optarg, NULL, 0);
+                master_seed = (uint64_t)strtoull(optarg, NULL, 0);
                 break;
             case 't':
                 timing_enabled = true;
@@ -325,7 +325,7 @@ int main(const int argc, char *argv[])
     }
 
     write_gnuplot_commands();
-    system("gnuplot -persistent tut_1_6.gp");
+    (void)system("gnuplot -persistent tut_1_6.gp");
 
     return 0;
 }
