@@ -392,7 +392,7 @@ bool is_departed(const struct cmb_condition *cvp,
     cmb_assert_always(sim != NULL);
 
     /* Simple: One or more ships in the list of departed ships */
-    return (sim->departed_ships != NULL);
+    return (cmi_slist_is_empty(sim->departed_ships) == false);
 }
 
 /* The departure process */
