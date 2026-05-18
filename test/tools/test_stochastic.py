@@ -108,7 +108,7 @@ def run_binary(test: StochasticTest) -> tuple[int, bytes, bytes]:
     env = os.environ.copy()
     if sys.platform == "win32":
         # Add the build directory to PATH so libcimba.dll can be found
-        dll_dir = str(BUILD_DIR.parent)   # build/test/../ = build/
+        dll_dir = str(BUILD_DIR.parent / "src")
         env["PATH"] = dll_dir + os.pathsep + env.get("PATH", "")
     try:
         result = subprocess.run(
