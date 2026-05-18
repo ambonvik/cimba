@@ -465,7 +465,7 @@ subject, object)`` to occur at a certain point in time with a certain priority, 
 can cancel a scheduled event, reschedule it, or change its priority by referring to its
 *handle*, but it is still not an object. It only exists inside the event queue until it
 occurs. In computer sciency terms, it could be considered
-[a closure](https://en.wikipedia.org/wiki/Closure_(computer_programming)).
+`a closure <https://en.wikipedia.org/wiki/Closure_(computer_programming)>`__
 
 The event queue also provides wildcard functions to search for, count, or cancel entries
 that match some combination of (action, subject, object). For this purpose,
