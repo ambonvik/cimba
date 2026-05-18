@@ -49,6 +49,11 @@ jobs:
           meson setup build
           meson compile -C build
 
+      - name: Find libcimba.dll
+        shell: msys2 {0}
+        run:
+          find build -name "*.dll" | sort
+        
       - name: Test
         shell: msys2 {0}
         run: meson test -C build --print-errorlogs --timeout-multiplier 5
