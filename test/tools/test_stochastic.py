@@ -66,8 +66,6 @@ TESTS: list[StochasticTest] = [
     StochasticTest(name="random",  binary="test_random",  seed=0x34f05c64d7ad598f, timeout=300),
     StochasticTest(name="resource", binary="test_resource", seed=0x34f05c64d7ad598f),
     StochasticTest(name="resourcepool", binary="test_resourcepool", seed=0x34f05c64d7ad598f),
-    # Add further stochastic tests here, e.g.:
-    # StochasticTest(name="arrival", binary="test_arrivals", seed=20240101),
 ]
 
 
