@@ -105,7 +105,11 @@ def normalise(raw: bytes) -> list[str]:
 
 
 def run_binary(test: StochasticTest) -> tuple[int, bytes, bytes]:
-    """Run the test binary and return (returncode, stdout_bytes, stderr_bytes)."""
+    env = os.environ.copy()
+    if sys.platform == "win32":
+        # Add the build directory to PATH so libcimba.dll can be found
+        dll_dir = str(BUILD_DIR.parent)   # build/test/../ = build/
+        env["PATH"] = dll_dir + os.pathsep + env.get("PATH", "")
     try:
         result = subprocess.run(
             test.argv(),
