@@ -135,7 +135,7 @@ int main(void)
         trl->sum_wait = 0.0;
     }
 
-    cimba_run_experiment(experiment,
+    cimba_run(experiment,
                          NUM_TRIALS,
                          sizeof(*experiment),
                          run_trial);
