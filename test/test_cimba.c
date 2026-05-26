@@ -401,11 +401,11 @@ int main(const int argc, char **argv)
     }
 
     printf("Baiting thread hooks\n");
-    cimba_set_thread_hooks(thread_init_func, NULL, thread_exit_func);
+    cimba_thread_hooks_set(thread_init_func, NULL, thread_exit_func);
 
     printf("Running experiment\n");
     cmi_test_print_line("-");
-    cimba_run_experiment(experiment,
+    cimba_run(experiment,
                          ntrials,
                          sizeof(*experiment),
                          run_mg1_trial);
