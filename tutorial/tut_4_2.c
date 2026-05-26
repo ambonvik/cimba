@@ -708,7 +708,7 @@ int main(void)
 
     printf("Configured %u trials\n", ui_trl);
     printf("Executing experiment\n");
-    cimba_run_experiment(experiment, n_trials, sizeof(*experiment), run_trial);
+    cimba_run(experiment, n_trials, sizeof(*experiment), run_trial);
 
     printf("Finished experiment, writing results to file\n");
     ui_trl = 0u;
