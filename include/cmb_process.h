@@ -440,6 +440,7 @@ static inline const char *cmb_process_name(const struct cmb_process *pp)
  *
  * @memberof cmb_process
  * @param pp Pointer to a process.
+ * @param name The new name to set.
  */
 extern void cmb_process_name_set(struct cmb_process *pp,
                                  const char *name);
