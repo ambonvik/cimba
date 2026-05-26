@@ -140,10 +140,22 @@ typedef void (cimba_trial_func)(void *trial_struct);
  *                        to be a pointer to the trial function to be executed
  *                        for that particular trial.
  */
-extern void cimba_run_experiment(void *your_experiment_array,
-                                 uint64_t num_trials,
-                                 size_t trial_struct_size,
-                                 cimba_trial_func *your_trial_func);
+extern void cimba_run(void *your_experiment_array,
+                      uint64_t num_trials,
+                      size_t trial_struct_size,
+                      cimba_trial_func *your_trial_func);
+
+/** @cond */
+/* Wrapper for deprecated long form */
+[[maybe_unused]]
+static inline void cimba_run_experiment(void *your_experiment_array,
+                                        uint64_t num_trials,
+                                        size_t trial_struct_size,
+                                        cimba_trial_func *your_trial_func)
+{
+    cimba_run(your_experiment_array,num_trials,trial_struct_size, your_trial_func);
+}
+/** @endcond */
 
 /**
 * @brief Defines a prototype for an optional user-provided function to execute
@@ -181,7 +193,7 @@ typedef void (cimba_thread_exit_func)(void *thrctx);
  * @param usrarg An argument to be passed to the initfunc
  * @param exitfunc A function to be called before exiting a pthread
  */
-extern void cimba_set_thread_hooks(cimba_thread_init_func *initfunc,
+extern void cimba_thread_hooks_set(cimba_thread_init_func *initfunc,
                                    void *usrarg,
                                    cimba_thread_exit_func *exitfunc);
 

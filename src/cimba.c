@@ -62,7 +62,7 @@ const char *cimba_version(void)
 }
 
 /* Set the initialization callback function */
-void cimba_set_thread_hooks(cimba_thread_init_func *initfunc,
+void cimba_thread_hooks_set(cimba_thread_init_func *initfunc,
                             void *usrarg,
                             cimba_thread_exit_func *exitfunc)
 {
@@ -140,7 +140,7 @@ static void *worker_thread_func(void *arg)
 }
 
 /*
- * cimba_run_experiment - The main simulation executive function. Initiates the
+ * cimba_experiment_run - The main simulation executive function. Initiates the
  * worker threads and waits for them to finish. That's all.
  *
  * The intended use case is to have only one instance of this function running
@@ -148,7 +148,7 @@ static void *worker_thread_func(void *arg)
  * we'll put in a mutex to protect it against hard-to-debug consequences of
  * unintentional misuse.
  */
-void cimba_run_experiment(void *your_experiment_array,
+void cimba_run(void *your_experiment_array,
                           const uint64_t num_trials,
                           const size_t trial_struct_size,
                           cimba_trial_func *your_trial_func)
