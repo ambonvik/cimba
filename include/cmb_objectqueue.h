@@ -192,7 +192,7 @@ static inline uint64_t cmb_objectqueue_space(struct cmb_objectqueue *oqp)
  *
  * @memberof cmb_objectqueue
  * @param oqp Pointer to an object queue
- * &param object Pointer to some object, possibly NULL
+ * @param object Pointer to some object, possibly NULL
  * @return The position of the object in the queue, zero if not found. Will return
  *         the first match (nearest to the front of the queue) if several matches.
  */
