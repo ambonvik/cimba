@@ -287,7 +287,7 @@ int main(const int argc, char *argv[])
     }
 
     printf("Executing experiment\n");
-    cimba_run_experiment(experiment, n_trials, sizeof(*experiment), run_MM1_trial);
+    cimba_run(experiment, n_trials, sizeof(*experiment), run_MM1_trial);
 
     printf("Finished experiment, writing results to file\n");
     ui_exp = 0u;
