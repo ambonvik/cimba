@@ -139,11 +139,13 @@ typedef void (cimba_trial_func)(void *trial_struct);
  *                        the first member of each trial struct will be assumed
  *                        to be a pointer to the trial function to be executed
  *                        for that particular trial.
+ * @return Number of failed trials terminated by cmb_logger_error, if any.
+ *         Return value zero indicates success, no trials failed.
  */
-extern void cimba_run(void *your_experiment_array,
-                      uint64_t num_trials,
-                      size_t trial_struct_size,
-                      cimba_trial_func *your_trial_func);
+extern uint64_t cimba_run(void *your_experiment_array,
+                          uint64_t num_trials,
+                          size_t trial_struct_size,
+                          cimba_trial_func *your_trial_func);
 
 /** @cond */
 /* Wrapper for deprecated long form */
@@ -205,6 +207,42 @@ extern void cimba_thread_hooks_set(cimba_thread_init_func *initfunc,
 *           possibly NULL if no such function has been called.
 */
 extern void *cimba_thread_context(void);
+
+/**
+* @brief Get the worker thread id for currently executing code.
+*
+* @return Cimba worker thread index, zero if running outside threads.
+*/
+extern uint64_t cimba_thread_id(void);
+
+/**
+* @brief Get the number of worker threads
+*
+* @return Number of worker threads (running or otherwise)
+*/
+extern uint32_t cimba_num_workers(void);
+
+/**
+* @brief Get the total number of trials in this experiment
+*
+* @return Number of trials (finished, running, or upcoming)
+*/
+extern uint64_t cimba_trials_total(void);
+
+/**
+* @brief Get the number of trials that have not yet been started
+*
+* @return Number of remaining trials
+*/
+extern uint64_t cimba_trials_remaining(void);
+
+/**
+* @brief Get the trial index for the currently executing trial
+*
+* @return Cimba trial index, zero if called outside a trial
+*/
+extern uint64_t cimba_trial_index(void);
+
 
 
 #endif // CIMBA_CIMBA_H
