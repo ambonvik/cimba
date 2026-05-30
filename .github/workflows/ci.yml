@@ -10,23 +10,51 @@ permissions:
   contents: read
 
 jobs:
-  # Linux Job
+  # Linux: build and test in both debug (all asserts live) and release
   linux-build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false            # let debug and release report independently
+      matrix:
+        buildtype: [debug, release]
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build python3-pip nasm meson
+          sudo apt-get install -y ninja-build nasm meson
       - name: Configure and Build
         run: |
-          meson setup build
+          meson setup build --buildtype=${{ matrix.buildtype }} -Denable_docs=false
           meson compile -C build
       - name: Test
         run: meson test -C build --print-errorlogs --timeout-multiplier 3
 
-  # Windows Job (MinGW)
+  # Linux: debug build under AddressSanitizer + UndefinedBehaviorSanitizer
+  linux-sanitizers:
+    runs-on: ubuntu-latest
+    env:
+      ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build nasm meson
+      - name: Configure (debug + ASan/UBSan)
+        run: >
+          meson setup build-asan
+          --buildtype=debug
+          -Db_sanitize=address,undefined
+          -Db_lundef=false
+          -Denable_docs=false
+      - name: Build
+        run: meson compile -C build-asan
+      - name: Test
+        run: meson test -C build-asan --print-errorlogs --timeout-multiplier 10
+
+  # Windows (MinGW) — unchanged
   windows-mingw-build:
     runs-on: windows-latest
     steps:
@@ -42,13 +70,11 @@ jobs:
             mingw-w64-x86_64-meson
             mingw-w64-x86_64-python-pip
             mingw-w64-x86_64-nasm
-
       - name: Configure and Build
         shell: msys2 {0}
         run: |
           meson setup build
           meson compile -C build
-
       - name: Test
         shell: msys2 {0}
         run: meson test -C build --print-errorlogs --timeout-multiplier 5
