@@ -139,6 +139,9 @@ struct cmi_coroutine {
     unsigned char *stack_base;
     cmi_coroutine_exit_func *cr_exit;
     void *exit_value;
+    void *tsan_fiber;
+    struct cmi_coroutine *reg_prev;
+    struct cmi_coroutine *reg_next;
 };
 
 /*
@@ -276,5 +279,16 @@ extern struct cmi_coroutine *cmi_coroutine_current(void);
  * NULL if it has not yet been created.
  */
 extern struct cmi_coroutine *cmi_coroutine_main(void);
+
+/*
+ * First-entry shim, called by the assembly trampoline (its R12 target).
+ */
+extern void *cmi_coroutine_launch(struct cmi_coroutine *cp, void *arg);
+
+/*
+ * Cleanup handler to be called on thread termination,
+ * will free() all still allocated stacks in this thread
+ */
+extern void cmi_coroutine_thread_cleanup(void *arg);
 
 #endif /* CIMBA_CMI_COROUTINE_H */

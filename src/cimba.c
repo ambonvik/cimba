@@ -27,6 +27,7 @@
 
 #include "cimba.h"
 
+#include "cmi_coroutine.h"
 #include "cmi_mempool.h"
 #include "cmi_memutils.h"
 
@@ -143,6 +144,7 @@ static void *worker_thread_func(void *arg)
 
     /* Make sure we free any thread local allocations before we exit */
     pthread_cleanup_push(cmi_mempool_cleanup, NULL);
+    pthread_cleanup_push(cmi_coroutine_thread_cleanup, NULL);
 
     /* Any user-defined cleanup needed? */
     pthread_cleanup_push(thread_exit_wrapper, cmi_thread_context);
@@ -185,6 +187,7 @@ static void *worker_thread_func(void *arg)
      }
 
     /* Made it this far, execute the cleanup functions before exiting */
+    pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
 
