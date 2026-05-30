@@ -1,23 +1,24 @@
 # main meson.build
 
-project('cimba', ['c', 'cuda'],
+project('cimba', ['c'],
         version : '3.0.0',
         default_options : [
             'warning_level=3',
             'buildtype=release',
             'c_std=c2x',
-            'cuda_std=c++17',
         ]
 )
 
 # We also need the portable Netwide Assembler for assembly code
-add_languages('nasm', required : true)
+add_languages('nasm', required : true, native : true)
 
 # Try to find CUDA, but don't fail if it's missing
+add_languages('cuda', required : false, native : true)
 cuda_dep = dependency('cuda', required : false, modules : ['cudart'])
 if cuda_dep.found()
     # We will also be calling CUDA on the GPU for tutorial 5 */
-    add_project_arguments(['-arch=sm_86', '-ccbin=/usr/bin/g++'], language : 'cuda')
+    add_project_arguments(['-arch=sm_86', '-ccbin=/usr/bin/g++', '-cuda_std=c++17'],
+                            language : 'cuda')
 endif
 
 
@@ -35,14 +36,6 @@ common_flags = [
     '-fno-semantic-interposition',
     '-DNMXCSR',
 ]
-
-if cc.has_argument('-std=c23')
-    common_flags += '-std=c23'
-elif cc.has_argument('-std=c2x')
-    common_flags += '-std=c2x'
-else
-    warning('Compiler does not support C23/C2x standard')
-endif
 
 # Flags per build type
 # 'debug'    : full asserts and logging, no optimization
