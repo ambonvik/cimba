@@ -154,7 +154,7 @@ struct simulation {
 
 /* A single trial is defined by these parameters and generates these results. */
 struct trial {
-    double duration;
+    double dur_s;
     uint64_t seed_used;
     double avg_time_in_park;
     double avg_time_riding;
@@ -669,7 +669,7 @@ void load_params(struct trial *trlp)
 {
     cmb_assert_release(trlp != NULL);
 
-    trlp->duration = duration;
+    trlp->dur_s = duration;
 }
 
 /*

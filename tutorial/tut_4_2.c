@@ -106,7 +106,7 @@ struct trial {
 
     /* Control parameters */
     double warmup_time;
-    double duration;
+    double dur_s;
 
     /* Results */
     uint64_t seed_used;
@@ -568,7 +568,7 @@ void run_trial(void *vtrl)
     /* Schedule the simulation control events */
     double t = trlp->warmup_time;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
-    t += trlp->duration;
+    t += trlp->dur_s;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
     /* Set a large negative priority for the stop event to ensure normal events go first */
     cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
@@ -633,7 +633,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
                 experiment[ui_trl].warmup_time = warmup_time;
-                experiment[ui_trl].duration = duration;
+                experiment[ui_trl].dur_s = duration;
 
                 ui_trl++;
             }
@@ -655,7 +655,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
                 experiment[ui_trl].warmup_time = warmup_time;
-                experiment[ui_trl].duration = duration;
+                experiment[ui_trl].dur_s = duration;
 
                 ui_trl++;
             }
@@ -677,7 +677,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
                 experiment[ui_trl].warmup_time = warmup_time;
-                experiment[ui_trl].duration = duration;
+                experiment[ui_trl].dur_s = duration;
 
                 ui_trl++;
             }
@@ -699,7 +699,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
                 experiment[ui_trl].warmup_time = warmup_time;
-                experiment[ui_trl].duration = duration;
+                experiment[ui_trl].dur_s = duration;
 
                 ui_trl++;
             }

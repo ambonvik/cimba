@@ -76,7 +76,7 @@ struct trial {
 
     /* Control parameters */
     double warmup_time;
-    double duration;
+    double dur_s;
 
     /* Results */
     uint64_t seed_used;
@@ -521,7 +521,7 @@ void run_trial(void *vtrl)
     /* Schedule the simulation control events */
     double t = trlp->warmup_time;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
-    t += trlp->duration;
+    t += trlp->dur_s;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
     /* Set a large negative priority for the stop event to ensure normal events go first */
     cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
@@ -599,7 +599,7 @@ void load_params(struct trial *trlp)
     trlp->unloading_time_avg[LARGE] = 12.0;
 
     trlp->warmup_time = 24.0;
-    trlp->duration = 24.0 * 7 * 52;
+    trlp->dur_s = 24.0 * 7 * 52;
 }
 
 /* The minimal single-threaded main function */
