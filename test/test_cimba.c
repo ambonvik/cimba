@@ -63,7 +63,7 @@ struct trial {
     double service_cv;
     double utilization;
     double warmup;
-    double duration;
+    double dur_s;
     double cooldown;
     uint64_t seed;
     /* Outcome */
@@ -235,7 +235,7 @@ void run_mg1_trial(void *vtrl)
     double t = trl->warmup;
     uint64_t ev_hdle = cmb_event_schedule(start_rec_evt, sim, NULL, t, 0);
     cmb_assert_always(ev_hdle != 0u);
-    t += trl->duration;
+    t += trl->dur_s;
     ev_hdle = cmb_event_schedule(stop_rec_evt, sim, NULL, t, 0);
     cmb_assert_always(ev_hdle != 0u);
     t += trl->cooldown;
@@ -391,7 +391,7 @@ int main(const int argc, char **argv)
                 experiment[ui_exp].service_cv = cvs[ui_cv];
                 experiment[ui_exp].utilization = rhos[ui_rho];
                 experiment[ui_exp].warmup = wup;
-                experiment[ui_exp].duration = dur;
+                experiment[ui_exp].dur_s = dur;
                 experiment[ui_exp].cooldown = 1.0;
                 experiment[ui_exp].seed = cmb_random_fmix64(seed, ui_exp);
                 experiment[ui_exp].avg_queue_length = 0.0;
