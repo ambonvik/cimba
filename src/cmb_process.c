@@ -365,12 +365,13 @@ void cmb_process_timers_clear(struct cmb_process *pp)
         if (pa->type == CMI_PROCESS_AWAITABLE_TIME) {
             /* Recycle the tag */
             cmi_slist_pop(awaits);
+            uint64_t hndl = pa->handle;
             cmi_mempool_free(&cmi_process_awaitabletags, pa);
 
             /* Cancel the corresponding wakeup event */
-            cmb_assert_debug(pa->handle != UINT64_C(0));
-            cmb_logger_info(stdout, "Cancels timeout event %" PRIu64, pa->handle);
-            const bool found = cmb_event_cancel(pa->handle);
+            cmb_assert_debug(hndl != UINT64_C(0));
+            cmb_logger_info(stdout, "Cancels timeout event %" PRIu64, hndl);
+            const bool found = cmb_event_cancel(hndl);
             cmb_assert_debug(found);
         }
         else {
