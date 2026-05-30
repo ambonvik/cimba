@@ -13,8 +13,12 @@ project('cimba', ['c', 'cuda'],
 # We also need the portable Netwide Assembler for assembly code
 add_languages('nasm', required : true)
 
-# We will also be calling CUDA on the GPU for tutorial 5 */
-add_project_arguments(['-arch=sm_86', '-ccbin=/usr/bin/g++'], language : 'cuda')
+# Try to find CUDA, but don't fail if it's missing
+cuda_dep = dependency('cuda', required : false, modules : ['cudart'])
+if cuda_dep.found()
+    # We will also be calling CUDA on the GPU for tutorial 5 */
+    add_project_arguments(['-arch=sm_86', '-ccbin=/usr/bin/g++'], language : 'cuda')
+endif
 
 
 # Check for compiler flags availability

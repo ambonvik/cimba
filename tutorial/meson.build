@@ -111,9 +111,6 @@ tut_4_2 = executable('tut_4_2',
 # Try to find HDF5, but don't fail if it's missing
 hdf5_dep = dependency('hdf5', required : false)
 
-# Try to find CUDA, but don't fail if it's missing
-cuda_dep = dependency('cuda', required : false, modules : ['cudart'])
-
 if hdf5_dep.found()
     tut_5_1 = executable('tut_5_1',
                          files('tut_5_1.c'),
