@@ -152,9 +152,9 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     stkptr -= 8u;
     *(uint64_t *)stkptr = 0x0ull;
 
-    /* Place address of coroutine function in R12 */
+    /* Place address of coroutine launch function in R12 */
     stkptr -= 8u;
-    *(uint64_t *)stkptr = (uintptr_t)(cp->cr_function);
+    *(uintptr_t *)stkptr = (uintptr_t)cmi_coroutine_launch;
 
     /* Place address of coroutine struct in R13 */
     stkptr -= 8u;
