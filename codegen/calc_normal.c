@@ -59,7 +59,7 @@ static void calculate_ziggurat(void)
         struct layer cand;
         cand.tgt_area = 0.5 / ARRSIZE;
         cand.x0 = 0.0;
-        cand.y0 = yarr[i-1];
+        cand.y0 = (i == 0) ? 0.0 : yarr[i-1];
 
         double xmid;
         /* Search for the next layer upper-right corner, ensuring that the
