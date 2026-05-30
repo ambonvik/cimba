@@ -96,7 +96,7 @@ void *putterfunc(struct cmb_process *me, void *vctx)
         cmb_assert_always(cmb_priorityqueue_length(qp) <= qp->capacity);
         cmb_assert_always(cmb_priorityqueue_space(qp) <= qp->capacity);
         uint64_t handle = 0u;
-        sig = cmb_priorityqueue_put(qp, &object, pri, &handle);
+        sig = cmb_priorityqueue_put(qp, object, pri, &handle);
         cmb_assert_always(cmb_priorityqueue_length(qp) <= qp->capacity);
         cmb_assert_always(cmb_priorityqueue_space(qp) <= qp->capacity);
         if (sig == CMB_PROCESS_SUCCESS) {
