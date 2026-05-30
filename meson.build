@@ -5,7 +5,7 @@ project('cimba', ['c', 'cuda'],
         default_options : [
             'warning_level=3',
             'buildtype=release',
-            'c_std=c23',
+            'c_std=c2x',
             'cuda_std=c++17',
         ]
 )
