@@ -1,15 +1,21 @@
 # main meson.build
 
-project('cimba', 'c',
+project('cimba', ['c', 'cuda'],
         version : '3.0.0',
         default_options : [
             'warning_level=3',
-            'buildtype=release'
+            'buildtype=release',
+            'c_std=c23',
+            'cuda_std=c++17',
         ]
 )
 
 # We also need the portable Netwide Assembler for assembly code
-add_languages('nasm', required : true, native : true)
+add_languages('nasm', required : true)
+
+# We will also be calling CUDA on the GPU for tutorial 5 */
+add_project_arguments(['-arch=sm_86', '-ccbin=/usr/bin/g++'], language : 'cuda')
+
 
 # Check for compiler flags availability
 # DNDEBUG removes debug asserts

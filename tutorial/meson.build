@@ -110,6 +110,10 @@ tut_4_2 = executable('tut_4_2',
 
 # Try to find HDF5, but don't fail if it's missing
 hdf5_dep = dependency('hdf5', required : false)
+
+# Try to find CUDA, but don't fail if it's missing
+cuda_dep = dependency('cuda', required : false, modules : ['cudart'])
+
 if hdf5_dep.found()
     tut_5_1 = executable('tut_5_1',
                          files('tut_5_1.c'),
@@ -118,8 +122,28 @@ if hdf5_dep.found()
                          dependencies : [project_deps, hdf5_dep],
                          link_args : ['-lhdf5'],
                          install : false,
-                         native : true
-    )
+                         native : true)
 else
-    message('Skipping tut_5_1 because HDF5 was not found.')
+    message('Skipping tut_5_1: HDF5 not found.')
+endif
+
+if hdf5_dep.found() and cuda_dep.found()
+    cuda_inc = include_directories('/opt/cuda/include')
+
+    executable('tut_5_2',
+               sources : ['tut_5_2.c', 'tut_5_2.cu'],
+               include_directories : [inc_api, inc_int, cuda_inc],
+               link_with : cimba_lib,
+               dependencies : [project_deps, hdf5_dep, cuda_dep],
+               c_args : ['-fno-lto'],
+               link_args : ['-lhdf5', '-lcudart', '-lcurand'],
+               install : false,
+               native : true)
+else
+    if not hdf5_dep.found()
+        message('Skipping tut_5_2: HDF5 not found.')
+    endif
+    if not cuda_dep.found()
+        message('Skipping tut_5_2: CUDA not found.')
+    endif
 endif

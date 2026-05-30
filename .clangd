@@ -1,3 +1,10 @@
-Diagnostics:
-  Suppress:
-    - unused-local-typedef
+CompileFlags:
+  Add:
+    - --cuda-path=/opt/cuda
+    - -I/opt/cuda/include
+    - -x
+    - cuda
+    - --no-cuda-version-check
+  Remove:
+    - -Xcompiler=-Wall,-Winvalid-pch,-Wextra
+    - -forward-unknown-to-host-compiler

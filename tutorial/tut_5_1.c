@@ -20,21 +20,51 @@
  */
 
 #include <cimba.h>
+#include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 #include "hdf5.h"
 
 /* Bit masks to distinguish between two types of user-defined logging messages. */
-#define USERFLAG1 0x00000001
-#define USERFLAG2 0x00000002
+#define USER_ADMIN  0x00000001
+#define USER_SENSOR 0x00000002
+#define USER_TARGET 0x00000004
+#define USER_ALL    0x0FFFFFFF
 
 /* Radar targets spread uniformly about the map */
 #define NUM_TARGETS 1000
 
 /* Sensor update interval, seconds */
-const float time_step = 1.0f;
+const float dwell_time_s = 0.04f;
+
+/* Radar wavelength. S-band, ~3 GHz, like the AN/APY-2. The multipath
+ * lobe spacing in target altitude is λ × R / (2 × h_sensor); change
+ * the wavelength and the lobe pattern scales linearly. */
+const float radar_wavelength_m = 0.1f;
+
+
+/* Antenna 3 dB beamwidth in azimuth. ~1.4 degrees for an AN/APY-2-like
+ * search radar. The kernel uses a Gaussian main lobe whose 3 dB
+ * half-width matches beamwidth_r/2, plus a -30 dB sidelobe floor. */
+const float sensor_beam_width_d = 1.4f;
+const float sensor_beam_width_r = (float)(1.4f * M_PI / 180.0);
+
+/* Radar parameters that affect the clutter+CFAR detection model.
+ * Identical structure and defaults to the GPU version in tut_5_2.h. */
+struct radar_params {
+    float range_res_m;
+    int   n_pulses_per_dwell;
+    int   cfar_n_ref;
+    int   cfar_n_guard;
+    float cfar_alpha;
+    float noise_floor_norm;
+    int   cell_grid_n_range;
+    int   cell_grid_n_cross;
+};
 
 /* Geometric conversion constants */
 const double arcsec_to_meters = 30.87;
@@ -57,15 +87,63 @@ const float terrain_ridginess = 1.2f;
 const float terrain_peakiness = 1.7f;
 const float terrain_stddev = 3.0f;  /* Local small-scale noise */
 
+/* Refraction parameters */
+const float atm_N0_units    = 313.0f;    /* sea-level refractivity, N-units */
+const float atm_scale_h_m   = 7000.0f;   /* refractivity scale height, m */
+
 /* Biomes: urban/fields, forest belt, bare mountain */
 #define NBIOMES 3
-const float biome_visibility[NBIOMES] = { 0.2f, 0.3f, 0.9f };
-const float biome_elevations[NBIOMES - 1] = { 400.0f, 1000.0f };
+/*
+ * Biome parameters. biome_gamma_db[i] is the constant-gamma clutter
+ * reflectivity in dB for biome i, per the Barton/Morchin model
+ *   sigma_0 = gamma * sin(grazing_angle)
+ * Typical values: smooth surface around -25 dB, crops/grass -15 dB,
+ * rough terrain -5 dB. The biome is selected by terrain altitude at
+ * each clutter sample point; the elevations array splits the terrain
+ * into NBIOMES bands.
+ *
+ * Must match the values in tut_5_2.h to keep CPU and GPU physics aligned.
+ */
+const float biome_gamma_db[NBIOMES]        = { -20.0f, -15.0f, -5.0f };
+const float biome_elevations[NBIOMES - 1]  = { 400.0f, 1000.0f };
+
+/* biome_gamma_db converted to linear power ratio. Filled once at startup
+ * to avoid repeated powf(10, .../10) inside the detection loop. */
+static float biome_gamma_lin[NBIOMES] = { 0.0f, 0.0f, 0.0f };
+
+/* Per-biome specular reflection coefficient |Γ_max|, at the smooth-surface
+ * limit (zero roughness). The Rayleigh roughness penalty (computed
+ * inline in multipath_gain) reduces the effective |Γ| as grazing
+ * angle and surface roughness grow.
+ *
+ * Tutorial values:
+ *   Biome 0 (lowlands < 400 m): valley floors, possible water/lakebed/paved
+ *     ground. Smooth, strong specular reflection.
+ *   Biome 1 (mid 400-1000 m): crops, grass, light vegetation. Moderate.
+ *   Biome 2 (highlands > 1000 m): rough mountain. Specular nearly gone. */
+const float biome_specular_max[NBIOMES] = { 0.90f, 0.50f, 0.10f };
+
+/* Per-biome surface RMS height roughness in meters. Combines with
+ * grazing angle in the Rayleigh criterion to suppress specular
+ * reflection on rough surfaces.
+ *
+ * Note on biome 0: the small value here (5 cm) represents nearly
+ * specular surfaces — water, dry lakebeds, salt flats, paved areas.
+ * Real "lowland" terrain has more variation, but at S-band (λ=10 cm)
+ * even a few decimeters of RMS roughness at moderate grazing angles
+ * kills the coherent reflection completely. The tutorial value lets
+ * us show lobing where lobing realistically happens (over smooth
+ * surfaces); for "crops/grass" lowlands, use ~0.3 m and multipath
+ * effectively vanishes, as it does in reality. */
+const float biome_roughness_m[NBIOMES] = { 0.05f, 0.3f, 2.0f };
 
 /* For ParaView visualization */
 const char *terrain_h5name = "terrain.vtkhdf";
 const char *events_h5name = "events.vtkhdf";
+/* Terrain decimation factor */
 const unsigned int stride_step = 32u;
+/* Animation frame interval, seconds */
+double frame_interval_s = 1.0;
 
 struct target;
 struct platform_state;
@@ -194,7 +272,7 @@ float terrain_perlin_noise2d(const struct terrain *tp, float x, float y)
  * The map is tsz_w nautical miles wide, tsw_h nautical miles tall.
  * Likely to take a while, so we entertain the user with a progress bar in the meanwhile.
  */
-void terrain_init(struct terrain *tp,
+void terrain_initialize(struct terrain *tp,
                   const float tsz_w, const float tsz_h,
                   const float ref_lat, const float ref_lon)
 {
@@ -221,6 +299,7 @@ void terrain_init(struct terrain *tp,
     const double loc_radius_ns = WGS84_A * (1.0 - WGS84_E2) / (common * sqrt_common);
     const double m_per_deg_ns = loc_radius_ns * (M_PI / 180.0);
     tp->y_scale = (float)((1.0 / 3600.0) * m_per_deg_ns);
+    printf("Resolution x: %3.1f m, y: %3.1f m\n", tp->x_scale, tp->y_scale);
 
     const float x_span = (float)(tp->cols - 1) * tp->x_scale;
     const float y_span = (float)(tp->rows - 1) * tp->y_scale;
@@ -290,7 +369,7 @@ void terrain_init(struct terrain *tp,
     printf("Writing decimated terrain map to file %s...", terrain_h5name);
     fflush(stdout);
     terrain_vtkhdf_write(terrain_h5name, tp->map, tp->cols, tp->rows, tp->x_scale, tp->y_scale);
-    printf(" done\n\n");
+    printf(" done\n");
 }
 
 void terrain_terminate(struct terrain *tp)
@@ -329,13 +408,61 @@ unsigned terrain_index(const struct terrain *tp, const float x, const float y)
     return index;
 }
 
+/*
+ * The stored value at grid cell (col, row) represents the terrain elevation
+ * at the cell *center*, whose world coordinates are
+ *     x = (col - cols/2) * x_scale
+ *     y = (row - rows/2) * y_scale
+ * Bilinear interpolation between four neighboring cell centers gives a
+ * continuous elevation field over the entire map. Out-of-bounds sample
+ * positions are clamped to the map edge, matching the cudaAddressModeClamp
+ * behavior of the GPU texture.
+ *
+ * The interpolation arithmetic mirrors what the CUDA texture unit does
+ * internally with cudaFilterModeLinear, except in IEEE 754 single precision
+ * rather than the texture unit's 8-bit fractional fixed point. Results
+ * will agree to within a few ULP except very near sharp terrain features.
+ */
+
 float terrain_elevation(const struct terrain *tp, const float x, const float y)
 {
     cmb_assert_release(tp != NULL);
 
-    const unsigned index = terrain_index(tp, x, y);
+    /* World position to fractional cell coordinates. The -0.5f accounts
+     * for the fact that cell (c, r) is centered at world position
+     * ((c - cols/2) * x_scale, (r - rows/2) * y_scale): a position
+     * exactly at a cell center maps to an integer (u, v). */
+    const float u = (x / tp->x_scale) + (float)(tp->cols / 2u);
+    const float v = (y / tp->y_scale) + (float)(tp->rows / 2u);
 
-    return tp->map[index];
+    /* Lower-left corner of the 2x2 patch we will interpolate within.
+     * Clamp so the +1 neighbors below also stay in range. */
+    const int c_max = (int)tp->cols - 1;
+    const int r_max = (int)tp->rows - 1;
+
+    int c0 = (int)floorf(u);
+    int r0 = (int)floorf(v);
+    if (c0 < 0)       c0 = 0;
+    if (c0 > c_max-1) c0 = c_max - 1;
+    if (r0 < 0)       r0 = 0;
+    if (r0 > r_max-1) r0 = r_max - 1;
+    const int c1 = c0 + 1;
+    const int r1 = r0 + 1;
+
+    /* Fractional offsets within the patch, in [0, 1]. */
+    const float fx = fmaxf(0.0f, fminf(1.0f, u - (float)c0));
+    const float fy = fmaxf(0.0f, fminf(1.0f, v - (float)r0));
+
+    /* Four neighboring cell-center elevations. */
+    const float h00 = tp->map[(unsigned)r0 * tp->cols + (unsigned)c0];
+    const float h10 = tp->map[(unsigned)r0 * tp->cols + (unsigned)c1];
+    const float h01 = tp->map[(unsigned)r1 * tp->cols + (unsigned)c0];
+    const float h11 = tp->map[(unsigned)r1 * tp->cols + (unsigned)c1];
+
+    /* Bilinear blend: interpolate along x at both y rows, then along y. */
+    const float h0 = h00 + fx * (h10 - h00);
+    const float h1 = h01 + fx * (h11 - h01);
+    return h0 + fy * (h1 - h0);
 }
 
 /****************************************************************************
@@ -541,38 +668,76 @@ static void target_position_update(struct target *tgt)
 }
 
 /*
- * Detection pipeline 1: Swept sector check
- * Normalizes angles to safely check if the target's azimuth
- * falls within the arc swept during this time step.
+ * Effective Earth-radius factor k at altitude h, for an atmosphere with
+ * exponentially decaying refractivity. Returns 1.0 in vacuum (no
+ * refraction), ≈ 1.33 at sea level for standard atmosphere, → 1.0 at
+ * very high altitude.
+ *
+ * Derivation: a ray traveling horizontally at altitude h has curvature
+ * radius R_ray = -1 / (dn/dh). The standard "effective Earth" trick is
+ * to rescale the Earth's radius by k so that ray and Earth share a
+ * common reference frame, giving k = 1 / (1 + R_earth * dn/dh).
  */
-static bool target_is_in_swept_sector(const float prev_dir,
-                                      const float sweep_width,
-                                      const float tgt_azi)
+static float atmosphere_k_eff(const float h_m, const float r_earth_m)
 {
-    float rel_azi = tgt_azi - prev_dir;
-
-    /* Normalize to [0, 2*PI) */
-    while (rel_azi < 0.0f) rel_azi += 2.0f * (float)M_PI;
-    while (rel_azi >= 2.0f * (float)M_PI) rel_azi -= 2.0f * (float)M_PI;
-
-    /* If the relative angle is less than the total swept width, it was hit */
-    return (rel_azi <= sweep_width);
+    const float dn_dh = -(atm_N0_units * 1.0e-6f / atm_scale_h_m)
+                        * expf(-h_m / atm_scale_h_m);
+    return 1.0f / (1.0f + r_earth_m * dn_dh);
 }
 
 /*
- * Detection pipeline 2: Radar horizon check
+ * Detection pipeline 1: Test whether a target is inside the beam's
+ * *effective gate width* —  * the maximum of the antenna beamwidth
+ * and the rotation per dwell.
+ *
+ * Gating at just the 3 dB beamwidth would leave small angular gaps
+ * between consecutive dwells whenever rot_inc > beamwidth. Targets
+ * that fall in such gaps would never get a detection attempt despite
+ * the beam's sidelobes (and atmospheric reality) putting real signal
+ * on them. Widening the gate to encompass at least one rotation step
+ * closes that gap; the antenna_gain_sq function still attenuates
+ * targets at large offsets correctly via the Gaussian + sidelobe-floor
+ * model, so off-beam targets simply get very low Pd rather than being
+ * skipped.
+ */
+static bool target_is_in_beam(const float tgt_azi,
+                              const float beam_dir,
+                              const float beamwidth_r,
+                              const float rot_inc_r)
+{
+    const float half_width = 0.5f * fmaxf(beamwidth_r, rot_inc_r);
+
+    float rel_azi = tgt_azi - beam_dir;
+    while (rel_azi >  (float)M_PI) rel_azi -= 2.0f * (float)M_PI;
+    while (rel_azi < -(float)M_PI) rel_azi += 2.0f * (float)M_PI;
+    return (fabsf(rel_azi) <= half_width);
+}
+
+/*
+ * Detection pipeline 2: Radar horizon check with altitude-dependent
+ * refraction.
+ *
+ * Closed-form approximation using k(h) evaluated at the arithmetic
+ * mean of sensor and target altitudes. Exact integration would compute
+ * the ray-drop integral along the path, but for our geometries (AWACS
+ * + ground target, near-horizontal rays) the mean-altitude
+ * approximation is accurate to better than 1 % of horizon distance.
  */
 static bool target_is_beyond_horizon(const float d_2d, const float h_sensor,
-                                     const float h_tgt, const float r_eff)
+                                     const float h_tgt, const float r_earth)
 {
-    /* Prevent negative sqrt if below sea level */
     const float hs = fmaxf(0.0f, h_sensor);
     const float ht = fmaxf(0.0f, h_tgt);
+
+    const float h_avg = 0.5f * (hs + ht);
+    const float k_eff = atmosphere_k_eff(h_avg, r_earth);
+    const float r_eff = k_eff * r_earth;
 
     const float max_dist = sqrtf(2.0f * r_eff * hs) + sqrtf(2.0f * r_eff * ht);
 
     return (d_2d > max_dist);
 }
+
 
 /*
  * Detection pipeline 3: Nadir hole check with platform roll compensation,
@@ -593,15 +758,35 @@ static bool target_is_outside_vertical(const float dx, const float dy, const flo
 }
 
 /*
- * Detection pipeline 4: Terrain ray-marching
+ * Detection pipeline 4: Terrain ray-marching with altitude-dependent
+ * refraction.
+ *
+ * The straight line from target to sensor is the chord. The actual
+ * refracted ray sags below the chord by the "Earth bulge correction,"
+ * scaled by the local k(h). At each step along the chord we compute
+ *   bulge(s) = s * (d_2d - s) / (2 * k(h_ray) * R_earth)
+ * and check the corrected ray altitude against the terrain at the
+ * step's world position.
+ *
+ * Using k evaluated at the *current step's* straight-line altitude is
+ * a one-shot approximation that avoids iterating on the implicit
+ * coupling between h_ray and k(h_ray). For our altitudes the
+ * difference from a fully iterative solution is sub-meter.
+ *
+ * The Earth-curvature term (the 1/R contribution to the bulge) is
+ * always positive; the refraction term is always negative; their sum
+ * is positive for any plausible atmosphere, so the corrected ray is
+ * always below the chord. This means the new check is at least as
+ * permissive as the un-refracted line of sight, never more so.
  */
 static bool target_is_terrain_shielded(const float sx, const float sy, const float sa,
-                                           const float tx, const float ty, const float ta,
-                                           const struct terrain *terp)
+                                       const float tx, const float ty, const float ta,
+                                       const struct terrain *terp,
+                                       const float r_earth)
 {
-    const float dx = tx - sx;
-    const float dy = ty - sy;
-    const float dz = ta - sa;
+    const float dx = sx - tx;
+    const float dy = sy - ty;
+    const float dz = sa - ta;
     const float d_2d = sqrtf(dx * dx + dy * dy);
 
     const float step_size = fminf(terp->x_scale, terp->y_scale) * 0.5f;
@@ -610,81 +795,371 @@ static bool target_is_terrain_shielded(const float sx, const float sy, const flo
         return false;
     }
 
-    /* Pre-calculate the inverse to use multiplication instead of division in the loop */
     const float inv_steps = 1.0f / (float)num_steps;
+    const float two_r_earth = 2.0f * r_earth;
 
-    /* March the ray from the sensor to the target */
+    /* March from target toward sensor: i=1 is just past the target. */
     for (int i = 1; i < num_steps; i++) {
-        /* 't' represents the percentage along the ray (0.0 to 1.0) */
         const float t = (float)i * inv_steps;
 
-        /* Calculate absolute position directly to prevent accumulation drift */
-        float cx = sx + dx * t;
-        float cy = sy + dy * t;
-        const float ca = sa + dz * t;
+        float cx = tx + dx * t;
+        float cy = ty + dy * t;
+        const float ca_chord = ta + dz * t;
 
-        /* Clamp to map boundaries to safely absorb microscopic float epsilon noise */
         cx = fmaxf(terp->x_min, fminf(cx, terp->x_max));
         cy = fmaxf(terp->y_min, fminf(cy, terp->y_max));
+
+        /* Bulge correction. s is arc length from target along the
+         * chord (≈ 2D distance for small elevation angles). k is
+         * evaluated at the chord altitude rather than the corrected
+         * altitude — fixed-point iteration would change the answer
+         * by less than a meter. */
+        const float s = t * d_2d;
+        const float s_rem = d_2d - s;
+        const float k_local = atmosphere_k_eff(ca_chord, r_earth);
+        const float bulge = (s * s_rem) / (two_r_earth * k_local);
+        const float ca_ray = ca_chord - bulge;
+
         const float terr_alt = terrain_elevation(terp, cx, cy);
-        if (ca < terr_alt) {
-            /* The ray hit the terrain. Target is shielded. */
+        if (ca_ray < terr_alt) {
             return true;
         }
     }
 
-    /* Line of sight is clear from sensor to target */
     return false;
 }
 
 /*
- * Detection pipeline 5. Probabilistic detection in ground clutter
+ * Antenna pattern gain (one-way) squared, evaluated at angular offset
+ * from beam center. Gaussian main lobe with 3 dB half-width matching
+ * beamwidth_r/2, plus a -30 dB sidelobe floor so targets at large
+ * angular offsets don't disappear entirely.
+ *
+ * For a Gaussian G(theta) = exp(-theta^2 / sigma^2) with 3 dB point at
+ * theta = beamwidth/2, we have sigma = beamwidth / (2 * sqrt(ln 2)).
+ * One-way gain squared = exp(-2 * ln(2) * (2*theta/beamwidth)^2).
  */
-static bool target_attempt_detection(const float sa, const float ref_range, const float ref_rcs,
-                                     const float ta, const float tcx, const float d_3d)
+static float antenna_gain_sq(const float angular_offset_r,
+                             const float beamwidth_r)
 {
-    /* Protect against extreme near-zero distances */
-    const float r = fmaxf(1.0f, d_3d);
+    const float u    = 2.0f * angular_offset_r / beamwidth_r;
+    const float g_sq = expf(-2.0f * 0.6931472f * u * u);
+    return fmaxf(g_sq, 1.0e-3f);    /* -30 dB sidelobe floor */
+}
 
-    /* Base signal-to-noise ratio (SNR, thermal noise limit) */
-    const float snr_thermal = powf(ref_range / r, 4.0f) * (tcx / ref_rcs);
+/*
+ * Look up biome gamma (linear) from terrain altitude at a sample point.
+ */
+static float biome_gamma_at_alt(const float alt_m)
+{
+    float g = biome_gamma_lin[NBIOMES - 1];
+    for (unsigned int b = 0; b < NBIOMES - 1; b++) {
+        if (alt_m < biome_elevations[b]) {
+            g = biome_gamma_lin[b];
+            break;
+        }
+    }
+    return g;
+}
 
-    /* Elevation-dependent biome clutter / terrain type classification */
-    float bv = biome_visibility[NBIOMES - 1];
-    for (unsigned ub = 0; ub < NBIOMES - 1; ub++) {
-        if (ta < biome_elevations[ub]) {
-            bv = biome_visibility[ub];
+/*
+ * Integrate clutter contribution over one resolution cell. The cell is
+ * an annular wedge between (center_range - dr/2) and (center_range + dr/2),
+ * angular width beamwidth_r, centered on beam_dir.
+ *
+ * Returns the cell's total normalized return power, including range
+ * attenuation 1/R^4 and antenna gain G^2 at each sample.
+ *
+ * Mirrors the GPU's integrate_cell_clutter exactly. For tutorial
+ * purposes the result is in arbitrary normalized units; what matters
+ * is the ratio with the target signal and the CFAR threshold.
+ */
+static float integrate_cell_clutter(const float center_range,
+                                    const float beam_dir,
+                                    const float beamwidth_r,
+                                    const float range_res_m,
+                                    const float sx, const float sy,
+                                    const float sa,
+                                    const int n_range, const int n_cross,
+                                    const struct terrain *terp,
+                                    const float r_earth)
+{
+    const float dr = range_res_m;
+    const float dtheta = beamwidth_r;
+    const float dA_per_unit = (dr * dtheta) / ((float)(n_range * n_cross));
+
+    float clutter = 0.0f;
+
+    for (int i = 0; i < n_range; i++) {
+        const float t_r = ((float)i + 0.5f) / (float)n_range;
+        const float R = center_range - 0.5f * dr + t_r * dr;
+        const float R_safe = fmaxf(1.0f, R);
+        const float inv_R4 = 1.0f / (R_safe * R_safe * R_safe * R_safe);
+
+        for (int j = 0; j < n_cross; j++) {
+            const float t_c = ((float)j + 0.5f) / (float)n_cross;
+            const float dtheta_off = -0.5f * beamwidth_r + t_c * beamwidth_r;
+            const float az = beam_dir + dtheta_off;
+
+            const float wx = sx + R_safe * cosf(az);
+            const float wy = sy + R_safe * sinf(az);
+            const float wx_c = fmaxf(terp->x_min, fminf(wx, terp->x_max));
+            const float wy_c = fmaxf(terp->y_min, fminf(wy, terp->y_max));
+
+            const float terr = terrain_elevation(terp, wx_c, wy_c);
+
+            /* Earth-curvature drop at this range. Using fixed k=4/3
+             * (rather than altitude-dependent k) is a small simplification
+             * for the clutter integration; the bulk geometry through the
+             * lower atmosphere dominates. */
+            const float earth_drop = (R_safe * R_safe)
+                                   / (2.0f * 1.33f * r_earth);
+            const float h_sensor_eff = sa - terr - earth_drop;
+            if (h_sensor_eff <= 0.0f) continue;   /* sample below horizon */
+
+            const float sin_graze = fminf(1.0f, h_sensor_eff / R_safe);
+
+            const float gamma   = biome_gamma_at_alt(terr);
+            const float sigma_0 = gamma * sin_graze;
+
+            const float g_sq = antenna_gain_sq(dtheta_off, beamwidth_r);
+
+            const float dA = R_safe * dA_per_unit;
+
+            clutter += sigma_0 * g_sq * dA * inv_R4;
+        }
+    }
+
+    return clutter;
+}
+
+/*
+ * CA-CFAR threshold. Integrate clutter over 2 * n_ref reference cells,
+ * skipping n_guard cells on each side of the test cell. Multiply the
+ * mean by cfar_alpha to set the threshold.
+ *
+ * Returns the threshold *energy* in the same units as the target
+ * signal and test-cell clutter.
+ */
+static float cfar_threshold(const float target_range,
+                            const float beam_dir,
+                            const float sx, const float sy, const float sa,
+                            const struct radar_params *radar,
+                            const float beamwidth_r,
+                            const struct terrain *terp,
+                            const float r_earth)
+{
+    const float dr = radar->range_res_m;
+    const int n_ref = radar->cfar_n_ref;
+    const int n_guard = radar->cfar_n_guard;
+
+    float sum = 0.0f;
+    int n_used = 0;
+
+    for (int k = 1; k <= n_ref; k++) {
+        const int range_offset_cells = n_guard + k;
+
+        /* Reference cell on the far side. */
+        const float R_far = target_range + (float)range_offset_cells * dr;
+        sum += integrate_cell_clutter(R_far, beam_dir, beamwidth_r, dr,
+                                       sx, sy, sa,
+                                       radar->cell_grid_n_range,
+                                       radar->cell_grid_n_cross,
+                                       terp, r_earth);
+        n_used++;
+
+        /* Reference cell on the near side. Skip if it would fall below
+         * 1 km (the radar's near-range cutoff). */
+        const float R_near = target_range - (float)range_offset_cells * dr;
+        if (R_near > 1000.0f) {
+            sum += integrate_cell_clutter(R_near, beam_dir, beamwidth_r, dr,
+                                           sx, sy, sa,
+                                           radar->cell_grid_n_range,
+                                           radar->cell_grid_n_cross,
+                                           terp, r_earth);
+            n_used++;
+        }
+    }
+
+    const float mean_clutter = (n_used > 0) ? (sum / (float)n_used) : 0.0f;
+    return radar->cfar_alpha * (mean_clutter + radar->noise_floor_norm);
+}
+
+/*
+ * Two-way multipath interference factor for the target signal.
+ *
+ * Returns a multiplier in [0, ~16] to be applied to E_target. A value
+ * of 1 means no multipath effect (rough biome or invalid geometry);
+ * values above 1 mean constructive interference, below 1 destructive.
+ *
+ * The specular point is iterated once: an initial estimate using flat
+ * ground at altitude 0, then refined using the actual ground altitude
+ * at that estimate. Two iterations would change the result by sub-meter
+ * lobe shifts. The helper assumes the bounce path is unobstructed; for
+ * the typical AWACS-vs-ground-target geometry the direct and bounce
+ * paths run through nearly the same airspace, so if the direct path
+ * passed the terrain-shielding check, the bounce path is almost
+ * certainly clear.
+ */
+static float multipath_gain(const float sx, const float sy, const float sa,
+                            const float tx, const float ty, const float ta,
+                            const float d_2d,
+                            const struct terrain *terp)
+{
+    /* First-pass specular point assuming ground at altitude 0. */
+    const float t0 = sa / (sa + ta);
+    float spec_x = sx + (tx - sx) * t0;
+    float spec_y = sy + (ty - sy) * t0;
+
+    /* Clamp inside map bounds before sampling terrain. */
+    spec_x = fmaxf(terp->x_min, fminf(spec_x, terp->x_max));
+    spec_y = fmaxf(terp->y_min, fminf(spec_y, terp->y_max));
+
+    float ground_alt = terrain_elevation(terp, spec_x, spec_y);
+
+    /* Re-derive the specular point above the actual ground. If the
+     * ground is above either endpoint, the specular geometry is
+     * degenerate — fall back to no multipath. */
+    const float h_s_eff = sa - ground_alt;
+    const float h_t_eff = ta - ground_alt;
+    if (h_s_eff <= 1.0f || h_t_eff <= 1.0f) {
+        return 1.0f;
+    }
+    const float t1 = h_s_eff / (h_s_eff + h_t_eff);
+    spec_x = sx + (tx - sx) * t1;
+    spec_y = sy + (ty - sy) * t1;
+    spec_x = fmaxf(terp->x_min, fminf(spec_x, terp->x_max));
+    spec_y = fmaxf(terp->y_min, fminf(spec_y, terp->y_max));
+    ground_alt = terrain_elevation(terp, spec_x, spec_y);
+
+    const float h_s = sa - ground_alt;
+    const float h_t = ta - ground_alt;
+    if (h_s <= 1.0f || h_t <= 1.0f) {
+        return 1.0f;
+    }
+
+    /* Path length difference, exact small-angle form. The direct path
+     * goes from (sx, sy, sa) to (tx, ty, ta); the bounce path goes
+     * sensor -> specular -> target. Use d_2d for the horizontal
+     * baseline since we have it. */
+    const float d_direct = sqrtf(d_2d * d_2d + (h_s - h_t) * (h_s - h_t));
+    const float d_b1 = sqrtf((t1 * d_2d) * (t1 * d_2d) + h_s * h_s);
+    const float d_b2 = sqrtf(((1.0f - t1) * d_2d) * ((1.0f - t1) * d_2d)
+                              + h_t * h_t);
+    const float d_bounce = d_b1 + d_b2;
+    const float delta_d = d_bounce - d_direct;
+
+    /* Grazing angle at the specular point; both legs share it. */
+    const float sin_graze = h_s / fmaxf(1.0f, d_b1);
+
+    /* Biome parameters at the specular point. */
+    float gamma_max = biome_specular_max[NBIOMES - 1];
+    float sigma_h   = biome_roughness_m[NBIOMES - 1];
+    for (unsigned int b = 0; b < NBIOMES - 1; b++) {
+        if (ground_alt < biome_elevations[b]) {
+            gamma_max = biome_specular_max[b];
+            sigma_h   = biome_roughness_m[b];
             break;
         }
     }
 
-    /* Grazing angle clutter penalty (constant gamma model) */
-    const float dz = sa - ta;
-    float sin_grazing = 0.0f;
-    if (dz > 0.0f) {
-        sin_grazing = fminf(1.0f, dz / r);
+    /* Rayleigh roughness suppression: rougher surface or steeper grazing
+     * scatters the specular component into diffuse, reducing |Γ_eff|.
+     *   |Γ_eff| = |Γ_max| × exp(-(4π σ_h sin ψ / λ)²)
+     */
+    const float roughness_arg = (4.0f * (float)M_PI * sigma_h * sin_graze)
+                              / radar_wavelength_m;
+    const float gamma_eff = gamma_max * expf(-roughness_arg * roughness_arg);
+
+    if (gamma_eff < 0.01f) {
+        return 1.0f;        /* multipath effectively absent */
     }
 
-    /* Airborne radar looking steeply down sees a much larger, brighter patch
-     * of ground. Degrade the target's visibility based on how steep the grazing
-     * angle is, avoiding going completely to zero. */
-    const float clutter_penalty = 1.0f - (sin_grazing * 0.8f);
+    /* Phase difference, with the π flip on reflection. */
+    const float phase = 2.0f * (float)M_PI * delta_d / radar_wavelength_m
+                      + (float)M_PI;
 
-    /* Signal-to-interference-plus-noise ratio (SINR) */
-    const float sinr = snr_thermal * bv * clutter_penalty;
+    /* One-way interference factor. */
+    const float g_one_way = 1.0f + gamma_eff * gamma_eff
+                          + 2.0f * gamma_eff * cosf(phase);
 
-    /* Probability of detection (Pd) - non-fluctuating ground target,
-     * threshold SINR where detection becomes 50% likely. */
-    const float sinr_threshold = 10.0f;
+    /* Two-way (round-trip) factor. Clamp the lower end to avoid
+     * exactly-zero target energy at perfect nulls — physically there
+     * is always some residual signal from non-ideal geometry. */
+    const float g_two_way = g_one_way * g_one_way;
+    return fmaxf(g_two_way, 1.0e-3f);
+}
 
-    /* Tune the 'steepness' of the logistic curve.
-     * Higher = sharper transition from hidden to detected. */
-    const float curve_steepness = 0.5f;
+/*
+ * Detection pipeline 5. Probabilistic detection in ground clutter using:
+ *   1. Antenna pattern gain on the target (Gaussian + sidelobe floor)
+ *   2. Non-coherent pulse integration boost on the target signal
+ *   3. Spatial clutter integration over the target's resolution cell
+ *   4. CA-CFAR threshold from 16 reference range cells
+ *   5. Logistic-curve smoothing over the test/threshold margin
+ *
+ * Returns true if the target is detected this dwell. Mirrors the GPU's
+ * probabilistic_detection function.
+ */
+static bool target_attempt_detection(const float dx, const float dy,
+                                     const float dz,
+                                     const float d_3d, const float d_2d,
+                                     const float sx, const float sy,
+                                     const float sa,
+                                     const float beam_dir,
+                                     const float beamwidth_r,
+                                     const float ref_range, const float ref_rcs,
+                                     const float tcx,
+                                     const struct radar_params *radar,
+                                     const struct terrain *terp,
+                                     const float r_earth)
+{
+    const float r = fmaxf(1.0f, d_3d);
+    const float target_az = atan2f(dy, dx);
 
-    /* Logistic function: Pd approaches 1.0 as SINR exceeds the threshold. */
-    const float pd = 1.0f / (1.0f + expf(-curve_steepness * (sinr - sinr_threshold)));
+    /* Angular offset of target from beam center; wrap to (-pi, pi]. */
+    float target_offset = target_az - beam_dir;
+    while (target_offset >  (float)M_PI) target_offset -= 2.0f * (float)M_PI;
+    while (target_offset < -(float)M_PI) target_offset += 2.0f * (float)M_PI;
 
-    /* Stochastic outcome */
+    /* Antenna gain on the target. */
+    const float g_target_sq = antenna_gain_sq(target_offset, beamwidth_r);
+
+    /* Multipath interference: two-way factor on the target signal. */
+    const float tx = sx + dx;
+    const float ty = sy + dy;
+    const float ta = sa + dz;
+    const float g_mp = multipath_gain(sx, sy, sa, tx, ty, ta, d_2d, terp);
+
+    /* Target signal energy: free-space SNR scaled by antenna gain^2,
+     * pulse integration gain, and multipath. */
+    const float range_ratio = ref_range / r;
+    const float r2 = range_ratio * range_ratio;
+    const float snr_base = r2 * r2 * (tcx / ref_rcs);
+
+    const float pulse_int_gain = 0.7f * sqrtf((float)radar->n_pulses_per_dwell);
+    const float E_target = snr_base * g_target_sq * pulse_int_gain * g_mp;
+
+    /* Clutter in the test cell. (Clutter has its own multipath in
+     * principle, but the spatial averaging over the resolution cell
+     * smooths the lobing into roughly a constant factor; we leave
+     * clutter unmodified for tutorial simplicity.) */
+    const float E_clutter_test = integrate_cell_clutter(
+        d_2d, beam_dir, beamwidth_r, radar->range_res_m,
+        sx, sy, sa,
+        radar->cell_grid_n_range, radar->cell_grid_n_cross,
+        terp, r_earth);
+
+    /* CFAR threshold from reference cells. */
+    const float T = cfar_threshold(
+        d_2d, beam_dir, sx, sy, sa,
+        radar, beamwidth_r, terp, r_earth);
+
+    const float test_cell = E_target + E_clutter_test + radar->noise_floor_norm;
+    const float margin = (test_cell - T) / fmaxf(T, radar->noise_floor_norm);
+
+    const float pd = 1.0f / (1.0f + expf(-3.0f * margin));
+
     return cmb_random_bernoulli(pd);
 }
 
@@ -711,7 +1186,7 @@ struct racetrack {
     float lat_r2m;         /* Local conversion radians to meters, latitude */
     float lon_r2m;         /* Local conversion radians to meters, longitude */
     float roll_angle_r;    /* Platform banking angle during turns, radians */
-    float rad_eff;         /* Effective Earth radius allowing for radar diffraction */
+    float local_earth_radius_m;         /* Effective Earth radius allowing for radar diffraction */
 };
 
 struct racetrack *racetrack_create(void)
@@ -762,6 +1237,9 @@ void racetrack_initialize(struct racetrack *rt,
     /* Radius of curvature in the prime vertical (for east-west) */
     const double N = WGS84_A / sqrt_common;
 
+    /* Local radius of the WGS84 Earth ellipsoid at the anchor point */
+    rt->local_earth_radius_m = (float)sqrt(M * N);
+
     /* Add flight altitude for a correct conversion rad => m at that level */
     rt->lat_r2m = (float)(M + rt->altitude_m);
     rt->lon_r2m = (float)((N + rt->altitude_m) * cos_lat);
@@ -774,10 +1252,12 @@ void racetrack_initialize(struct racetrack *rt,
     printf("Racetrack bank angle %3.1f deg\n", rt->roll_angle_r * rad_to_deg);
     printf("Racetrack orbit duration %4.0f seconds\n", rt->orbit_time_s);
 
-    /* Calculating the effective radius for 4/3 Earth radar horizon */
-    const double loc_radius_mean = sqrt(M * N);
-    rt->rad_eff = (float)(loc_radius_mean * (4.0 / 3.0));
-    const float max_dist = sqrtf(2.0f * rt->rad_eff * rt->altitude_m);
+    /* Headline horizon for a sea-level target, using k evaluated at the
+     * mean of sensor and target altitudes — the same approximation used
+     * by target_is_beyond_horizon at runtime. */
+    const float h_avg_sealvl = 0.5f * rt->altitude_m;
+    const float k_avg        = atmosphere_k_eff(h_avg_sealvl, rt->local_earth_radius_m);
+    const float max_dist     = sqrtf(2.0f * k_avg * rt->local_earth_radius_m * rt->altitude_m);
     printf("Radar horizon at %3.0f nautical miles (sea level target)\n",
             max_dist / nm_to_meters);
 }
@@ -925,15 +1405,18 @@ static void platform_update(struct platform *pfp)
 /******************************************************************************
  * The active sensor process
  */
+
 struct sensor {
     struct cmb_process proc;    /* Inheritance, not a pointer */
     struct platform *host;
-    float cur_dir;
+    float cur_dir_r;
     float rpm;
-    float elev_angle_min;
-    float elev_angle_max;
-    float ref_range_m;           /* Reference range (meters) where SNR = 0 dB */
-    float ref_rcs_m2;            /* Reference target cross-section (m^2) */
+    float beamwidth_r;
+    float elev_angle_min_r;
+    float elev_angle_max_r;
+    float ref_range_m;
+    float ref_rcs_m2;
+    struct radar_params radar;
 
     struct vtkhdf_handle *hdf;
 };
@@ -950,33 +1433,32 @@ void *sensor_proc(struct cmb_process *me, void *vctx)
     struct sensor *senp = (struct sensor *)me;
     struct platform *host = senp->host;
     const struct racetrack *orbit = host->orbit;
-    const float rot_inc = (float)(senp->rpm * (time_step / 60.0f) * (2.0f * M_PI));
 
-    platform_update(host);
-    events_vtkhdf_append(senp->hdf, targets, &(host->state),
-                         senp->cur_dir, (float)cmb_time());
+    /* Antenna rotation per dwell. With 6 RPM and 40 ms dwell, this is
+     * about 1.44 degrees per dwell. The beam itself has angular width
+     * beamwidth_r (~1.4 degrees), so successive dwells slightly overlap. */
+    const float rot_inc = (float)(senp->rpm * (dwell_time_s / 60.0f)
+                                  * (2.0f * M_PI));
 
     while (true) {
-        cmb_process_hold((double)time_step);
+        cmb_process_hold((double)dwell_time_s);
 
         const float prev_hdg = host->state.dir;
-        const float prev_sensor_dir = senp->cur_dir;
         platform_update(host);
 
+        /* Advance the beam direction by one dwell's worth of rotation,
+         * accounting for any platform yaw between calls. cur_dir_r is
+         * the beam *center* at this dwell. */
         const float ddir = host->state.dir - prev_hdg;
-        float sweep_width = rot_inc + ddir;
-        senp->cur_dir += sweep_width;
-        while (senp->cur_dir >= 2.0f * (float)M_PI) {
-            senp->cur_dir -= 2.0f * (float)M_PI;
+        senp->cur_dir_r += rot_inc + ddir;
+        while (senp->cur_dir_r >= 2.0f * (float)M_PI) {
+            senp->cur_dir_r -= 2.0f * (float)M_PI;
+        }
+        while (senp->cur_dir_r < 0.0f) {
+            senp->cur_dir_r += 2.0f * (float)M_PI;
         }
 
-        while (senp->cur_dir < 0.0f) {
-            senp->cur_dir += 2.0f * (float)M_PI;
-        }
-
-        if (sweep_width < 0.0f) {
-            sweep_width = 0.01f;
-        }
+        const float beam_dir = senp->cur_dir_r;
 
         /* --- Target detection pipeline --- */
         for (int i = 0; i < NUM_TARGETS; i++) {
@@ -996,42 +1478,55 @@ void *sensor_proc(struct cmb_process *me, void *vctx)
             const float d_3d = sqrtf(d_2d * d_2d + dz * dz);
             const float tgt_azi = atan2f(dy, dx);
 
-            if (!target_is_in_swept_sector(prev_sensor_dir, sweep_width, tgt_azi)) {
-                /* No change */
+            /* Stage 1: in-beam test, using the centered Gaussian beam. */
+            if (!target_is_in_beam(tgt_azi, beam_dir, senp->beamwidth_r, rot_inc)) {
                 continue;
             }
 
-            if (target_is_beyond_horizon(d_2d, sa, ta, orbit->rad_eff)) {
+            /* Stage 2: horizon. */
+            if (target_is_beyond_horizon(d_2d, sa, ta,
+                                          orbit->local_earth_radius_m)) {
                 tgt->tds = BEYOND_HORIZON;
                 continue;
             }
 
-            if (target_is_outside_vertical(dx, dy, dz, d_2d, host->state.dir, host->state.rol,
-                                              senp->elev_angle_min, senp->elev_angle_max)) {
+            /* Stage 3: vertical lobe / nadir hole. */
+            if (target_is_outside_vertical(dx, dy, dz, d_2d,
+                                            host->state.dir, host->state.rol,
+                                            senp->elev_angle_min_r,
+                                            senp->elev_angle_max_r)) {
                 tgt->tds = NADIR_HOLE;
                 continue;
             }
 
-            if (target_is_terrain_shielded(sx, sy, sa, tx, ty, ta, tgt->terrain)) {
+            /* Stage 4: terrain raymarch. */
+            if (target_is_terrain_shielded(sx, sy, sa, tx, ty, ta,
+                                            tgt->terrain,
+                                            orbit->local_earth_radius_m)) {
                 tgt->tds = TERRAIN_SHIELDED;
                 continue;
             }
 
-            if (target_attempt_detection(sa, senp->ref_range_m, senp->ref_rcs_m2,
-                                         ta, tgt->rcs_now_m2, d_3d)) {
+            /* Stage 5: clutter / antenna pattern / pulse integration / CFAR. */
+            /* Stage 5: clutter / antenna pattern / pulse integration / CFAR /
+             *           multipath. */
+            if (target_attempt_detection(dx, dy, dz, d_3d, d_2d,
+                                          sx, sy, sa,
+                                          beam_dir, senp->beamwidth_r,
+                                          senp->ref_range_m, senp->ref_rcs_m2,
+                                          tgt->rcs_now_m2,
+                                          &senp->radar,
+                                          tgt->terrain,
+                                          orbit->local_earth_radius_m)) {
                 tgt->tds = DETECTED;
                 if (tgt->mode != FIRING) {
-                    /* Cumulative, did we find it when it was not shooting? */
                     tgt->detected = true;
                 }
-            }
+                                          }
             else {
                 tgt->tds = MISSED;
             }
         }
-
-        events_vtkhdf_append(senp->hdf, targets, &(host->state),
-                             senp->cur_dir, (float)cmb_time());
     }
 }
 
@@ -1051,12 +1546,29 @@ void sensor_initialize(struct sensor *senp, const char *name, const float rpm,
     cmb_assert_release(host != NULL);
 
     senp->host = host;
-    senp->cur_dir = (float)(M_PI / 2.0);
+    senp->cur_dir_r = (float)(M_PI / 2.0);
     senp->rpm = rpm;
-    senp->elev_angle_min = min_elev;
-    senp->elev_angle_max = max_elev;
+    senp->beamwidth_r = sensor_beam_width_r;
+    senp->elev_angle_min_r = min_elev;
+    senp->elev_angle_max_r = max_elev;
     senp->ref_range_m = ref_rng * (float)nm_to_meters;
     senp->ref_rcs_m2 = ref_rcs;
+
+    /* Same defaults as the GPU version. */
+    senp->radar.range_res_m        = 150.0f;
+    senp->radar.n_pulses_per_dwell = 12;
+    senp->radar.cfar_n_ref         = 8;
+    senp->radar.cfar_n_guard       = 1;
+    senp->radar.cfar_alpha         = 5.62f;     /* Pfa ~ 1e-6, N = 16 */
+    senp->radar.noise_floor_norm   = 1.0f;
+    senp->radar.cell_grid_n_range  = 4;
+    senp->radar.cell_grid_n_cross  = 4;
+
+    /* Convert biome_gamma_db to linear power ratio. Done here rather
+     * than at file scope because powf isn't a constant expression. */
+    for (int b = 0; b < NBIOMES; b++) {
+        biome_gamma_lin[b] = powf(10.0f, biome_gamma_db[b] / 10.0f);
+    }
 
     senp->hdf = vtkhdf_create();
     events_vtkhdf_init(senp->hdf, events_h5name, NUM_TARGETS);
@@ -1082,6 +1594,7 @@ void sensor_destroy(struct sensor *senp)
 struct simulation {
     struct platform *AWACS;
     struct target *targets;
+    struct cmb_process *HDF5_output;
 };
 
 /*
@@ -1089,7 +1602,7 @@ struct simulation {
  */
 struct trial {
     struct terrain *terrain;
-    double duration;
+    double dur_s;
     uint64_t seed_used;
     unsigned num_found;
 };
@@ -1101,13 +1614,15 @@ void end_sim(void *subject, void *object)
 {
     cmb_unused(object);
 
-    const struct simulation *sim = subject;
+    struct simulation *sim = subject;
     struct target *tgts = sim->targets;
 
     cmb_process_stop((struct cmb_process *)(sim->AWACS->radar), NULL);
     for (unsigned ui = 0; ui < NUM_TARGETS; ui++) {
         cmb_process_stop((struct cmb_process *)&tgts[ui], NULL);
     }
+
+    cmb_process_stop(sim->HDF5_output, NULL);
 }
 
 const char *hhhmmss_formatter(double t);
@@ -1134,6 +1649,29 @@ void *ent_proc(struct cmb_process *me, void *vtp)
 }
 
 /*
+ * A cmb_process to write snapshots to HDF5 output file
+ */
+void *out_proc(struct cmb_process *me, void *vtp)
+{
+    cmb_unused(me);
+    const struct simulation *sim = (struct simulation *)vtp;
+    const struct target *tgts = sim->targets;
+    struct platform *pfp = sim->AWACS;
+    struct sensor *senp = pfp->radar;
+
+    platform_update(pfp);
+    events_vtkhdf_append(senp->hdf, tgts, &(pfp->state),
+                         senp->cur_dir_r, (float)cmb_time());
+
+    while (true) {
+        cmb_process_hold(frame_interval_s);
+        platform_update(pfp);
+        events_vtkhdf_append(senp->hdf, tgts, &(pfp->state),
+                         senp->cur_dir_r, (float)cmb_time());
+    }
+}
+
+/*
  * The simulation driver function to execute one trial
  */
 void run_trial(void *vtrl)
@@ -1145,7 +1683,7 @@ void run_trial(void *vtrl)
     /* Set up our trial housekeeping, assuming random seed already set */
     printf("Initializing event queue\n");
     cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG1);
+    cmb_logger_flags_off(USER_ALL);
     cmb_event_queue_initialize(0.0);
     cmb_logger_timeformatter_set(hhhmmss_formatter);
 
@@ -1194,6 +1732,8 @@ void run_trial(void *vtrl)
     sim.AWACS = awacs;
     platform_initialize(awacs);
     awacs->orbit = orbit;
+    /* Set initial position and direction coordinates */
+    platform_update(awacs);
 
     printf("Initializing radar\n");
     struct sensor *radar = sensor_create();
@@ -1207,9 +1747,15 @@ void run_trial(void *vtrl)
                       ref_range, ref_rcs, awacs, sim.targets);
     cmb_process_start((struct cmb_process *)radar);
 
+    /* Process to write output events */
+    printf("Starting output process\n");
+    sim.HDF5_output = cmb_process_create();
+    cmb_process_initialize(sim.HDF5_output, "HDF5 output", out_proc, &sim, -1);
+    cmb_process_start(sim.HDF5_output);
+
     /* Schedule the simulation control events */
-    printf("Scheduling end event in %4.1f hours from now\n", trl->duration);
-    double t_end_s = trl->duration * 3600.0;
+    printf("Scheduling end event\n");
+    double t_end_s = trl->dur_s;
     cmb_event_schedule(end_sim, &sim, NULL, t_end_s, 0);
 
     /* Process to show the progress bar */
@@ -1218,7 +1764,7 @@ void run_trial(void *vtrl)
     cmb_process_start(entertainment);
 
     /* Run this trial */
-    printf("\nRunning simulation...\n");
+    printf("\nRunning simulation for %4.1f simulated hours...\n", t_end_s/3600.0);
     fflush(stdout);
     cmb_event_queue_execute();
 
@@ -1233,7 +1779,6 @@ void run_trial(void *vtrl)
             trl->num_found, NUM_TARGETS,
             100.0 * ((double)trl->num_found) / (double)(NUM_TARGETS));
 
-    printf("\nCleaning up\n");
     racetrack_terminate(orbit);
     racetrack_destroy(orbit);
     sensor_terminate(radar);
@@ -1257,8 +1802,42 @@ void run_trial(void *vtrl)
 /*
  * The minimal single-threaded main function
  */
-int main(void)
+int main(int argc, char **argv)
 {
+    bool timing_enabled = false;
+    uint64_t seed = cmb_random_hwseed();
+    double dur_h = 6.0;
+
+    int opt;
+    while ((opt = getopt(argc, argv, "d:s:t")) != -1) {
+        switch (opt) {
+            case 'd':
+                errno = 0;
+                dur_h = strtof(optarg, NULL);
+                if (errno != 0 || dur_h <= 0.0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
+                break;
+            case 's':
+                errno = 0;
+                seed = (uint64_t)strtoull(optarg, NULL, 0);
+                if (errno != 0 || seed == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
+                break;
+            case 't':
+                timing_enabled = true;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
+    const clock_t start_time = clock();
+
     /* Allocate and generate the terrain map to be used for several trials */
     const float fwidth_nm = 1000.0f;
     const float fheight_nm = 1000.0f;
@@ -1266,17 +1845,30 @@ int main(void)
     const float ref_lon = -10.0f;
 
     struct trial trl = {};
-    printf("Initializing random generators\n");
-    trl.seed_used = cmb_random_hwseed();
+
+    printf("Initializing random generator\n");
+    trl.seed_used = seed;
     cmb_random_initialize(trl.seed_used);
 
     struct terrain *tp = terrain_create();
-    terrain_init(tp, fwidth_nm, fheight_nm, ref_lat, ref_lon);
-
+    terrain_initialize(tp, fwidth_nm, fheight_nm, ref_lat, ref_lon);
     trl.terrain = tp;
-    trl.duration = 24.0;
+    trl.dur_s = dur_h * 3600.0;
 
+    const clock_t mid_time = clock();
+    const double tergen_time = (double)(mid_time - start_time) / CLOCKS_PER_SEC;
+
+    printf("\nStarting simulation\n");
     run_trial(&trl);
+
+    if (timing_enabled) {
+        const clock_t end_time = clock();
+        const double simul_time = (double)(end_time - mid_time) / CLOCKS_PER_SEC;
+        const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+        printf("\nTerrain generation took %g sec\n", tergen_time);
+        printf("Simulation took %g sec\n", simul_time);
+        printf("Total time %g sec\n", elapsed_time);
+    }
 
     terrain_terminate(tp);
     terrain_destroy(tp);
@@ -1415,6 +2007,19 @@ void write_attr_int32_array(const hid_t loc_id, const char *const name, const in
     H5_CHECK(H5Sclose(space));
 }
 
+void write_attr_int64_array(hid_t loc_id, const char *name,
+                            const int64_t *values, hsize_t count)
+{
+    const hid_t space = H5Screate_simple(1, &count, NULL);
+    H5_CHECK(space);
+    const hid_t attr = H5Acreate2(loc_id, name, H5T_NATIVE_INT64,
+                                  space, H5P_DEFAULT, H5P_DEFAULT);
+    H5_CHECK(attr);
+    H5_CHECK(H5Awrite(attr, H5T_NATIVE_INT64, values));
+    H5_CHECK(H5Aclose(attr));
+    H5_CHECK(H5Sclose(space));
+}
+
 void write_attr_double_array(const hid_t loc_id, const char *const name, const double *const values, const hsize_t count)
 {
     const hid_t type = H5T_NATIVE_DOUBLE;
@@ -1453,16 +2058,16 @@ void terrain_vtkhdf_write(const char *const h5_filename,
     const hid_t root = H5Gcreate2(file_id, "VTKHDF", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5_CHECK(root);
     write_attr_string(root, "Type", "ImageData");
-    const int32_t version[2] = {2, 0};
-    write_attr_int32_array(root, "Version", version, 2);
+    const int64_t version[2] = { 2, 0 };
+    write_attr_int64_array(root, "Version", version, 2);
 
-     const int32_t extent[6] = {
-        0, (int32_t)vis_cols - 1,
-        0, (int32_t)vis_rows - 1,
+    const int64_t extent[6] = {
+        0, (int64_t)vis_cols - 1,
+        0, (int64_t)vis_rows - 1,
         0, 0
     };
 
-    write_attr_int32_array(root, "WholeExtent", extent, 6);
+    write_attr_int64_array(root, "WholeExtent", extent, 6);
 
     const double total_x = (cols - 1) * (double)x_scale;
     const double total_y = (rows - 1) * (double)y_scale;
@@ -1486,8 +2091,8 @@ void terrain_vtkhdf_write(const char *const h5_filename,
         }
     }
 
-    const hsize_t map_dims[2] = { (hsize_t)vis_rows, (hsize_t)vis_cols };
-    const hid_t map_space = H5Screate_simple(2, map_dims, NULL);
+    const hsize_t map_dims[3] = { (hsize_t)vis_rows, (hsize_t)vis_cols, 1 };
+    const hid_t map_space = H5Screate_simple(3, map_dims, NULL);
     H5_CHECK(map_space);
     const hid_t map_dset = H5Dcreate2(pd_group, "Elevation", H5T_NATIVE_FLOAT,
                                       map_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
