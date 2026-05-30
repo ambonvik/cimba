@@ -214,11 +214,11 @@ void run_mg1_trial(void *vtrl)
 
     struct trial *trl = vtrl;
     cmb_logger_user(stdout, USERFLAG2, "Trial seed: 0x%016" PRIx64, trl->seed);
+    cmb_random_initialize(trl->seed);
 
     struct context *ctx = malloc(sizeof(*ctx));
     cmb_assert_always(ctx != NULL);
     ctx->trl = trl;
-    cmb_random_initialize(trl->seed);
 
     struct simulation *sim = malloc(sizeof(*sim));
     cmb_assert_always(sim != NULL);
@@ -227,6 +227,22 @@ void run_mg1_trial(void *vtrl)
     /* Do not disturb, except for significant warnings and errors */
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG1);
+
+    /* Test occasional trial failures */
+    const double pfail = 0.05;
+    if (cmb_random_bernoulli(pfail)) {
+        /* Pretend that this trial failed for some reason, bail out.
+         * Note that it is the caller's responsibility to free any allocated
+         * memory before calling cmb_logger_error()    */
+        free(sim);
+        free(ctx);
+        const uint64_t tid = cimba_thread_id();
+        const uint64_t tix = cimba_trial_index();
+        cmb_logger_error(stdout,
+                         "Trial %" PRIu64 " failed in worker %" PRIu64,
+                         tix, tid);
+        /* Not reached */
+    }
 
     /* Start from an empty event queue */
     cmb_event_queue_initialize(0.0);
@@ -289,6 +305,7 @@ void run_mg1_trial(void *vtrl)
     free(ctx);
 
     cmb_event_queue_terminate();
+    cmb_random_terminate();
 }
 
 /* Declare for later use, do not want to digress with that here */
@@ -394,7 +411,8 @@ int main(const int argc, char **argv)
                 experiment[ui_exp].dur_s = dur;
                 experiment[ui_exp].cooldown = 1.0;
                 experiment[ui_exp].seed = cmb_random_fmix64(seed, ui_exp);
-                experiment[ui_exp].avg_queue_length = 0.0;
+                /* Sentinel initial value to catch any failed trials */
+                experiment[ui_exp].avg_queue_length = -1.0;
                 ui_exp++;
             }
         }
@@ -405,24 +423,28 @@ int main(const int argc, char **argv)
 
     printf("Running experiment\n");
     cmi_test_print_line("-");
-    cimba_run(experiment,
-                         ntrials,
-                         sizeof(*experiment),
-                         run_mg1_trial);
+    const uint64_t nfail = cimba_run(experiment,
+                                     ntrials,
+                                     sizeof(*experiment),
+                                     run_mg1_trial);
 
     cmi_test_print_line("-");
+    printf("Experiment finished, %" PRIu64 " failed trials\n", nfail);
     if (plot_graphics) {
-        printf("Finished experiment, writing results to file\n");
+        printf("Writing results to file\n");
         ui_exp = 0u;
         FILE *datafp = fopen("test_cimba.dat", "w");
         fprintf(datafp, "# CV utilization avg_queue_length\n");
         for (unsigned ui_cv = 0u; ui_cv < ncvs; ui_cv++) {
             for (unsigned ui_rho = 0u; ui_rho < nrhos; ui_rho++) {
                 for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
-                    fprintf(datafp, "%f %f %f\n",
-                       experiment[ui_exp].service_cv,
-                       experiment[ui_exp].utilization,
-                       experiment[ui_exp].avg_queue_length);
+                    if (experiment[ui_exp].avg_queue_length != -1.0) {
+                        /* Trial did not fail, valid result */
+                        fprintf(datafp, "%f %f %f\n",
+                           experiment[ui_exp].service_cv,
+                           experiment[ui_exp].utilization,
+                           experiment[ui_exp].avg_queue_length);
+                    }
                     ui_exp++;
                 }
                 fprintf(datafp, "\n");
@@ -433,7 +455,7 @@ int main(const int argc, char **argv)
         fclose(datafp);
     }
     else {
-        printf("Finished experiment, results:\n");
+        printf("Results:\n");
         ui_exp = 0u;
         printf("cv: \trho:\tn_avg:\n");
         for (unsigned ui_cv = 0u; ui_cv < ncvs; ui_cv++) {
@@ -441,12 +463,22 @@ int main(const int argc, char **argv)
             for (unsigned ui_rho = 0u; ui_rho < nrhos; ui_rho++) {
                 const double rho = experiment[ui_exp].utilization;
                 double sum = 0.0;
+                unsigned nval = 0u;
                 for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
-                    sum += experiment[ui_exp].avg_queue_length;
+                    if (experiment[ui_exp].avg_queue_length != -1.0) {
+                        /* Trial did not fail, valid result */
+                        nval++;
+                        sum += experiment[ui_exp].avg_queue_length;
+                    }
                     ui_exp++;
                 }
-                const double avg = sum / (double)nreps;
-                printf("%5.3f\t%5.3f\t%5.3f\n", cv, rho, avg);
+                if (nval > 0u) {
+                    const double avg = sum / (double)nval;
+                    printf("%5.3f\t%5.3f\t%5.3f\n", cv, rho, avg);
+                }
+                else {
+                    printf("%5.3f\t%5.3f\t-\n", cv, rho);
+                }
             }
         }
     }

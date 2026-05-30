@@ -18,6 +18,8 @@
 
 #include <inttypes.h>
 #include <pthread.h>
+#include <setjmp.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -72,6 +74,13 @@ static pthread_mutex_t cmi_logger_mutex = PTHREAD_MUTEX_INITIALIZER;
  * see worker_thread_func() in cimba.c
  */
 CMB_THREAD_LOCAL uint64_t cmi_logger_trial_idx = CMI_NO_TRIAL_IDX;
+
+/*
+ * For recovering from trial-ending cmb_logger_error calls,
+ * defined in cimba.c. Effectively throwing an exception.
+ */
+extern CMB_THREAD_LOCAL jmp_buf cmi_worker_recovery;
+extern CMB_THREAD_LOCAL bool cmi_worker_recovery_armed;
 
 /*
  * Default time formatting function.
@@ -238,7 +247,13 @@ void cmi_logger_error(FILE *fp,
         va_end(args);
     }
 
-    pthread_exit(NULL);
+    if (cmi_worker_recovery_armed) {
+        longjmp(cmi_worker_recovery, 1);
+    }
+    else {
+        /* Not running inside a Cimba worker — fall back to thread exit */
+        pthread_exit(NULL);
+    }
     /* Not reached */
 }
 
