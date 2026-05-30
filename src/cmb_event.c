@@ -18,7 +18,6 @@
  */
 
 #include <assert.h>
-#include <stdbool.h>
 
 #include "cmb_assert.h"
 #include "cmb_event.h"
@@ -233,20 +232,21 @@ bool cmb_event_execute_next(void)
     }
 
     /* Pull off the next event and decode it */
-    struct event_peek *tmp = (struct event_peek *)cmi_hashheap_dequeue(event_queue);
+     struct event_peek ev = *(struct event_peek *)cmi_hashheap_dequeue(event_queue);
 
-    /* Advance clock to time of the next event */
+    /* Advance clock to the time of this event. Must happen before any enqueue,
+    * while heap slot 0 still holds the dequeued tag. */
     const double new_time = event_queue->heap[0].rank_d64;
     cmb_assert_debug(new_time >= sim_time);
     sim_time = new_time;
 
-    /* Schedule wakeup events for any processes waiting for this to happen */
-    if (!cmi_slist_is_empty(&(tmp->waiters))) {
-        wake_event_waiters(&(tmp->waiters), CMB_PROCESS_SUCCESS);
+    /* Wake any processes waiting for this event */
+    if (!cmi_slist_is_empty(&(ev.waiters))) {
+        wake_event_waiters(&(ev.waiters), CMB_PROCESS_SUCCESS);
     }
 
     /* Execute the event */
-    (*tmp->action)(tmp->subject, tmp->object);
+    (*ev.action)(ev.subject, ev.object);
 
     return true;
 }
