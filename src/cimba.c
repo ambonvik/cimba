@@ -22,8 +22,8 @@
  */
 
 #include <pthread.h>
+#include <setjmp.h>
 #include <stdint.h>
-#include <xmmintrin.h>
 
 #include "cimba.h"
 
@@ -53,6 +53,14 @@ static uint64_t cmg_next_trial_idx;
 /* User-defined context per thread */
 CMB_THREAD_LOCAL void *cmi_thread_context = NULL;
 
+/* Index of the current thread, if any */
+CMB_THREAD_LOCAL uint64_t cmi_thread_id = UINT64_C(0);
+
+/* For recovering from trial-ending cmb_logger_error calls */
+CMB_THREAD_LOCAL jmp_buf cmi_worker_recovery;
+CMB_THREAD_LOCAL bool cmi_worker_recovery_armed = false;
+static uint64_t cmi_failed_trials;
+
 /*
  * cimba_version - Return the version string as const char *
  */
@@ -71,10 +79,39 @@ void cimba_thread_hooks_set(cimba_thread_init_func *initfunc,
     cmg_thread_exit_func = exitfunc;
 }
 
-/* Return whatever context was created by the cmg_thread_init_func, if any */
 void *cimba_thread_context(void)
 {
     return cmi_thread_context;
+}
+
+uint64_t cimba_thread_id(void)
+{
+    return cmi_thread_id;
+}
+
+uint32_t cimba_num_workers(void)
+{
+    return cmi_cpu_cores();
+}
+
+uint64_t cimba_trials_total(void)
+{
+    return cmg_total_trials;
+}
+
+uint64_t cimba_trial_index(void)
+{
+    return cmi_logger_trial_idx;
+}
+
+/*
+ * Assume that all workers are busy if there is anything to do
+ */
+uint64_t cimba_trials_remaining(void)
+{
+    const uint64_t nxt = __atomic_load_n(&cmg_next_trial_idx, __ATOMIC_RELAXED);
+
+    return cmg_total_trials - nxt;
 }
 
 /*
@@ -97,6 +134,7 @@ static void thread_exit_wrapper(void *context)
 static void *worker_thread_func(void *arg)
 {
     const uint64_t tid = (uint64_t)arg;
+    cmi_thread_id = tid;
 
     /* Any user-defined initialization needed? */
     if (cmg_thread_init_func != NULL) {
@@ -120,17 +158,31 @@ static void *worker_thread_func(void *arg)
         void *trial = ((char *)cmg_experiment_arr) + (idx * cmg_trial_struct_sz);
         cmi_logger_trial_idx = idx;
 
-        if (cmg_trial_func != NULL) {
-            /* Normal usage, a common function, multiple data */
-            (*cmg_trial_func)(trial);
+        cmi_worker_recovery_armed = true;
+        if (setjmp(cmi_worker_recovery) == 0) {
+            if (cmg_trial_func != NULL) {
+                /* Normal usage, a common function, multiple data */
+                (*cmg_trial_func)(trial);
+            }
+            else {
+                /* No common function, extracting function to use for this trial */
+                cimba_trial_func *trial_func = (cimba_trial_func *)(((char *)trial)
+                                                             + cmg_trial_struct_sz);
+                (*trial_func)(trial);
+            }
         }
         else {
-            /* No common function, extracting function to use for this trial */
-            cimba_trial_func *trial_func = (cimba_trial_func *)(((char *)trial)
-                                                         + cmg_trial_struct_sz);
-            (*trial_func)(trial);
+            /* The trial called cmb_logger_error() and bailed out, increment counter */
+            (void)__atomic_fetch_add(&cmi_failed_trials, 1, __ATOMIC_RELAXED);
+            /*
+             * Note that no attempt at memory cleanup is done here. Anything allocated
+             * by the trial is now leaked memory if it did not free it before
+             * calling cmb_logger_error()
+             */
         }
-    }
+
+        cmi_worker_recovery_armed = false;
+     }
 
     /* Made it this far, execute the cleanup functions before exiting */
     pthread_cleanup_pop(1);
@@ -148,17 +200,17 @@ static void *worker_thread_func(void *arg)
  * we'll put in a mutex to protect it against hard-to-debug consequences of
  * unintentional misuse.
  */
-void cimba_run(void *your_experiment_array,
-                          const uint64_t num_trials,
-                          const size_t trial_struct_size,
-                          cimba_trial_func *your_trial_func)
+uint64_t cimba_run(void *your_experiment_array,
+                   const uint64_t num_trials,
+                   const size_t trial_struct_size,
+                   cimba_trial_func *your_trial_func)
 {
     cmb_assert_release(your_experiment_array != NULL);
     cmb_assert_release(num_trials > 0u);
     cmb_assert_release(trial_struct_size > 0u);
 
     /* A mutex to make sure the Cimba globals are protected */
-   pthread_mutex_lock(&cmg_experiment_mutex);
+    pthread_mutex_lock(&cmg_experiment_mutex);
 
     /* Initialize globals for the threads */
     cmg_next_trial_idx = 0u;
@@ -166,6 +218,7 @@ void cimba_run(void *your_experiment_array,
     cmg_trial_struct_sz = trial_struct_size;
     cmg_trial_func = your_trial_func;
     cmg_total_trials = num_trials;
+    cmi_failed_trials = 0u;
 
     /* Start the worker threads and let them help themselves to the trials */
     const uint32_t ncores = cmi_cpu_cores();
@@ -185,4 +238,6 @@ void cimba_run(void *your_experiment_array,
 
     /* Only unlock when all is said and done */
     pthread_mutex_unlock(&cmg_experiment_mutex);
+
+    return cmi_failed_trials;
 }
