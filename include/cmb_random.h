@@ -5,7 +5,7 @@
  *
  * The main generator gives 64-bit pseudo-random numbers with 256 bits of state
  * and a cycle of at least 2^64 samples. It is seeded by a 64-bit value but
- * amplifies that to a 265-bit state by using an auxiliary generator with a 64-bit
+ * amplifies that to a 256-bit state by using an auxiliary generator with a 64-bit
  * state to bootstrap the initial 256-bit state for the main generator. All
  * later pseudo-random numbers come from the same stream.
  *
