@@ -54,6 +54,25 @@ jobs:
       - name: Test
         run: meson test -C build-asan --print-errorlogs --timeout-multiplier 10
 
+  linux-tsan:
+    runs-on: ubuntu-latest
+    env:
+      TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build nasm meson
+      - name: Configure (debug + TSan)
+        run: >
+          meson setup build-tsan --buildtype=debug
+          -Db_sanitize=thread -Db_lundef=false -Denable_docs=false
+      - name: Build
+        run: meson compile -C build-tsan
+      - name: Test
+        run: meson test -C build-tsan --print-errorlogs --timeout-multiplier 10
+
   # Windows (MinGW) — unchanged
   windows-mingw-build:
     runs-on: windows-latest
