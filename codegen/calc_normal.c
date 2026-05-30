@@ -128,7 +128,8 @@ static void calculate_ziggurat(void)
                 }
             }
 
-            acum += area[i] + (xarr[i] - 0.0) * (yarr[i] - yarr[i-1]);
+            double ytmp = (i == 0) ? 0.0 : yarr[i-1];
+            acum += area[i] + (xarr[i] - 0.0) * (yarr[i] - ytmp);
 
             /* Make ready for the next layer */
             xlcand = xarr[i] / 1.2;
