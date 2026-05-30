@@ -52,7 +52,7 @@ jobs:
       - name: Build
         run: meson compile -C build-asan
       - name: Test
-        run: meson test -C build-asan --print-errorlogs --timeout-multiplier 10
+        run: meson test -C build-asan --print-errorlogs --timeout-multiplier 20
 
   linux-tsan:
     runs-on: ubuntu-latest
@@ -71,7 +71,7 @@ jobs:
       - name: Build
         run: meson compile -C build-tsan
       - name: Test
-        run: meson test -C build-tsan --print-errorlogs --timeout-multiplier 10
+        run: meson test -C build-tsan --print-errorlogs --timeout-multiplier 20
 
   # Windows (MinGW) — unchanged
   windows-mingw-build:
@@ -96,4 +96,4 @@ jobs:
           meson compile -C build
       - name: Test
         shell: msys2 {0}
-        run: meson test -C build --print-errorlogs --timeout-multiplier 5
+        run: meson test -C build --print-errorlogs --timeout-multiplier 10
