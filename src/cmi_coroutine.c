@@ -180,14 +180,17 @@ void cmi_coroutine_terminate(struct cmi_coroutine *cp)
     cmb_assert_debug(cp != coroutine_current);
 
     cmb_assert_debug(cp->stack != NULL);
-    cmi_coroutine_stack_free(cp->stack);
-    cmi_tsan_destroy_fiber(cp->tsan_fiber);
     registry_remove(cp);
+    cmi_tsan_destroy_fiber(cp->tsan_fiber);
+    cmi_coroutine_stack_free(cp->stack);
     cmi_memset(cp, 0, sizeof(*cp));
 }
 
 /*
- * cmi_coroutine_destroy - Free memory allocated for a coroutine and its stack.
+ * cmi_coroutine_destroy - Free memory allocated for a coroutine and its stack
+ * if not already free'd by cmi_coroutine_terminate, which should properly be
+ * called first by the user code.
+ *
  * The given coroutine cannot be main or the currently executing coroutine.
  */
 void cmi_coroutine_destroy(struct cmi_coroutine *cp)
@@ -195,6 +198,12 @@ void cmi_coroutine_destroy(struct cmi_coroutine *cp)
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp != coroutine_main);
     cmb_assert_debug(cp != coroutine_current);
+
+    if (cp->stack != NULL) {
+        registry_remove(cp);
+        cmi_tsan_destroy_fiber(cp->tsan_fiber);
+        cmi_coroutine_stack_free(cp->stack);
+    }
 
     cmi_free(cp);
 }

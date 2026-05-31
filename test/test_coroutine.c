@@ -58,8 +58,7 @@ static void test_simple_event(void)
 
     printf("Survived, now back in main coroutine, received %p\n", ret);
 
-    /* Destroy the coroutine to free its memory allocation*/
-    printf("Delete coroutine %p\n", (void *)cp);
+    cmi_coroutine_terminate(cp);
     cmi_coroutine_destroy(cp);
     cmi_test_print_line("-");
 }
