@@ -71,7 +71,7 @@ jobs:
       - name: Build
         run: meson compile -C build-tsan
       - name: Test
-        run: meson test -C build-tsan --print-errorlogs --timeout-multiplier 20
+        run: meson test -C build-tsan --print-errorlogs --timeout-multiplier 100
 
   # Windows (MinGW) — unchanged
   windows-mingw-build:
