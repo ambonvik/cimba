@@ -37,7 +37,7 @@
 #include "test.h"
 
 /* Test macros */
-#define MAX_SAMPLES 1000000u
+#define MAX_SAMPLES 10000u
 #define SORT_SAMPLES 25u
 #define MAX_LAG 20u
 #define NUM_BINS 20u

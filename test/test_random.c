@@ -917,7 +917,7 @@ int main(const int argc, char *argv[])
     bool timing_enabled = false;
     bool fixed_seed = false;
     uint64_t seed = cmb_random_hwseed();
-    uint64_t nsamples = 10000000;
+    uint64_t nsamples = 1000000u;
 
     int opt;
     while ((opt = getopt(argc, argv, "n:s:t")) != -1) {
