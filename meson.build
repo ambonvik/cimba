@@ -2,7 +2,7 @@
 
 project('cimba', ['c'],
         version : '3.0.0',
-        meson_version : '>= 0.62',
+        meson_version : '>= 0.64',
         default_options : [
             'warning_level=3',
             'buildtype=release',
