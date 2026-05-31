@@ -48,7 +48,6 @@ struct simulation {
     struct cmb_process *tide;
     struct cmb_process *arrivals;
     struct cmb_process *departures;
-    struct cmb_process *entertainment;
     struct cmb_resourcepool *tugs;
     struct cmb_resourcepool *berths[2];
     struct cmb_condition *harbormaster;
@@ -440,22 +439,6 @@ void *departure_proc(struct cmb_process *me, void *vctx)
     }
 }
 
-/* Just to keep ourselves amused while the simulation is running */
-void *entertainment_proc(struct cmb_process *me, void *vctx)
-{
-    cmb_unused(me);
-    cmb_unused(vctx);
-
-    // ReSharper disable once CppDFAEndlessLoop
-    while (true) {
-        /* Print one dot per simulated year */
-        const int64_t sig = cmb_process_hold(24.0 * 7 * 52);
-        cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
-        printf(".");
-        fflush(stdout);
-    }
-}
-
 /* An event to shut down the simulation */
 void end_sim_evt(void *subject, void *object)
 {
@@ -467,7 +450,6 @@ void end_sim_evt(void *subject, void *object)
     cmb_process_stop(sim->tide, NULL);
     cmb_process_stop(sim->arrivals, NULL);
     cmb_process_stop(sim->departures, NULL);
-    cmb_process_stop(sim->entertainment, NULL);
 
     /* Also stop and recycle any still active ships */
     while (cmi_hashheap_count(sim->active_ships) > 0u) {
@@ -590,12 +572,6 @@ void test_condition(uint64_t seed, double dur)
     uint64_t evt_hdle = cmb_event_schedule(end_sim_evt, &sim, NULL, dur, 0);
     cmb_assert_always(evt_hdle != 0u);
 
-    sim.entertainment = cmb_process_create();
-    cmb_assert_always(sim.entertainment != NULL);
-    cmb_assert_always(cmb_process_status(sim.entertainment) == CMB_PROCESS_CREATED);
-    cmb_process_initialize(sim.entertainment, "Dot", entertainment_proc, NULL, 0);
-    cmb_process_start(sim.entertainment);
-
     /* Execute the simulation */
     cmb_event_queue_execute();
 
@@ -655,7 +631,7 @@ int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
     uint64_t seed = cmb_random_hwseed();
-    double dur = 24.0 * 7 * 52 * 100;
+    double dur = 24.0 * 7 * 52.25;
 
     int opt;
     while ((opt = getopt(argc, argv, "d:s:t")) != -1) {
