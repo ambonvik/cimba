@@ -40,6 +40,7 @@ extern void *cmi_coroutine_context_switch(void **old, void **new, void *ret);
 
 /* OS-specific C code, see src/arch/cmi_coroutine_context_*.c */
 extern bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp);
+extern bool cmi_coroutine_registers_valid(const struct cmi_coroutine *cp);
 extern void cmi_coroutine_context_init(struct cmi_coroutine *cp);
 
 /*
@@ -229,6 +230,7 @@ void *cmi_coroutine_start(struct cmi_coroutine *cp, void *msg)
     /* Prepare the stack for launching the coroutine function */
     cmi_coroutine_context_init(cp);
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
+    cmb_assert_debug(cmi_coroutine_registers_valid(cp));
 
     /* The current coroutine now becomes both the parent and caller of cp */
     cp->parent = coroutine_current;
@@ -262,6 +264,7 @@ void cmi_coroutine_exit(void *retval)
 
     struct cmi_coroutine *cp = coroutine_current;
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
+    cmb_assert_debug(cmi_coroutine_registers_valid(cp));
 
     cp->exit_value = retval;
     cp->status = CMI_COROUTINE_FINISHED;
@@ -278,6 +281,7 @@ void cmi_coroutine_stop(struct cmi_coroutine *cp, void *retval)
     cmb_assert_release(cp != NULL);
     cmb_assert_release(cp->status == CMI_COROUTINE_RUNNING);
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
+    cmb_assert_debug(cmi_coroutine_registers_valid(cp));
 
     if (cp == cmi_coroutine_current()) {
         cmi_coroutine_exit(retval);
@@ -304,10 +308,12 @@ extern void *cmi_coroutine_transfer(struct cmi_coroutine *to, void *msg)
     cmb_assert_release(to != NULL);
     cmb_assert_release(to->status == CMI_COROUTINE_RUNNING);
     cmb_assert_debug(cmi_coroutine_stack_valid(to));
+    cmb_assert_debug(cmi_coroutine_registers_valid(to));
 
     struct cmi_coroutine *from = coroutine_current;
     cmb_assert_debug(from != NULL);
     cmb_assert_debug(cmi_coroutine_stack_valid(from));
+    cmb_assert_debug(cmi_coroutine_registers_valid(from));
 
     /* May pass through here on its way out from cmi_coroutine_exit */
     cmb_assert_release((from->status == CMI_COROUTINE_RUNNING)

@@ -21,11 +21,10 @@
 #define _GNU_SOURCE // NOLINT(bugprone-reserved-identifier)
 #include <pthread.h>
 
-#include <inttypes.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/mman.h>
+#include <xmmintrin.h>
 
 #include "cmb_assert.h"
 
@@ -113,6 +112,37 @@ bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
     }
 
     return true;
+}
+
+/* Register sanity check, Linux/x86-64-specific: Just check MXCSR */
+bool cmi_coroutine_registers_valid(const struct cmi_coroutine *cp)
+{
+    cmb_unused(cp);
+
+    #ifdef NMXCSR
+        /* MXCSR register is not stored in this version of Cimba,
+         * assuming that no coroutine changes it. Verify that this holds.    */
+        static CMB_THREAD_LOCAL uint64_t mxcsr_cached = 0u;
+
+        /* We only care about the stattus buts here */
+        const uint64_t mxcsr_now = _mm_getcsr() & ~0x3Fu;
+        if (mxcsr_cached != 0u) {
+            const bool match = (mxcsr_now == mxcsr_cached);
+            mxcsr_cached = mxcsr_now;
+
+            return match;
+        }
+        else {
+            mxcsr_cached = mxcsr_now;
+
+            return true;
+        }
+
+
+    #else
+        /* Nothing to do */
+        return true;
+    #endif
 }
 
 void cmi_coroutine_context_init(struct cmi_coroutine *cp)
