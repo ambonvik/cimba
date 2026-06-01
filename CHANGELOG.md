@@ -6,13 +6,16 @@ corner without this warranting a new major release. We will summarize new featur
 changes, and bug fixes below. For complete details, see the git commit history.
 
 ### Incremental changes on the way to the official 3.0.0 release
-* Bug fixes and approx 50 % speed improvement
+* Bug fixes and approx 50 % speed improvement, mainly from improvements to the hash map 
+  part of the hash-heap data structures
 * Added cmb_priorityqueue, cmb_process_timer, cmb_process_yield/resume
 * Added cimba_set_thread_hooks() and cimba_thread_context() for managing CUDA streams
-* Added the number of failed trals as return value from cimba_run (renamed from 
-  cimba_run_experiment)
+* Added the number of failed trials as return value from cimba_run (renamed from 
+  cimba_run_experiment, the old name deprecated)
 * Added setjmp/longjmp error recovery in multithreaded trials after call to 
   cmb_logger_error (which abandons the current trial)
+* Adapted for use with ASan, UBSan, and TSan - and running these automatically on 
+  GitHub CI runners after each git push
 * Coroutines adapted for Windows 11 with its improved stack security measures
 * Added cmb_random_fmix64 to bootstrap deterministic thread seeds from a master seed
 * Added tutorial 5 demonstrating CUDA integration
