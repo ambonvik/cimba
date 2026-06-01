@@ -161,8 +161,8 @@ static inline void cimba_run_experiment(void *your_experiment_array,
 
 /**
 * @brief Defines a prototype for an optional user-provided function to execute
-* when initializing a phtread. The first argument is whatever the user code wants
-* it to be, the second argument is the thread id assigned by cimba_run_experiment,
+* when initializing a pthread. The first argument is whatever the user code wants
+* it to be. The second argument is the thread id assigned by cimba_run_experiment,
 * an unsigned 64-bit integer in the range from 0 to the number of logical cores
 * on the CPU minus one.
 */
@@ -170,7 +170,7 @@ typedef void *(cimba_thread_init_func)(void *usrarg, uint64_t tid);
 
 /**
 * @brief Defines a prototype for an optional user-provided function to execute
-* when terminating a phtread. The argument is a thread context created by a
+* when terminating a pthread. The argument is a thread context created by a
 * previous thread init function. THis context can also be obtained in user code
 * by calling cimba_thread_context()
 */
@@ -218,9 +218,22 @@ extern uint64_t cimba_thread_id(void);
 /**
 * @brief Get the number of worker threads
 *
-* @return Number of worker threads (running or otherwise)
+* @return Number of worker threads (running or otherwise), >= 1.
 */
-extern uint32_t cimba_num_workers(void);
+extern uint32_t cimba_threads_num(void);
+
+/**
+* @brief Set the maximal number of worker threads to be used by Cimba. Can only
+*        be set before or between Cimba runs.
+*
+* @param n_threads The number of threads to use. Zero means default number,
+*                  i.e., equal to the number of CPU cores reported by the
+*                  operating system. Returns the actual number used, same as
+*                  cimba_workers_num().
+*
+* @return Number of worker threads to be used on the next run, >= 1
+*/
+extern uint32_t cimba_threads_use(uint32_t n_threads);
 
 /**
 * @brief Get the total number of trials in this experiment
@@ -242,7 +255,5 @@ extern uint64_t cimba_trials_remaining(void);
 * @return Cimba trial index, zero if called outside a trial
 */
 extern uint64_t cimba_trial_index(void);
-
-
 
 #endif // CIMBA_CIMBA_H

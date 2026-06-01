@@ -224,10 +224,6 @@ void run_mg1_trial(void *vtrl)
     cmb_assert_always(sim != NULL);
     ctx->sim = sim;
 
-    /* Do not disturb, except for significant warnings and errors */
-    cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG1);
-
     /* Test occasional trial failures */
     const double pfail = 0.05;
     if (cmb_random_bernoulli(pfail)) {
@@ -326,6 +322,9 @@ void *thread_init_func(void *usrarg, const uint64_t tid)
     ctx->usrarg = usrarg;
     ctx->tid = tid;
 
+    const uint32_t logflagsoff = *((uint32_t *)usrarg);
+    cmb_logger_flags_off(logflagsoff);
+
     return ctx;
 }
 
@@ -346,9 +345,10 @@ int main(const int argc, char **argv)
     uint64_t seed = cmb_random_hwseed();
     double dur = 1.0e6;
     double wup = 1.0e-3;
+    uint32_t nthr = 0u;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:gs:tw:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:gs:tw:r:")) != -1) {
         switch (opt) {
             case 'd':
                 errno = 0;
@@ -360,6 +360,15 @@ int main(const int argc, char **argv)
                 break;
             case 'g':
                 plot_graphics = true;
+                break;
+            case 'r':
+                errno = 0;
+                nthr = (uint32_t)strtoul(optarg, NULL, 0);
+                if (errno != 0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    abort();
+                }
+                (void)cimba_threads_use(nthr);
                 break;
             case 's':
                 errno = 0;
@@ -418,8 +427,14 @@ int main(const int argc, char **argv)
         }
     }
 
+    /* Stash a copy for possible later use */
+    struct trial *experiment_single = calloc(ntrials, sizeof(*experiment_single));
+    cmb_assert_always(sizeof(*experiment) == sizeof(*experiment_single));
+    cmi_memcpy(experiment_single, experiment, ntrials * sizeof(*experiment));
+
     printf("Baiting thread hooks\n");
-    cimba_thread_hooks_set(thread_init_func, NULL, thread_exit_func);
+    uint32_t logflagsoff = CMB_LOGGER_INFO | USERFLAG1;
+    cimba_thread_hooks_set(thread_init_func, &logflagsoff, thread_exit_func);
 
     printf("Running experiment\n");
     cmi_test_print_line("-");
@@ -427,8 +442,30 @@ int main(const int argc, char **argv)
                                      ntrials,
                                      sizeof(*experiment),
                                      run_mg1_trial);
-
     cmi_test_print_line("-");
+
+    if (cimba_threads_num() != 1u) {
+        /* We were running multithreaded, check that we get the exact same outcome single-threaded */
+        printf("Validating experiment ...");
+        fflush(stdout);
+        cimba_threads_use(1);
+        /* Turn off all logging, including error messages. cimba_run() has joined
+         * all threads that read the previous value, will soon start new worker
+         * threads, tell them to turn off logging by storing a new value here. */
+        logflagsoff = 0xFFFFFFFF;
+        const uint64_t rs = cimba_run(experiment_single, ntrials, sizeof(*experiment_single), run_mg1_trial);
+        cmb_assert_always(rs == nfail);
+        for (uint64_t i = 0; i < ntrials; i++) {
+            /* Bitwise comparison of the per-trial outcome, independent of execution sequence */
+            cmb_assert_always(memcmp(&experiment[i], &experiment_single[i], sizeof(*experiment)) == 0);
+        }
+
+        cimba_threads_use(nthr);
+        printf("done\n");
+    }
+
+    free(experiment_single);
+
     printf("Experiment finished, %" PRIu64 " failed trials\n", nfail);
     if (plot_graphics) {
         printf("Writing results to file\n");

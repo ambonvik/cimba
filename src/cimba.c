@@ -41,6 +41,7 @@ static void *cmg_experiment_arr;
 static size_t cmg_trial_struct_sz;
 static cimba_trial_func *cmg_trial_func = NULL;
 static uint64_t cmg_total_trials;
+static uint32_t cmg_worker_threads = 0u;
 static cimba_thread_init_func *cmg_thread_init_func = NULL;
 static void *cmg_thread_init_usrarg = NULL;
 static cimba_thread_exit_func *cmg_thread_exit_func = NULL;
@@ -90,9 +91,24 @@ uint64_t cimba_thread_id(void)
     return cmi_thread_id;
 }
 
-uint32_t cimba_num_workers(void)
+uint32_t cimba_threads_num(void)
 {
-    return cmi_cpu_cores();
+    const uint32_t r = (cmg_worker_threads == 0u) ? cmi_cpu_cores()
+                                                  : cmg_worker_threads;
+    cmb_assert_debug(r >= 1u);
+
+    return r;
+}
+
+uint32_t cimba_threads_use(uint32_t n_threads)
+{
+    cmg_worker_threads = n_threads;
+
+    const uint32_t r = (cmg_worker_threads == 0u) ? cmi_cpu_cores()
+                                                  : cmg_worker_threads;
+    cmb_assert_debug(r >= 1u);
+
+    return r;
 }
 
 uint64_t cimba_trials_total(void)
@@ -224,16 +240,16 @@ uint64_t cimba_run(void *your_experiment_array,
     cmi_failed_trials = 0u;
 
     /* Start the worker threads and let them help themselves to the trials */
-    const uint32_t ncores = cmi_cpu_cores();
-    pthread_t *threads = cmi_calloc(ncores, sizeof(*threads));
-    for (uint64_t ui = 0u; ui < ncores; ui++) {
+    const uint32_t nthreads = (cmg_worker_threads == 0u) ? cmi_cpu_cores() : cmg_worker_threads;
+    pthread_t *threads = cmi_calloc(nthreads, sizeof(*threads));
+    for (uint64_t ui = 0u; ui < nthreads; ui++) {
         pthread_create(&threads[ui], NULL, worker_thread_func, (void *)ui);
     }
 
     /* ...worker threads are executing your trials in the background here... */
 
     /* Wait for all worker threads to finish */
-    for (uint64_t ui = 0u; ui < ncores; ui++) {
+    for (uint64_t ui = 0u; ui < nthreads; ui++) {
         pthread_join(threads[ui], NULL);
     }
 
