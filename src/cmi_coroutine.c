@@ -166,6 +166,10 @@ void cmi_coroutine_reset(struct cmi_coroutine *cp)
     cmb_assert_debug(cp != coroutine_main);
     cmb_assert_debug(cp != coroutine_current);
 
+    /* Force TSan to reset its shadow stack, if used */
+    cmi_tsan_destroy_fiber(cp->tsan_fiber);
+    cp->tsan_fiber = cmi_tsan_create_fiber();
+
     cp->status = CMI_COROUTINE_CREATED;
     cp->exit_value = NULL;
 }
