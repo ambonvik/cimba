@@ -268,7 +268,7 @@ int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
     uint64_t seed = cmb_random_hwseed();
-    double dur = 1.0e6;
+    double dur = 100000.0;
 
     int opt;
     while ((opt = getopt(argc, argv, "d: s:t")) != -1) {
