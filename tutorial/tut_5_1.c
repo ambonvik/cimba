@@ -686,7 +686,7 @@ static float atmosphere_k_eff(const float h_m, const float r_earth_m)
 
 /*
  * Detection pipeline 1: Test whether a target is inside the beam's
- * *effective gate width* —  * the maximum of the antenna beamwidth
+ * *effective gate width* — the maximum of the antenna beamwidth
  * and the rotation per dwell.
  *
  * Gating at just the 3 dB beamwidth would leave small angular gaps
