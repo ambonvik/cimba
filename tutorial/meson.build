@@ -144,3 +144,20 @@ else
         message('Skipping tut_5_2: CUDA not found.')
     endif
 endif
+
+
+if cuda_dep.found()
+    cuda_inc = include_directories('/opt/cuda/include')
+
+    executable('tut_5_3',
+               sources : ['tut_5_3.c', 'tut_5_3.cu'],
+               include_directories : [inc_api, inc_int, cuda_inc],
+               link_with : cimba_lib,
+               dependencies : [project_deps, hdf5_dep, cuda_dep],
+               c_args : ['-fno-lto'],
+               link_args : ['-lhdf5', '-lcudart', '-lcurand'],
+               install : false,
+               native : true)
+else
+    message('Skipping tut_5_3: CUDA not found.')
+endif
