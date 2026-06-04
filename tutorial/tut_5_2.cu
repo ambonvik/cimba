@@ -483,19 +483,7 @@ void terrain_terminate(struct terrain *tp)
  * The terrain map stays resident in device memory for the whole trial.
  * Target SoA buffers, the work queue, and RNG state are allocated once
  * during sensor_gpu_init().
- *
- * Copyright (c) Asbjørn M. Bonvik 2026.
- * Licensed under the Apache License, Version 2.0.
  */
-
-#include <cuda_runtime.h>
-#include <curand_kernel.h>
-#include <float.h>
-#include <math.h>
-#include <stdint.h>
-#include <stdio.h>
-
-#include "tut_5_2.h"
 
 /* -------------------------------------------------------------------------
  * Launch parameters. Tuned for a few thousand targets on a single GPU;
@@ -1284,7 +1272,16 @@ void raymarch_kernel(
      * sample points; this is the access pattern the texture cache
      * is optimized for. The refracted ray sags below the chord by
      *   bulge(s) = s * (d_2d - s) / (2 * k(h_chord) * R_earth)
-     * which we subtract from the chord altitude at each step. */
+     * which we subtract from the chord altitude at each step.
+     *
+     * The loop iterates in warp-wide rounds: every round advances
+     * `base` by RAYMARCH_WARP and each lane handles point `base+lane`.
+     * All 32 lanes execute every round and reach the __all_sync /
+     * __any_sync calls together, even on the final partial round —
+     * lanes whose index is past num_steps contribute neutral values
+     * (my_clear = 1, no shielding). This is required for correctness
+     * on Volta+ : if lanes leave the loop at different iterations,
+     * the warp-collective votes with mask 0xffffffff deadlock. */
     const float step_size = fminf(terrain_x_scale, terrain_y_scale) * 0.5f;
     const int   num_steps = (int)(geom.d_2d / step_size);
 
@@ -1295,32 +1292,39 @@ void raymarch_kernel(
         const float two_r_earth = 2.0f * r_earth;
         int shielded_local = 0;
 
-        for (int i = (int)lane + 1; i < num_steps; i += (int)RAYMARCH_WARP) {
-            const float t = 1.0f - (float)i * inv_N;
-            const float cx = sx + geom.dx * t;
-            const float cy = sy + geom.dy * t;
-            const float ca_chord = sa + geom.dz * t;
+        for (int base = 1; base < num_steps; base += (int)RAYMARCH_WARP) {
+            const int i = base + (int)lane;
 
-            const float s_from_sensor = t * geom.d_2d;
-            const float s_from_target = geom.d_2d - s_from_sensor;
-            const float k_local = atmosphere_k_eff_dev(ca_chord, r_earth);
-            const float bulge   = (s_from_sensor * s_from_target)
-                                / (two_r_earth * k_local);
-            const float ca = ca_chord - bulge;
+            /* Inactive lanes (i past the end) look "clear" so they
+             * neither block the all-clear early-out nor shield. */
+            int my_clear = 1;
+            if (i < num_steps) {
+                const float t = 1.0f - (float)i * inv_N;
+                const float cx = sx + geom.dx * t;
+                const float cy = sy + geom.dy * t;
+                const float ca_chord = sa + geom.dz * t;
 
-            const int my_clear = (ca > terrain_ceiling);
-            if (__all_sync(0xffffffff, my_clear)) break;
+                const float s_from_sensor = t * geom.d_2d;
+                const float s_from_target = geom.d_2d - s_from_sensor;
+                const float k_local = atmosphere_k_eff_dev(ca_chord, r_earth);
+                const float bulge   = (s_from_sensor * s_from_target)
+                                    / (two_r_earth * k_local);
+                const float ca = ca_chord - bulge;
 
-            if (!my_clear) {
-                const float terr = terrain_elevation(
-                    terrain_tex, terrain_cols, terrain_rows,
-                    terrain_x_scale, terrain_y_scale,
-                    terrain_x_min, terrain_x_max,
-                    terrain_y_min, terrain_y_max,
-                    cx, cy);
-                if (ca < terr) shielded_local = 1;
+                my_clear = (ca > terrain_ceiling);
+                if (!my_clear) {
+                    const float terr = terrain_elevation(
+                        terrain_tex, terrain_cols, terrain_rows,
+                        terrain_x_scale, terrain_y_scale,
+                        terrain_x_min, terrain_x_max,
+                        terrain_y_min, terrain_y_max,
+                        cx, cy);
+                    if (ca < terr) shielded_local = 1;
+                }
             }
 
+            /* Both votes are now executed by all 32 lanes every round. */
+            if (__all_sync(0xffffffff, my_clear))       break;
             if (__any_sync(0xffffffff, shielded_local)) break;
         }
 
