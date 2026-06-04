@@ -293,11 +293,12 @@ Arch Linux and produces the chart below.
 ![M/G/1 queue](images/MG1%20example.png)
 
 Or, for a more "real" example, see our tutorial 5. Using dual RTX 3090 GPUS and a
-64-core CPU, it runs 150 trials of an AWACS scenario with detailed three-dimensional
-physics in 40 seconds. Each trial is a six-hour simulation of a thousand target
+64-core CPU, it runs 300 trials of an AWACS scenario with detailed three-dimensional
+physics in 78 seconds. Each trial is a six-hour simulation of a thousand target
 processes (coroutines) and one sensor process (coroutine) on a 1000 x 1000 nm
-synthetic terrain with one arcsecond resolution. The radar physics include terrain
-shielding, clutter modeling, and multipathing.
+synthetic terrain with one arcsecond resolution and one second intervals between radar 
+dwells. The radar physics include terrain shielding, clutter modeling, multipathing, 
+and a CFAR/clutter detection model.
 
 ### What do you mean by "well engineered"?
 Discrete event simulation fits well with an object-oriented paradigm. That is
