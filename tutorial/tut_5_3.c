@@ -877,9 +877,10 @@ int main(int argc, char **argv)
 {
     uint64_t master_seed = cmb_random_hwseed();
     double dur_h = 6.0;
+    uint32_t n_replications = 10u;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:s:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:n:s:")) != -1) {
         switch (opt) {
             case 'd': {
                 errno = 0;
@@ -892,6 +893,17 @@ int main(int argc, char **argv)
                     fprintf(stderr, "Invalid -d value '%s' (want hours > 0)\n", optarg);
                     return EXIT_FAILURE;
                     }
+                break;
+            }
+
+            case 'n': {
+                errno = 0;
+                char *end = NULL;
+                n_replications = strtoul(optarg, &end, 0);   /* base 0 => accepts 0x.., 0.. */
+                if (end == optarg || *end != '\0' || errno == ERANGE || n_replications == 0u) {
+                    fprintf(stderr, "Invalid -n value '%s' (want nonzero integer)\n", optarg);
+                    return EXIT_FAILURE;
+                }
                 break;
             }
 
@@ -944,7 +956,6 @@ int main(int argc, char **argv)
     const double fl_start = 100.0;
     const double fl_step = 25.0;
     const uint32_t n_levels = 15u;
-    const uint32_t n_replications = 5u;
     const uint32_t n_trials = n_levels * n_terrains * n_replications;
 
     struct trial *experiment = cmi_calloc(n_trials, sizeof(*experiment));
