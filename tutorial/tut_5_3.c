@@ -1,7 +1,7 @@
 /*
- * tutorial/tut_5_2.c
+ * tutorial/tut_5_3.c
  *
- * A single-threaded CPU + CUDA version of the AWACS simulation.
+ * A multi-threaded CPU + CUDA version of the AWACS simulation.
  *
  * Copyright (c) Asbjørn M. Bonvik 2026.
  *
@@ -25,13 +25,12 @@
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
-#include "hdf5.h"
 
 /* Shared C/CUDA data structures */
-#include "tut_5_2.h"
+#include "tut_5_3.h"
 
-/* Bit masks to distinguish between two types of user-defined logging messages. */
-#define USER_ADMIN  0x00000001
+/* Bit masks to distinguish between types of user-defined logging messages. */
+#define USER_TRIALS 0x00000001
 #define USER_SENSOR 0x00000002
 #define USER_TARGET 0x00000004
 #define USER_ALL    0x0FFFFFFF
@@ -40,7 +39,7 @@
 #define NUM_TARGETS 1000
 
 /* Sensor update interval, seconds. There are multiple sensor dwells inside
- * each update interval. The GPU handles these, see tut_5_2.h */
+ * each update interval. The GPU handles these, see tut_5_3.h */
 const float sensor_step_s = 1.0f;
 /* Sensor beam width, degrees - a very simplified antenna model */
 const float sensor_beam_width_d = 1.4f;
@@ -58,32 +57,39 @@ const double WGS84_A = 6378137.0;
 const double WGS84_F = (1.0 / 298.257223563);
 const double WGS84_E2 = (WGS84_F * (2.0 - WGS84_F));
 
-/* For ParaView visualization */
-const char *terrain_h5name = "terrain.vtkhdf";
-const char *events_h5name = "events.vtkhdf";
-/* Animation frame interval, seconds */
-double frame_interval_s = 1.0;
+/* Constants to offset seed domains from each other */
+#define SEED_TERRAIN 0xdecade01
+#define SEED_TRIAL   0xdecade02
 
-struct target;
-struct platform_state;
-struct vtkhdf_handle;
+/*****************************************************************************
+ * Our simulated world consists of these entities.
+ */
+struct simulation {
+    struct platform *AWACS;
+    struct target *targets;
+};
 
-struct vtkhdf_handle *vtkhdf_create(void);
-void vtkhdf_destroy(struct vtkhdf_handle *h);
+/*
+ * A single trial is defined by these parameters and generates these results.
+ */
+struct trial {
+    /* Parameters */
+    double flight_level;
+    struct terrain *terrain;
+    double dur_s;
+    uint64_t seed;
+    /* Results */
+    int32_t num_found;
+};
 
-void events_vtkhdf_init(struct vtkhdf_handle *h, const char *filename, int n_targets);
-void events_vtkhdf_close(const struct vtkhdf_handle *h);
-void events_vtkhdf_append(struct vtkhdf_handle *h,
-                   const struct target *targets,
-                   const struct platform_state *awacs,
-                   float sensor_dir,
-                   float time_val);
-void terrain_vtkhdf_write(const char *h5_filename, const float *map,
-                          unsigned cols, unsigned rows,
-                          float x_scale, float y_scale);
-
-/* Utility function for user entertainment */
-void progress_bar_update(unsigned int current, unsigned int total, time_t start_time);
+/*
+ * The context for our simulation consists of the simulation entities, the
+ * trial parameters, and the requested trial results.
+ */
+struct context {
+    struct simulation *sim;
+    struct trial *trl;
+};
 
 /*******************************************************************************
  * The terrain model, altitudes in meters referred to a Cartesian plane touching
@@ -93,8 +99,7 @@ void progress_bar_update(unsigned int current, unsigned int total, time_t start_
 /* Allocate memory for the terrain object */
 struct terrain *terrain_create(void)
 {
-    struct terrain *tp = malloc(sizeof(struct terrain));
-    cmb_assert_release(tp != NULL);
+    struct terrain *tp = cmi_malloc(sizeof(struct terrain));
 
     tp->cols = 0;
     tp->rows = 0;
@@ -160,7 +165,6 @@ void *target_proc(struct cmb_process *me, void *vctx)
     tgt->mode = (cmb_random_bernoulli(ph)) ? HIDING : DRIVING;
     tgt->tds = UNDETERMINED;
 
-    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         if (tgt->mode == HIDING) {
             /* Stay hidden for a random time */
@@ -339,14 +343,6 @@ void racetrack_initialize(struct racetrack *rt,
     /* Local radius of the WGS84 Earth ellipsoid at the anchor point */
     rt->local_earth_radius_m = (float)sqrt(M * N);
 
-    /* For the headline printout we still apply the sea-level k. */
-    const float k_sea = 1.0f / (1.0f
-                                + rt->local_earth_radius_m
-                                * -(atm_N0_units * 1.0e-6f / atm_scale_h_m));
-    const float max_dist = sqrtf(2.0f * k_sea * rt->local_earth_radius_m * rt->altitude_m);
-    printf("Radar horizon at %3.0f nautical miles (sea level target)\n",
-            max_dist / nm_to_meters);
-
     /* Add flight altitude for a correct conversion rad => m at that level */
     rt->lat_r2m = (float)(M + rt->altitude_m);
     rt->lon_r2m = (float)((N + rt->altitude_m) * cos_lat);
@@ -356,8 +352,6 @@ void racetrack_initialize(struct racetrack *rt,
     const double roll_mag = atan((rt->velocity_ms * rt->velocity_ms) / (rt->turn_radius_m * g));
 
     rt->roll_angle_r = (float)(roll_mag * -rt->side_multiplier);
-    printf("Racetrack bank angle %3.1f deg\n", rt->roll_angle_r * rad_to_deg);
-    printf("Racetrack orbit duration %4.0f seconds\n", rt->orbit_time_s);
 }
 
 void racetrack_terminate(struct racetrack *rt)
@@ -621,7 +615,8 @@ void sensor_initialize(struct sensor *senp, const char *name, const float rpm,
                        const float min_elev, const float max_elev,
                        const float ref_rng, const float ref_rcs,
                        struct platform *host, void *vctx,
-                       const struct terrain *terp, const uint64_t seed)
+                       const struct terrain *terp, const uint64_t seed,
+                       cudaStream_t cstream)
 {
     cmb_assert_release(senp != NULL);
     cmb_assert_release(host != NULL);
@@ -646,9 +641,6 @@ void sensor_initialize(struct sensor *senp, const char *name, const float rpm,
     senp->radar.cell_grid_n_range  = 4;
     senp->radar.cell_grid_n_cross  = 4;
 
-    senp->hdf = vtkhdf_create();
-    events_vtkhdf_init(senp->hdf, events_h5name, NUM_TARGETS);
-
     const size_t sz = NUM_TARGETS * sizeof(float);
     CUDA_CHECK(cudaHostAlloc((void **)&senp->h_x, sz, cudaHostAllocDefault));
     CUDA_CHECK(cudaHostAlloc((void **)&senp->h_y, sz, cudaHostAllocDefault));
@@ -666,16 +658,13 @@ void sensor_initialize(struct sensor *senp, const char *name, const float rpm,
     CUDA_CHECK(cudaHostAlloc((void **)&senp->h_detected_result,
                               NUM_TARGETS * sizeof(uint8_t), cudaHostAllocDefault));
 
-    sensor_gpu_init(&senp->gpu, NUM_TARGETS, seed, terp);
+    sensor_gpu_init(&senp->gpu, NUM_TARGETS, seed, terp, cstream);
 
     cmb_process_initialize((struct cmb_process *)senp, name, sensor_proc, vctx, 0);
 }
 
 void sensor_terminate(struct sensor *senp)
 {
-    events_vtkhdf_close(senp->hdf);
-    vtkhdf_destroy(senp->hdf);
-
     CUDA_CHECK(cudaFreeHost(senp->h_x));
     CUDA_CHECK(cudaFreeHost(senp->h_y));
     CUDA_CHECK(cudaFreeHost(senp->h_alt));
@@ -693,27 +682,8 @@ void sensor_terminate(struct sensor *senp)
 
 void sensor_destroy(struct sensor *senp)
 {
-    free(senp);
+    cmi_free(senp);
 }
-
-/*****************************************************************************
- * Our simulated world consists of these entities.
- */
-struct simulation {
-    struct platform *AWACS;
-    struct target *targets;
-    struct cmb_process *HDF5_output;
-};
-
-/*
- * A single trial is defined by these parameters and generates these results.
- */
-struct trial {
-    struct terrain *terrain;
-    double dur_s;
-    uint64_t seed_used;
-    unsigned num_found;
-};
 
 /*
  * Event to close down the simulation.
@@ -729,51 +699,32 @@ void end_sim(void *subject, void *object)
     for (unsigned ui = 0; ui < NUM_TARGETS; ui++) {
         cmb_process_stop((struct cmb_process *)&tgts[ui], NULL);
     }
-
-    cmb_process_stop(sim->HDF5_output, NULL);
 }
 
-const char *hhhmmss_formatter(double t);
+/* Internal time unit seconds, print in HHH:MM:SS.sss format */
+#define FMTBUFLEN 20
 
-/*
- * A cmb_process to display a progress bar during the simulation
- */
-void *ent_proc(struct cmb_process *me, void *vtp)
+const char *hhmmss_formatter(const double t)
 {
-    cmb_unused(me);
+    static CMB_THREAD_LOCAL char fmtbuf[FMTBUFLEN];
 
-    const time_t started = time(NULL);
-    const unsigned ncycles = 100u;
-    const double stime_start = cmb_time();
-    const double stime_end = *(double *)vtp;
-    const double stime_incr = (stime_end - stime_start) / ncycles;
+    double tmp = t;
+    const unsigned h = (unsigned)(tmp / 3600.0);
+    tmp -= (double)(h * 3600);
+    const unsigned m = (unsigned)(tmp / 60.0);
+    tmp -= (double)(m * 60.0);
+    const double s = tmp;
+    (void)snprintf(fmtbuf, FMTBUFLEN, "%02d:%02d:%04.1f", h, m, s);
 
-    for (unsigned ui = 1; ui <= ncycles; ui++) {
-        cmb_process_hold(stime_incr);
-        progress_bar_update(ui, ncycles, started);
-    }
-
-    return NULL;
+    return fmtbuf;
 }
 
 /*
- * A cmb_process to write snapshots to HDF5 output file
- */
-void *out_proc(struct cmb_process *me, void *vtp)
-{
-    cmb_unused(me);
-    const struct simulation *sim = (struct simulation *)vtp;
-    const struct target *tgts = sim->targets;
-    struct platform *pfp = sim->AWACS;
-    struct sensor *senp = pfp->radar;
-
-    while (true) {
-        cmb_process_hold(frame_interval_s);
-        platform_update(pfp);
-        events_vtkhdf_append(senp->hdf, tgts, &(pfp->state),
-                         senp->cur_dir_r, (float)cmb_time());
-    }
-}
+ * Lookup for which CUDA stream to use on what device */
+struct gpu_thread_ctx {
+    int           n_gpus;
+    cudaStream_t *streams;   /* streams[d] created while device d was current */
+};
 
 /*
  * The simulation driver function to execute one trial
@@ -783,17 +734,22 @@ void run_trial(void *vtrl)
     cmb_assert_release(vtrl != NULL);
     struct trial *trl = vtrl;
     struct terrain *terp = trl->terrain;
-    uint64_t seed = trl->seed_used;
+
+    const int dev = terp->device;
+    CUDA_CHECK(cudaSetDevice(dev));
+    const struct gpu_thread_ctx *ctx = cimba_thread_context();
+    cudaStream_t stream = ctx->streams[dev];
+
+    cmb_random_initialize(trl->seed);
+    cmb_logger_timeformatter_set(hhmmss_formatter);
+    cmb_logger_user(stdout, USER_TRIALS, "Start trial: Flight level: %3.0f GPU: %d Seed: 0x%016" PRIx64,
+                    trl->flight_level, dev, trl->seed);
 
     /* Set up our trial housekeeping, assuming random seed already set */
-    printf("Initializing event queue\n");
     cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USER_ALL);
     cmb_event_queue_initialize(0.0);
-    cmb_logger_timeformatter_set(hhhmmss_formatter);
 
     /* Create and start the targets */
-    printf("Initializing targets\n");
     struct simulation sim = {};
     sim.targets = cmi_calloc(NUM_TARGETS, sizeof(struct target));
     for (unsigned ui = 0; ui < NUM_TARGETS; ui++) {
@@ -818,7 +774,6 @@ void run_trial(void *vtrl)
     }
 
     /* Create and start the AWACS */
-    printf("Initializing racetrack pattern\n");
     struct racetrack *orbit = racetrack_create();
     const float start_time = 0.0f;      /* Hours */
     const float anchor_lat = 30.0f;     /* Degrees */
@@ -826,14 +781,12 @@ void run_trial(void *vtrl)
     const float orientation = 0.0f;     /* Degrees, nautical */
     const float length = 50.0f;         /* Nautical miles */
     const float turn_radius = 10.0f;    /* Nautical miles */
-    const float flight_level = 310.0f;  /* Flight level */
+    const float flight_level = trl->flight_level;
     const float velocity = 300.0f;      /* Knots */
     const bool clockwise = true;
     racetrack_initialize(orbit, start_time, anchor_lat, anchor_lon, orientation,
                          length, turn_radius, flight_level, velocity, clockwise);
-    racetrack_write_vtp(orbit, "racetrack.vtp");
 
-    printf("Initializing AWACS platform\n");
     struct platform *awacs = platform_create();
     sim.AWACS = awacs;
     platform_initialize(awacs);
@@ -841,7 +794,6 @@ void run_trial(void *vtrl)
     /* Set initial position and direction coordinates */
     platform_update(awacs);
 
-    printf("Initializing radar\n");
     struct sensor *radar = sensor_create();
     sim.AWACS->radar = radar;
     const float rpm = 6.0f;
@@ -851,26 +803,14 @@ void run_trial(void *vtrl)
     const float ref_rcs = 1.0f;
     sensor_initialize(radar, "AN/APY-2", rpm, min_elev, max_elev,
                       ref_range, ref_rcs, awacs, sim.targets,
-                      terp, seed);
+                      terp, trl->seed, stream);
     cmb_process_start((struct cmb_process *)radar);
 
     /* Schedule the simulation control events */
-    printf("Scheduling end event\n");
     double t_end_s = trl->dur_s;
     cmb_event_schedule(end_sim, &sim, NULL, t_end_s, 0);
 
-    /* Process to write output events */
-    sim.HDF5_output = cmb_process_create();
-    cmb_process_initialize(sim.HDF5_output, "HDF5_out", out_proc, &sim, -1);
-    cmb_process_start(sim.HDF5_output);
-
-    /* Process to show the progress bar */
-    struct cmb_process *entertainment = cmb_process_create();
-    cmb_process_initialize(entertainment, "Progress bar", ent_proc, &t_end_s, 0);
-    cmb_process_start(entertainment);
-
     /* Run this trial */
-    printf("\nRunning simulation for %4.1f simulated hours...\n", t_end_s/3600.0);
     fflush(stdout);
     cmb_event_queue_execute();
 
@@ -881,9 +821,8 @@ void run_trial(void *vtrl)
         }
     }
 
-    printf("\nFound %d targets of %d total, detection rate %4.1f %%\n",
-            trl->num_found, NUM_TARGETS,
-            100.0 * ((double)trl->num_found) / (double)(NUM_TARGETS));
+    cmb_logger_user(stdout, USER_TRIALS, "End trial: Flight level: %3.0f Found: %d",
+                    trl->flight_level, trl->num_found);
 
     racetrack_terminate(orbit);
     racetrack_destroy(orbit);
@@ -897,48 +836,80 @@ void run_trial(void *vtrl)
 
     cmi_free(sim.targets);
 
-    cmb_process_terminate(entertainment);
-    cmb_process_destroy(entertainment);
-
     /* Final housekeeping to leave everything as we found it */
     cmb_event_queue_terminate();
     cmb_random_terminate();
 }
 
-/*
- * The minimal single-threaded main function
- */
+/* Bait for the thread hooks: Set up and close down CUDA streams per thread */
+static void *gpu_thread_init(void *usrarg, uint64_t tid)
+{
+    cmb_unused(tid);
+
+    const int n_gpus = (int)(intptr_t)usrarg;
+    struct gpu_thread_ctx *ctx = cmi_malloc(sizeof(*ctx));
+    ctx->n_gpus  = n_gpus;
+    ctx->streams = cmi_malloc((size_t)n_gpus * sizeof(cudaStream_t));
+    for (int d = 0; d < n_gpus; d++) {
+        CUDA_CHECK(cudaSetDevice(d));
+        CUDA_CHECK(cudaStreamCreate(&ctx->streams[d]));
+    }
+
+    return ctx;
+}
+
+static void gpu_thread_exit(void *vctx)
+{
+    struct gpu_thread_ctx *ctx = vctx;
+    if (ctx == NULL) return;
+    for (int d = 0; d < ctx->n_gpus; d++) {
+        cudaSetDevice(d);
+        cudaStreamDestroy(ctx->streams[d]);
+    }
+
+    cmi_free(ctx->streams);
+    cmi_free(ctx);
+}
+
+void write_gnuplot_commands(void);
+
 int main(int argc, char **argv)
 {
-    bool timing_enabled = false;
-    uint64_t seed = cmb_random_hwseed();
+    uint64_t master_seed = cmb_random_hwseed();
     double dur_h = 6.0;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:s:t")) != -1) {
+    while ((opt = getopt(argc, argv, "d:s:")) != -1) {
         switch (opt) {
-            case 'd':
+            case 'd': {
                 errno = 0;
-                dur_h = strtof(optarg, NULL);
-                if (errno != 0 || dur_h <= 0.0) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    abort();
+                char *end = NULL;
+                dur_h = strtod(optarg, &end);
+                if (end == optarg        /* no digits consumed   */
+                    || *end != '\0'      /* trailing garbage     */
+                    || errno == ERANGE   /* overflow / underflow */
+                    || dur_h <= 0.0) {   /* domain: hours > 0    */
+                    fprintf(stderr, "Invalid -d value '%s' (want hours > 0)\n", optarg);
+                    return EXIT_FAILURE;
+                    }
+                break;
+            }
+
+            case 's': {
+                errno = 0;
+                char *end = NULL;
+                master_seed = strtoull(optarg, &end, 0);   /* base 0 => accepts 0x.., 0.. */
+                if (end == optarg || *end != '\0' || errno == ERANGE || master_seed == 0u) {
+                    fprintf(stderr, "Invalid -s value '%s' (want nonzero integer)\n", optarg);
+                    return EXIT_FAILURE;
                 }
                 break;
-            case 's':
-                errno = 0;
-                seed = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0 || seed == 0u) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    abort();
-                }
-                break;
-            case 't':
-                timing_enabled = true;
-                break;
-            default:
-                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+            }
+
+            default: {
+                fprintf(stderr, "Usage: %s [-d <hours>] [-s <seed>]\n", argv[0]);
                 return EXIT_FAILURE;
+            }
         }
     }
 
@@ -948,712 +919,113 @@ int main(int argc, char **argv)
     const float ref_lat = 30.0f;
     const float ref_lon = -10.0f;
 
-    struct trial trl = {};
-    const clock_t start_time = clock();
-
-    printf("Initializing random generators\n");
-    trl.seed_used = seed;
-    cmb_random_initialize(trl.seed_used);
-
-    struct terrain *tp = terrain_create();
-    terrain_initialize(tp, fwidth_nm, fheight_nm, ref_lat, ref_lon, trl.seed_used);
-    trl.terrain = tp;
-    trl.dur_s = dur_h * 3600.0;
-
-    const clock_t mid_time = clock();
-    const double tergen_time = (double)(mid_time - start_time) / CLOCKS_PER_SEC;
-
-    run_trial(&trl);
-
-    if (timing_enabled) {
-        const clock_t end_time = clock();
-        const double simul_time = (double)(end_time - mid_time) / CLOCKS_PER_SEC;
-        const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-        printf("\nTerrain generation took %g sec\n", tergen_time);
-        printf("Simulation took %g sec\n", simul_time);
-        printf("Total time %g sec\n", elapsed_time);
+    /* What compute horsepower do we have available? */
+    int n_gpus = 0;
+    CUDA_CHECK(cudaGetDeviceCount(&n_gpus));
+    if (n_gpus < 1) {
+        fprintf(stderr, "No CUDA devices found\n");
+        return EXIT_FAILURE;
     }
 
-    terrain_terminate(tp);
-    terrain_destroy(tp);
+    const uint32_t n_terrains = (uint32_t)n_gpus;   /* one terrain per GPU */
+    struct terrain **terrains = cmi_calloc(n_terrains, sizeof(*terrains));
+
+    for (uint32_t t = 0u; t < n_terrains; t++) {
+        CUDA_CHECK(cudaSetDevice((int)t));
+        terrains[t] = terrain_create();
+        /* Deterministic, distinct seed per terrain */
+        const uint64_t terr_seed = cmb_random_fmix64(master_seed, SEED_TERRAIN + t);
+        terrain_initialize(terrains[t], fwidth_nm, fheight_nm, ref_lat, ref_lon, terr_seed);
+        /* Set biome tables per GPU stream */
+        sensor_gpu_load();
+     }
+
+    printf("Setting up experiment\n");
+    const double fl_start = 100.0;
+    const double fl_step = 25.0;
+    const uint32_t n_levels = 15u;
+    const uint32_t n_replications = 5u;
+    const uint32_t n_trials = n_levels * n_terrains * n_replications;
+
+    struct trial *experiment = cmi_calloc(n_trials, sizeof(*experiment));
+
+    uint32_t ui_trl = 0u;
+    double flt_lvl = fl_start;
+    for (uint32_t ul = 0u; ul < n_levels; ul++) {
+        for (uint32_t ut = 0u; ut < n_terrains; ut++) {
+            for (uint32_t ur = 0u; ur < n_replications; ur++) {
+                experiment[ui_trl].flight_level = flt_lvl;
+                experiment[ui_trl].terrain = terrains[ut];
+                experiment[ui_trl].seed = cmb_random_fmix64(master_seed, SEED_TRIAL + ui_trl);
+                experiment[ui_trl].dur_s = dur_h * 3600.0;
+
+                /* Sentinel value to detect aborted trials */
+                experiment[ui_trl].num_found = -1;
+
+                ui_trl++;
+            }
+        }
+
+        flt_lvl += fl_step;
+    }
+
+    printf("Baiting the hooks\n");
+    cimba_thread_hooks_set(gpu_thread_init, (void *)(intptr_t)n_gpus, gpu_thread_exit);
+    printf("Running the simulation ...\n");
+    cimba_run(experiment, n_trials, sizeof(*experiment), run_trial);
+
+    printf("Finished, calculating stats\n");
+    ui_trl = 0u;
+    FILE *datafp = fopen("tut_5_3.dat", "w");
+    fprintf(datafp, "# Flight level\tDetected\tConf_interval\n");
+    for (unsigned ul = 0u; ul < n_levels; ul++) {
+        const double fl = experiment[ui_trl].flight_level;
+        struct cmb_datasummary cds;
+        cmb_datasummary_initialize(&cds);
+        const uint32_t n_smpl = n_terrains * n_replications;
+        for (unsigned ui_rep = 0u; ui_rep < n_smpl; ui_rep++) {
+            cmb_datasummary_add(&cds, experiment[ui_trl].num_found);
+            ui_trl++;
+        }
+
+        cmb_assert_debug(cmb_datasummary_count(&cds) == n_smpl);
+        const double sample_avg = cmb_datasummary_mean(&cds);
+        const double sample_sd = cmb_datasummary_stddev(&cds);
+        const double t_crit = 2.228;
+        fprintf(datafp, "%f\t%f\t%f\n", fl, sample_avg, t_crit * sample_sd);
+        cmb_datasummary_terminate(&cds);
+    }
+
+    fclose(datafp);
+    cmi_free(experiment);
+
+    for (uint32_t t = 0u; t < n_terrains; t++) {
+        CUDA_CHECK(cudaSetDevice((int)t));
+        terrain_terminate(terrains[t]);
+        terrain_destroy(terrains[t]);
+    }
+
+    cmi_free(terrains);
+
+    write_gnuplot_commands();
+    (void)system("gnuplot -persistent tut_5_3.gp");
 
     return 0;
 }
 
-/**************** Only I/O utility functions below this point ****************/
-
-void progress_bar_update(const unsigned int current,
-                         const unsigned int total,
-                         const time_t start_time)
+void write_gnuplot_commands(void)
 {
-    const unsigned int bar_width = 40;
-    const float progress = (float)current / (float)total;
-    const unsigned int pos = (unsigned int)((float)bar_width * progress);
-
-    const time_t now = time(NULL);
-    const double elapsed = difftime(now, start_time);
-
-    printf("\r[");
-    for (unsigned int i = 0; i < bar_width; ++i) {
-        if (i < pos) {
-            printf("#");
-        }
-        else if (i == pos) {
-            printf("=");
-        }
-        else {
-            printf("-");
-        }
-    }
-
-    /* Wait until 1 % progress to get a time estimate */
-    printf("] %3d%% | ETA: ", (int)(progress * 100.0f));
-    if (progress > 0.01f) {
-        const int eta_sec = (int)(elapsed / progress - elapsed);
-        printf("%02d:%02d", eta_sec / 60, eta_sec % 60);
-    }
-    else {
-        printf("--:--");
-    }
-
-    fflush(stdout);
-}
-
-/* Internal time unit seconds, print in HHH:MM:SS.sss format */
-#define FMTBUFLEN 20
-
-const char *hhhmmss_formatter(const double t)
-{
-    static CMB_THREAD_LOCAL char fmtbuf[FMTBUFLEN];
-
-    double tmp = t;
-    const unsigned h = (unsigned)(tmp / 3600.0);
-    tmp -= (double)(h * 3600);
-    const unsigned m = (unsigned)(tmp / 60.0);
-    tmp -= (double)(m * 60.0);
-    const double s = tmp;
-    (void)snprintf(fmtbuf, FMTBUFLEN, "%03d:%02d:%04.1f", h, m, s);
-
-    return fmtbuf;
-}
-
-struct vtkhdf_handle {
-    hid_t file_id;
-    int num_targets;
-    unsigned long current_step;
-
-    hid_t pts_dset;
-    hid_t status_dset;
-    hid_t rcs_dset;
-    hid_t is_awacs_dset;
-    hid_t awacs_dir_dset;
-    hid_t sensor_dir_dset;
-
-    hid_t step_vals_dset;
-    hid_t step_pts_off_dset;
-    hid_t step_cell_off_dset;
-    hid_t step_part_off_dset;
-    hid_t step_num_parts_dset;
-    hid_t step_conn_id_off_dset;
-};
-
-struct vtkhdf_handle *vtkhdf_create(void)
-{
-    struct vtkhdf_handle *h = cmi_malloc(sizeof(struct vtkhdf_handle));
-
-    return h;
-}
-
-void vtkhdf_destroy(struct vtkhdf_handle *h)
-{
-    cmi_free(h);
-}
-
-#define H5_CHECK(x) do { \
-        hid_t __res = (x); \
-        if (__res < 0) { \
-            fprintf(stderr, "HDF5 Error at %s:%d (Function: %s)\n", __FILE__, __LINE__, #x); \
-            exit(EXIT_FAILURE); \
-        } \
-    } while (0)
-
-void write_attr_string(const hid_t loc_id, const char *const name, const char *const value)
-{
-    const hid_t type = H5Tcopy(H5T_C_S1);
-    H5_CHECK(type);
-    H5_CHECK(H5Tset_size(type, strlen(value)));
-    H5_CHECK(H5Tset_strpad(type, H5T_STR_NULLPAD));
-
-    const hid_t space = H5Screate(H5S_SCALAR);
-    H5_CHECK(space);
-    const hid_t attr = H5Acreate2(loc_id, name, type, space, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(attr);
-
-    H5_CHECK(H5Awrite(attr, type, value));
-
-    H5_CHECK(H5Aclose(attr));
-    H5_CHECK(H5Sclose(space));
-    H5_CHECK(H5Tclose(type));
-}
-
-void write_attr_int32_array(const hid_t loc_id, const char *const name, const int32_t *const values, const hsize_t count)
-{
-    const hid_t type = H5T_NATIVE_INT32;
-    H5_CHECK(type);
-    const hid_t space = H5Screate_simple(1, &count, NULL);
-    H5_CHECK(space);
-    const hid_t attr = H5Acreate2(loc_id, name, type, space, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(attr);
-
-    H5_CHECK(H5Awrite(attr, type, values));
-
-    H5_CHECK(H5Aclose(attr));
-    H5_CHECK(H5Sclose(space));
-}
-
-void write_attr_double_array(const hid_t loc_id, const char *const name, const double *const values, const hsize_t count)
-{
-    const hid_t type = H5T_NATIVE_DOUBLE;
-    H5_CHECK(type);
-    const hid_t space = H5Screate_simple(1, &count, NULL);
-    H5_CHECK(space);
-    const hid_t attr = H5Acreate2(loc_id, name, type, space, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(attr);
-
-    H5_CHECK(H5Awrite(attr, type, values));
-
-    H5_CHECK(H5Aclose(attr));
-    H5_CHECK(H5Sclose(space));
-}
-
-void terrain_vtkhdf_write(const char *const h5_filename,
-                          const float *const map,
-                          const uint32_t cols,        /* now: the resolution to write */
-                          const uint32_t rows,
-                          const float x_scale,        /* now: matches that resolution */
-                          const float y_scale)
-{
-    /* No more internal decimation — caller has already done it if desired */
-
-    const hid_t fapl = H5Pcreate(H5P_FILE_ACCESS);
-    H5_CHECK(fapl);
-    H5_CHECK(H5Pset_libver_bounds(fapl, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST));
-    const hid_t file_id = H5Fcreate(h5_filename, H5F_ACC_TRUNC, H5P_DEFAULT, fapl);
-    H5_CHECK(file_id);
-    H5Pclose(fapl);
-
-    const hid_t root = H5Gcreate2(file_id, "VTKHDF", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(root);
-    write_attr_string(root, "Type", "ImageData");
-    const int32_t version[2] = {2, 0};
-    write_attr_int32_array(root, "Version", version, 2);
-
-    const int32_t extent[6] = {
-        0, (int32_t)cols - 1,
-        0, (int32_t)rows - 1,
-        0, 0
-    };
-    write_attr_int32_array(root, "WholeExtent", extent, 6);
-
-    const double total_x = (cols - 1) * (double)x_scale;
-    const double total_y = (rows - 1) * (double)y_scale;
-    const double origin[3] = { -(total_x / 2.0), -(total_y / 2.0), 0.0 };
-    const double spacing[3] = { x_scale, y_scale, 1.0 };
-    const double direction[9] = { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0 };
-
-    write_attr_double_array(root, "Origin", origin, 3);
-    write_attr_double_array(root, "Spacing", spacing, 3);
-    write_attr_double_array(root, "Direction", direction, 9);
-
-    const hid_t pd_group = H5Gcreate2(root, "PointData", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(pd_group);
-    write_attr_string(pd_group, "Scalars", "Elevation");
-
-    const hsize_t map_dims[2] = { (hsize_t)rows, (hsize_t)cols };
-    const hid_t map_space = H5Screate_simple(2, map_dims, NULL);
-    H5_CHECK(map_space);
-    const hid_t map_dset = H5Dcreate2(pd_group, "Elevation", H5T_NATIVE_FLOAT,
-                                      map_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(map_dset);
-    H5_CHECK(H5Dwrite(map_dset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, map));
-
-    H5_CHECK(H5Dclose(map_dset));
-    H5_CHECK(H5Sclose(map_space));
-    H5_CHECK(H5Gclose(pd_group));
-    H5_CHECK(H5Gclose(root));
-    H5_CHECK(H5Fclose(file_id));
-}
-
-/* Helper to create mandatory dummy groups for ParaView's strict reader */
-static void write_dummy_topology_stepped(hid_t root, const char *name,
-                                         unsigned long nsteps)
-{
-    const hid_t group = H5Gcreate2(root, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-    int64_t *zeros = calloc(nsteps, sizeof(int64_t));
-
-    const hsize_t dims[1]  = { nsteps };
-    const hsize_t maxd[1]  = { H5S_UNLIMITED };
-    const hsize_t chunk[1] = { 1 };
-
-    const hid_t dcpl = H5Pcreate(H5P_DATASET_CREATE);
-    H5Pset_chunk(dcpl, 1, chunk);
-
-    const hid_t space = H5Screate_simple(1, dims, maxd);
-
-    hid_t d = H5Dcreate2(group, "NumberOfCells",
-                          H5T_NATIVE_INT64, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
-    H5Dwrite(d, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, zeros);
-    H5Dclose(d);
-
-    d = H5Dcreate2(group, "NumberOfConnectivityIds",
-                   H5T_NATIVE_INT64, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
-    H5Dwrite(d, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, zeros);
-    H5Dclose(d);
-
-    d = H5Dcreate2(group, "Offsets",
-                   H5T_NATIVE_INT64, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
-    H5Dwrite(d, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, zeros);
-    H5Dclose(d);
-
-    const hsize_t one = 1;
-    const hid_t conn_space = H5Screate_simple(1, &one, NULL);
-    d = H5Dcreate2(group, "Connectivity",
-                   H5T_NATIVE_INT64, conn_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5Dwrite(d, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, zeros);
-    H5Dclose(d);
-    H5Sclose(conn_space);
-
-    H5Sclose(space);
-    H5Pclose(dcpl);
-    H5Gclose(group);
-
-    free(zeros);
-}
-
-void events_vtkhdf_init(struct vtkhdf_handle *h, const char *filename, const int n_targets)
-{
-    h->num_targets = n_targets;
-    h->current_step = 0;
-
-    const int total_pts = n_targets + 1;
-
-    h->file_id = H5Fcreate(filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-    if (h->file_id < 0) {
-        fprintf(stderr, "Failed to create HDF5 file: %s\n", filename);
-        exit(EXIT_FAILURE);
-    }
-
-    const hid_t root = H5Gcreate2(h->file_id, "VTKHDF", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(root);
-    write_attr_string(root, "Type", "PolyData");
-
-    const int32_t version[2] = {2, 0};
-    const hsize_t v_dim = 2;
-    const hid_t v_space = H5Screate_simple(1, &v_dim, NULL);
-    H5_CHECK(v_space);
-    const hid_t v_attr = H5Acreate2(root, "Version", H5T_NATIVE_INT32, v_space, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(v_attr);
-    H5_CHECK(H5Awrite(v_attr, H5T_NATIVE_INT32, version));
-    H5_CHECK(H5Aclose(v_attr));
-    H5_CHECK(H5Sclose(v_space));
-
-    /* --- Static topology metadata --- */
-    const hsize_t one_dim = 1;
-    const hid_t static_space = H5Screate_simple(1, &one_dim, NULL);
-    H5_CHECK(static_space);
-    const int64_t static_count = (int64_t)total_pts;
-
-    const hid_t d_np = H5Dcreate2(root, "NumberOfPoints", H5T_NATIVE_INT64, static_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(d_np);
-    H5_CHECK(H5Dwrite(d_np, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, &static_count));
-    H5_CHECK(H5Dclose(d_np));
-
-    const hid_t d_nc = H5Dcreate2(root, "NumberOfCells", H5T_NATIVE_INT64, static_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(d_nc);
-    H5_CHECK(H5Dwrite(d_nc, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, &static_count));
-    H5_CHECK(H5Dclose(d_nc));
-
-    const hid_t d_nci = H5Dcreate2(root, "NumberOfConnectivityIds", H5T_NATIVE_INT64, static_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(d_nci);
-    H5_CHECK(H5Dwrite(d_nci, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, &static_count));
-    H5_CHECK(H5Dclose(d_nci));
-
-    /* --- Primary point data --- */
-    const hsize_t p_dims[2] = {0, 3};
-    const hsize_t p_max[2] = {H5S_UNLIMITED, 3};
-    const hsize_t p_chunk[2] = {(hsize_t)total_pts, 3};
-    const hid_t p_dcpl = H5Pcreate(H5P_DATASET_CREATE);
-    H5_CHECK(p_dcpl);
-    H5_CHECK(H5Pset_chunk(p_dcpl, 2, p_chunk));
-    const hid_t p_space = H5Screate_simple(2, p_dims, p_max);
-    H5_CHECK(p_space);
-    H5_CHECK(h->pts_dset = H5Dcreate2(root, "Points", H5T_NATIVE_FLOAT, p_space, H5P_DEFAULT, p_dcpl, H5P_DEFAULT));
-    const hid_t pd_group = H5Gcreate2(root, "PointData", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(pd_group);
-    write_attr_string(pd_group, "Scalars", "Detection_Status");
-    write_attr_string(pd_group, "Vectors", "Sensor_Direction");
-
-    const hsize_t s_dims[1] = {0};
-    const hsize_t s_max[1] = {H5S_UNLIMITED};
-    const hsize_t s_chunk[1] = {(hsize_t)total_pts};
-    const hid_t s_dcpl = H5Pcreate(H5P_DATASET_CREATE);
-    H5_CHECK(s_dcpl);
-    H5_CHECK(H5Pset_chunk(s_dcpl, 1, s_chunk));
-    const hid_t s_space = H5Screate_simple(1, s_dims, s_max);
-    H5_CHECK(s_space);
-
-    H5_CHECK(h->status_dset = H5Dcreate2(pd_group, "Detection_Status", H5T_NATIVE_FLOAT, s_space, H5P_DEFAULT, s_dcpl, H5P_DEFAULT));
-    H5_CHECK(h->is_awacs_dset = H5Dcreate2(pd_group, "Is_AWACS", H5T_NATIVE_FLOAT, s_space, H5P_DEFAULT, s_dcpl, H5P_DEFAULT));
-    H5_CHECK(h->rcs_dset = H5Dcreate2(pd_group, "RCS", H5T_NATIVE_FLOAT, s_space, H5P_DEFAULT, s_dcpl, H5P_DEFAULT));
-    H5_CHECK(h->awacs_dir_dset = H5Dcreate2(pd_group, "AWACS_Direction", H5T_NATIVE_FLOAT, p_space, H5P_DEFAULT, p_dcpl, H5P_DEFAULT));
-    H5_CHECK(h->sensor_dir_dset = H5Dcreate2(pd_group, "Sensor_Direction", H5T_NATIVE_FLOAT, p_space, H5P_DEFAULT, p_dcpl, H5P_DEFAULT));
-
-    H5_CHECK(H5Pclose(p_dcpl));
-    H5_CHECK(H5Sclose(p_space));
-    H5_CHECK(H5Pclose(s_dcpl));
-    H5_CHECK(H5Sclose(s_space));
-
-    /* --- Topology --- */
-    const hid_t v_group = H5Gcreate2(root, "Vertices", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(v_group);
-    const int64_t n_cells = (int64_t)total_pts;
-    const int64_t n_conn = (int64_t)total_pts;
-    int64_t *conn = malloc(total_pts * sizeof(int64_t));
-    int64_t *off = malloc((total_pts + 1) * sizeof(int64_t));
-    for (int i = 0; i < total_pts; i++) {
-        conn[i] = i;
-        off[i] = i;
-    }
-    off[total_pts] = total_pts;
-
-    const hsize_t c_dim = (hsize_t)total_pts;
-    const hid_t c_space = H5Screate_simple(1, &c_dim, NULL);
-    H5_CHECK(c_space);
-
-    const hsize_t o_dim = (hsize_t)total_pts + 1;
-    const hid_t o_space = H5Screate_simple(1, &o_dim, NULL);
-    H5_CHECK(o_space);
-
-    const hid_t c_dset = H5Dcreate2(v_group, "Connectivity", H5T_NATIVE_INT64, c_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(c_dset);
-    H5_CHECK(H5Dwrite(c_dset, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, conn));
-    H5_CHECK(H5Dclose(c_dset));
-
-    const hid_t o_dset = H5Dcreate2(v_group, "Offsets", H5T_NATIVE_INT64, o_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(o_dset);
-    H5_CHECK(H5Dwrite(o_dset, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, off));
-    H5_CHECK(H5Dclose(o_dset));
-
-    const hid_t d_v_nc = H5Dcreate2(v_group, "NumberOfCells", H5T_NATIVE_INT64, static_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(d_v_nc);
-    H5_CHECK(H5Dwrite(d_v_nc, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, &n_cells));
-    H5_CHECK(H5Dclose(d_v_nc));
-
-    const hid_t d_v_nci = H5Dcreate2(v_group, "NumberOfConnectivityIds", H5T_NATIVE_INT64, static_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(d_v_nci);
-    H5_CHECK(H5Dwrite(d_v_nci, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, &n_conn));
-    H5_CHECK(H5Dclose(d_v_nci));
-
-    free(conn);
-    free(off);
-
-    H5_CHECK(H5Sclose(o_space));
-    H5_CHECK(H5Sclose(c_space));
-    H5_CHECK(H5Sclose(static_space));
-    H5_CHECK(H5Gclose(v_group));
-
-    /* --- Temporal metadata --- */
-    const hid_t st_group = H5Gcreate2(root, "Steps", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(st_group);
-    const hsize_t t_dims[1] = {0};
-    const hsize_t t_max[1] = {H5S_UNLIMITED};
-    const hsize_t t_chunk[1] = {1};
-    const hid_t t_dcpl = H5Pcreate(H5P_DATASET_CREATE);
-    H5_CHECK(t_dcpl);
-    H5_CHECK(H5Pset_chunk(t_dcpl, 1, t_chunk));
-    const hid_t t_space = H5Screate_simple(1, t_dims, t_max);
-    H5_CHECK(t_space);
-
-    H5_CHECK(h->step_vals_dset = H5Dcreate2(st_group, "Values", H5T_NATIVE_FLOAT, t_space, H5P_DEFAULT, t_dcpl, H5P_DEFAULT));
-    H5_CHECK(h->step_pts_off_dset = H5Dcreate2(st_group, "PointOffsets", H5T_NATIVE_INT64, t_space, H5P_DEFAULT, t_dcpl, H5P_DEFAULT));
-    H5_CHECK(h->step_part_off_dset = H5Dcreate2(st_group, "PartOffsets", H5T_NATIVE_INT64, t_space, H5P_DEFAULT, t_dcpl, H5P_DEFAULT));
-    H5_CHECK(h->step_num_parts_dset = H5Dcreate2(st_group, "NumberOfParts", H5T_NATIVE_INT64, t_space, H5P_DEFAULT, t_dcpl, H5P_DEFAULT));
-
-    const hsize_t t2_dims[2]  = { 0, 5 };
-    const hsize_t t2_max[2]   = { H5S_UNLIMITED, 5 };
-    const hsize_t t2_chunk[2] = { 1, 5 };
-    const hid_t t2_dcpl = H5Pcreate(H5P_DATASET_CREATE);
-    H5_CHECK(t2_dcpl);
-    H5_CHECK(H5Pset_chunk(t2_dcpl, 2, t2_chunk));
-    const hid_t t2_space = H5Screate_simple(2, t2_dims, t2_max);
-    H5_CHECK(t2_space);
-
-    H5_CHECK(h->step_cell_off_dset    = H5Dcreate2(st_group, "CellOffsets",
-                 H5T_NATIVE_INT64, t2_space, H5P_DEFAULT, t2_dcpl, H5P_DEFAULT));
-    H5_CHECK(h->step_conn_id_off_dset = H5Dcreate2(st_group, "ConnectivityIdOffsets",
-                 H5T_NATIVE_INT64, t2_space, H5P_DEFAULT, t2_dcpl, H5P_DEFAULT));
-
-    H5_CHECK(H5Pclose(t2_dcpl));
-    H5_CHECK(H5Sclose(t2_space));
-
-    H5_CHECK(H5Pclose(t_dcpl));
-    H5_CHECK(H5Sclose(t_space));
-    H5_CHECK(H5Gclose(st_group));
-    H5_CHECK(H5Gclose(pd_group));
-    H5_CHECK(H5Gclose(root));
-    H5_CHECK(H5Fflush(h->file_id, H5F_SCOPE_GLOBAL));
-}
-
-void events_vtkhdf_append(struct vtkhdf_handle *h, const struct target *targets, const struct platform_state *awacs, const float sensor_dir, const float time_val)
-{
-    const int n = h->num_targets;
-    const int total_pts = n + 1;
-    const hsize_t n_steps = h->current_step + 1;
-
-    /* --- Extend datasets --- */
-    const hsize_t p_ext[2] = { n_steps * total_pts, 3 };
-    H5_CHECK(H5Dset_extent(h->pts_dset, p_ext));
-    H5_CHECK(H5Dset_extent(h->awacs_dir_dset, p_ext));
-    H5_CHECK(H5Dset_extent(h->sensor_dir_dset, p_ext));
-
-    const hsize_t s_ext[1] = { n_steps * total_pts };
-    H5_CHECK(H5Dset_extent(h->status_dset, s_ext));
-    H5_CHECK(H5Dset_extent(h->rcs_dset, s_ext));
-    H5_CHECK(H5Dset_extent(h->is_awacs_dset, s_ext));
-
-    const hsize_t t_ext[1] = { n_steps };
-    H5_CHECK(H5Dset_extent(h->step_vals_dset, t_ext));
-    H5_CHECK(H5Dset_extent(h->step_pts_off_dset, t_ext));
-    H5_CHECK(H5Dset_extent(h->step_part_off_dset, t_ext));
-    H5_CHECK(H5Dset_extent(h->step_num_parts_dset, t_ext));
-
-    const hsize_t t2_ext[2] = { n_steps, 5 };
-    H5_CHECK(H5Dset_extent(h->step_cell_off_dset,    t2_ext));
-    H5_CHECK(H5Dset_extent(h->step_conn_id_off_dset, t2_ext));
-
-    /* --- Fill buffers --- */
-    static float p_buf[(NUM_TARGETS + 1) * 3];
-    static float s_buf[NUM_TARGETS + 1];
-    static float is_awacs_buf[NUM_TARGETS + 1];
-    static float rcs_buf[NUM_TARGETS + 1];
-    static float ad_buf[(NUM_TARGETS + 1) * 3];
-    static float sd_buf[(NUM_TARGETS + 1) * 3];
-
-    for (int i = 0; i < n; i++) {
-        p_buf[i * 3 + 0] = targets[i].x_m;
-        p_buf[i * 3 + 1] = targets[i].y_m;
-        p_buf[i * 3 + 2] = targets[i].alt_m;
-        s_buf[i] = (float)targets[i].tds;
-        rcs_buf[i] = targets[i].rcs_now_m2;
-        is_awacs_buf[i] = 0.0f;
-        ad_buf[i * 3 + 0] = 0.0f; ad_buf[i * 3 + 1] = 0.0f; ad_buf[i * 3 + 2] = 0.0f;
-        sd_buf[i * 3 + 0] = 0.0f; sd_buf[i * 3 + 1] = 0.0f; sd_buf[i * 3 + 2] = 0.0f;
-    }
-
-    p_buf[n * 3 + 0] = awacs->x;
-    p_buf[n * 3 + 1] = awacs->y;
-    p_buf[n * 3 + 2] = awacs->alt;
-    s_buf[n] = 0.0f;
-    rcs_buf[n] = 0.0f;   /* AWACS platform has no RCS in this context */
-    is_awacs_buf[n] = 1.0f;
-    ad_buf[n * 3 + 0] = cosf(awacs->dir);
-    ad_buf[n * 3 + 1] = sinf(awacs->dir);
-    ad_buf[n * 3 + 2] = 0.0f;
-
-    const float rel_angle = sensor_dir - awacs->dir;
-    const float fwd  = cosf(rel_angle);
-    const float left = sinf(rel_angle) * cosf(awacs->rol);
-
-    sd_buf[n * 3 + 0] = fwd * cosf(awacs->dir) - left * sinf(awacs->dir);
-    sd_buf[n * 3 + 1] = fwd * sinf(awacs->dir) + left * cosf(awacs->dir);
-    sd_buf[n * 3 + 2] = sinf(rel_angle) * sinf(awacs->rol);
-
-    /* --- Write data hyperslabs --- */
-    const hsize_t start_2d[2] = { h->current_step * total_pts, 0 };
-    const hsize_t count_2d[2] = { (hsize_t)total_pts, 3 };
-    const hid_t mspace_2d = H5Screate_simple(2, count_2d, NULL);
-
-    hid_t fspace = H5Dget_space(h->pts_dset);
-    H5_CHECK(fspace);
-    H5_CHECK(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, start_2d, NULL, count_2d, NULL));
-    H5_CHECK(H5Dwrite(h->pts_dset, H5T_NATIVE_FLOAT, mspace_2d, fspace, H5P_DEFAULT, p_buf));
-    H5_CHECK(H5Sclose(fspace));
-
-    H5_CHECK(fspace = H5Dget_space(h->awacs_dir_dset));
-    H5_CHECK(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, start_2d, NULL, count_2d, NULL));
-    H5_CHECK(H5Dwrite(h->awacs_dir_dset, H5T_NATIVE_FLOAT, mspace_2d, fspace, H5P_DEFAULT, ad_buf));
-    H5_CHECK(H5Sclose(fspace));
-
-    H5_CHECK(fspace = H5Dget_space(h->sensor_dir_dset));
-    H5_CHECK(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, start_2d, NULL, count_2d, NULL));
-    H5_CHECK(H5Dwrite(h->sensor_dir_dset, H5T_NATIVE_FLOAT, mspace_2d, fspace, H5P_DEFAULT, sd_buf));
-    H5_CHECK(H5Sclose(fspace));
-    H5_CHECK(H5Sclose(mspace_2d));
-
-    const hsize_t start_1d[1] = { h->current_step * total_pts };
-    const hsize_t count_1d[1] = { (hsize_t)total_pts };
-    const hid_t mspace_1d = H5Screate_simple(1, count_1d, NULL);
-
-    H5_CHECK(fspace = H5Dget_space(h->status_dset));
-    H5_CHECK(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, start_1d, NULL, count_1d, NULL));
-    H5_CHECK(H5Dwrite(h->status_dset, H5T_NATIVE_FLOAT, mspace_1d, fspace, H5P_DEFAULT, s_buf));
-    H5_CHECK(H5Sclose(fspace));
-
-    H5_CHECK(fspace = H5Dget_space(h->rcs_dset));
-    H5_CHECK(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, start_1d, NULL, count_1d, NULL));
-    H5_CHECK(H5Dwrite(h->rcs_dset, H5T_NATIVE_FLOAT, mspace_1d, fspace, H5P_DEFAULT, rcs_buf));
-    H5_CHECK(H5Sclose(fspace));
-
-    H5_CHECK(fspace = H5Dget_space(h->is_awacs_dset));
-    H5_CHECK(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, start_1d, NULL, count_1d, NULL));
-    H5_CHECK(H5Dwrite(h->is_awacs_dset, H5T_NATIVE_FLOAT, mspace_1d, fspace, H5P_DEFAULT, is_awacs_buf));
-    H5_CHECK(H5Sclose(fspace));
-    H5_CHECK(H5Sclose(mspace_1d));
-
-    /* --- Write temporal metadata --- */
-    const hsize_t t_start[1] = { h->current_step };
-    const hsize_t t_count[1] = { 1 };
-
-    const int64_t pts_off = (int64_t)(h->current_step * total_pts);
-    const int64_t part_off = 0;
-    const int64_t num_parts = 1;
-
-    const hid_t t_mspace = H5Screate_simple(1, t_count, NULL);
-    H5_CHECK(t_mspace);
-
-    #define WRITE_STEP_DATA(dset, val_ptr, type) do { \
-                fspace = H5Dget_space(dset); \
-                H5Sselect_hyperslab(fspace, H5S_SELECT_SET, t_start, NULL, t_count, NULL); \
-                H5Dwrite(dset, type, t_mspace, fspace, H5P_DEFAULT, val_ptr); \
-                H5Sclose(fspace); \
-        } while(0)
-
-    WRITE_STEP_DATA(h->step_vals_dset, &time_val, H5T_NATIVE_FLOAT);
-    WRITE_STEP_DATA(h->step_pts_off_dset, &pts_off, H5T_NATIVE_INT64);
-    WRITE_STEP_DATA(h->step_part_off_dset, &part_off, H5T_NATIVE_INT64);
-    WRITE_STEP_DATA(h->step_num_parts_dset, &num_parts, H5T_NATIVE_INT64);
-
-    #undef WRITE_STEP_DATA
-    H5_CHECK(H5Sclose(t_mspace));
-
-    const int64_t cell_off_row[5]    = { 0, 0, 0, 0, 0 };
-    const int64_t conn_id_off_row[5] = { 0, 0, 0, 0, 0 };
-    const hsize_t t2_start[2] = { h->current_step, 0 };
-    const hsize_t t2_count[2] = { 1, 5 };
-    const hid_t t2_mspace = H5Screate_simple(2, t2_count, NULL);
-    H5_CHECK(t2_mspace);
-
-    #define WRITE_STEP_DATA_2D(dset, val_ptr) do { \
-            fspace = H5Dget_space(dset); \
-            H5_CHECK(fspace); \
-            H5_CHECK(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, t2_start, NULL, t2_count, NULL)); \
-            H5_CHECK(H5Dwrite(dset, H5T_NATIVE_INT64, t2_mspace, fspace, H5P_DEFAULT, val_ptr)); \
-            H5_CHECK(H5Sclose(fspace)); \
-        } while(0)
-
-    WRITE_STEP_DATA_2D(h->step_cell_off_dset,    cell_off_row);
-    WRITE_STEP_DATA_2D(h->step_conn_id_off_dset, conn_id_off_row);
-
-    #undef WRITE_STEP_DATA_2D
-    H5_CHECK(H5Sclose(t2_mspace));
-
-    h->current_step++;
-}
-
-void events_vtkhdf_close(const struct vtkhdf_handle *const h)
-{
-    const hid_t st_group = H5Gopen2(h->file_id, "VTKHDF/Steps", H5P_DEFAULT);
-    H5_CHECK(st_group);
-
-    const hid_t s_space = H5Screate(H5S_SCALAR);
-    H5_CHECK(s_space);
-    const hid_t attr = H5Acreate2(st_group, "NSteps", H5T_NATIVE_UINT64, s_space, H5P_DEFAULT, H5P_DEFAULT);
-    H5_CHECK(attr);
-    H5_CHECK(H5Awrite(attr, H5T_NATIVE_UINT64, &h->current_step));
-
-    H5_CHECK(H5Aclose(attr));
-    H5_CHECK(H5Sclose(s_space));
-    H5_CHECK(H5Gclose(st_group));
-
-    const hid_t root = H5Gopen2(h->file_id, "VTKHDF", H5P_DEFAULT);
-    H5_CHECK(root);
-    write_dummy_topology_stepped(root, "Lines",    h->current_step);
-    write_dummy_topology_stepped(root, "Polygons", h->current_step);
-    write_dummy_topology_stepped(root, "Strips",   h->current_step);
-    H5_CHECK(H5Gclose(root));
-
-    H5_CHECK(H5Dclose(h->pts_dset));
-    H5_CHECK(H5Dclose(h->status_dset));
-    H5_CHECK(H5Dclose(h->rcs_dset));
-    H5_CHECK(H5Dclose(h->is_awacs_dset));
-    H5_CHECK(H5Dclose(h->awacs_dir_dset));
-    H5_CHECK(H5Dclose(h->sensor_dir_dset));
-    H5_CHECK(H5Dclose(h->step_vals_dset));
-    H5_CHECK(H5Dclose(h->step_pts_off_dset));
-    H5_CHECK(H5Dclose(h->step_cell_off_dset));
-    H5_CHECK(H5Dclose(h->step_part_off_dset));
-    H5_CHECK(H5Dclose(h->step_num_parts_dset));
-    H5_CHECK(H5Dclose(h->step_conn_id_off_dset));
-
-    H5_CHECK(H5Fclose(h->file_id));
-}
-
-/* Export the racetrack orbit as a 3D line loop for ParaView (.vtp) */
-void racetrack_write_vtp(const struct racetrack *rt, const char *filename)
-{
-    const unsigned int npoints = 500u;
-
-    FILE *fp = fopen(filename, "w");
-    if (!fp) {
-        fprintf(stderr, "Failed to open %s for writing.\n", filename);
-        return;
-    }
-
-    fprintf(fp, "<?xml version=\"1.0\"?>\n");
-    fprintf(fp, "<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
-    fprintf(fp, "  <PolyData>\n");
-    fprintf(fp, "    <Piece NumberOfPoints=\"%d\" NumberOfLines=\"1\">\n", npoints);
-    fprintf(fp, "      <Points>\n");
-    fprintf(fp, "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n");
-
-    struct platform_state st;
-    const float tstep = rt->orbit_time_s / (float)npoints;
-
-    for (unsigned int i = 0; i < npoints; i++) {
-        const float t = rt->start_time + ((float)i * tstep);
-        /* Abusing the platform state calculator to get point coordinates */
-        platform_state_update(&st, rt, t);
-        fprintf(fp, "          %.2f %.2f %.2f\n", st.x, st.y, st.alt);
-    }
-
-    fprintf(fp, "        </DataArray>\n");
-    fprintf(fp, "      </Points>\n");
-    fprintf(fp, "      <Lines>\n");
-    fprintf(fp, "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n");
-    fprintf(fp, "          ");
-    for (unsigned int i = 0; i < npoints; i++) {
-        fprintf(fp, "%d ", i);
-    }
-
-    fprintf(fp, "0\n");
-    fprintf(fp, "        </DataArray>\n");
-    fprintf(fp, "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n");
-    fprintf(fp, "          %d\n", npoints + 1);
-    fprintf(fp, "        </DataArray>\n");
-    fprintf(fp, "      </Lines>\n");
-    fprintf(fp, "      <PointData>\n");
-    fprintf(fp, "        <DataArray type=\"Float32\" Name=\"Roll_Angle\" format=\"ascii\">\n");
-    for (unsigned int i = 0; i < npoints; i++) {
-        platform_state_update(&st, rt, rt->start_time + (float)i * tstep);
-        fprintf(fp, "          %.4f\n", st.rol * (180.0 / M_PI));
-    }
-
-    fprintf(fp, "        </DataArray>\n");
-    fprintf(fp, "      </PointData>\n");
-    fprintf(fp, "    </Piece>\n");
-    fprintf(fp, "  </PolyData>\n");
-    fprintf(fp, "</VTKFile>\n");
-
-    fclose(fp);
+    FILE *cmdfp = fopen("tut_5_3.gp", "w");
+
+    fprintf(cmdfp, "set terminal qt size 1200,700 enhanced font 'Arial,12'\n");
+    fprintf(cmdfp, "set title \"Impact of AWACS flight level for detections\" font \"Times Bold, 18\" \n");
+    fprintf(cmdfp, "set grid\n");
+    fprintf(cmdfp, "set xlabel \"Flight level (ft x 100)\"\n");
+    fprintf(cmdfp, "set ylabel \"Number of targets\"\n");
+    fprintf(cmdfp, "set xrange [0.0:500.0]\n");
+    fprintf(cmdfp, "set yrange [0:1000]\n");
+    fprintf(cmdfp, "datafile = 'tut_5_3.dat'\n");
+    fprintf(cmdfp, "plot datafile with yerrorbars lc rgb \"black\", \\\n");
+
+    fclose(cmdfp);
 }
