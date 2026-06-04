@@ -31,7 +31,7 @@ jobs:
         run: meson test -C build --print-errorlogs --timeout-multiplier 3
 
   # Linux: debug build under AddressSanitizer + UndefinedBehaviorSanitizer
-  linux-sanitizers:
+  linux-asan:
     runs-on: ubuntu-latest
     env:
       ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
@@ -42,17 +42,41 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build nasm meson
-      - name: Configure (debug + ASan/UBSan)
+      - name: Configure debug + ASan
         run: >
           meson setup build-asan
           --buildtype=debug
-          -Db_sanitize=address,undefined
+          -Db_sanitize=address
           -Db_lundef=false
           -Denable_docs=false
       - name: Build
         run: meson compile -C build-asan
       - name: Test
         run: meson test -C build-asan --print-errorlogs --timeout-multiplier 20
+
+  # Linux: debug build under UndefinedBehaviorSanitizer
+  linux-ubsan:
+    runs-on: ubuntu-latest
+    env:
+      ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build nasm meson
+      - name: Configure debug + UBSan
+        run: >
+          meson setup build-ubsan
+          --buildtype=debug
+          -Db_sanitize=undefined
+          -Db_lundef=false
+          -Denable_docs=false
+      - name: Build
+        run: meson compile -C build-ubsan
+      - name: Test
+        run: meson test -C build-ubsan --print-errorlogs --timeout-multiplier 20
 
   linux-tsan:
     runs-on: ubuntu-latest
