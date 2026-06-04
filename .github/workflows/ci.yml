@@ -76,6 +76,10 @@ jobs:
   # Windows (MinGW) — unchanged
   windows-mingw-build:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false            # let debug and release report independently
+      matrix:
+        buildtype: [debug, release]
     steps:
       - uses: actions/checkout@v4
       - name: Set up MSYS2
