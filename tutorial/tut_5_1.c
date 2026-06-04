@@ -4,6 +4,53 @@
  * A single-threaded CPU only version of the AWACS simulation as a baseline for
  * adding CUDA GPGPU physics computing and multithreaded trials.
  *
+ * Radar / detection model
+ * -----------------------
+ * The sensor is a scanning, horizon-limited surveillance radar evaluated
+ * per dwell. The aim is a faithful geometry and detection statistics model,
+ * not a first-principles power-budget or signal-processing simulation. The
+ * link budget is calibrated through a reference range at a reference RCS
+ * rather than transmit power, antenna gain, and system losses.
+ *
+ * Modelled:
+ *  - 3D sensor-target geometry on a local tangent plane (WGS84 radii of
+ *    curvature at the reference point); platform on a racetrack orbit with
+ *    coordinated-turn bank angle.
+ *  - Tropospheric refraction via an effective-Earth-radius k(h) derived from
+ *    an exponential refractivity profile (N0, scale height), not a fixed 4/3.
+ *  - Line-of-sight terrain masking by ray-marching the refracted ray against
+ *    the DEM, plus radar-horizon, elevation-limit, and nadir-cone gating.
+ *  - Detection scaling from the radar equation (range^4, RCS), referenced to
+ *    a calibrated range and RCS, with per-target-state RCS.
+ *  - Surface clutter from a constant-gamma (Barton/Morchin) model,
+ *    sigma0 = gamma * sin(grazing), gamma chosen per terrain biome and
+ *    integrated over the resolution cell.
+ *  - Cell-averaging CA-CFAR detection (reference/guard cells, threshold alpha
+ *    for a target Pfa) over non-coherently integrated pulses, above a thermal
+ *    noise floor.
+ *  - Specular multipath (Lloyd's-mirror lobing) at S-band, with a per-biome
+ *    reflection coefficient attenuated by Rayleigh surface roughness.
+ *  - Probabilistic detection drawn independently per dwell across each 1 s scan.
+ *
+ * Deliberately omitted:
+ *  - Doppler processing: no MTI / pulse-Doppler clutter cancellation or STAP.
+ *    Clutter is suppressed by amplitude CFAR alone -- the single largest
+ *    departure from a real pulse-Doppler AWACS sensor.
+ *  - Antenna realism: a hard azimuth beam-gate replaces the main-beam pattern;
+ *    no sidelobes, sidelobe clutter, elevation pattern, or monopulse.
+ *  - Waveform detail: no pulse-compression range sidelobes, range/Doppler
+ *    ambiguities, or eclipsing; range resolution is a parameter.
+ *  - Target fluctuation: fixed per-state RCS with a detection draw, not a
+ *    Swerling case.
+ *  - Knife-edge diffraction (masking is hard geometric LOS), diffuse multipath,
+ *    polarization, gaseous/rain attenuation, ducting, and ECM/ECCM.
+ *  - Tracking: detections are per-dwell only -- no association, M-of-N, or
+ *    track formation.
+ *
+ * These omissions keep run cost dominated by the geometry -- horizon, terrain
+ * masking, and multipath -- that drives the flight-level question this tutorial
+ * poses, while the detection statistics stay calibrated and reproducible.
+ *
  * Copyright (c) Asbjørn M. Bonvik 2026.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
