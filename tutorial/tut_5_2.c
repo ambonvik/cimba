@@ -160,7 +160,6 @@ void *target_proc(struct cmb_process *me, void *vctx)
     tgt->mode = (cmb_random_bernoulli(ph)) ? HIDING : DRIVING;
     tgt->tds = UNDETERMINED;
 
-    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         if (tgt->mode == HIDING) {
             /* Stay hidden for a random time */
@@ -693,7 +692,7 @@ void sensor_terminate(struct sensor *senp)
 
 void sensor_destroy(struct sensor *senp)
 {
-    free(senp);
+    cmi_free(senp);
 }
 
 /*****************************************************************************
@@ -733,7 +732,7 @@ void end_sim(void *subject, void *object)
     cmb_process_stop(sim->HDF5_output, NULL);
 }
 
-const char *hhhmmss_formatter(double t);
+const char *hhmmss_formatter(double t);
 
 /*
  * A cmb_process to display a progress bar during the simulation
@@ -790,7 +789,7 @@ void run_trial(void *vtrl)
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USER_ALL);
     cmb_event_queue_initialize(0.0);
-    cmb_logger_timeformatter_set(hhhmmss_formatter);
+    cmb_logger_timeformatter_set(hhmmss_formatter);
 
     /* Create and start the targets */
     printf("Initializing targets\n");
@@ -917,28 +916,40 @@ int main(int argc, char **argv)
     int opt;
     while ((opt = getopt(argc, argv, "d:s:t")) != -1) {
         switch (opt) {
-            case 'd':
+            case 'd': {
                 errno = 0;
-                dur_h = strtof(optarg, NULL);
-                if (errno != 0 || dur_h <= 0.0) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    abort();
+                char *end = NULL;
+                dur_h = strtod(optarg, &end);
+                if (end == optarg        /* no digits consumed   */
+                    || *end != '\0'      /* trailing garbage     */
+                    || errno == ERANGE   /* overflow / underflow */
+                    || dur_h <= 0.0) {   /* domain: hours > 0    */
+                    fprintf(stderr, "Invalid -d value '%s' (want hours > 0)\n", optarg);
+                    return EXIT_FAILURE;
+                    }
+                break;
+            }
+
+            case 's': {
+                errno = 0;
+                char *end = NULL;
+                seed = strtoull(optarg, &end, 0);   /* base 0 => accepts 0x.., 0.. */
+                if (end == optarg || *end != '\0' || errno == ERANGE || seed == 0u) {
+                    fprintf(stderr, "Invalid -s value '%s' (want nonzero integer)\n", optarg);
+                    return EXIT_FAILURE;
                 }
                 break;
-            case 's':
-                errno = 0;
-                seed = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0 || seed == 0u) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    abort();
-                }
-                break;
-            case 't':
+            }
+
+            case 't': {
                 timing_enabled = true;
                 break;
-            default:
-                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+            }
+
+            default: {
+                fprintf(stderr, "Usage: %s [-d <hours>] [-s <seed>]\n", argv[0]);
                 return EXIT_FAILURE;
+            }
         }
     }
 
@@ -1022,7 +1033,7 @@ void progress_bar_update(const unsigned int current,
 /* Internal time unit seconds, print in HHH:MM:SS.sss format */
 #define FMTBUFLEN 20
 
-const char *hhhmmss_formatter(const double t)
+const char *hhmmss_formatter(const double t)
 {
     static CMB_THREAD_LOCAL char fmtbuf[FMTBUFLEN];
 
