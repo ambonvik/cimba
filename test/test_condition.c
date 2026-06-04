@@ -109,7 +109,6 @@ void *weather_proc(struct cmb_process *me, void *vctx)
     struct env_state *env = ctx->state;
     const struct simulation *sim = ctx->sim;
 
-    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         /* Wind magnitude in meters per second */
         const double wmag = cmb_random_rayleigh(5.0);
@@ -151,7 +150,6 @@ void *tide_proc(struct cmb_process *me, void *vctx)
     const struct simulation *sim = ctx->sim;
     cmb_assert_always(sim != NULL);
 
-    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         /* A simple tide model with astronomical and weather-driven tides */
         const double t_raw = cmb_time();
@@ -335,7 +333,6 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
     const double p_large = trl->percent_large;
 
     uint64_t cnt = 0u;
-    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         cmb_process_hold(cmb_random_exponential(mean));
 
@@ -410,7 +407,6 @@ void *departure_proc(struct cmb_process *me, void *vctx)
     cmb_assert_always(trl != NULL);
     struct cmi_slist_head *dep_head = sim->departed_ships;
 
-    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         /* We do not need to loop here, since this is the only process waiting */
         const int64_t sig = cmb_condition_wait(sim->davyjones, is_departed, vctx);

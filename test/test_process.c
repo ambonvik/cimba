@@ -65,7 +65,6 @@ void *preemptable(struct cmb_process *me, void *ctx)
     cmb_unused(ctx);
 
     cmb_logger_user(stdout, USERFLAG1, "Running");
-    // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         const double dur = cmb_random_exponential(5.0);
         cmb_assert_always(dur >= 0.0);

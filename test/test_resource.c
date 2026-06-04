@@ -56,7 +56,6 @@ void *preemptable(struct cmb_process *me, void *ctx)
     cmb_assert_always(ctx != NULL);
     struct cmb_resource *rp = ctx;
 
-    // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         int64_t sig = cmb_resource_acquire(rp);
         if (sig == CMB_PROCESS_SUCCESS) {
@@ -89,7 +88,6 @@ void *preempter(struct cmb_process *me, void *ctx)
     cmb_assert_always(ctx != NULL);
     struct cmb_resource *rp = ctx;
 
-    // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         cmb_assert_always(cmb_resource_held_by_process(rp, me) == 0u);
         int64_t sig = cmb_resource_preempt(rp);

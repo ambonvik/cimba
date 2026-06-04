@@ -75,7 +75,6 @@ void *putterfunc(struct cmb_process *me, void *vctx)
     struct cmb_priorityqueue *qp = (struct cmb_priorityqueue *)vctx;
     const int64_t pri = cmb_process_priority(me);
 
-    // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         cmb_logger_user(stdout, USERFLAG1, "Holding ...");
         int64_t sig = cmb_process_hold(cmb_random_exponential(1.0));
@@ -119,7 +118,6 @@ void *getterfunc(struct cmb_process *me, void *ctx)
 
     struct cmb_priorityqueue *qp = (struct cmb_priorityqueue *)ctx;
 
-    // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         cmb_logger_user(stdout, USERFLAG1, "Holding ...");
         int64_t sig = cmb_process_hold(cmb_random_exponential(1.0));
@@ -162,7 +160,6 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
     struct cmb_process **tgt = (struct cmb_process **)ctx;
     const unsigned nproc = NUM_PUTTERS + NUM_GETTERS;
 
-    // ReSharper disable once CppDFAEndlessLoop
     for (;;) {
         cmb_logger_user(stdout, USERFLAG1, "Holding ...");
         double dt = cmb_random_exponential(1.0);

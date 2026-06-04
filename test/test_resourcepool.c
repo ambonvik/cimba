@@ -79,7 +79,6 @@ void *mousefunc(struct cmb_process *me, void *ctx)
     struct cmb_resourcepool *sp = tstexp->cheese;
     uint64_t amount_held = 0u;
 
-    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         cmb_logger_user(stdout, USERFLAG,
                          "Own calc amount %" PRIu64 ", library calc %" PRIu64,
@@ -182,7 +181,6 @@ void *ratfunc(struct cmb_process *me, void *ctx)
     struct cmb_resourcepool *sp = tstexp->cheese;
     uint64_t amount_held = 0u;
 
-    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         cmb_logger_user(stdout, USERFLAG,
                         "Own calc amount %" PRIu64 ", library calc %" PRIu64,
@@ -282,7 +280,6 @@ void *catfunc(struct cmb_process *me, void *ctx)
     struct cmb_process **cpp = (struct cmb_process **) tstexp;
     const long num = NUM_MICE + NUM_RATS;
 
-    // ReSharper disable once CppDFAEndlessLoop
     while (true) {
         cmb_logger_user(stdout, USERFLAG, "Looking for rodents");
         const double dt = cmb_random_exponential(1.0);

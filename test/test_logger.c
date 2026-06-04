@@ -62,7 +62,7 @@ static void end_sim(void *subject, void *object)
 #define FMTBUFLEN 20
 static char fmtbuf[FMTBUFLEN];
 
-static const char *hhhmmss_formatter(const double t)
+static const char *hhmmss_formatter(const double t)
 {
     double tmp = t;
     const unsigned days = (unsigned)(tmp / (24.0 * 60.0));
@@ -86,7 +86,7 @@ void test_logger(uint64_t seed)
 {
     cmb_random_initialize(seed);
     cmb_event_queue_initialize(0.0);
-    cmb_logger_timeformatter_set(hhhmmss_formatter);
+    cmb_logger_timeformatter_set(hhmmss_formatter);
 
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
