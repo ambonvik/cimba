@@ -5,7 +5,9 @@
 ### What is it?
 A fast discrete event simulation library written in C and assembly with POSIX pthreads 
 for running multiple trials in parallel on multi-core CPUs. Simulated processes are 
-implemented as stackful coroutines ("fibers") inside the pthreads.
+implemented as stackful coroutines ("fibers") inside the pthreads. Compute-intensive 
+model physics can be implemented as massively parallel CUDA (or other GPGPU) functions 
+inside the coroutines. 
 As far as we know, there is no other open source library that can provide these features.
 
 Implementation status:
@@ -34,8 +36,9 @@ It is fast, powerful, reliable, and free.
   experiments in seconds instead of minutes, or in minutes instead of hours.
 
   If you need even more speed, CUDA kernels can be used for massively parallel 
-  computation inside each simulated process, e.g. for AI-enabled agents or for 
-  intricate physics calculations.
+  computation inside each simulated process, e.g., for AI-enabled agents or for 
+  intricate physics calculations. In our fifth tutorial, we demonstrate how to combine 
+  multithreaded trials with CUDA functions running on multiple GPUs.
 
 * *Powerful*: Cimba provides a comprehensive toolkit for discrete event simulation:
 
@@ -68,8 +71,7 @@ It is fast, powerful, reliable, and free.
     You could even call the Cimba simulation engine from other programming languages, 
     since the C calling convention is standard and well-documented. 
 
-* *Reliable*: Cimba is well-engineered open source. There is no
-  mystery to the results you get.
+* *Reliable*: Cimba is well-engineered open source. There is no mystery to the results you get.
   The code is written with liberal use of assertions 
   to enforce preconditions, invariants, and postconditions in each function. The 
   assertions act as self-enforcing documentation on expected inputs to and outputs from 
@@ -77,7 +79,11 @@ It is fast, powerful, reliable, and free.
   asssertions, a very high density.
   There are unit tests for each module. Running the unit test battery in debug mode (all
   assertions active) verifies the correct operation in great detail. You can do that by the
-  one-liner ``meson test -C build`` from the terminal command line.
+  one-liner ``meson test -C build`` from the terminal command line. Cimba is 
+  compatible with sanitizers for undefined behavior (UBSan), memory address safety 
+  (ASan), and thread safety (TSan). These sanitizers are run automatically as GitHub 
+  runners on every push to the repository as public verification of our reliability 
+  claim, right here: https://github.com/ambonvik/cimba/actions
 
 * *Free*: Cimba should fit well into the budget of most research groups.
 
@@ -101,7 +107,7 @@ each target is its current radar cross section, the color is the current detecti
 The vectors on the sphere representing the AWACS indicate the current direction of the 
 platform and the current direction of the radar lobe. The visualization was done in ParaView.
 
-![AWACS racetrack](images/tut_5_1.png)
+![AWACS racetrack](images/tut_5_1c.png)
 
 If you look under the hood, you will also find additional reusable internal components.
 Cimba contains stackful coroutines doing their own thing on thread-safe cactus stacks. 
@@ -282,9 +288,16 @@ combination, in total 4 * 5 * 10 = 200 trials. Each trial lasts for one million
 time units, where the average service time always is 1.0 time units. 
 
 This entire simulation runs in *about 1.5 seconds* on an AMD Threadripper 3970X with 
-Arch Linux and produces the chart below. 
+Arch Linux and produces the chart below.
 
 ![M/G/1 queue](images/MG1%20example.png)
+
+Or, for a more "real" example, see our tutorial 5. Using dual RTX 3090 GPUS and a
+64-core CPU, it runs 150 trials of an AWACS scenario with detailed three-dimensional
+physics in 40 seconds. Each trial is a six-hour simulation of a thousand target
+processes (coroutines) and one sensor process (coroutine) on a 1000 x 1000 nm
+synthetic terrain with one arcsecond resolution. The radar physics include terrain
+shielding, clutter modeling, and multipathing.
 
 ### What do you mean by "well engineered"?
 Discrete event simulation fits well with an object-oriented paradigm. That is
@@ -300,6 +313,12 @@ processes to store their state at arbitrary points and resume execution from the
 later with minimal overhead. The context-switching code is hand-coded in assembly for 
 each platform. (You 
 can find [more details here](https://cimba.readthedocs.io/en/latest/background.html#coroutines-revisited).)
+
+The stackful coroutines for simulated processes are combined with a higher 
+level of concurrency in the Posix pthreads managing the trials and replications in an 
+experiment design, and with a lower level of massive parallelism in GPGPU-based 
+physics calculations. These three layers of concurrency have clearly separated 
+semantics in the model code.
 
 ![Stackful coroutines](images/stack_1.png)
 
@@ -317,7 +336,11 @@ model when you are ready for it, while turning off the release asserts as well g
 a small incremental improvement. (Again, 
 [more explanation here](https://cimba.readthedocs.io/en/latest/background.html#error-handling-the-loud-crashing-noise).)
 
-This is then combined with extensive unit testing of each module, ensuring that
+Moreover, Cimba supports sanitizer tools like Address Sanitizer, Undefined Behavior 
+Sanitizer, Thread Sanitizer, and the CUDA Compute Sanitizer. ASan, UBSan, and TSan are 
+run automatically on each push to the GitHub repo.
+
+Extensive unit testing of each module ensures that
 all lower level functionality works as expected before moving on to higher levels. 
 You will find the test files corresponding to each code module in the [test](./test) 
 directory.
