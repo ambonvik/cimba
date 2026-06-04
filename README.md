@@ -37,8 +37,10 @@ It is fast, powerful, reliable, and free.
 
   If you need even more speed, CUDA kernels can be used for massively parallel 
   computation inside each simulated process, e.g., for AI-enabled agents or for 
-  intricate physics calculations. In our fifth tutorial, we demonstrate how to combine 
-  multithreaded trials with CUDA functions running on multiple GPUs.
+  intricate physics calculations. In 
+  [one of our tutorials](https://cimba.readthedocs.io/en/latest/tutorial.html#adding-cuda-gpu-power-for-simulation-physics), 
+  we demonstrate how to combine multithreaded trials with CUDA functions running on 
+  multiple GPUs.
 
 * *Powerful*: Cimba provides a comprehensive toolkit for discrete event simulation:
 
@@ -72,18 +74,21 @@ It is fast, powerful, reliable, and free.
     since the C calling convention is standard and well-documented. 
 
 * *Reliable*: Cimba is well-engineered open source. There is no mystery to the results you get.
-  The code is written with liberal use of assertions 
-  to enforce preconditions, invariants, and postconditions in each function. The 
-  assertions act as self-enforcing documentation on expected inputs to and outputs from 
-  the Cimba functions. About 13 % of all code lines in the Cimba library are 
-  asssertions, a very high density.
-  There are unit tests for each module. Running the unit test battery in debug mode (all
-  assertions active) verifies the correct operation in great detail. You can do that by the
-  one-liner ``meson test -C build`` from the terminal command line. Cimba is 
-  compatible with sanitizers for undefined behavior (UBSan), memory address safety 
-  (ASan), and thread safety (TSan). These sanitizers are run automatically as GitHub 
-  runners on every push to the repository as public verification of our reliability 
-  claim, right here: https://github.com/ambonvik/cimba/actions
+
+  * The code is written with liberal use of assertions 
+    to enforce preconditions, invariants, and postconditions in each function. The 
+    assertions act as self-enforcing documentation on expected inputs to and outputs from 
+    the Cimba functions. About 13 % of all code lines in the Cimba library are 
+    assertions, a very high density.
+  
+  * There are unit tests for each module. Running the unit test battery in debug mode (all
+    assertions active) verifies the correct operation in great detail. You can do that 
+    by the one-liner ``meson test -C build`` from the terminal command line. 
+  
+  * Cimba is compatible with sanitizers for undefined behavior (UBSan), memory address safety 
+    (ASan), and thread safety (TSan). These sanitizers are run automatically as GitHub 
+    runners on every push to the repository as public verification of our reliability 
+    claim, right here: https://github.com/ambonvik/cimba/actions
 
 * *Free*: Cimba should fit well into the budget of most research groups.
 
@@ -296,9 +301,11 @@ Or, for a more "real" example, see our tutorial 5. Using dual RTX 3090 GPUS and 
 64-core CPU, it runs 300 trials of an AWACS scenario with detailed three-dimensional
 physics in 78 seconds. Each trial is a six-hour simulation of a thousand target
 processes (coroutines) and one sensor process (coroutine) on a 1000 x 1000 nm
-synthetic terrain with one arcsecond resolution and one second intervals between radar 
-dwells. The radar physics include terrain shielding, clutter modeling, multipathing, 
-and a CFAR/clutter detection model.
+synthetic terrain with one arcsecond resolution and 0.04 second intervals between radar 
+dwells. The sensor process models a scanning S-band surveillance radar including 
+line-of-sight geometry, terrain masking, constant-gamma clutter with CA-CFAR detection, 
+and specular multipath — calibrated rather than power-budgeted, and deliberately without 
+Doppler/MTI processing.
 
 ### What do you mean by "well engineered"?
 Discrete event simulation fits well with an object-oriented paradigm. That is
@@ -337,14 +344,14 @@ model when you are ready for it, while turning off the release asserts as well g
 a small incremental improvement. (Again, 
 [more explanation here](https://cimba.readthedocs.io/en/latest/background.html#error-handling-the-loud-crashing-noise).)
 
-Moreover, Cimba supports sanitizer tools like Address Sanitizer, Undefined Behavior 
-Sanitizer, Thread Sanitizer, and the CUDA Compute Sanitizer. ASan, UBSan, and TSan are 
-run automatically on each push to the GitHub repo.
-
 Extensive unit testing of each module ensures that
 all lower level functionality works as expected before moving on to higher levels. 
 You will find the test files corresponding to each code module in the [test](./test) 
 directory.
+
+Moreover, Cimba supports sanitizer tools like Address Sanitizer, Undefined Behavior
+Sanitizer, Thread Sanitizer, and the CUDA Compute Sanitizer. ASan, UBSan, and TSan are
+run automatically on each push to the GitHub repo.
 
 But do read the [LICENSE](LICENSE). We are not giving any warranties here.
 
