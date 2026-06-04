@@ -1181,6 +1181,17 @@ Two less obvious features to be aware of, perhaps also less useful, but still:
   construct a discrete event simulation engine that *can* be run in the multithreaded
   wrapper, not constructing the wrapper as such.
 
+.. _background_CUDA:
+
+Using CUDA GPGPU for massively parallel model physics
+-----------------------------------------------------
+
+Cimba separates cleanly between three different layers of concurrency. SImilar to the
+way the Posic pthreads for trials exist above the main simulation layer, the CUDA
+kernels exist below it. CUDA code does not know about simulated time or the event
+queue. It just executes instantly in simulated time without advancing the simulation
+clock.
+
 .. _background_benchmark:
 
 Benchmarking Cimba against SimPy
