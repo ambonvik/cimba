@@ -3132,42 +3132,56 @@ to demonstrate physics modelling with Cimba and CUDA, not necessarily to give a
 complete model for actual military operations research.
 
 Features included in this sensor model:
+
 * 3D sensor-target geometry on a local tangent plane (WGS84 radii of
   curvature at the reference point); platform on a racetrack orbit with
   coordinated-turn bank angle.
+
 * Tropospheric refraction via an effective-Earth-radius k(h) derived from
   an exponential refractivity profile, not a fixed 4/3 Earth radius model.
+
 * Line-of-sight terrain masking by ray-marching the refracted ray against
   the terrain model, plus radar-horizon, elevation-limit, and nadir-cone gating.
+
 * Detection scaling from the radar equation (range^4, RCS), referenced to
   a calibrated range and RCS, with per-target-state RCS.
+
 * Surface clutter from a constant-gamma (Barton/Morchin) model,
   sigma0 = gamma * sin(grazing), gamma chosen per terrain biome and
   integrated over the resolution cell.
+
 * Cell-averaging CA-CFAR detection (reference/guard cells, threshold alpha
   for a target Pfa) over non-coherently integrated pulses, above a thermal
   noise floor.
+
 * Specular multipath (Lloyd's-mirror lobing) at S-band, with a per-biome
   reflection coefficient attenuated by Rayleigh surface roughness.
+
 * Probabilistic detection drawn independently per dwell across each 1 s scan.
 
 Deliberately omitted:
+
 * Doppler processing: no MTI / pulse-Doppler clutter cancellation or STAP.
   Clutter is suppressed by amplitude CFAR alone. This is probably the single largest
   departure from a real pulse-Doppler AWACS sensor, but avoids unnecessary detail for
   our purpose here.
+
 * Antenna realism: a hard azimuth beam-gate replaces the main-beam pattern;
   no sidelobes, sidelobe clutter, elevation pattern, or monopulse.
+
 * Waveform detail: no pulse-compression range sidelobes, range/Doppler
   ambiguities, or eclipsing; range resolution is a parameter.
+
 * Target fluctuation: fixed per-state RCS with a detection draw, not a
   Swerling case.
+
 * Knife-edge diffraction (masking is hard geometric LOS), diffuse multipath,
   polarization, gaseous/rain attenuation, ducting, and ECM/ECCM.
+
 * Tracking: detections are per-dwell only -- no association, M-of-N, or
   track formation.
 
-These features could of coruse also be added, but the chosen level of detail leaves a
+These features could of course also be added, but the chosen level of detail leaves a
 sufficiently detailed radar model to give reasonable and compute-intensive
 physics, while limiting the amount of technical detail not relevant to our current
 purpose. The code can be found in
