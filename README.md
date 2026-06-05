@@ -86,8 +86,8 @@ It is fast, powerful, reliable, and free.
     by the one-liner ``meson test -C build`` from the terminal command line. 
   
   * Cimba is compatible with sanitizers for undefined behavior (UBSan), memory address safety 
-    (ASan), and thread safety (TSan). These sanitizers are run automatically as GitHub 
-    runners on every push to the repository as public verification of our reliability 
+    (ASan), and thread safety (TSan). These sanitizers are executed automatically as 
+    GitHub runners on every push to the repository as public verification of our reliability 
     claim, right here: https://github.com/ambonvik/cimba/actions
 
 * *Free*: Cimba should fit well into the budget of most research groups.
@@ -297,15 +297,19 @@ Arch Linux and produces the chart below.
 
 ![M/G/1 queue](images/MG1%20example.png)
 
-Or, for a more "real" example, see our tutorial 5. Using dual RTX 3090 GPUS and a
-64-core CPU, it runs 300 trials of an AWACS scenario with detailed three-dimensional
+Or, for a more "real" example, see 
+[our tutorial 5](https://cimba.readthedocs.io/en/latest/tutorial.html#adding-cuda-gpu-power-for-simulation-physics).
+Using the same 64-core Threadripper and dual RTX 3090 GPUs, it runs 300 trials of an AWACS
+scenario with detailed three-dimensional
 physics in 78 seconds. Each trial is a six-hour simulation of a thousand target
 processes (coroutines) and one sensor process (coroutine) on a 1000 x 1000 nm
-synthetic terrain with one arcsecond resolution and 0.04 second intervals between radar 
-dwells. The sensor process models a scanning S-band surveillance radar including 
+synthetic terrain with one arcsecond resolution. The sensor process models a scanning S-band 
+surveillance radar including 
 line-of-sight geometry, terrain masking, constant-gamma clutter with CA-CFAR detection, 
-and specular multipath — calibrated rather than power-budgeted, and deliberately without 
-Doppler/MTI processing.
+and specular multipath. The model uses radar dwell itervals (time steps) of 0.04 seconds.
+
+Cimba is able to harness all the computing power available in modern computer 
+architectures for your simulation purposes, whatever they are.
 
 ### What do you mean by "well engineered"?
 Discrete event simulation fits well with an object-oriented paradigm. That is
