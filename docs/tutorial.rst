@@ -3194,6 +3194,12 @@ program is only using one of the 64 CPU cores. Still, it is relatively fast,
 and finishes each run of 6 hours simulated time in about 10 min 40 sec. Of this, the
 terrain generation tok 531 seconds, while the simulation itself took 103 seconds.
 
+For tutorial purposes, note that the model output is written by a separate
+``cmb_process`` that takes a snapshot every second and appends it to the output file
+for off-line animation. This decouples the output intervals (here 1 second) from the
+simulation events and avoids cluttering simulation entities (like the sensor or targets)
+with unrelated code.
+
 CUDA to the rescue
 ^^^^^^^^^^^^^^^^^^
 
