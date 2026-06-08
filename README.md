@@ -326,13 +326,13 @@ later with minimal overhead. The context-switching code is hand-coded in assembl
 each platform. (You 
 can find [more details here](https://cimba.readthedocs.io/en/latest/background.html#coroutines-revisited).)
 
-The stackful coroutines for simulated processes are combined with a higher 
-level of concurrency in the Posix pthreads managing the trials and replications in an 
-experiment design, and with a lower level of massive parallelism in GPGPU-based 
-physics calculations. These three layers of concurrency have clearly separated 
-semantics in the model code.
-
 ![Stackful coroutines](images/stack_1.png)
+
+The stackful coroutines for simulated processes are combined with a higher
+level of concurrency in the Posix pthreads managing the trials and replications in an
+experiment design, and with a lower level of massive parallelism in GPGPU-based
+physics calculations. These three layers of concurrency have clearly separated
+semantics in the model code.
 
 The C code is liberally sprinkled with `assert` statements testing for preconditions,
 invariants, and postconditions wherever possible, applying 
@@ -349,13 +349,14 @@ a small incremental improvement. (Again,
 [more explanation here](https://cimba.readthedocs.io/en/latest/background.html#error-handling-the-loud-crashing-noise).)
 
 Extensive unit testing of each module ensures that
-all lower level functionality works as expected before moving on to higher levels. 
+all lower-level functionality works as expected before moving on to higher levels. 
 You will find the test files corresponding to each code module in the [test](./test) 
 directory.
 
 Moreover, Cimba supports sanitizer tools like Address Sanitizer, Undefined Behavior
 Sanitizer, Thread Sanitizer, and the CUDA Compute Sanitizer. ASan, UBSan, and TSan are
-run automatically on each push to the GitHub repo.
+run automatically on each push to the GitHub repo. The details can be found in the 
+GitHub repo, including the results of successive test runs.
 
 But do read the [LICENSE](LICENSE). We are not giving any warranties here.
 
