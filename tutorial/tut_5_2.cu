@@ -1253,24 +1253,11 @@ void triage_kernel(
                    &geom);
     compute_sensor_to_target(&geom, sx, sy, sa);
 
-    /* Stage 2: horizon. Beam-direction-independent, done once. */
-    if (target_beyond_horizon(&geom, sa, r_earth)) {
-        tds_out[tid] = BEYOND_HORIZON;
-        return;
-    }
-
-    /* Stage 3: vertical lobe / nadir hole. Also beam-direction-independent. */
-    if (target_outside_vertical(&geom, platform_hdg, platform_rol,
-                                elev_min, elev_max)) {
-        tds_out[tid] = NADIR_HOLE;
-        return;
-    }
-
-    /* Stage 1 (per dwell): scan the n_dwells_per_step antenna positions,
-     * record the first illuminating dwell index and count the total.
-     * A 1.4° beam rotating at 6 RPM covers ~1.44° per dwell, so most
-     * illuminated targets are hit by exactly one dwell; occasionally
-     * two; rarely more. */
+     /* Stage 1 (per dwell): scan the n_dwells_per_step antenna positions,
+      * record the first illuminating dwell index and count the total.
+      * A 1.4° beam rotating at 6 RPM covers ~1.44° per dwell, so most
+      * illuminated targets are hit by exactly one dwell; occasionally
+      * two; rarely more. */
     int n_illuminated = 0;
     int first_dwell   = -1;
     for (unsigned int d = 0; d < n_dwells_per_step; d++) {
@@ -1283,6 +1270,19 @@ void triage_kernel(
 
     if (n_illuminated == 0) {
         /* Target not visited this step — leave tds_out unchanged. */
+        return;
+    }
+
+   /* Stage 2: horizon. Beam-direction-independent, done once. */
+    if (target_beyond_horizon(&geom, sa, r_earth)) {
+        tds_out[tid] = BEYOND_HORIZON;
+        return;
+    }
+
+    /* Stage 3: vertical lobe / nadir hole. Also beam-direction-independent. */
+    if (target_outside_vertical(&geom, platform_hdg, platform_rol,
+                                elev_min, elev_max)) {
+        tds_out[tid] = NADIR_HOLE;
         return;
     }
 
