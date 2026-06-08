@@ -315,13 +315,13 @@ void terrain_initialize(struct terrain *tp,
 
     const time_t t_start = time(NULL);
 
-terrain_generate_kernel<<<grid, block>>>(
-    surf_obj,
-    tp->cols, tp->rows,
-    tp->x_scale, tp->y_scale,
-    terrain_max, terrain_octaves, terrain_initfreq,
-    terrain_ridginess, terrain_peakiness,
-    terrain_stddev, terrain_seed);
+    terrain_generate_kernel<<<grid, block>>>(
+        surf_obj,
+        tp->cols, tp->rows,
+        tp->x_scale, tp->y_scale,
+        terrain_max, terrain_octaves, terrain_initfreq,
+        terrain_ridginess, terrain_peakiness,
+        terrain_stddev, terrain_seed);
 
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -532,6 +532,82 @@ float terrain_elevation(const cudaTextureObject_t tex,
     return tex2D<float>(tex, u, v);
 }
 
+/* Terrain-relative target altitude: ground elevation beneath (x,y) plus the
+ * target's height above ground. Shared by the per-step kinematics update and
+ * the t=0 altitude prime, so a stationary target's primed altitude and its
+ * first stepped altitude are bit-identical — no jump on frame two. */
+__device__ __forceinline__
+float target_altitude(const cudaTextureObject_t tex,
+                      const unsigned int cols, const unsigned int rows,
+                      const float x_scale, const float y_scale,
+                      const float x_min, const float x_max,
+                      const float y_min, const float y_max,
+                      const float x, const float y, const float height)
+{
+    return terrain_elevation(tex, cols, rows,
+                             x_scale, y_scale,
+                             x_min, x_max, y_min, y_max,
+                             x, y) + height;
+}
+
+
+/* t=0 altitude prime: one thread per target, a single texture fetch each.
+ * Writes terrain-relative altitude at the target's placement (x,y) with no
+ * kinematics and no detection geometry. */
+__global__
+void prime_altitudes_kernel(
+    const float * __restrict__ tgt_x,
+    const float * __restrict__ tgt_y,
+    const float * __restrict__ tgt_height,
+    float       * __restrict__ tgt_alt,
+    const unsigned int n_targets,
+    const cudaTextureObject_t terrain_tex,
+    const unsigned int terrain_cols, const unsigned int terrain_rows,
+    const float terrain_x_scale, const float terrain_y_scale,
+    const float terrain_x_min, const float terrain_x_max,
+    const float terrain_y_min, const float terrain_y_max)
+{
+    const unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= n_targets) return;
+
+    tgt_alt[tid] = target_altitude(
+        terrain_tex, terrain_cols, terrain_rows,
+        terrain_x_scale, terrain_y_scale,
+        terrain_x_min, terrain_x_max, terrain_y_min, terrain_y_max,
+        tgt_x[tid], tgt_y[tid], tgt_height[tid]);
+}
+
+void sensor_gpu_prime_altitudes(struct sensor_gpu_state *gpu,
+                                const float *x, const float *y,
+                                const float *height, float *alt)
+{
+    const unsigned int n = gpu->n_targets;
+    const size_t fbytes = (size_t)n * sizeof(float);
+    const struct terrain *terp = gpu->terrain;
+
+    CUDA_CHECK(cudaMemcpyAsync(gpu->d_x,      x,      fbytes,
+                               cudaMemcpyHostToDevice, gpu->stream));
+    CUDA_CHECK(cudaMemcpyAsync(gpu->d_y,      y,      fbytes,
+                               cudaMemcpyHostToDevice, gpu->stream));
+    CUDA_CHECK(cudaMemcpyAsync(gpu->d_height, height, fbytes,
+                               cudaMemcpyHostToDevice, gpu->stream));
+
+    const unsigned int grid = (n + TRIAGE_BLOCK - 1) / TRIAGE_BLOCK;
+    prime_altitudes_kernel<<<grid, TRIAGE_BLOCK, 0, gpu->stream>>>(
+        (const float *)gpu->d_x, (const float *)gpu->d_y,
+        (const float *)gpu->d_height, (float *)gpu->d_alt,
+        n,
+        (cudaTextureObject_t)terp->tex,
+        terp->cols, terp->rows,
+        terp->x_scale, terp->y_scale,
+        terp->x_min, terp->x_max, terp->y_min, terp->y_max);
+    CUDA_CHECK(cudaGetLastError());
+
+    CUDA_CHECK(cudaMemcpyAsync(alt, gpu->d_alt, fbytes,
+                               cudaMemcpyDeviceToHost, gpu->stream));
+    CUDA_CHECK(cudaStreamSynchronize(gpu->stream));
+}
+
 /* Toroidal wrap of a coordinate to the map bounds. */
 __device__ __forceinline__
 float toroidal_wrap(float v, const float lo, const float hi)
@@ -577,12 +653,11 @@ void advance_target(const unsigned int tid,
         tgt_time[tid] = sim_time;
     }
 
-    const float ground = terrain_elevation(
+    const float ta = target_altitude(
         terrain_tex, terrain_cols, terrain_rows,
         terrain_x_scale, terrain_y_scale,
         terrain_x_min, terrain_x_max, terrain_y_min, terrain_y_max,
-        tx, ty);
-    const float ta = ground + tgt_height[tid];
+        tx, ty, tgt_height[tid]);
 
     tgt_x[tid]   = tx;
     tgt_y[tid]   = ty;
@@ -821,6 +896,7 @@ float cfar_threshold(
     const float sx, const float sy, const float sa,
     const struct radar_params *radar,
     const float beamwidth_r,
+    const float clutter_scale,
     const cudaTextureObject_t terrain_tex,
     const unsigned int terrain_cols, const unsigned int terrain_rows,
     const float terrain_x_scale, const float terrain_y_scale,
@@ -869,7 +945,7 @@ float cfar_threshold(
     }
 
     const float mean_clutter = (n_used > 0) ? (sum / (float)n_used) : 0.0f;
-    return radar->cfar_alpha * (mean_clutter + radar->noise_floor_norm);
+    return radar->cfar_alpha * (clutter_scale * mean_clutter + radar->noise_floor_norm);
 }
 
 /*
@@ -1008,6 +1084,8 @@ enum target_detect_state probabilistic_detection(
     const float rcs,
     const float ref_range_m, const float ref_rcs_m2,
     const int target_mode,
+    const float vel_ms,
+    const float dir_r,
     const float beam_dir,
     const float beamwidth_r,
     const float sx, const float sy, const float sa,
@@ -1045,17 +1123,32 @@ enum target_detect_state probabilistic_detection(
         terrain_x_min, terrain_x_max,
         terrain_y_min, terrain_y_max);
 
-    /* Target signal energy: free-space SNR scaled by antenna gain^2,
-     * pulse integration gain, and multipath. */
+    /* --- Doppler / clutter-notch visibility --------------------------------
+     * A ground target shares range/azimuth with its clutter, so the only
+     * Doppler separation is the target's own radial ground velocity. A
+     * stationary target sits in the notch and is cancelled with the clutter;
+     * a mover in a clear bin is seen against the suppressed clutter residual.
+     * Per-state activity Doppler (machinery, launch plume) gives staging and
+     * firing a floor independent of bulk motion. Index = enum target_mode
+     * (HIDING, STAGING, FIRING, DRIVING). */
+    const float activity_doppler[4] = { 0.0f, 5.0f, 1.0e6f, 2.0f };
+    const float v_radial  = vel_ms * cosf(dir_r - target_az);
+    const float v_eff     = fmaxf(fabsf(v_radial), activity_doppler[target_mode]);
+    const float vmdv      = radar->mdv_ms;
+    const float vis       = (v_eff * v_eff) / (v_eff * v_eff + vmdv * vmdv);
+    const float clutter_f = 1.0f - vis * (1.0f - 1.0f / radar->mti_improvement);
+
+    /* Target signal energy: free-space SNR scaled by antenna gain^2, pulse
+     * integration gain, multipath, and the Doppler filter response. */
     const float range_ratio = ref_range_m / r;
     const float r2 = range_ratio * range_ratio;
     const float snr_base = r2 * r2 * (rcs / ref_rcs_m2);
 
     const float pulse_int_gain = 0.7f * sqrtf((float)radar->n_pulses_per_dwell);
-    const float E_target = snr_base * g_target_sq * pulse_int_gain * g_mp;
+    const float E_target = snr_base * g_target_sq * pulse_int_gain * g_mp * vis;
 
-    /* Clutter in the test cell (target's own range bin). */
-    const float E_clutter_test = integrate_cell_clutter(
+    /* Clutter in the test cell: full in the notch, MTI residual in a clear bin. */
+    const float E_clutter_test = clutter_f * integrate_cell_clutter(
         geom->d_2d, beam_dir, beamwidth_r, radar->range_res_m,
         sx, sy, sa,
         radar->cell_grid_n_range, radar->cell_grid_n_cross,
@@ -1065,11 +1158,13 @@ enum target_detect_state probabilistic_detection(
         terrain_y_min, terrain_y_max,
         r_earth);
 
-    /* CFAR threshold from reference cells. */
+    /* CFAR threshold from reference cells, with the same clutter suppression
+     * (the reference cells are in the target's Doppler bin). */
     const float T = cfar_threshold(
         geom->d_2d, beam_dir,
         sx, sy, sa,
         radar, beamwidth_r,
+        clutter_f,
         terrain_tex, terrain_cols, terrain_rows,
         terrain_x_scale, terrain_y_scale,
         terrain_x_min, terrain_x_max,
@@ -1221,7 +1316,9 @@ void raymarch_kernel(
     const float * __restrict__ tgt_y,
     const float * __restrict__ tgt_alt,
     const float * __restrict__ tgt_rcs,
-    const int   * __restrict__ tgt_mode,
+    const float * __restrict__ tgt_dir,
+    const float * __restrict__ tgt_vel,
+     const int   * __restrict__ tgt_mode,
     /* Detection outputs */
     int     * __restrict__ tds_out,
     uint8_t * __restrict__ detected_out,
@@ -1346,6 +1443,7 @@ void raymarch_kernel(
                 last = probabilistic_detection(
                     &geom, tgt_rcs[tid], ref_range_m, ref_rcs_m2,
                     tgt_mode[tid],
+                    tgt_vel[tid], tgt_dir[tid],
                     beam_dir, beamwidth_r,
                     sx, sy, sa,
                     &radar,
@@ -1540,6 +1638,7 @@ void sensor_gpu_step(struct sensor_gpu_state *gpu,
         (const int *)gpu->d_queue_first_dwell,
         (const float *)gpu->d_x, (const float *)gpu->d_y,
         (const float *)gpu->d_alt, (const float *)gpu->d_rcs,
+        (const float *)gpu->d_dir, (const float *)gpu->d_vel,
         (const int *)gpu->d_mode,
         (int *)gpu->d_tds, (uint8_t *)gpu->d_detected,
         (curandStatePhilox4_32_10_t *)gpu->d_rng,

@@ -115,6 +115,8 @@ struct radar_params {
     float noise_floor_norm;
     int   cell_grid_n_range;
     int   cell_grid_n_cross;
+    float mdv_ms;          /* clutter-notch half-width (min detectable velocity), m/s */
+    float mti_improvement; /* main beam-clutter suppression from Doppler processing, linear */
 };
 
 /*

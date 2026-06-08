@@ -4,13 +4,11 @@
  * A single-threaded CPU only version of the AWACS simulation as a baseline for
  * adding CUDA GPGPU physics computing and multithreaded trials.
  *
- * Radar / detection model
- * -----------------------
- * The sensor is a scanning, horizon-limited surveillance radar evaluated
- * per dwell. The aim is a faithful geometry and detection statistics model,
+ * The AWACS sensor is a scanning, horizon-limited surveillance radar evaluated
+ * per dwell. The aim is a reasonable geometry and detection statistics model,
  * not a first-principles power-budget or signal-processing simulation. The
  * link budget is calibrated through a reference range at a reference RCS
- * rather than transmit power, antenna gain, and system losses.
+ * rather than detailed transmit power, antenna gain, and system losses.
  *
  * Modelled:
  *  - 3D sensor-target geometry on a local tangent plane (WGS84 radii of
@@ -25,6 +23,9 @@
  *  - Surface clutter from a constant-gamma (Barton/Morchin) model,
  *    sigma0 = gamma * sin(grazing), gamma chosen per terrain biome and
  *    integrated over the resolution cell.
+ *  - Doppler processing where a target state-dependent Doppler factor represents
+ *    the sensor's ability to separate a target in that state from surrounding
+ *    clutter.
  *  - Cell-averaging CA-CFAR detection (reference/guard cells, threshold alpha
  *    for a target Pfa) over non-coherently integrated pulses, above a thermal
  *    noise floor.
@@ -33,10 +34,7 @@
  *  - Probabilistic detection drawn independently per dwell across each 1 s scan.
  *
  * Deliberately omitted:
- *  - Doppler processing: no MTI / pulse-Doppler clutter cancellation or STAP.
- *    Clutter is suppressed by amplitude CFAR alone -- the single largest
- *    departure from a real pulse-Doppler AWACS sensor.
- *  - Antenna realism: a hard azimuth beam-gate replaces the main-beam pattern;
+ *  - Antenna detail: a hard azimuth beam-gate replaces the main-beam pattern;
  *    no sidelobes, sidelobe clutter, elevation pattern, or monopulse.
  *  - Waveform detail: no pulse-compression range sidelobes, range/Doppler
  *    ambiguities, or eclipsing; range resolution is a parameter.
@@ -47,9 +45,8 @@
  *  - Tracking: detections are per-dwell only -- no association, M-of-N, or
  *    track formation.
  *
- * These omissions keep run cost dominated by the geometry -- horizon, terrain
- * masking, and multipath -- that drives the flight-level question this tutorial
- * poses, while the detection statistics stay calibrated and reproducible.
+ * Adding these would improve the realism of the model, but not add anything
+ * significant to this tutorial example.
  *
  * Copyright (c) Asbjørn M. Bonvik 2026.
  *
@@ -111,6 +108,8 @@ struct radar_params {
     float noise_floor_norm;
     int   cell_grid_n_range;
     int   cell_grid_n_cross;
+    float mdv_ms;
+    float mti_improvement;
 };
 
 /* Geometric conversion constants */
@@ -992,6 +991,7 @@ static float cfar_threshold(const float target_range,
                             const float sx, const float sy, const float sa,
                             const struct radar_params *radar,
                             const float beamwidth_r,
+                            const float clutter_scale,
                             const struct terrain *terp,
                             const float r_earth)
 {
@@ -1028,7 +1028,7 @@ static float cfar_threshold(const float target_range,
     }
 
     const float mean_clutter = (n_used > 0) ? (sum / (float)n_used) : 0.0f;
-    return radar->cfar_alpha * (mean_clutter + radar->noise_floor_norm);
+    return radar->cfar_alpha * (clutter_scale * mean_clutter + radar->noise_floor_norm);
 }
 
 /*
@@ -1156,6 +1156,9 @@ static bool target_attempt_detection(const float dx, const float dy,
                                      const float beamwidth_r,
                                      const float ref_range, const float ref_rcs,
                                      const float tcx,
+                                     const float vel_ms,
+                                     const float dir_r,
+                                     const int   target_mode,
                                      const struct radar_params *radar,
                                      const struct terrain *terp,
                                      const float r_earth)
@@ -1168,38 +1171,48 @@ static bool target_attempt_detection(const float dx, const float dy,
     while (target_offset >  (float)M_PI) target_offset -= 2.0f * (float)M_PI;
     while (target_offset < -(float)M_PI) target_offset += 2.0f * (float)M_PI;
 
-    /* Antenna gain on the target. */
     const float g_target_sq = antenna_gain_sq(target_offset, beamwidth_r);
 
-    /* Multipath interference: two-way factor on the target signal. */
     const float tx = sx + dx;
     const float ty = sy + dy;
     const float ta = sa + dz;
     const float g_mp = multipath_gain(sx, sy, sa, tx, ty, ta, d_2d, terp);
 
-    /* Target signal energy: free-space SNR scaled by antenna gain^2,
-     * pulse integration gain, and multipath. */
+    /* --- Doppler / clutter-notch visibility --------------------------------
+     * A ground target shares its range/azimuth with the clutter, so the only
+     * Doppler separation from that clutter is its own radial ground velocity.
+     * A stationary target sits in the notch and is cancelled with the clutter;
+     * a mover in a clear bin is seen against the suppressed clutter residual.
+     * Per-state activity Doppler (machinery, launch plume) gives staging and
+     * firing a floor independent of bulk motion. Index order = enum target_mode
+     * (HIDING, STAGING, FIRING, DRIVING). */
+    const float activity_doppler[4] = { 0.0f, 2.0f, 1.0e6f, 5.0f };
+    const float v_radial  = vel_ms * cosf(dir_r - target_az);
+    const float v_eff     = fmaxf(fabsf(v_radial), activity_doppler[target_mode]);
+    const float vmdv      = radar->mdv_ms;
+    const float vis       = (v_eff * v_eff) / (v_eff * v_eff + vmdv * vmdv);
+    const float clutter_f = 1.0f - vis * (1.0f - 1.0f / radar->mti_improvement);
+
+    /* Target signal energy, now attenuated by the Doppler filter response. */
     const float range_ratio = ref_range / r;
     const float r2 = range_ratio * range_ratio;
     const float snr_base = r2 * r2 * (tcx / ref_rcs);
-
     const float pulse_int_gain = 0.7f * sqrtf((float)radar->n_pulses_per_dwell);
-    const float E_target = snr_base * g_target_sq * pulse_int_gain * g_mp;
+    const float E_target = snr_base * g_target_sq * pulse_int_gain * g_mp * vis;
 
-    /* Clutter in the test cell. (Clutter has its own multipath in
-     * principle, but the spatial averaging over the resolution cell
-     * smooths the lobing into roughly a constant factor; we leave
-     * clutter unmodified for tutorial simplicity.) */
-    const float E_clutter_test = integrate_cell_clutter(
+    /* Clutter the target competes against: full in the notch, MTI residual
+     * in a clear bin. */
+    const float E_clutter_test = clutter_f * integrate_cell_clutter(
         d_2d, beam_dir, beamwidth_r, radar->range_res_m,
         sx, sy, sa,
         radar->cell_grid_n_range, radar->cell_grid_n_cross,
         terp, r_earth);
 
-    /* CFAR threshold from reference cells. */
+    /* CFAR threshold from reference cells, with the same clutter suppression
+     * (the reference cells are in the target's Doppler bin). */
     const float T = cfar_threshold(
         d_2d, beam_dir, sx, sy, sa,
-        radar, beamwidth_r, terp, r_earth);
+        radar, beamwidth_r, clutter_f, terp, r_earth);
 
     const float test_cell = E_target + E_clutter_test + radar->noise_floor_norm;
     const float margin = (test_cell - T) / fmaxf(T, radar->noise_floor_norm);
@@ -1561,6 +1574,7 @@ void *sensor_proc(struct cmb_process *me, void *vctx)
                                           beam_dir, senp->beamwidth_r,
                                           senp->ref_range_m, senp->ref_rcs_m2,
                                           tgt->rcs_now_m2,
+                                          tgt->vel_ms, tgt->dir_r, (int)tgt->mode,
                                           &senp->radar,
                                           tgt->terrain,
                                           orbit->local_earth_radius_m)) {
@@ -1609,6 +1623,9 @@ void sensor_initialize(struct sensor *senp, const char *name, const float rpm,
     senp->radar.noise_floor_norm   = 1.0f;
     senp->radar.cell_grid_n_range  = 4;
     senp->radar.cell_grid_n_cross  = 4;
+    senp->radar.cell_grid_n_cross  = 4;
+    senp->radar.mdv_ms             = 4.0f;     /* ~4 m/s clutter-notch half-width */
+    senp->radar.mti_improvement    = 1000.0f;  /* 30 dB clutter cancellation */
 
     /* Convert biome_gamma_db to linear power ratio. Done here rather
      * than at file scope because powf isn't a constant expression. */
@@ -2148,8 +2165,7 @@ void terrain_vtkhdf_write(const char *const h5_filename,
             vis_map[r * vis_cols + c] = map[src_idx];
         }
     }
-
-    const hsize_t map_dims[3] = { (hsize_t)vis_rows, (hsize_t)vis_cols, 1 };
+    const hsize_t map_dims[3] = { 1, (hsize_t)vis_rows, (hsize_t)vis_cols };
     const hid_t map_space = H5Screate_simple(3, map_dims, NULL);
     H5_CHECK(map_space);
     const hid_t map_dset = H5Dcreate2(pd_group, "Elevation", H5T_NATIVE_FLOAT,

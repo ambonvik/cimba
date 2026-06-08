@@ -115,6 +115,8 @@ struct radar_params {
     float noise_floor_norm;
     int   cell_grid_n_range;
     int   cell_grid_n_cross;
+    float mdv_ms;          /* clutter-notch half-width (min detectable velocity), m/s */
+    float mti_improvement; /* main beam-clutter suppression from Doppler processing, linear */
 };
 
 /*
@@ -239,6 +241,10 @@ void sensor_gpu_step(struct sensor_gpu_state *gpu,
                      float ref_range_m, float ref_rcs_m2,
                      const struct radar_params *radar,
                      int *tds_out, uint8_t *detected_out);
+
+void sensor_gpu_prime_altitudes(struct sensor_gpu_state *gpu,
+                                const float *x, const float *y,
+                                const float *height, float *alt);
 
 #ifdef __cplusplus
 }
