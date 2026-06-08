@@ -2165,8 +2165,8 @@ void terrain_vtkhdf_write(const char *const h5_filename,
             vis_map[r * vis_cols + c] = map[src_idx];
         }
     }
-    const hsize_t map_dims[3] = { 1, (hsize_t)vis_rows, (hsize_t)vis_cols };
-    const hid_t map_space = H5Screate_simple(3, map_dims, NULL);
+    const hsize_t map_dims[2] = { (hsize_t)rows, (hsize_t)cols };
+    const hid_t map_space = H5Screate_simple(2, map_dims, NULL);
     H5_CHECK(map_space);
     const hid_t map_dset = H5Dcreate2(pd_group, "Elevation", H5T_NATIVE_FLOAT,
                                       map_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
