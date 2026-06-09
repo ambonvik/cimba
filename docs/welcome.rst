@@ -17,6 +17,16 @@ generate statistical results. These trials are *intended* to be independent,
 making them near-trivial to parallelize by simply running them all at the same time,
 or at least running as many as you have CPU cores available for.
 
+Somewhat less trivially, we can also use the massive parallelism in today's GPUs to
+calculate model physics. The key here is that we do *not* try to parallelize the
+simulation events from the event queue, since that is inherently serializing, but use
+it for computation that is instantaneous in simulated time without affecting the event
+queue.
+
+Taken together, Cimba provides a discrete event simulation engine that can utilize *all*
+the computing power in a modern multicore, GPU-equipped PC for your research purposes.
+As far as we know, there is no other tool like it.
+
 Why should I use Cimba?
 -----------------------
 It is fast, powerful, reliable, and free.

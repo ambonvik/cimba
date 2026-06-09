@@ -6,10 +6,11 @@ Tutorial: Modeling with Cimba
 Over the course of five different worked examples, we will go from a simple M/M/1 queue
 simulation with just two active processes, make it run as a designed experiment
 with parallel trials, and then gradually add more powerful simulation tools such as
-resource acquisition, timers, and condition variables. We will end the tutorial by
-demonstrating how to harness CUDA kernels for massively parallel simulated physics
-inside a simulation with hundreds of parallel trials and a thousand active processes
-inside each trial.
+resource acquisition, timers, and condition variables.
+
+We will finish the tutorial by demonstrating how to harness CUDA kernels for massively
+parallel simulated physics inside a simulation with hundreds of parallel trials and a
+thousand active processes inside each trial.
 
 .. _tut_1:
 
@@ -3108,8 +3109,7 @@ radar, if it is hidden by terrain or earth curvature, and if the reflected signa
 strong enough to be detected among atmospheric attenuation and ground clutter. We want
 to analyze some aspect of the AWACS operation. For the purposes of this tutorial, we
 assume that the relevant measure of outcome is target detection as a function of AWACS
-altitude. We use
-`ParaView <https://www.paraview.org>`_ for visualization:
+altitude. We use `ParaView <https://www.paraview.org>`_ for visualization:
 
 .. image:: ../images/tut_5_1c.png
 
@@ -3124,9 +3124,7 @@ the terrain grid points. The terrain map is very large, nearly 3,6 billion point
 13,4 GB. Our visualization program `ParaView <https://www.paraview.org>`_ is not able
 to handle this large data sets without crashing. For that reason, we decimate the
 terrain by a factor of 32 before writing it to a
-`HDF5 file <https://www.hdfgroup.org/solutions/hdf5/>`_, but of course keep the full
-resolution in the simulation where we also interpolate linearly between points to get
-the exact altitude for a pair of (x, y) coordinates.
+`HDF5 file <https://www.hdfgroup.org/solutions/hdf5/>`_.
 
 There are 1000 targets distributed randomly over the landscape. Each target is an
 active ``cmb_process`` (coroutine) looping through four distinct states: Hiding (low
@@ -3144,23 +3142,24 @@ beyond the radar horizon due to Earth's curvature, the orange ones are shielded 
 terrain, the yellow ones are too weak to be detected in elevation-dependent ground
 clutter, and the white ones are successful detections. Just underneath the red AWACS
 indicator with the sensor lobe pointing towards the right, there are a handful of
-purple targets. These are in the "nadir hole" under the sensor platform, and
-demonstrate the three-dimensional nature of this simulation example.
+purple targets. These are in the "nadir hole" under the sensor platform,
+demonstrating the three-dimensional nature of this simulation example.
 
 The airborne sensor, indicated by the red sphere with an arrow indicating the current
 beam direction, is a scanning, horizon-limited surveillance radar evaluated
 per dwell. The dwell interval is 0.04 seconds, aggregated to one-second updates for
-the animation program [ParaView](https://en.wikipedia.org/wiki/ParaView) via
-[HDF5 files](https://en.wikipedia.org/wiki/Hierarchical_Data_Format).
+the animation program `ParaView <https://en.wikipedia.org/wiki/ParaView>`_ via
+`HDF5 files <https://en.wikipedia.org/wiki/Hierarchical_Data_Format>`_.
 
 Features included in this sensor model:
 
 * 3D sensor-target geometry on a local tangent plane (WGS84 radii of
-  curvature at the reference point); platform on a racetrack orbit with
-  coordinated-turn bank angle.
+  curvature at the reference point)
+
+* Platform on a racetrack orbit with coordinated-turn bank angle.
 
 * Tropospheric refraction via an effective-Earth-radius k(h) derived from
-  an exponential refractivity profile, not a fixed 4/3 Earth radius model.
+  an exponential refractivity profile
 
 * Line-of-sight terrain masking by ray-marching the refracted ray against
   the terrain model, plus radar-horizon, elevation-limit, and nadir-cone gating.
@@ -3168,19 +3167,17 @@ Features included in this sensor model:
 * Detection scaling from the radar equation (range^4, RCS), referenced to
   a calibrated range and RCS, with per-target-state RCS.
 
-* Surface clutter from a constant-gamma (Barton/Morchin) model,
-  sigma0 = gamma * sin(grazing), gamma chosen per terrain biome and
-  integrated over the resolution cell.
+* Surface clutter from a constant-gamma (Barton/Morchin) model, incidence angle
+  dependent, gamma chosen per terrain biome and integrated over the resolution cell.
 
-* Doppler processing, with a target state dependent ability to distinguish a target
+* Cell-averaging CA-CFAR detection over non-coherently integrated pulses, above a
+  thermal noise floor.
+
+* Doppler processing with a target state dependent ability to distinguish a target
   from the surrounding clutter. Hiding targets with velocity zero are difficult to
   distinguish from clutter, moving targets less so.
 
-* Cell-averaging CA-CFAR detection (reference/guard cells, threshold alpha
-  for a target Pfa) over non-coherently integrated pulses, above a thermal
-  noise floor.
-
-* Specular multipath (Lloyd's-mirror lobing) at S-band, with a per-biome
+* Specular multipath (Lloyd's-mirror lobing) with a per-biome
   reflection coefficient attenuated by Rayleigh surface roughness.
 
 * Probabilistic detection drawn independently per dwell.
@@ -3194,7 +3191,7 @@ Deliberately omitted from the model:
   ambiguities, or eclipsing; range resolution is a parameter.
 
 * Target fluctuation: fixed per-state RCS with a detection draw, not a
-  Swerling case.
+  Swerling case or a detailed geometric model per target.
 
 * Knife-edge diffraction (masking is hard geometric LOS), diffuse multipath,
   polarization, gaseous/rain attenuation, ducting, and ECM/ECCM.
@@ -3205,7 +3202,7 @@ Deliberately omitted from the model:
 These omitted features could of course also be added, but the chosen level of detail
 leaves a sufficiently realistic radar model to give reasonable and compute-intensive
 physics, while limiting the amount of technical detail not relevant to our current
-purpose. Our aim is a somewhat realistic geometry and and detection model
+purpose. Our aim here is to provide a somewhat realistic geometry and and detection model
 to demonstrate physics modelling with Cimba and CUDA, not to build a
 complete radar model for actual military operations research.
 
@@ -3227,7 +3224,7 @@ time.
 The important characteristic of this version of the model is that it is
 written single-threaded, for sequential execution on a single processor. In
 this case, the processor happens to be an AMD Threadripper 3970x with 128 GB RAM, but the
-program is only using one of the 64 CPU cores. Still, it is relatively fast,
+program only uses one of the 64 CPU cores. Still, the model is relatively fast,
 and finishes each run of 6 hours simulated time in about 10 min 40 sec. Of this, the
 terrain generation takes about 530 seconds, while the simulation itself takes about 100
 seconds.
@@ -3238,7 +3235,7 @@ CUDA to the rescue
 CUDA can be described as a C++ based programming interface to the massively parallel
 computing capabilities of modern graphics processing units (GPUs). This is not intended
 to be a tutorial in CUDA programming, only an illustration of how to harness this
-computing pwer in a Cimba discrete event simulation. For more detail about CUDA
+computing power in a Cimba discrete event simulation. For more detail about CUDA
 programming, see, e.g.,
 `the Nvidia CUDA Toolkit <https://developer.nvidia.com/cuda/toolkit>`_.
 
@@ -3297,10 +3294,10 @@ This version of the program consists of the three files
 `tut_5_2.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_5_2.c>`_,
 `tut_5_2.h <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_5_2.h>`_, and
 `tut_5_2.cu <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_5_2.cu>`_.
-It runs in about 11.9 seconds, about 50 times faster than the CPU-only version. The
+It runs in about 12 seconds, 50 times faster than the CPU-only version. The
 most time-consuming part of the CPU-only version, terrain generation, now only takes
 0.7 seconds (about 750 times faster), while the simulation itself takes 11 seconds
-(9 times faster). The output looks the same as before.
+(9.4 times faster). The output looks the same as before.
 
 But we are still running on just one CPU core, and there is actually another GPU in the
 rig, so we are far from firing on all cylinders here. Let's put them all to work.
@@ -3308,7 +3305,280 @@ rig, so we are far from firing on all cylinders here. Let's put them all to work
 Pthreads, coroutines, and CUDA kernels
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+We will in principle do the same as in our first tutorial: Set up an
+experiment array of trial structs, each one initialized with the relevant simulation
+parameters, where the Cimba worker threads can help themselves to the next trial and
+store the results.
+
+The only complication is handling the terrain map between trials. Since generating it
+is so fast on CUDA, we could just generate a new one for each trial at very little cost.
+However, for the purposes of this simulation, we will not do that. Instead, we will
+count up how many GPUs we have available, generate one terrain map per GPU, and let
+the terrain map become a parameter for the simulation. We can do this from ``main()``
+like this:
+
+.. code-block:: C
+
+    /* What compute horsepower do we have available? */
+    int n_gpus = 0;
+    CUDA_CHECK(cudaGetDeviceCount(&n_gpus));
+    if (n_gpus < 1) {
+        fprintf(stderr, "No CUDA devices found\n");
+        return EXIT_FAILURE;
+    }
+
+    const uint32_t n_terrains = (uint32_t)n_gpus;   /* one terrain per GPU */
+    struct terrain **terrains = cmi_calloc(n_terrains, sizeof(*terrains));
+
+    for (uint32_t t = 0u; t < n_terrains; t++) {
+        CUDA_CHECK(cudaSetDevice((int)t));
+        terrains[t] = terrain_create();
+
+        /* Deterministic, distinct seed per terrain */
+        const uint64_t terr_seed = cmb_random_fmix64(master_seed, SEED_TERRAIN + t);
+        terrain_initialize(terrains[t], fwidth_nm, fheight_nm, ref_lat, ref_lon, terr_seed);
+
+        /* Set biome tables per GPU stream */
+        sensor_gpu_load();
+     }
+
+``CUDA_CHECK`` is a macro to check the outcome of the CUDA calls, see ``tut_5_3.h``. The
+last function call ``sensor_gpu_load()`` creates a lookup-table for the GPUs to use,
+defined as C-callable CUDA code in ``tut_5_3.cu``. It saves a few compute cycles on each
+trial since these lookup values are unchanged across trials.
+
+We want to find out the effect of AWACS altitude on the detection ability. We will set
+up our experiment as a series of trials for flight levels from FL100 (feet x 100, about
+3000 m) up to FL400 (about 12100 m) in 15 steps of 25 each. We have two GPU's
+available, so we will try each flight level on two different terrain maps. And we want
+10 replications for each combination of flight level and map, in total 300 trials.
+We can then create the experiment in the usual way:
+
+.. code-block:: C
+
+    printf("Setting up experiment\n");
+    const double fl_start = 100.0;
+    const double fl_step = 25.0;
+    const uint32_t n_levels = 15u;
+    const uint32_t n_trials = n_levels * n_terrains * n_replications;
+
+    struct trial *experiment = cmi_calloc(n_trials, sizeof(*experiment));
+
+    uint32_t ui_trl = 0u;
+    double flt_lvl = fl_start;
+    for (uint32_t ul = 0u; ul < n_levels; ul++) {
+        for (uint32_t ut = 0u; ut < n_terrains; ut++) {
+            for (uint32_t ur = 0u; ur < n_replications; ur++) {
+                experiment[ui_trl].flight_level = flt_lvl;
+                experiment[ui_trl].terrain = terrains[ut];
+                experiment[ui_trl].seed = cmb_random_fmix64(master_seed, SEED_TRIAL + ui_trl);
+                experiment[ui_trl].dur_s = dur_h * 3600.0;
+
+                /* Sentinel value to detect aborted trials */
+                experiment[ui_trl].num_found = -1;
+
+                ui_trl++;
+            }
+        }
+
+        flt_lvl += fl_step;
+    }
+
+Note how we use ``cmb_random_fmix64()`` to generate unique-but-deterministic seeds for
+each trial. We could simply call ``cmb_random_hwseed()`` to obtain unique seeds from
+CPU entropy as in earlier tutorial examples, but it would not be reproducible. Instead,
+``cmb_random_fmix64()`` hashes the master seed (from CPU entropy or command line argument)
+with a per-trial value to set the seed to use per trial.
+
+Only one thing remains: The worker threads need to know what CUDA streams to use. Ciba
+provides this critical connection by the function ``cimba_thread_hooks_set()``. It
+takes three arguments. First a pointer to an initializing function, second an argument
+to be passed to that function when called, and third a pointer to an exit function.
+
+For our AWACS model, the init function could look like this:
+
+.. code-block:: C
+
+    static void *gpu_thread_init(uint64_t tid, void *usrarg)
+    {
+        cmb_unused(tid);
+
+        const int n_gpus = (int)(intptr_t)usrarg;
+        struct gpu_thread_ctx *ctx = cmi_malloc(sizeof(*ctx));
+        ctx->n_gpus  = n_gpus;
+        ctx->streams = cmi_malloc((size_t)n_gpus * sizeof(cudaStream_t));
+        for (int d = 0; d < n_gpus; d++) {
+            CUDA_CHECK(cudaSetDevice(d));
+            CUDA_CHECK(cudaStreamCreate(&ctx->streams[d]));
+        }
+
+        return ctx;
+    }
+
+The first argument, ``tid``, is the thread identifier, not used here. The second
+argument is a ``void *`` that can point to anything the application needs to pass to a
+worker thread. In this case, we simply pass the number of GPUs in the system. We could
+also obtain that number directly by calling ``CUDA_CHECK(cudaGetDeviceCount(&n_gpus))``
+from here, but we already did it, and we wanted to show how to pass an argument to this
+thread initializing function.
+
+The function creates a thread context for the worker thread's use. Here, it is a lookup
+table of CUDA streams, one per GPU. Each worker thread running this will set up a CUDA
+stream per GPU in the system.
+
+It then returns a ``void *``, again basically anything the application wants to store
+as a thread context. The return value will be stored in thread local memory once the
+thread starts running, and can be obtained from user code by calling
+``cimba_thread_context()``.
+
+Internally in ``cimba.c`` the following happens:
+
+.. code-block:: C
+    /* User-defined context per thread */
+    CMB_THREAD_LOCAL void *cmi_thread_context = NULL;
+
+.. code-block:: C
+
+    /* Any user-defined initialization needed? */
+    if (cmg_thread_init_func != NULL) {
+        cmi_thread_context = cmg_thread_init_func(tid, cmg_thread_init_usrarg);
+    }
+
+One example of using this is in ``tut_5_3.c``'s ``run_trial()`` function. The first thing
+it does is to look up what device the terrain map to use is on, and then to look up its
+CUDA stream for that device:
+
+.. code-block:: C
+
+    void run_trial(void *vtrl)
+    {
+        cmb_assert_release(vtrl != NULL);
+        struct trial *trl = vtrl;
+        struct terrain *terp = trl->terrain;
+
+        const int dev = terp->device;
+        CUDA_CHECK(cudaSetDevice(dev));
+        const struct gpu_thread_ctx *ctx = cimba_thread_context();
+        cudaStream_t stream = ctx->streams[dev];
+
+        /* ... */
+
+The corresponding exit function cleans up the memory allocations before exiting
+the worker thread, receiving the stored ``cmi_thread_context`` as its argument.
+Whatever the return value from the init function is, the exit function will receive it
+as its argument.
+
+.. code-block:: C
+
+    static void gpu_thread_exit(void *vctx)
+    {
+        struct gpu_thread_ctx *ctx = vctx;
+        if (ctx == NULL) return;
+        for (int d = 0; d < ctx->n_gpus; d++) {
+            cudaSetDevice(d);
+            cudaStreamDestroy(ctx->streams[d]);
+        }
+
+        cmi_free(ctx->streams);
+        cmi_free(ctx);
+    }
+
+Our ``main()`` can then run the experiment, ensuring that the Cimba worker thread
+associate each trial with its correct terrain map:
+
+.. code-block:: C
+
+    printf("Baiting the hooks\n");
+    cimba_thread_hooks_set(gpu_thread_init, (void *)(intptr_t)n_gpus, gpu_thread_exit);
+    printf("Running the simulation ...\n");
+    cimba_run(experiment, n_trials, sizeof(*experiment), run_trial);
+
+This mechanism to set callback functions that execute at the beginning and end of each
+worker thread and store an application-defined thread local state is a very flexible
+(and somewhat abstract) tool. Here, we use it as the only real integration point
+between the Cimba worker threads and the CUDA streams. That is why it was created.
+However, it is not CUDA specific, and can also be used for other purposes such as
+integration to other GPGPU APIs or even hardware-in-the-loop purposes.
+
+We also remove the per-trial visualization output and add a Gnuplot chart, compile and
+run, and get output like this:
+
+.. code-block::
+
+    [ambonvik@Threadripper tutorial]$ time ./tut_5_3
+    Setting up experiment
+    Using 64 threads
+    Baiting the hooks
+    Running the simulation ...
+    0	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 0 Seed: 0xaabc464bf835ba01
+    1	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 0 Seed: 0x0187615b9b563892
+    2	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 0 Seed: 0xfdf3e1d69dc021f1
+    3	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 0 Seed: 0x166396ef78583e12
+    4	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 0 Seed: 0xbe4c7beb66bfa52d
+    5	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 0 Seed: 0x53665865db06f479
+    6	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 0 Seed: 0x4e7eaff0ecc53516
+    7	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 0 Seed: 0x4836e23a98da025c
+    8	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 0 Seed: 0xc7fcca2edd7e7672
+    9	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 0 Seed: 0x4f08ba1ab652f797
+    11	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 1 Seed: 0x1b6791020c37e265
+    13	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 1 Seed: 0x24f4a0c7a2b7fc85
+    14	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 1 Seed: 0x8ca5527f505a41cc
+    16	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 1 Seed: 0xe91fddb0016691b5
+    12	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 1 Seed: 0xd32c5262396d4a28
+    21	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 125 GPU: 0 Seed: 0x5ae7ed646f78f29c
+    10	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 1 Seed: 0x54a883eb38e018ca
+    17	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 1 Seed: 0xd4c7af89365af186
+    18	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 1 Seed: 0x79ee62007b579a97
+    19	00:00:00.0	dispatcher	run_trial (755):  Start trial: Flight level: 100 GPU: 1 Seed: 0x6aef2b4d821bf4ba
+
+    ...
+
+    263	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 425 Found: 220
+    261	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 425 Found: 209
+    262	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 425 Found: 231
+    285	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 450 Found: 221
+    283	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 450 Found: 215
+    289	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 450 Found: 244
+    281	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 450 Found: 213
+    284	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 450 Found: 205
+    280	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 450 Found: 248
+    287	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 450 Found: 220
+    286	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 450 Found: 227
+    282	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 450 Found: 221
+    288	06:00:00.0	dispatcher	run_trial (834):  End trial: Flight level: 450 Found: 232
+    Finished, calculating stats
+
+    real	1m13.137s
+    user	34m35.338s
+    sys	7m0.024s
+
+*We just ran 300 trials of our AWACS simulation in 73 seconds of wall clock time on a
+desktop PC.* Each trial ran for 6 simulated hours, involved 1000 active targets on a
+1000 x 1000 nautical mile map with 1 arcsecond resolution, and an active radar with
+dwell time of 0.04 seconds doing raymarching against the terrain map for each dwell. The
+experiment produced this chart for the number of targets detected as a function of
+the AWACS flight level:
+
+.. image:: ../images/tut_5_3.png
+
+By default, Cimba will put one worker thread per CPU core reported by the operating
+system. That is often twice the number of physical CPU cores.
+
+Cimba also provides functions to manage this. One can get the number of Cimba threads
+by calling ``uint32_t cimba_threads_num()`` and set the number of threads to be used by
+calling ``uint32_t cimba_threads_use(uint32_t n_threads)``. The argument ``0`` means
+"use default". It will return the number of threads actually used used, i.e., the
+number of CPU cores if given the argument 0.
+
+The optimal number of threads to use will depend on the task. In general, using a number
+of threads between 1.5 to 2.5 times the number of physical CPU cores is close to optimal,
+with a rather flat curve through that region and random run-to-run variation swamping
+any meaningful differences. The Cimba default number of threads is a reasonable choice.
+
 Summary
 -------
 
-
+In these five tutorials, we have now gone from a simple M/M/1 queue simulation to a near
+military grade AWACS scenario running on 64 CPU cores and two GPUs (10496 cores each) in
+parallel, efficiently utilizing all the compute power available on a recent
+multi-core, multi-GPU desktop PC for discrete event simulation.
