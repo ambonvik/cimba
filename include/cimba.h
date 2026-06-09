@@ -161,12 +161,11 @@ static inline void cimba_run_experiment(void *your_experiment_array,
 
 /**
 * @brief Defines a prototype for an optional user-provided function to execute
-* when initializing a pthread. The first argument is whatever the user code wants
-* it to be. The second argument is the thread id assigned by cimba_run_experiment,
-* an unsigned 64-bit integer in the range from 0 to the number of logical cores
-* on the CPU minus one.
+* when initializing a pthread. The first argument is the thread id assigned by
+* cimba_run_experiment, an unsigned 64-bit integer. The second argument is
+* whatever the user code wants it to be, user defined.
 */
-typedef void *(cimba_thread_init_func)(void *usrarg, uint64_t tid);
+typedef void *(cimba_thread_init_func)(uint64_t tid, void *usrarg);
 
 /**
 * @brief Defines a prototype for an optional user-provided function to execute

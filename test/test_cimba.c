@@ -312,7 +312,7 @@ struct thread_context {
     uint64_t tid;
 };
 
-void *thread_init_func(void *usrarg, const uint64_t tid)
+void *thread_init_func(const uint64_t tid, void *usrarg)
 {
     struct thread_context *ctx = malloc(sizeof *ctx);
     cmb_assert_always(ctx != NULL);

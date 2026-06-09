@@ -155,7 +155,7 @@ static void *worker_thread_func(void *arg)
 
     /* Any user-defined initialization needed? */
     if (cmg_thread_init_func != NULL) {
-        cmi_thread_context = cmg_thread_init_func(cmg_thread_init_usrarg, tid);
+        cmi_thread_context = cmg_thread_init_func(tid, cmg_thread_init_usrarg);
     }
 
     /* Make sure we free any thread local allocations before we exit */
