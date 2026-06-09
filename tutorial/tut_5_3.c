@@ -852,7 +852,7 @@ void run_trial(void *vtrl)
 }
 
 /* Bait for the thread hooks: Set up and close down CUDA streams per thread */
-static void *gpu_thread_init(void *usrarg, uint64_t tid)
+static void *gpu_thread_init(uint64_t tid, void *usrarg)
 {
     cmb_unused(tid);
 
@@ -888,9 +888,10 @@ int main(int argc, char **argv)
     uint64_t master_seed = cmb_random_hwseed();
     double dur_h = 6.0;
     uint32_t n_replications = 10u;
+    uint32_t n_threads = 0u;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:n:s:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:n:r:s:")) != -1) {
         switch (opt) {
             case 'd': {
                 errno = 0;
@@ -900,7 +901,7 @@ int main(int argc, char **argv)
                     || *end != '\0'      /* trailing garbage     */
                     || errno == ERANGE   /* overflow / underflow */
                     || dur_h <= 0.0) {   /* domain: hours > 0    */
-                    fprintf(stderr, "Invalid -d value '%s' (want hours > 0)\n", optarg);
+                    fprintf(stderr, "Invalid -d value '%s' (expected hours > 0)\n", optarg);
                     return EXIT_FAILURE;
                     }
                 break;
@@ -911,7 +912,18 @@ int main(int argc, char **argv)
                 char *end = NULL;
                 n_replications = strtoul(optarg, &end, 0);   /* base 0 => accepts 0x.., 0.. */
                 if (end == optarg || *end != '\0' || errno == ERANGE || n_replications == 0u) {
-                    fprintf(stderr, "Invalid -n value '%s' (want nonzero integer)\n", optarg);
+                    fprintf(stderr, "Invalid -n value '%s' (expected nonzero integer)\n", optarg);
+                    return EXIT_FAILURE;
+                }
+                break;
+            }
+
+            case 'r': {
+                errno = 0;
+                char *end = NULL;
+                n_threads = strtoul(optarg, &end, 0);   /* base 0 => accepts 0x.., 0.. */
+                if (end == optarg || *end != '\0' || errno == ERANGE) {
+                    fprintf(stderr, "Invalid -r value '%s' (expected integer)\n", optarg);
                     return EXIT_FAILURE;
                 }
                 break;
@@ -922,14 +934,14 @@ int main(int argc, char **argv)
                 char *end = NULL;
                 master_seed = strtoull(optarg, &end, 0);   /* base 0 => accepts 0x.., 0.. */
                 if (end == optarg || *end != '\0' || errno == ERANGE || master_seed == 0u) {
-                    fprintf(stderr, "Invalid -s value '%s' (want nonzero integer)\n", optarg);
+                    fprintf(stderr, "Invalid -s value '%s' (expected nonzero integer)\n", optarg);
                     return EXIT_FAILURE;
                 }
                 break;
             }
 
             default: {
-                fprintf(stderr, "Usage: %s [-d <hours>] [-s <seed>]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-d <hours>] [-n replications] [-r worker_threads] [-s <seed>]\n", argv[0]);
                 return EXIT_FAILURE;
             }
         }
@@ -955,9 +967,11 @@ int main(int argc, char **argv)
     for (uint32_t t = 0u; t < n_terrains; t++) {
         CUDA_CHECK(cudaSetDevice((int)t));
         terrains[t] = terrain_create();
+
         /* Deterministic, distinct seed per terrain */
         const uint64_t terr_seed = cmb_random_fmix64(master_seed, SEED_TERRAIN + t);
         terrain_initialize(terrains[t], fwidth_nm, fheight_nm, ref_lat, ref_lon, terr_seed);
+
         /* Set biome tables per GPU stream */
         sensor_gpu_load();
      }
@@ -989,6 +1003,9 @@ int main(int argc, char **argv)
 
         flt_lvl += fl_step;
     }
+
+    const uint32_t nthr_act = cimba_threads_use(n_threads);
+    printf("Using %d threads\n", nthr_act);
 
     printf("Baiting the hooks\n");
     cimba_thread_hooks_set(gpu_thread_init, (void *)(intptr_t)n_gpus, gpu_thread_exit);
