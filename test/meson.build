@@ -195,6 +195,17 @@ test_resource = executable('test_resource',
 
 test('resource', test_resource)
 
+test_resourceguard = executable('test_resourceguard',
+                                files('test_resourceguard.c', 'test.h'),
+                                include_directories : [inc_api, inc_int],
+                                link_with : cimba_lib,
+                                dependencies : [project_deps],
+                                install : false,
+                                native : true
+)
+
+test('resourceguard', test_resourceguard)
+
 test_resourcepool = executable('test_resourcepool',
                            files('test_resourcepool.c', 'test.h'),
                            include_directories : [inc_api, inc_int],

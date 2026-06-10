@@ -1,0 +1,32 @@
+********************************************************************************
+**************************   Testing resourceguards   *************************
+********************************************************************************
+Using seed: 0x34f05c64d7ad598f
+Scenario 1: a waiter blocks until the resource is released
+    10.000	Waiter	waiter (192):  Waiter acquired 1 (order 0) at t=10.0
+Scenario 2: equal-priority waiters are served in arrival order
+    10.000	First	waiter (192):  First acquired 1 (order 1) at t=10.0
+    11.000	Second	waiter (192):  Second acquired 1 (order 2) at t=11.0
+    12.000	Third	waiter (192):  Third acquired 1 (order 3) at t=12.0
+Scenario 3: higher priority is served before earlier lower priority
+    10.000	HighPri	waiter (192):  HighPri acquired 1 (order 1) at t=10.0
+    11.000	LowPri	waiter (192):  LowPri acquired 1 (order 2) at t=11.0
+Scenario 4: a queued waiter is reprioritized in place
+    5.0000	dispatcher	reprioritize_evt (215):  Reprioritizing Late to 100
+    20.000	Late	waiter (192):  Late acquired 1 (order 1) at t=20.0
+    21.000	Early	waiter (192):  Early acquired 1 (order 2) at t=21.0
+Scenario 5: a queued waiter times out without stranding the next
+    6.0000	Impatient	waiter (201):  Impatient leaves the queue, signal -5
+    10.000	Patient	waiter (192):  Patient acquired 1 (order 0) at t=10.0
+Scenario 6: a queued waiter is stopped without stranding the next
+    5.0000	dispatcher	stop_evt (227):  Stopping Doomed
+    10.000	Survivor	waiter (192):  Survivor acquired 1 (order 0) at t=10.0
+Scenario 7: a signal is forwarded to a registered observer guard
+    3.0000	dispatcher	topup_and_signal_evt (461):  Topped up PoolB, ringing the observed guard
+    3.0000	UserB	waiter (192):  UserB acquired 1 (order 0) at t=3.0
+Scenario 8: randomized contention with reprioritization (dur=50)
+--------------------------------------------------------------------------------
+    50.000	dispatcher	stop_all_evt (560):  ===> soak over, stopping all <===
+--------------------------------------------------------------------------------
+All resourceguard scenarios passed
+********************************************************************************
