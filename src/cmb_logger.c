@@ -219,7 +219,7 @@ int cmb_logger_vfprintf(FILE *fp,
 void cmi_logger_fatal(FILE *fp,
                       const char *func,
                       const int line,
-                      char *fmtstr,
+                      const char *fmtstr,
                       ...)
 {
     if ((CMB_LOGGER_FATAL & cmi_logger_mask) != 0) {
@@ -236,7 +236,7 @@ void cmi_logger_fatal(FILE *fp,
 void cmi_logger_error(FILE *fp,
                       const char *func,
                       const int line,
-                      char *fmtstr,
+                      const char *fmtstr,
                       ...)
 {
     if ((CMB_LOGGER_ERROR & cmi_logger_mask) != 0) {
@@ -260,7 +260,7 @@ void cmi_logger_error(FILE *fp,
 void cmi_logger_warning(FILE *fp,
                         const char *func,
                         const int line,
-                        char *fmtstr,
+                        const char *fmtstr,
                         ...)
 {
     if ((CMB_LOGGER_WARNING & cmi_logger_mask) != 0) {
@@ -275,7 +275,7 @@ void cmi_logger_warning(FILE *fp,
 void cmi_logger_info(FILE *fp,
                      const char *func,
                      const int line,
-                     char *fmtstr,
+                     const char *fmtstr,
                      ...)
 {
     if ((CMB_LOGGER_INFO & cmi_logger_mask) != 0) {
@@ -290,7 +290,7 @@ void cmi_logger_user(FILE *fp,
                      const uint32_t flags,
                      const char *func,
                      const int line,
-                     char *fmtstr,
+                     const char *fmtstr,
                      ...)
 {
     if ((flags & cmi_logger_mask) != 0) {

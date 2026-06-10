@@ -124,7 +124,7 @@ extern int cmb_logger_vfprintf(FILE *fp,
                                int line,
                                const char *fmtstr,
                                va_list args)
-                                    __attribute__((format(printf, 3, 0)));
+                                    __attribute__((format(printf, 5, 0)));
 
 /*
  * Wrapper functions for predefined message levels.
@@ -144,7 +144,7 @@ extern int cmb_logger_vfprintf(FILE *fp,
  * @param ... Arguments to the format string.
  */
 #define cmb_logger_fatal(fp, fmtstr, ...) \
-    cmi_logger_fatal(fp, __func__, __LINE__, fmtstr,##__VA_ARGS__)
+    cmi_logger_fatal(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
 
 /**
  * @brief Wrapper for an error message. Terminates the thread when called.
@@ -200,16 +200,16 @@ extern int cmb_logger_vfprintf(FILE *fp,
 extern CMB_THREAD_LOCAL uint64_t cmi_logger_trial_idx;
 
 /* Actual functions wrapped by the macros above */
-extern void cmi_logger_fatal(FILE *fp, const char *func, int line, char *fmtstr, ...)
-                      __attribute__((noreturn, format(printf,4,5)));
-extern void cmi_logger_error(FILE *fp, const char *func, int line, char *fmtstr, ...)
-                      __attribute__((noreturn, format(printf,4,5)));
-extern void cmi_logger_warning(FILE *fp, const char *func, int line, char *fmtstr, ...)
-                      __attribute__((format(printf,4,5)));
-extern void cmi_logger_info(FILE *fp, const char *func, int line, char *fmtstr, ...)
-                      __attribute__((format(printf,4,5)));
-extern void cmi_logger_user(FILE *fp, uint32_t flags, const char *func, int line, char *fmtstr, ...)
-                      __attribute__((format(printf,5,6)));
+extern void cmi_logger_fatal(FILE *fp, const char *func, int line, const char *fmtstr, ...)
+                      __attribute__((noreturn, format(printf, 4, 5)));
+extern void cmi_logger_error(FILE *fp, const char *func, int line, const char *fmtstr, ...)
+                      __attribute__((noreturn, format(printf, 4, 5)));
+extern void cmi_logger_warning(FILE *fp, const char *func, int line, const char *fmtstr, ...)
+                      __attribute__((format(printf, 4, 5)));
+extern void cmi_logger_info(FILE *fp, const char *func, int line, const char *fmtstr, ...)
+                      __attribute__((format(printf, 4, 5)));
+extern void cmi_logger_user(FILE *fp, uint32_t flags, const char *func, int line, const char *fmtstr, ...)
+                      __attribute__((format(printf, 5, 6)));
 /** @endcond */
 
 #endif /* CIMBA_CMB_LOGGER_H */
