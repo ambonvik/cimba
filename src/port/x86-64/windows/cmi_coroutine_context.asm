@@ -30,21 +30,21 @@ global cmi_coroutine_stackraw
 ; Callable function to return the current StackBase (top of allocated stack)
 ;
 cmi_coroutine_stackbase:
-    mov rax, [gs:8]
+    mov rax, [gs:0x8]
     ret
 
 ;-------------------------------------------------------------------------------
 ; Callable funnction to return the current StackLimit (bottom of allocated stack)
 ;
 cmi_coroutine_stacklimit:
-    mov rax, [gs:16]
+    mov rax, [gs:0x16]
     ret
 
 ;-------------------------------------------------------------------------------
 ; Callable function to return the current DeallocationStack
 ;
 cmi_coroutine_stackraw:
-    mov rax, [gs:1478]
+    mov rax, [gs:0x1478]
     ret
 
 ;-------------------------------------------------------------------------------
