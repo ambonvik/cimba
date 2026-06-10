@@ -3073,9 +3073,6 @@ conditions in the simulated world. We also used the internal :c:struct:`cmi_slis
 handy building blocks for other purposes, and leave it to you to discover additional
 possibilities.
 
-For a more in-depth discussion of how various parts of Cimba work and why they were
-built that way, consider reading :ref:`the background section <background>` next.
-
 Adding CUDA GPU power for simulation physics
 --------------------------------------------
 
@@ -3503,9 +3500,9 @@ integration to other GPGPU APIs or even hardware-in-the-loop purposes.
 We also remove the per-trial visualization output and add a Gnuplot chart, compile and
 run, and get output like this:
 
-.. code-block::
+.. code-block:: none
 
-    [ambonvik@Threadripper tutorial]$ time ./tut_5_3
+    [ambonvik@Threadripper cimba]$ time build/tutorial/tut_5_3
     Setting up experiment
     Using 64 threads
     Baiting the hooks
@@ -3578,7 +3575,10 @@ any meaningful differences. The Cimba default number of threads is a reasonable 
 Summary
 -------
 
-In these five tutorials, we have now gone from a simple M/M/1 queue simulation to a near
+In these five tutorials, we have gone from a basic M/M/1 queue simulation to a near
 military grade AWACS scenario running on 64 CPU cores and two GPUs (10496 cores each) in
 parallel, efficiently utilizing all the compute power available on a recent
-multi-core, multi-GPU desktop PC for discrete event simulation.
+multi-core, multi-GPU desktop PC for discrete event simulation. For more detailed
+information about the various fetures of Cimba, please see
+the in-depth :ref:`the background section <background>` and
+the detailed :ref:`API reference pages <api/library_root>`.
