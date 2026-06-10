@@ -196,36 +196,41 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
                     ((struct cmi_resourcebase *)rp)->name);
 
     struct cmb_process *pp = cmb_process_current();
-    if (rp->holder == NULL) {
-        /* Easy, grab it */
-        resource_grab(rp, pp);
-        record_sample(rp);
-        cmb_logger_info(stdout, "Acquired %s",
-            ((struct cmi_resourcebase *)rp)->name);
-        return CMB_PROCESS_SUCCESS;
-    }
 
-    /* Wait at the front door until resource becomes available */
-     const int64_t ret = cmb_resourceguard_wait(&(rp->guard),
-                                                is_available,
-                                                NULL);
+    /* On the first attempt we may grab only if no one is already queued, so a
+     * new caller never jumps ahead of waiting processes. After we have waited
+     * and been resumed we are the dequeued front of the queue, so we may grab
+     * even with others still waiting behind us. */
+    bool may_grab = cmi_hashheap_is_empty((struct cmi_hashheap *)&(rp->guard));
 
-    /* Now we got past the front door, or perhaps thrown out by the guard */
-    if (ret == CMB_PROCESS_SUCCESS) {
-        /* All good, grab the resource */
-        resource_grab(rp, pp);
-        record_sample(rp);
-        cmb_logger_info(stdout, "Acquired %s",
-            ((struct cmi_resourcebase *)rp)->name);
-    }
-    else {
-        cmb_logger_info(stdout,
-                        "Did not acquire %s, code %" PRId64,
-                        ((struct cmi_resourcebase *)rp)->name,
-                        ret);
-    }
+    for (;;) {
+        if ((rp->holder == NULL) && may_grab) {
+            /* Free and it is our turn, grab it */
+            resource_grab(rp, pp);
+            record_sample(rp);
+            cmb_logger_info(stdout, "Acquired %s",
+                ((struct cmi_resourcebase *)rp)->name);
+            return CMB_PROCESS_SUCCESS;
+        }
 
-    return ret;
+        /* Wait at the front door until the resource becomes available */
+        const int64_t ret = cmb_resourceguard_wait(&(rp->guard),
+                                                   is_available,
+                                                   NULL);
+        if (ret != CMB_PROCESS_SUCCESS) {
+            /* Thrown out by the guard (cancelled, interrupted, timed out) */
+            cmb_logger_info(stdout,
+                            "Did not acquire %s, code %" PRId64,
+                            ((struct cmi_resourcebase *)rp)->name,
+                            ret);
+            return ret;
+        }
+
+        /* Resumed with SUCCESS as the front of the queue. The resource may
+         * have been taken at this same timestamp by another event, so loop
+         * and recheck availability rather than grabbing on trust. */
+        may_grab = true;
+    }
 }
 
 /*

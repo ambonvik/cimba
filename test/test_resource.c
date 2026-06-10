@@ -34,6 +34,92 @@
 
 #define USERFLAG 0x00000001
 
+/* ───────────────────────────────────────────────────────────────────────────
+ * A binary resource must never be held by two processes at once, even when a
+ * waiter is woken at the very timestamp another process independently tries to
+ * acquire. This reproduces that tied-timestamp race and asserts the invariant
+ * directly, so it catches a regression regardless of the random seed.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+static unsigned excl_inside = 0u;       /* processes currently holding */
+static unsigned excl_max_inside = 0u;   /* high-water mark observed */
+
+struct excl_ctx {
+    struct cmb_resource *rp;
+    double arrive;      /* delay before attempting to acquire */
+    double hold;        /* time to hold once acquired */
+};
+
+static void *excl_worker(struct cmb_process *me, void *vctx)
+{
+    cmb_assert_always(vctx != NULL);
+    struct excl_ctx *c = vctx;
+
+    if (c->arrive > 0.0) {
+        cmb_assert_always(cmb_process_hold(c->arrive) == CMB_PROCESS_SUCCESS);
+    }
+
+    cmb_assert_always(cmb_resource_acquire(c->rp) == CMB_PROCESS_SUCCESS);
+    excl_inside++;
+    if (excl_inside > excl_max_inside) {
+        excl_max_inside = excl_inside;
+    }
+    cmb_assert_always(excl_inside == 1u);   /* the invariant under test */
+    cmb_logger_user(stdout, USERFLAG, "%s holds the resource at t=%.1f",
+                    me->name, cmb_time());
+
+    (void)cmb_process_hold(c->hold);
+
+    cmb_assert_always(excl_inside == 1u);
+    excl_inside--;
+    cmb_resource_release(c->rp);
+    return NULL;
+}
+
+static void scenario_exclusion(void)
+{
+    printf("Mutual exclusion under a tied-timestamp wakeup\n");
+    cmb_event_queue_initialize(0.0);
+
+    struct cmb_resource *rp = cmb_resource_create();
+    cmb_assert_always(rp != NULL);
+    cmb_resource_initialize(rp, "BinaryResource");
+
+    excl_inside = 0u;
+    excl_max_inside = 0u;
+
+    /* Holder grabs at t=0 and releases at t=10. The "sniper" finishes an
+     * unrelated hold exactly at t=10 and then tries to acquire, racing the
+     * waiter that has been queued since t=1 and is woken by the release. */
+    struct excl_ctx holder_ctx = { rp, 0.0, 10.0 };
+    struct excl_ctx waiter_ctx = { rp, 1.0, 5.0 };
+    struct excl_ctx sniper_ctx = { rp, 10.0, 5.0 };
+
+    struct cmb_process *holder = cmb_process_create();
+    struct cmb_process *waiter = cmb_process_create();
+    struct cmb_process *sniper = cmb_process_create();
+    cmb_process_initialize(holder, "Holder", excl_worker, &holder_ctx, 0);
+    cmb_process_initialize(waiter, "Waiter", excl_worker, &waiter_ctx, 0);
+    cmb_process_initialize(sniper, "Sniper", excl_worker, &sniper_ctx, 0);
+    cmb_process_start(holder);
+    cmb_process_start(waiter);
+    cmb_process_start(sniper);
+
+    cmb_event_queue_execute();
+
+    cmb_assert_always(excl_max_inside == 1u);   /* never two holders at once */
+    cmb_assert_always(excl_inside == 0u);
+
+    cmb_process_terminate(holder);
+    cmb_process_terminate(waiter);
+    cmb_process_terminate(sniper);
+    cmb_process_destroy(holder);
+    cmb_process_destroy(waiter);
+    cmb_process_destroy(sniper);
+    cmb_resource_destroy(rp);
+    cmb_event_queue_terminate();
+}
+
 static void end_sim_evt(void *subject, void *object)
 {
     cmb_assert_always(subject != NULL);
@@ -57,19 +143,21 @@ void *preemptable(struct cmb_process *me, void *ctx)
     struct cmb_resource *rp = ctx;
 
     for (;;) {
+        cmb_logger_user(stdout, USERFLAG, "Acquiring %s", cmb_resource_name(rp));
         int64_t sig = cmb_resource_acquire(rp);
         if (sig == CMB_PROCESS_SUCCESS) {
+            cmb_logger_user(stdout, USERFLAG, "Holding %s", cmb_resource_name(rp));
             sig = cmb_process_hold(cmb_random_exponential(1.0));
             cmb_assert_always((sig == CMB_PROCESS_SUCCESS) || (sig == CMB_PROCESS_PREEMPTED));
             if (sig == CMB_PROCESS_SUCCESS) {
                 cmb_assert_always(cmb_resource_held_by_process(rp, me) == 1u);
+                cmb_logger_user(stdout, USERFLAG, "Releasing %s", cmb_resource_name(rp));
                 cmb_resource_release(rp);
                 cmb_assert_always(cmb_resource_held_by_process(rp, me) == 0u);
             }
             else {
                 cmb_assert_always(cmb_resource_held_by_process(rp, me) == 0u);
-                cmb_logger_user(stdout, USERFLAG,
-                                "Someone stole %s from me, signal %" PRIi64,
+                cmb_logger_user(stdout, USERFLAG, "%s preempted, signal %" PRIi64,
                                 cmb_resource_name(rp),  sig);
             }
         }
@@ -115,6 +203,11 @@ void test_resource(const uint64_t seed, const double dur)
 
     cmb_random_initialize(seed);
     cmb_logger_flags_off(CMB_LOGGER_INFO);
+
+    /* Deterministic mutual-exclusion check first (draws no RNG, so the soak
+     * below sees the same random stream as before). */
+    scenario_exclusion();
+
     cmb_event_queue_initialize(0.0);
 
     printf("Create a resource\n");

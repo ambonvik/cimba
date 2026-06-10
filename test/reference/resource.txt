@@ -2,18 +2,93 @@
 ****************************   Testing resources   *****************************
 ********************************************************************************
 Using seed: 0x34f05c64d7ad598f
+Mutual exclusion under a tied-timestamp wakeup
+    0.0000	Holder	excl_worker (68):  Holder holds the resource at t=0.0
+    10.000	Sniper	excl_worker (68):  Sniper holds the resource at t=10.0
+    15.000	Waiter	excl_worker (68):  Waiter holds the resource at t=15.0
 Create a resource
 Create three processes to compete for the resource
 Create a fourth process trying to preempt the resource
 Schedule end event
 Execute simulation
 --------------------------------------------------------------------------------
-    6.3280	Target_3	preemptable (71):  Someone stole Resource_1 from me, signal -1
-    25.000	dispatcher	end_sim_evt (44):  ===> end_sim: game over <===
-    25.000	dispatcher	end_sim_evt (46):  Stopping process Target_1
-    25.000	dispatcher	end_sim_evt (46):  Stopping process Target_2
-    25.000	dispatcher	end_sim_evt (46):  Stopping process Target_3
-    25.000	dispatcher	end_sim_evt (46):  Stopping process Preempter
+    0.0000	Target_1	preemptable (146):  Acquiring Resource_1
+    0.0000	Target_1	preemptable (149):  Holding Resource_1
+    0.0000	Target_2	preemptable (146):  Acquiring Resource_1
+    0.0000	Target_3	preemptable (146):  Acquiring Resource_1
+   0.59381	Target_1	preemptable (154):  Releasing Resource_1
+   0.59381	Target_2	preemptable (149):  Holding Resource_1
+    1.1462	Target_2	preemptable (154):  Releasing Resource_1
+    1.1462	Target_3	preemptable (149):  Holding Resource_1
+    1.1640	Target_1	preemptable (146):  Acquiring Resource_1
+    1.2645	Target_3	preemptable (154):  Releasing Resource_1
+    1.2645	Target_1	preemptable (149):  Holding Resource_1
+    1.6276	Target_3	preemptable (146):  Acquiring Resource_1
+    2.9014	Target_1	preemptable (154):  Releasing Resource_1
+    2.9328	Target_1	preemptable (146):  Acquiring Resource_1
+    3.1565	Target_2	preemptable (146):  Acquiring Resource_1
+    3.1761	Target_1	preemptable (149):  Holding Resource_1
+    3.9495	Target_1	preemptable (154):  Releasing Resource_1
+    3.9495	Target_3	preemptable (149):  Holding Resource_1
+    4.5354	Target_3	preemptable (154):  Releasing Resource_1
+    4.5354	Target_2	preemptable (149):  Holding Resource_1
+    4.8332	Target_2	preemptable (154):  Releasing Resource_1
+    5.1375	Target_1	preemptable (146):  Acquiring Resource_1
+    5.1375	Target_1	preemptable (149):  Holding Resource_1
+    5.2902	Target_3	preemptable (146):  Acquiring Resource_1
+    5.8983	Target_1	preemptable (154):  Releasing Resource_1
+    5.8983	Target_3	preemptable (149):  Holding Resource_1
+    6.0411	Target_1	preemptable (146):  Acquiring Resource_1
+    6.3280	Target_3	preemptable (160):  Resource_1 preempted, signal -1
+    6.4576	Target_2	preemptable (146):  Acquiring Resource_1
+    6.8149	Target_1	preemptable (149):  Holding Resource_1
+    6.9968	Target_1	preemptable (154):  Releasing Resource_1
+    6.9968	Target_2	preemptable (149):  Holding Resource_1
+    7.1636	Target_2	preemptable (154):  Releasing Resource_1
+    7.3187	Target_1	preemptable (146):  Acquiring Resource_1
+    7.3187	Target_1	preemptable (149):  Holding Resource_1
+    7.6090	Target_3	preemptable (146):  Acquiring Resource_1
+    7.7236	Target_2	preemptable (146):  Acquiring Resource_1
+    11.276	Target_1	preemptable (154):  Releasing Resource_1
+    11.276	Target_3	preemptable (149):  Holding Resource_1
+    11.457	Target_1	preemptable (146):  Acquiring Resource_1
+    11.528	Target_3	preemptable (154):  Releasing Resource_1
+    11.528	Target_1	preemptable (149):  Holding Resource_1
+    11.738	Target_1	preemptable (154):  Releasing Resource_1
+    11.738	Target_2	preemptable (149):  Holding Resource_1
+    11.905	Target_3	preemptable (146):  Acquiring Resource_1
+    12.310	Target_2	preemptable (154):  Releasing Resource_1
+    12.775	Target_2	preemptable (146):  Acquiring Resource_1
+    13.018	Target_1	preemptable (146):  Acquiring Resource_1
+    13.114	Target_1	preemptable (149):  Holding Resource_1
+    13.865	Target_1	preemptable (154):  Releasing Resource_1
+    13.865	Target_3	preemptable (149):  Holding Resource_1
+    14.872	Target_1	preemptable (146):  Acquiring Resource_1
+    15.242	Target_3	preemptable (154):  Releasing Resource_1
+    15.242	Target_1	preemptable (149):  Holding Resource_1
+    15.576	Target_1	preemptable (154):  Releasing Resource_1
+    15.576	Target_2	preemptable (149):  Holding Resource_1
+    15.605	Target_3	preemptable (146):  Acquiring Resource_1
+    16.431	Target_2	preemptable (154):  Releasing Resource_1
+    17.357	Target_1	preemptable (146):  Acquiring Resource_1
+    18.459	Target_1	preemptable (149):  Holding Resource_1
+    20.001	Target_1	preemptable (154):  Releasing Resource_1
+    20.001	Target_3	preemptable (149):  Holding Resource_1
+    20.148	Target_3	preemptable (154):  Releasing Resource_1
+    20.256	Target_1	preemptable (146):  Acquiring Resource_1
+    20.739	Target_3	preemptable (146):  Acquiring Resource_1
+    21.266	Target_2	preemptable (146):  Acquiring Resource_1
+    22.836	Target_1	preemptable (149):  Holding Resource_1
+    24.251	Target_1	preemptable (154):  Releasing Resource_1
+    24.251	Target_3	preemptable (149):  Holding Resource_1
+    24.478	Target_3	preemptable (154):  Releasing Resource_1
+    24.478	Target_2	preemptable (149):  Holding Resource_1
+    24.869	Target_3	preemptable (146):  Acquiring Resource_1
+    25.000	dispatcher	end_sim_evt (130):  ===> end_sim: game over <===
+    25.000	dispatcher	end_sim_evt (132):  Stopping process Target_1
+    25.000	dispatcher	end_sim_evt (132):  Stopping process Target_2
+    25.000	dispatcher	end_sim_evt (132):  Stopping process Target_3
+    25.000	dispatcher	end_sim_evt (132):  Stopping process Preempter
 --------------------------------------------------------------------------------
 Report statistics...
 Resource utilization for Resource_1:
