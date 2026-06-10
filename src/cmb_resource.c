@@ -294,7 +294,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     else if (myprio >= victim->priority) {
         /* Kick it out. No record_sample needed, the resource remains occupied. */
         cmi_process_remove_holdable(victim, hrp);
-        cmi_process_cancel_awaiteds(pp);
+        cmi_process_cancel_awaiteds(victim);
         rp->holder = NULL;
         (void)cmb_event_schedule(wakeup_event_preempt,
                                  (void *)victim,
