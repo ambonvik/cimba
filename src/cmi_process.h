@@ -35,20 +35,30 @@ enum cmi_process_awaitable_type {
 };
 
 /*
- * cmi_process_awaitable - Things a process can be waiting for.
+ * cmi_process_awaitable - Things a process can be waiting for. The union of
+ * pointer and handle are used for mutually exclusive cases (object in a queue
+ * vs in a hashheap), while the guard_key is used to identify the unique
+ * combination of a waiting process and a resource guard it is waiting at.
  */
 struct cmi_process_awaitable {
     enum cmi_process_awaitable_type type;
     union { void *ptr; uint64_t handle; };
-    void *padding;
+    uint64_t guard_key;
     struct cmi_slist_head listhead;
 };
 
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_process_awaitabletags;
 
-extern void cmi_process_add_awaitable(struct cmb_process *pp,
-                                      enum cmi_process_awaitable_type type,
-                                      void *awaitable);
+/* Returns the newly created awaitable so the caller can record extra
+ * per-wait state on it (e.g., a RESOURCE awaitable's guard_key). */
+extern struct cmi_process_awaitable *cmi_process_add_awaitable(struct cmb_process *pp,
+                                                enum cmi_process_awaitable_type type,
+                                                void *awaitable);
+
+/* Return the enqueue key under which `pp` is currently waiting in the guard
+ * pointed to by `guard`, or 0 if `pp` is not waiting in that guard. */
+extern uint64_t cmi_process_guard_key(const struct cmb_process *pp,
+                                      const void *guard);
 
 extern bool cmi_process_remove_awaitable(struct cmb_process *pp,
                                          enum cmi_process_awaitable_type type,

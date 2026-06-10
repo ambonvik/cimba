@@ -65,8 +65,8 @@ static CMB_THREAD_LOCAL uint64_t enqueue_seq = 0u;
 
 /*
  * guard_queue_check - Test if heap_tag *a should go before *b. If so, return true.
- * Ranking higher priority (rank_d64) before lower, FIFO based on entry time,
- * then in hash_key (memory address) order.
+ * Higher priority (rank_i64) first, then earlier entry time (rank_d64) for FIFO,
+ * then lower enqueue key (hash_key) as a stable tie-break.
  */
 static bool guard_queue_check(const struct cmi_heap_tag *a,
                               const struct cmi_heap_tag *b)
@@ -74,19 +74,18 @@ static bool guard_queue_check(const struct cmi_heap_tag *a,
     cmb_assert_debug(a != NULL);
     cmb_assert_debug(b != NULL);
 
-    if (a->rank_i64 > b->rank_i64) {
-        return true;
+    /* Higher priority goes first */
+    if (a->rank_i64 != b->rank_i64) {
+        return a->rank_i64 > b->rank_i64;
     }
 
-    if (a->rank_d64 < b->rank_d64) {
-        return true;
+    /* Same priority: earlier queue entry time goes first (FIFO by arrival) */
+    if (a->rank_d64 != b->rank_d64) {
+        return a->rank_d64 < b->rank_d64;
     }
 
-    if (a->hash_key < b->hash_key) {
-        return true;
-    }
-
-    return false;
+    /* Same arrival time: lower enqueue key goes first (stable FIFO tie-break) */
+    return a->hash_key < b->hash_key;
 }
 
 /* Start very small and fast, 2^GUARD_INIT_EXP = 8 slots in the initial queue */
@@ -135,7 +134,13 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
 
     const double entry_time = cmb_time();
     const int64_t priority = cmb_process_priority(pp);
-    const uint64_t hash_key = ++enqueue_seq;
+    /* The enqueue key is this entry's identity: the FIFO tie-breaker in the
+     * queue and the handle used to find it again for removal, cancellation, or
+     * reprioritization. Key 0 is reserved to mean "not enqueued". */
+    uint64_t hash_key = ++enqueue_seq;
+    if (hash_key == 0u) {
+        hash_key = ++enqueue_seq;
+    }
     const uint64_t key = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
                                               (void *)pp,
                                               (void *)demand,
@@ -145,7 +150,11 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
                                               entry_time,
                                               priority);
 
-    cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_RESOURCE, rgp);
+    /* Record the key on the awaitable so cancel/remove/reprioritize can find
+     * this exact entry later given only the process and the guard. */
+    struct cmi_process_awaitable *awp = cmi_process_add_awaitable(pp,
+                                        CMI_PROCESS_AWAITABLE_RESOURCE, rgp);
+    awp->guard_key = key;
     cmb_logger_info(stdout, "Waits for %s", rgp->guarded_resource->name);
 
     /* Yield to the dispatcher, collect the return signal value when resumed */
@@ -254,8 +263,8 @@ bool cmb_resourceguard_cancel(struct cmb_resourceguard *rgp,
 
     bool ret = false;
     struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
-    const uint64_t key = (uint64_t)pp;
-    if (cmi_hashheap_is_enqueued(hp, key)) {
+    const uint64_t key = cmi_process_guard_key(pp, rgp);
+    if ((key != 0u) && cmi_hashheap_is_enqueued(hp, key)) {
         (void)cmi_hashheap_cancel(hp, key);
         const double time = cmb_time();
         const int64_t priority = cmb_process_priority(pp);
@@ -269,6 +278,25 @@ bool cmb_resourceguard_cancel(struct cmb_resourceguard *rgp,
 }
 
 /*
+ * cmi_resourceguard_remove_key - Remove the queue entry identified by `key`
+ * without resuming any process.
+ * Returns true if an entry was removed, false if there was none.
+ */
+bool cmi_resourceguard_remove_key(struct cmb_resourceguard *rgp,
+                                  const uint64_t key)
+{
+    cmb_assert_release(rgp != NULL);
+
+    struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
+    if ((key != 0u) && cmi_hashheap_is_enqueued(hp, key)) {
+        (void)cmi_hashheap_cancel(hp, key);
+        return true;
+    }
+
+    return false;
+}
+
+/*
  * cmb_resourceguard_remove - Remove this process from the priority queue.
  * Returns true if found and successfully removed, false if not.
  */
@@ -278,15 +306,7 @@ bool cmb_resourceguard_remove(struct cmb_resourceguard *rgp,
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(pp != NULL);
 
-    bool ret = false;
-    struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
-    const uint64_t key = (uint64_t)pp;
-    if (cmi_hashheap_is_enqueued(hp, key)) {
-        (void)cmi_hashheap_cancel(hp, key);
-        ret = true;
-    }
-
-    return ret;
+    return cmi_resourceguard_remove_key(rgp, cmi_process_guard_key(pp, rgp));
 }
 
 /*

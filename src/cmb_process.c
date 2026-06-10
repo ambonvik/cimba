@@ -169,10 +169,11 @@ void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
         else if (awp->type == CMI_PROCESS_AWAITABLE_RESOURCE) {
             /* Waiting for some resource, reshuffle resource guard queue */
             cmb_assert_debug(awp->ptr != NULL);
+            cmb_assert_debug(awp->guard_key != UINT64_C(0));
             struct cmb_resourceguard *rgp = awp->ptr;
             struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
-            /* Resource guard hashkeys are process addresses */
-            const uint64_t key = (uint64_t)pp;
+            /* Find our entry by its enqueue key, not by process address */
+            const uint64_t key = awp->guard_key;
             /* Do not change the other priority key, queue entry time */
             const double etime = cmi_hashheap_drank(hp, key);
             cmi_hashheap_reprioritize(hp, key, etime, pri);
@@ -180,6 +181,7 @@ void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
 
         ahead = ahead->next;
     }
+
     /* Is this process holding any resources that need to update records? */
     const struct cmi_slist_head *rhead = &(pp->resources);
     while (rhead->next != NULL) {
@@ -217,18 +219,44 @@ void *cmb_process_exit_value(const struct cmb_process *pp)
     return cmi_coroutine_exit_value(cp);
 }
 
-void cmi_process_add_awaitable(struct  cmb_process *pp,
-                               const enum cmi_process_awaitable_type type,
-                               void *awaitable)
+struct cmi_process_awaitable *cmi_process_add_awaitable(struct  cmb_process *pp,
+                                        const enum cmi_process_awaitable_type type,
+                                        void *awaitable)
 {
     cmb_assert_debug(pp != NULL);
 
     struct cmi_process_awaitable *awp = cmi_mempool_alloc(&cmi_process_awaitabletags);
     awp->type = type;
     awp->ptr = awaitable;
+    awp->guard_key = 0u;
 
     struct cmi_slist_head *head = &(pp->awaits);
     cmi_slist_push(head, &(awp->listhead));
+
+    return awp;
+}
+
+/*
+ * cmi_process_guard_key - Recover the enqueue key under which pp is waiting in
+ * the given guard. Returns 0 if pp has no RESOURCE awaitable for that guard.
+ */
+uint64_t cmi_process_guard_key(const struct cmb_process *pp, const void *guard)
+{
+    cmb_assert_debug(pp != NULL);
+    cmb_assert_debug(guard != NULL);
+
+    const struct cmi_slist_head *ahead = &(pp->awaits);
+    while (ahead->next != NULL) {
+        const struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
+                                                  struct cmi_process_awaitable,
+                                                  listhead);
+        if ((awp->type == CMI_PROCESS_AWAITABLE_RESOURCE) && (awp->ptr == guard)) {
+            return awp->guard_key;
+        }
+        ahead = ahead->next;
+    }
+
+    return 0u;
 }
 
 /*
@@ -579,6 +607,13 @@ bool cmi_process_remove_holdable(struct cmb_process *pp,
     return found;
 }
 
+/* Friendly function in cmb_resourceguard.c, not part of the public interface */
+extern bool cmi_resourceguard_remove_key(struct cmb_resourceguard *rgp,
+                                         uint64_t key);
+
+/*
+ * Clear the list of things this process is waiting for
+ */
 void cmi_process_cancel_awaiteds(struct cmb_process *pp)
 {
     cmb_assert_debug(pp != NULL);
@@ -590,6 +625,9 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
                                                       struct cmi_process_awaitable,
                                                       listhead);
 
+        /* We do not assert that the return values are true here, since this function
+         * will be called as part of a closing ceremony, and state could be momentarily
+         * inconsistent while cleaning out the queues.         */
         if (pa->type == CMI_PROCESS_AWAITABLE_TIME) {
             /* Waits for some timeout (hold or timer), cancel it */
             cmb_assert_debug(pa->handle != UINT64_C(0));
@@ -597,8 +635,11 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_RESOURCE) {
             cmb_assert_debug(pa->ptr != NULL);
+            cmb_assert_debug(pa->guard_key != UINT64_C(0));
             struct cmb_resourceguard *rgp = pa->ptr;
-            (void)cmb_resourceguard_remove(rgp, pp);
+            /* pa is already popped off pp->awaits, so remove by the key the
+             * awaitable carries rather than looking it up via the process. */
+            (void)cmi_resourceguard_remove_key(rgp, pa->guard_key);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_PROCESS) {
             /* Waits for a process to end, remove ourselves from the waiter list */
