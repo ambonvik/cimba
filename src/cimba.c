@@ -184,8 +184,7 @@ static void *worker_thread_func(void *arg)
             }
             else {
                 /* No common function, extracting function to use for this trial */
-                cimba_trial_func *trial_func = (cimba_trial_func *)(((char *)trial)
-                                                             + cmg_trial_struct_sz);
+                cimba_trial_func *trial_func = *(cimba_trial_func **)trial;
                 (*trial_func)(trial);
             }
         }
