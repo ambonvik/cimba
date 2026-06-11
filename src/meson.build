@@ -27,17 +27,27 @@ sources = files('cimba.c',
 
 inc_int = include_directories('.')
 
-# Internal headers - installed to /usr/local/include
+# Internal headers installed alongside the public API.
+#
+# These are not a user-facing API (hence the cmi_ prefix and the "do not call
+# directly" contract), but they must be installed because the public cmb_*.h
+# headers include them transitively: a public struct embeds an internal type by
+# value (e.g. struct cmb_process embeds struct cmi_coroutine as its first
+# member), so the compiler needs the complete internal definition to lay out the
+# public one. An installed public header that reaches a non-installed header
+# will not compile downstream.
+#
+# Rule of thumb: every header reachable by #include from a public header must
+# appear here. The linux-install CI job enforces this by compiling each public
+# header standalone against the installed tree only (see test/tools/verify_install.sh).
 install_headers(
     'cmi_config.h',
     'cmi_coroutine.h',
-    'cmi_dataset.h',
     'cmi_hashheap.h',
     'cmi_holdable.h',
     'cmi_slist.h',
     'cmi_mempool.h',
     'cmi_memutils.h',
-    'cmi_process.h',
     'cmi_resourcebase.h'
 )
 
