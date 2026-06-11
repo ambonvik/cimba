@@ -425,8 +425,10 @@ void cmi_coroutine_thread_cleanup(void *arg)
  */
 void cmi_coroutine_reset_to_main(void)
 {
-    if (coroutine_main == NULL) {
-        /* No coroutine has run on this thread, nothing was switched away. */
+    if (coroutine_main == NULL || coroutine_current == coroutine_main) {
+        /* Either no coroutine has run yet on this thread, or this was called
+         * from the main coroutine. In either case, the current stack is already
+         * the main stack, no action needed. */
         return;
     }
 
