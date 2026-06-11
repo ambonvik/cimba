@@ -9,7 +9,7 @@ changes, and bug fixes below. For complete details, see the git commit history.
 * Bug fixes and approx 50 % speed improvement, mainly from improvements to the hash map 
   part of the hash-heap data structures
 * Added cmb_priorityqueue, cmb_process_timer, cmb_process_yield/resume
-* Added cimba_set_thread_hooks() and cimba_thread_context() for managing CUDA streams
+* Added cimba_thread_hooks_set() and cimba_thread_context() for managing CUDA streams
 * Added the number of failed trials as return value from cimba_run (renamed from 
   cimba_run_experiment, the old name deprecated)
 * Added setjmp/longjmp error recovery in multithreaded trials after call to 
