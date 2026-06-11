@@ -122,13 +122,6 @@ cmi_coroutine_context_switch:
 ;
 cmi_coroutine_trampoline:
     ; Is not a leaf function, needs to obey Linux ABI calling convention.
-    ; Expected struct cmi_coroutine layout (from cmi_coroutine.h):
-    ; - parent (8 bytes, offset 0)
-    ; - caller (8 bytes, offset 8)
-    ; - stack (8 bytes, offset 16)
-    ; - stack_base (8 bytes, offset 24)
-    ; - stack_limit (8 bytes, offset 32)
-    ;
     ; Will soon call coroutine function foo(cp, arg).
     ; The address of foo is now in R12, cp in R13, and arg in R14.
     ; The arguments for foo need to be in RDI and RSI, move them there.
