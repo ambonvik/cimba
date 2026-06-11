@@ -69,7 +69,7 @@ void cmb_process_initialize(struct cmb_process *pp,
                        (cmi_coroutine_exit_func *)cmb_process_exit,
                        CMI_COROUTINE_DEFAULT_STACKSIZE);
 
-    (void)cmb_process_name_set(pp, name);
+    cmb_process_name_set(pp, name);
     pp->priority = priority;
 
     cmi_slist_initialize(&pp->awaits);
@@ -135,8 +135,7 @@ void cmb_process_start(struct cmb_process *pp)
 }
 
 /*
- * cmb_process_name_set - Change the process name, returning a const char *
- * to the new name.
+ * cmb_process_name_set - Change the process name
  */
 void cmb_process_name_set(struct cmb_process *pp, const char *name)
 {
@@ -611,6 +610,37 @@ bool cmi_process_remove_holdable(struct cmb_process *pp,
 extern bool cmi_resourceguard_remove_key(struct cmb_resourceguard *rgp,
                                          uint64_t key);
 
+/* Just declare that this exists */
+void cmi_process_cancel_awaiteds(struct cmb_process *pp);
+
+/*
+ * wakeup_event_interrupt - The event that actually interrupts the
+ * process coroutine after being scheduled by cmb_process_interrupt.
+ * Throw away the _resume return value, since we do not have
+ * anywhere to return it to from here.
+ */
+static void wakeup_event_interrupt(void *vp, void *arg)
+{
+    cmb_assert_debug(vp != NULL);
+    cmb_assert_debug((int64_t)arg != CMB_PROCESS_SUCCESS);
+
+    struct cmb_process *tgt = (struct cmb_process *)vp;
+    cmb_logger_info(stdout, "Interrupts %s signal %" PRIi64,
+                    tgt->name, (int64_t)arg);
+
+    /* Interrupt it from whatever it is doing or waiting for */
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
+    if (cp->status == CMI_COROUTINE_RUNNING) {
+        cmi_process_cancel_awaiteds(tgt);
+        (void)cmi_coroutine_resume(cp, arg);
+    }
+    else {
+        cmb_logger_warning(stdout,
+                          "Process interrupt wakeup call found process %s dead",
+                          cmb_process_name(tgt));
+    }
+}
+
 /*
  * Clear the list of things this process is waiting for
  */
@@ -658,30 +688,9 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
     }
 
     /* Make sure any previously scheduled wakeup event does not happen */
-    cmb_event_pattern_cancel(CMB_ANY_ACTION, pp, CMB_ANY_OBJECT);
-}
-
-/*
- * wakeup_event_interrupt - The event that actually interrupts the
- * process coroutine after being scheduled by cmb_process_interrupt.
- * Throw away the _resume return value, since we do not have
- * anywhere to return it to from here.
- */
-static void wakeup_event_interrupt(void *vp, void *arg)
-{
-    cmb_assert_debug(vp != NULL);
-    cmb_assert_debug((int64_t)arg != CMB_PROCESS_SUCCESS);
-
-    struct cmb_process *tgt = (struct cmb_process *)vp;
-    cmb_logger_info(stdout, "Interrupts %s signal %" PRIi64,
-                    tgt->name, (int64_t)arg);
-
-    /* Interrupt it from whatever it is doing or waiting for */
-    cmi_process_cancel_awaiteds(tgt);
-
-    struct cmi_coroutine *cp = (struct cmi_coroutine *)tgt;
-    cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
-    (void)cmi_coroutine_resume(cp, arg);
+    cmb_event_pattern_cancel(wakeup_event_time, pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(wakeup_event_process, pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
 }
 
 /*
