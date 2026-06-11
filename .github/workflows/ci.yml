@@ -30,6 +30,36 @@ jobs:
       - name: Test
         run: meson test -C build --print-errorlogs --timeout-multiplier 3
 
+  # Linux: follow the install guide end to end, then verify that a downstream
+  # program builds against the *installed* headers and library only. Guards
+  # against shipping public headers that are not self-contained or that include
+  # headers we forgot to install (the install guide's own verification step).
+  linux-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build nasm meson
+      - name: Build and install (per docs/installation.html)
+        run: |
+          meson setup build -Denable_docs=false
+          meson compile -C build
+          sudo meson install -C build
+          sudo ldconfig
+      - name: Verify install-guide hello with the documented bare command
+        run: |
+          # The literal command from the install guide: no -I/-L, relying on
+          # /usr/local being in the default header and linker search paths.
+          gcc tutorial/hello.c -lcimba -o /tmp/hello
+          /tmp/hello
+          /tmp/hello | grep -q '^Hello world, I am Cimba '
+      - name: Verify installed headers are self-contained and complete
+        run: ./test/tools/verify_install.sh /usr/local
+
+
+
   # Linux: debug build under AddressSanitizer + UndefinedBehaviorSanitizer
   linux-asan:
     runs-on: ubuntu-latest
@@ -97,11 +127,11 @@ jobs:
       - name: Test
         run: meson test -C build-tsan --print-errorlogs --timeout-multiplier 100
 
-  # Windows (MinGW) — unchanged
+  # Windows (MinGW) — test debug and release builds
   windows-mingw-build:
     runs-on: windows-latest
     strategy:
-      fail-fast: false            # let debug and release report independently
+      fail-fast: false
       matrix:
         buildtype: [debug, release]
     steps:
@@ -125,3 +155,6 @@ jobs:
       - name: Test
         shell: msys2 {0}
         run: meson test -C build --print-errorlogs --timeout-multiplier 10
+
+  # Cannot fully verify installation for Windows, as it requires a reboot midway.
+  # Hence no Windows install CI verification here.
