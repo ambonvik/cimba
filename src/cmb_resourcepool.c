@@ -68,9 +68,9 @@ struct cmb_resourcepool *cmb_resourcepool_create(void)
 
 /*
  * holder_queue_check - Test if heap_tag *a should go before *b. If so, return
- * true. Ranking lower priority (rank_d64) before higher, then LIFO based on handle
+ * true. Ranking lower priority (rank_i64) before higher, then LIFO based on handle
  * value. Used to identify the most likely victim for resource preemption, hence
- * opposite order of the waiting room.
+ * ranking in the opposite order of the waiting room.
  */
 static bool holder_queue_check(const struct cmi_heap_tag *a,
                                const struct cmi_heap_tag *b)
