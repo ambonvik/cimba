@@ -450,7 +450,7 @@ unsigned integer (``uint32_t``) as a bit mask to determine what log entries to p
 and which to ignore. Cimba reserves the top four bits for its own use, identifying
 messages of various severities, leaving the 28 remaining bits for the user application.
 
-There is a global (actually thread local) bit field and a bit mask in each call. If a
+There is a global bit field and a bit mask in each call. If a
 simple bitwise and (``&``) between the global bit field and the caller's bit mask gives a
 non-zero result, that line is printed, otherwise not. Initially, all bits in the global
 bit field are on, ``0xFFFFFFFF``. You can turn selected bits on and off with
@@ -550,6 +550,14 @@ We turn off our user-defined messages like this:
 
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG1);
+
+We could also combine those two calls if we wanted to, by a simple bitwise ``or``
+between the two patterns:
+
+.. code-block:: c
+
+    cmb_logger_flags_off(CMB_LOGGER_INFO) | USERFLAG1);
+
 
 As you would expect,
 `this version of the program <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_1_3.c>`_
@@ -3076,12 +3084,11 @@ possibilities.
 Adding CUDA GPU power for simulation physics
 --------------------------------------------
 
-[Work in progress]
-
 So far, our models have mostly used simple math. Important simulation tasks may
 require even more computing power than what we have used so far. For example, there might
 be complex physical and/or geometrical calculations, optimization algorithms to guide
-the actions of active agents in the simulated world, or even AI/ML capabilities. Or we
+the actions of active agents in the simulated world, or even artificial
+intelligence and machine learning capabilities. Or we
 might want to have a hybrid simulation with hardware-in-the-loop for special cases.
 
 Cimba does not include direct support for all possible combinations of GPUs and
