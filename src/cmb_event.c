@@ -64,6 +64,40 @@ double cmb_time(void)
     return sim_time;
 }
 
+/*
+ * event_compare - Test if heap_tag *a should go before *b. If so, return true.
+ * Ranking determines the event queue order, where lower reactivation times
+ * (rank_d64) go before higher, if equal, then higher priority (rank_i64) before
+ * lower, and if that also is equal, FIFO order based on hash key value.
+ * This may be the same as using default_compare in cmi_hashheap.c but is
+ * repeated here to make the event queue logic self-contained.
+ */
+static bool event_compare(const struct cmi_heap_tag *a,
+                            const struct cmi_heap_tag *b)
+{
+    cmb_assert_debug(a != NULL);
+    cmb_assert_debug(b != NULL);
+
+    if (a->rank_d64 < b->rank_d64) {
+        return true;
+    }
+    if (a->rank_d64 > b->rank_d64) {
+        return false;
+    }
+
+    if (a->rank_i64 > b->rank_i64) {
+        return true;
+    }
+    if (a->rank_i64 < b->rank_i64) {
+        return false;
+    }
+
+    if (a->hash_key < b->hash_key) {
+        return true;
+    }
+
+    return false;
+}
 
 /*
  * cmb_event_queue_initialize - Set starting simulation time, allocate and initialize
@@ -72,11 +106,13 @@ double cmb_time(void)
  */
 void cmb_event_queue_initialize(const double start_time)
 {
-    sim_time = start_time;
+    /* Expect a fresh, empty event queue. Verify to make sure any error handling
+     * in a previous trial cleaned up after itself before coming here again. */
+    cmb_assert_release(event_queue == NULL);
 
+    sim_time = start_time;
     event_queue = cmi_hashheap_create();
-    /* Use default hashheap ordering, which happens to be right for this purpose */
-    cmi_hashheap_initialize(event_queue, QUEUE_INIT_EXP, NULL);
+    cmi_hashheap_initialize(event_queue, QUEUE_INIT_EXP, event_compare);
 }
 
 /*
@@ -84,6 +120,8 @@ void cmb_event_queue_initialize(const double start_time)
  */
 void cmb_event_queue_terminate(void)
 {
+    cmb_assert_release(event_queue != NULL);
+
     cmi_hashheap_terminate(event_queue);
     cmi_hashheap_destroy(event_queue);
     event_queue = NULL;
@@ -96,6 +134,26 @@ void cmb_event_queue_terminate(void)
 void cmb_event_queue_clear(void)
 {
     cmi_hashheap_clear(event_queue);
+}
+
+/*
+ * cmi_event_queue_reset - Discard any current event queue so the next
+ * cmb_event_queue_initialize finds the empty queue it expects. Unlike
+ * cmb_event_queue_terminate, this is safe to call whether or not a queue is
+ * currently initialized.
+ *
+ * Called by the worker-thread recovery path in cimba.c: a trial that abandons
+ * itself with cmb_logger_error longjmp out without reaching cmb_event_queue_terminate,
+ * leaving this thread's queue allocated. This frees it.
+ */
+void cmi_event_queue_reset(void)
+{
+    if (event_queue != NULL) {
+        cmi_hashheap_terminate(event_queue);
+        cmi_hashheap_destroy(event_queue);
+        event_queue = NULL;
+        sim_time = 0.0;
+    }
 }
 
 /*

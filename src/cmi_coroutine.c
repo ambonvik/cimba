@@ -414,3 +414,33 @@ void cmi_coroutine_thread_cleanup(void *arg)
 
     coroutine_current = coroutine_main;
 }
+
+/*
+ * cmi_coroutine_reset_to_main - Recover after a non-local jump (longjmp) has
+ * returned control to the thread's own stack from inside a running coroutine,
+ * bypassing the normal context switch. The physical stack pointer is already
+ * back on the thread stack; this fixes up the bookkeeping the jump skipped:
+ * makes the main coroutine current again and re-syncs the sanitizer fiber state
+ * to the main stack, discarding the abandoned coroutine's stack.
+ */
+void cmi_coroutine_reset_to_main(void)
+{
+    if (coroutine_main == NULL) {
+        /* No coroutine has run on this thread, nothing was switched away. */
+        return;
+    }
+
+    coroutine_current = coroutine_main;
+
+    /* ASan: we are already on the main stack. Announce the switch with a NULL
+     * save so ASan drops the stack of the coroutine we abandoned, then
+     * finalize landing on the main stack. */
+    cmi_asan_start_switch(NULL,
+                          coroutine_main->stack_limit,
+                          (size_t)(coroutine_main->stack_base
+                                   - coroutine_main->stack_limit));
+    cmi_asan_finish_switch(NULL);
+
+    /* TSan: we are back on the thread's own fiber. */
+    cmi_tsan_switch_fiber(coroutine_main->tsan_fiber);
+}

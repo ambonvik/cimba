@@ -62,9 +62,10 @@ struct trial {
     /* Parameters */
     double service_cv;
     double utilization;
-    double warmup;
-    double dur_s;
-    double cooldown;
+    double start_time;
+    double warmup_s;
+    double duration_s;
+    double cooldown_s;
     uint64_t seed;
     /* Outcome */
     double avg_queue_length;
@@ -195,6 +196,20 @@ void *service_proc(struct cmb_process *me, void *vctx)
         cmb_assert_always(ht >= 0.0);
         int64_t r = cmb_process_hold(ht);
         cmb_assert_always(r == CMB_PROCESS_SUCCESS);
+
+        /* Test occasional trial failures from process coroutine level */
+        const double pfail = 1e-7;
+        if (cmb_random_bernoulli(pfail)) {
+            /* Pretend that this trial failed for some reason, bail out.
+             * Note that memory will leak here, abandoning the coroutine.    */
+            const uint64_t tid = cimba_thread_id();
+            const uint64_t tix = cimba_trial_index();
+            cmb_logger_error(stdout,
+                             "Trial %" PRIu64 " failed in worker %" PRIu64,
+                             tix, tid);
+            /* Not reached */
+        }
+
         cmb_logger_user(stdout, USERFLAG1, "Getting");
         uint64_t n = 1u;
         r = cmb_buffer_get(bp, &n);
@@ -211,7 +226,19 @@ void run_mg1_trial(void *vtrl)
     cmb_assert_always(vtrl != NULL);
 
     struct trial *trl = vtrl;
-    cmb_logger_user(stdout, USERFLAG2, "Trial seed: 0x%016" PRIx64, trl->seed);
+
+    /* Start from an empty event queue. The simulation clock will not be
+     * initialized to its correct starting value before this call. Any error
+     * or warning messages may show the wrong timestamp until properly
+     * initialized. We do that first, and we start from non-zero here
+     * because we can. */
+    cmb_assert_always(cmb_process_current() == NULL);
+    cmb_assert_always(cmb_time() == 0.0);
+    cmb_event_queue_initialize(trl->start_time);
+    cmb_assert_always(cmb_time() == trl->start_time);
+
+    /* Any error or warning messages will contain the pseudo-random number seed,
+     * again not initialized before this call. So we do that too. */
     cmb_random_initialize(trl->seed);
 
     struct context *ctx = malloc(sizeof(*ctx));
@@ -222,7 +249,9 @@ void run_mg1_trial(void *vtrl)
     cmb_assert_always(sim != NULL);
     ctx->sim = sim;
 
-    /* Test occasional trial failures */
+    cmb_logger_user(stdout, USERFLAG2, "Started, seed 0x%" PRIx64, trl->seed);
+
+    /* Test occasional trial failures from trial function level */
     const double pfail = 0.05;
     if (cmb_random_bernoulli(pfail)) {
         /* Pretend that this trial failed for some reason, bail out.
@@ -238,17 +267,14 @@ void run_mg1_trial(void *vtrl)
         /* Not reached */
     }
 
-    /* Start from an empty event queue */
-    cmb_event_queue_initialize(0.0);
-
     /* Set the data collection period */
-    double t = trl->warmup;
+    double t = trl->start_time + trl->warmup_s;
     uint64_t ev_hdle = cmb_event_schedule(start_rec_evt, sim, NULL, t, 0);
     cmb_assert_always(ev_hdle != 0u);
-    t += trl->dur_s;
+    t += trl->duration_s;
     ev_hdle = cmb_event_schedule(stop_rec_evt, sim, NULL, t, 0);
     cmb_assert_always(ev_hdle != 0u);
-    t += trl->cooldown;
+    t += trl->cooldown_s;
     ev_hdle = cmb_event_schedule(end_sim_evt, sim, NULL, t, 0);
     cmb_assert_always(ev_hdle != 0u);
 
@@ -288,6 +314,7 @@ void run_mg1_trial(void *vtrl)
 
     /* Clean up */
 
+    cmb_logger_user(stdout, USERFLAG2, "Finished");
     cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_FINISHED);
     cmb_process_terminate(sim->arrival);
     cmb_process_destroy(sim->arrival);
@@ -314,12 +341,14 @@ struct thread_context {
 
 void *thread_init_func(const uint64_t tid, void *usrarg)
 {
+    /* Create a context object for the Cimba worker thread */
     struct thread_context *ctx = malloc(sizeof *ctx);
     cmb_assert_always(ctx != NULL);
     ctx->thread_id = pthread_self();
     ctx->usrarg = usrarg;
     ctx->tid = tid;
 
+    /* Use the thread hook mechanism to set logger flags */
     const uint32_t logflagsoff = *((uint32_t *)usrarg);
     cmb_logger_flags_off(logflagsoff);
 
@@ -329,6 +358,8 @@ void *thread_init_func(const uint64_t tid, void *usrarg)
 void thread_exit_func(void *vctx)
 {
     cmb_assert_always(vctx != NULL);
+
+    /* Delete the context object */
     struct thread_context *ctx = vctx;
     free(ctx);
 }
@@ -346,9 +377,9 @@ int main(const int argc, char **argv)
     uint32_t nthr = 0u;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:gs:tw:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:gr:s:tw:")) != -1) {
         switch (opt) {
-            case 'd':
+            case 'd': {
                 errno = 0;
                 dur = strtod(optarg, NULL);
                 if (errno != 0 || dur <= 0.0) {
@@ -356,10 +387,12 @@ int main(const int argc, char **argv)
                     abort();
                 }
                 break;
-            case 'g':
+            }
+            case 'g': {
                 plot_graphics = true;
                 break;
-            case 'r':
+            }
+            case 'r': {
                 errno = 0;
                 nthr = (uint32_t)strtoul(optarg, NULL, 0);
                 if (errno != 0) {
@@ -368,7 +401,8 @@ int main(const int argc, char **argv)
                 }
                 (void)cimba_threads_use(nthr);
                 break;
-            case 's':
+            }
+            case 's': {
                 errno = 0;
                 seed = (uint64_t)strtoull(optarg, NULL, 0);
                 if (errno != 0 || seed == 0u) {
@@ -376,15 +410,20 @@ int main(const int argc, char **argv)
                     abort();
                 }
                 break;
-            case 't':
+            }
+            case 't': {
                 timing_enabled = true;
                 break;
-            case 'w':
+            }
+            case 'w': {
                 wup = strtod(optarg, NULL);
                 break;
-            default:
-                fprintf(stderr, "Usage: %s [-g][-s <seed>]\n", argv[0]);
+            }
+            default: {
+                fprintf(stderr, "Usage: %s [-d <duration>][-g][-r <runner_threads>][-s <seed>][-t][-w <warmup_period>]\n", argv[0]);
+
                 return EXIT_FAILURE;
+            }
         }
     }
 
@@ -414,9 +453,10 @@ int main(const int argc, char **argv)
             for (unsigned ui_rep = 0u; ui_rep < nreps; ui_rep++) {
                 experiment[ui_exp].service_cv = cvs[ui_cv];
                 experiment[ui_exp].utilization = rhos[ui_rho];
-                experiment[ui_exp].warmup = wup;
-                experiment[ui_exp].dur_s = dur;
-                experiment[ui_exp].cooldown = 1.0;
+                experiment[ui_exp].start_time = 1.0e6;
+                experiment[ui_exp].warmup_s = wup;
+                experiment[ui_exp].duration_s = dur;
+                experiment[ui_exp].cooldown_s = 1.0;
                 experiment[ui_exp].seed = cmb_random_fmix64(seed, ui_exp);
                 /* Sentinel initial value to catch any failed trials */
                 experiment[ui_exp].avg_queue_length = -1.0;

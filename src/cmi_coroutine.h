@@ -281,7 +281,8 @@ extern struct cmi_coroutine *cmi_coroutine_current(void);
 extern struct cmi_coroutine *cmi_coroutine_main(void);
 
 /*
- * First-entry shim, called by the assembly trampoline (its R12 target).
+ * cmi_coroutine_launch - First-entry shim, called by the assembly
+ * trampoline (its R12 target).
  */
 extern void *cmi_coroutine_launch(struct cmi_coroutine *cp, void *arg);
 
@@ -290,5 +291,15 @@ extern void *cmi_coroutine_launch(struct cmi_coroutine *cp, void *arg);
  * will free() all still allocated stacks in this thread
  */
 extern void cmi_coroutine_thread_cleanup(void *arg);
+
+/*
+ * cmi_coroutine_reset_to_main - Re-establish the thread's main coroutine as the
+ * current one after control has returned to the thread's own stack by means
+ * other than a normal context switch (e.g., a longjmp out of a running
+ * coroutine). Resets coroutine_current and re-syncs the sanitizer fiber state
+ * to the main stack, discarding the abandoned coroutine's stack. A no-op
+ * if no coroutine has ever run on this thread.
+ */
+extern void cmi_coroutine_reset_to_main(void);
 
 #endif /* CIMBA_CMI_COROUTINE_H */

@@ -142,6 +142,11 @@ static void thread_exit_wrapper(void *context)
     }
 }
 
+/* Friendly function in cmb_event.c, not part of the public interface. Resets
+ * this thread's event queue and clock after a trial abandons itself by longjmp,
+ * the event-layer counterpart to cmi_coroutine_reset_to_main(). */
+extern void cmi_event_queue_reset(void);
+
 /*
  * worker_thread_func - The function passed to pthread_create. It finds the next
  * available trial from the experiment array, executes it, and repeats. If no
@@ -189,10 +194,16 @@ static void *worker_thread_func(void *arg)
             }
         }
         else {
-            /* The trial called cmb_logger_error() and bailed out, increment counter */
+            /* The trial called cmb_logger_error() and bailed out via longjmp.
+             * That jump returned us to the thread stack from inside whatever
+             * coroutine was running, so restore this thread's per-trial state
+             * before starting the next trial: the coroutine and sanitizer fiber
+             * bookkeeping, then the simulation clock and event queue. */
+            cmi_coroutine_reset_to_main();
+            cmi_event_queue_reset();
             (void)__atomic_fetch_add(&cmi_failed_trials, 1, __ATOMIC_RELAXED);
-            /*
-             * Note that no attempt at memory cleanup is done here. Anything allocated
+
+            /* Note that no attempt at memory cleanup is done here. Anything allocated
              * by the trial is now leaked memory if it did not free it before
              * calling cmb_logger_error()
              */
