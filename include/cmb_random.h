@@ -64,6 +64,7 @@
 #include <inttypes.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "cmb_assert.h"
 
@@ -196,7 +197,7 @@ extern double cmi_random_nor_not_hot(int64_t i_cand_x);
 
 /**
  * @brief Standard normal distribution on (-oo, oo) with mean 0 and standard
- *        deviation 0.
+ *        deviation 1.
  *
  * Uses an implementation of McFarland's improved ziggurat method.
  *
