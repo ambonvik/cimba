@@ -124,7 +124,7 @@ bool cmi_coroutine_registers_valid(const struct cmi_coroutine *cp)
          * assuming that no coroutine changes it. Verify that this holds.    */
         static CMB_THREAD_LOCAL uint64_t mxcsr_cached = 0u;
 
-        /* We only care about the stattus buts here */
+        /* We only care about the status bits here */
         const uint64_t mxcsr_now = _mm_getcsr() & ~0x3Fu;
         if (mxcsr_cached != 0u) {
             const bool match = (mxcsr_now == mxcsr_cached);
