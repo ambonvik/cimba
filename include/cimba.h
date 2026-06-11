@@ -227,8 +227,8 @@ extern uint32_t cimba_threads_num(void);
 *
 * @param n_threads The number of threads to use. Zero means default number,
 *                  i.e., equal to the number of CPU cores reported by the
-*                  operating system. Returns the actual number used, same as
-*                  cimba_workers_num().
+*                  operating system. Returns the actual number used, same value
+*                  as cimba_threads_num().
 *
 * @return Number of worker threads to be used on the next run, >= 1
 */
