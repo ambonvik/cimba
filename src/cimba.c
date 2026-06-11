@@ -128,7 +128,7 @@ uint64_t cimba_trials_remaining(void)
 {
     const uint64_t nxt = __atomic_load_n(&cmg_next_trial_idx, __ATOMIC_RELAXED);
 
-    return cmg_total_trials - nxt;
+    return (nxt >= cmg_total_trials) ? 0u : cmg_total_trials - nxt;
 }
 
 /*
