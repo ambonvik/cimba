@@ -56,9 +56,7 @@ jobs:
           /tmp/hello
           /tmp/hello | grep -q '^Hello world, I am Cimba '
       - name: Verify installed headers are self-contained and complete
-        run: ./test/tools/verify_install.sh /usr/local
-
-
+        run: bash test/tools/verify_install.sh /usr/local
 
   # Linux: debug build under AddressSanitizer + UndefinedBehaviorSanitizer
   linux-asan:
