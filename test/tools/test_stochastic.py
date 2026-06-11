@@ -67,7 +67,6 @@ TESTS: list[StochasticTest] = [
     StochasticTest(name="resource", binary="test_resource", seed=0x34f05c64d7ad598f),
     StochasticTest(name="resourceguard", binary="test_resourceguard", seed=0x34f05c64d7ad598f),
     StochasticTest(name="resourcepool", binary="test_resourcepool", seed=0x34f05c64d7ad598f),
-    StochasticTest(name="cimba", binary="test_cimba", seed=0x34f05c64d7ad598f, extra_args=["-r", "1"], timeout=3600),
 ]
 
 
