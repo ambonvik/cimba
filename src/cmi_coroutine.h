@@ -157,10 +157,8 @@ extern struct cmi_coroutine *cmi_coroutine_create(void);
  *
  * The coroutine function given as the second argument will eventually be called
  * as crfunction(cp, context). The stack size should be large enough for the
- * functions running in the coroutine. For a simple case without deeply nested
- * function calls and many local variables, 10 kB could be enough, 24 kB
- * probably on the safe side. The program will either trigger an assert or
- * segfault if the stack is too small.
+ * functions running in the coroutine. The program will either trigger an assert
+ * or segfault if the stack is too small.
  *
  * The exit function crexit will be called when/if the coroutine returns from
  * crfunction by intercepting the return and calling crexit from assembly.
