@@ -174,7 +174,7 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
 /*
  * wakeup_event_resource - The event that actually resumes the process coroutine
  */
-static void wakeup_event_resource(void *vp, void *arg)
+void wakeup_event_resource(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 

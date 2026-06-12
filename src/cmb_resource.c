@@ -258,7 +258,7 @@ void cmb_resource_release(struct cmb_resource *rp) {
  * wakeup_event_preempt - The event handler that actually resumes the
  * process coroutine after being scheduled by cmb_resource_preempt
  */
-static void wakeup_event_preempt(void *vp, void *arg)
+void wakeup_event_preempt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
