@@ -100,14 +100,14 @@ static const char *time_to_string(const double t)
     return timestrbuf;
 }
 
-/* Pointer to current time formatting function */
+/* Pointer to current time formatting function, global scope */
 static const char *(*timeformatter)(double) = time_to_string;
 
 void cmb_logger_timeformatter_set(cmb_timeformatter_func *fp)
 {
     logger_assert_release(fp != NULL);
 
-    timeformatter = fp;
+    __atomic_store_n(&timeformatter, fp, __ATOMIC_RELAXED);
 }
 
 /*
@@ -166,7 +166,10 @@ int cmb_logger_vfprintf(FILE *fp,
             ret += r;
         }
 
-        r = fprintf(fp, "%s\t", timeformatter(cmb_time()));
+        const char *(*tff)(double) = NULL;
+        tff = __atomic_load_n(&timeformatter, __ATOMIC_RELAXED);
+        logger_assert_debug(tff != NULL);
+        r = fprintf(fp, "%s\t", tff(cmb_time()));
         logger_assert_debug(r > 0);
         ret += r;
 
