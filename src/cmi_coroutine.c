@@ -415,6 +415,9 @@ void cmi_coroutine_thread_cleanup(void *arg)
     coroutine_current = coroutine_main;
 }
 
+/* Install cp's stack as the OS-current stack (Windows: TEB fields; Linux: no-op) */
+extern void cmi_coroutine_os_adopt_stack(const struct cmi_coroutine *cp);
+
 /*
  * cmi_coroutine_reset_to_main - Recover after a non-local jump (longjmp) has
  * returned control to the thread's own stack from inside a running coroutine,
@@ -445,4 +448,12 @@ void cmi_coroutine_reset_to_main(void)
 
     /* TSan: we are back on the thread's own fiber. */
     cmi_tsan_switch_fiber(coroutine_main->tsan_fiber);
+
+    /* Restore the OS stack bookkeeping the longjmp skipped. On Windows the
+     * context switch swaps the TEB StackBase/StackLimit/DeallocationStack
+     * fields; the jump back to the main stack bypassed the restoring half, so
+     * the TEB still describes the abandoned coroutine and the kernel would
+     * raise STATUS_BAD_STACK on the next stack validation. Reinstall main's.
+     * No-op on platforms without such per-thread stack bounds. */
+    cmi_coroutine_os_adopt_stack(coroutine_main);
 }

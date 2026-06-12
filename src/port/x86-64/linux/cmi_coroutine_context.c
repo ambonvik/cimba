@@ -284,3 +284,15 @@ unsigned char *cmi_coroutine_stackraw(void)
     /* Not relevant for Linux */
     return NULL;
 }
+
+/*
+ * cmi_coroutine_os_adopt_stack - Make the OS treat cp's stack as the current
+ * one. On Windows this rewrites the TEB stack fields the context switch swaps,
+ * needed after a longjmp bypasses the switch. Linux keeps no such per-thread
+ * stack bounds that the kernel validates against, so this is a no-op here; the
+ * longjmp already left RSP on a valid stack.
+ */
+void cmi_coroutine_os_adopt_stack(const struct cmi_coroutine *cp)
+{
+    cmb_unused(cp);
+}

@@ -30,6 +30,7 @@
 
 /* Assembly functions, see src/port/x86-64/windows/cmi_coroutine_context_*.asm */
 extern void cmi_coroutine_trampoline(void);
+extern void cmi_coroutine_set_stack_teb(void *base, void *limit, void *dealloc);
 
 /*
  * Windows-specific code to allocate and initialize stack for a new coroutine.
@@ -255,4 +256,24 @@ void cmi_coroutine_stack_free(unsigned char *stack)
 {
     int r = VirtualFree(stack, 0, MEM_RELEASE);
     cmb_assert_always(r != 0);
+}
+
+/*
+ * cmi_coroutine_os_adopt_stack - Reinstall cp's stack as the thread's current
+ * stack in the Windows TEB. The context switch (cmi_coroutine_context_switch)
+ * swaps StackBase, StackLimit, and DeallocationStack on every transfer, but a
+ * longjmp out of a running coroutine returns to the main stack without going
+ * through the switch, leaving the TEB describing the abandoned coroutine. The
+ * kernel then rejects the main stack pointer with STATUS_BAD_STACK (0xC0000028)
+ * the next time it validates the stack (a __chkstk probe, SEH unwind, or a
+ * checked return). cmi_coroutine_reset_to_main calls this with the main
+ * coroutine to put the TEB back in agreement with the stack we are really on.
+ */
+void cmi_coroutine_os_adopt_stack(const struct cmi_coroutine *cp)
+{
+    cmb_assert_debug(cp != NULL);
+    cmb_assert_debug(cp->stack_base != NULL);
+    cmb_assert_debug(cp->stack_limit != NULL);
+
+    cmi_coroutine_set_stack_teb(cp->stack_base, cp->stack_limit, cp->stack);
 }
