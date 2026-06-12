@@ -63,8 +63,9 @@
   #define logger_assert_debug(x)  do { (void)sizeof(x); } while (0)
 #endif
 
-/* The current logging level. Initially everything on. */
-static CMB_THREAD_LOCAL uint32_t cmi_logger_mask = UINT32_C(0xFFFFFFFF);
+/* The current logging level. A single mask shared by all threads, so changing
+ * it affects logging from every thread. Accessed atomically. Initially all on. */
+static uint32_t cmi_logger_mask = UINT32_C(0xFFFFFFFF);
 
 /* A mutex to ensure that only one thread can be writing at the same time */
 static pthread_mutex_t cmi_logger_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -100,7 +101,7 @@ static const char *time_to_string(const double t)
 }
 
 /* Pointer to current time formatting function */
-static CMB_THREAD_LOCAL const char *(*timeformatter)(double) = time_to_string;
+static const char *(*timeformatter)(double) = time_to_string;
 
 void cmb_logger_timeformatter_set(cmb_timeformatter_func *fp)
 {
@@ -117,7 +118,7 @@ void cmb_logger_flags_on(const uint32_t flags)
 {
     logger_assert_release(flags != 0u);
 
-    cmi_logger_mask |= flags;
+    (void)__atomic_or_fetch(&cmi_logger_mask, flags, __ATOMIC_RELAXED);
 }
 
 /*
@@ -128,7 +129,12 @@ void cmb_logger_flags_off(const uint32_t flags)
 {
     logger_assert_release(flags != 0u);
 
-    cmi_logger_mask &= ~flags;
+    (void)__atomic_and_fetch(&cmi_logger_mask, ~flags, __ATOMIC_RELAXED);
+}
+
+static inline uint32_t logger_mask(void)
+{
+    return __atomic_load_n(&cmi_logger_mask, __ATOMIC_RELAXED);
 }
 
 /*
@@ -151,7 +157,7 @@ int cmb_logger_vfprintf(FILE *fp,
                         va_list args)
 {
     int ret = 0;
-    if ((flags & cmi_logger_mask) != 0) {
+    if ((flags & logger_mask()) != 0) {
         pthread_mutex_lock(&cmi_logger_mutex);
         int r = 0;
         if (cmi_logger_trial_idx != CMI_NO_TRIAL_IDX) {
@@ -222,7 +228,7 @@ void cmi_logger_fatal(FILE *fp,
                       const char *fmtstr,
                       ...)
 {
-    if ((CMB_LOGGER_FATAL & cmi_logger_mask) != 0) {
+    if ((CMB_LOGGER_FATAL & logger_mask()) != 0) {
         fflush(NULL);
         va_list args;
         va_start(args, fmtstr);
@@ -239,7 +245,7 @@ void cmi_logger_error(FILE *fp,
                       const char *fmtstr,
                       ...)
 {
-    if ((CMB_LOGGER_ERROR & cmi_logger_mask) != 0) {
+    if ((CMB_LOGGER_ERROR & logger_mask()) != 0) {
         fflush(NULL);
         va_list args;
         va_start(args, fmtstr);
@@ -263,7 +269,7 @@ void cmi_logger_warning(FILE *fp,
                         const char *fmtstr,
                         ...)
 {
-    if ((CMB_LOGGER_WARNING & cmi_logger_mask) != 0) {
+    if ((CMB_LOGGER_WARNING & logger_mask()) != 0) {
         fflush(NULL);
         va_list args;
         va_start(args, fmtstr);
@@ -278,7 +284,7 @@ void cmi_logger_info(FILE *fp,
                      const char *fmtstr,
                      ...)
 {
-    if ((CMB_LOGGER_INFO & cmi_logger_mask) != 0) {
+    if ((CMB_LOGGER_INFO & logger_mask()) != 0) {
         va_list args;
         va_start(args, fmtstr);
         (void)cmb_logger_vfprintf(fp, CMB_LOGGER_INFO, func, line, fmtstr, args);
@@ -293,7 +299,7 @@ void cmi_logger_user(FILE *fp,
                      const char *fmtstr,
                      ...)
 {
-    if ((flags & cmi_logger_mask) != 0) {
+    if ((flags & logger_mask()) != 0) {
         va_list args;
         va_start(args, fmtstr);
         (void)cmb_logger_vfprintf(fp, flags, func, line, fmtstr, args);
