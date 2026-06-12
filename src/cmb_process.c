@@ -641,6 +641,10 @@ static void wakeup_event_interrupt(void *vp, void *arg)
     }
 }
 
+/* Friendly function in cmb_resourceguard.c */
+extern void wakeup_event_resource(void *vp, void *arg);
+/* Friendly function in cmb_resource.c */
+extern void wakeup_event_preempt(void *vp, void *arg);
 /*
  * Clear the list of things this process is waiting for
  */
@@ -687,11 +691,17 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
         cmi_mempool_free(&cmi_process_awaitabletags, pa);
     }
 
-    /* Make sure any previously scheduled wakeup event does not happen */
+    /* Make sure any previously scheduled wakeup event does not happen.
+     * The fast way to do this would be to use wildcard CMB_ANY_ACTION,
+     * but we need to allow for the possibility of some user-scheduled event
+     * that just happens to have process pp as its subject. Hence a more
+     * surgical approach, searching for the specific event types */
     cmb_event_pattern_cancel(wakeup_event_time, pp, CMB_ANY_OBJECT);
     cmb_event_pattern_cancel(wakeup_event_process, pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(wakeup_event_resource, pp, CMB_ANY_OBJECT);
     cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
-}
+    cmb_event_pattern_cancel(wakeup_event_preempt, pp, CMB_ANY_OBJECT);
+ }
 
 /*
  * cmb_process_interrupt - Schedule an interrupt event for the target process
