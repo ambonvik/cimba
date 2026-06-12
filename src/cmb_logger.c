@@ -257,7 +257,7 @@ void cmi_logger_error(FILE *fp,
     }
 
     if (cmi_worker_recovery_armed) {
-        longjmp(cmi_worker_recovery, 1);
+        CMI_RECOVERY_JUMP(cmi_worker_recovery);
     }
     else {
         /* Not running inside a Cimba worker — fall back to thread exit */

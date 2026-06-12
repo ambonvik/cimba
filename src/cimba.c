@@ -182,7 +182,7 @@ static void *worker_thread_func(void *arg)
         cmi_logger_trial_idx = idx;
 
         cmi_worker_recovery_armed = true;
-        if (setjmp(cmi_worker_recovery) == 0) {
+        if (CMI_RECOVERY_SET(cmi_worker_recovery) == 0) {
             if (cmg_trial_func != NULL) {
                 /* Normal usage, a common function, multiple data */
                 (*cmg_trial_func)(trial);

@@ -65,4 +65,33 @@
 #endif
 
 
+/*
+ * Worker-recovery non-local jump (see worker_thread_func in cimba.c and
+ * cmi_logger_error in cmb_logger.c). A trial that calls cmb_logger_error abandons
+ * whatever coroutine it is running in and jumps straight back to the worker
+ * loop on the thread's own stack, i.e. the jump crosses from a coroutine stack
+ * to the thread stack.
+ *
+ * On Win64 the C library longjmp performs SEH stack unwinding (RtlUnwindEx),
+ * which validates each frame against the TEB stack bounds and faults with
+ * STATUS_BAD_STACK when the target frame lives on a different stack. The GCC
+ * builtins do a plain register restore with no unwinding - exactly the Linux
+ * longjmp behaviour - which is what a cross-stack jump needs. The TEB stack
+ * fields are then put back by cmi_coroutine_reset_to_main once we have landed.
+ * The jmp_buf storage is reused as the builtin buffer (it is far larger than
+ * the five words __builtin_setjmp needs).
+ *
+ * Linux keeps the C library setjmp/longjmp: it unwinds nothing across stacks
+ * anyway, and the libc longjmp is the one AddressSanitizer interposes for its
+ * no-return stack cleanup.
+ */
+#if CMI_OS == CMI_WINDOWS
+    #define CMI_RECOVERY_SET(buf)   __builtin_setjmp((void **)(buf))
+    #define CMI_RECOVERY_JUMP(buf)  __builtin_longjmp((void **)(buf), 1)
+#else
+    #define CMI_RECOVERY_SET(buf)   setjmp(buf)
+    #define CMI_RECOVERY_JUMP(buf)  longjmp((buf), 1)
+#endif
+
+
 #endif /* CIMBA_CMI_CONFIG_H */
