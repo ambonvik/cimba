@@ -38,7 +38,7 @@ cmi_coroutine_stackbase:
 ; Callable funnction to return the current StackLimit (bottom of allocated stack)
 ;
 cmi_coroutine_stacklimit:
-    mov rax, [gs:0x16]
+    mov rax, [gs:0x10]
     ret
 
 ;-------------------------------------------------------------------------------
@@ -176,7 +176,7 @@ cmi_coroutine_context_switch:
     ; Push the TIB DeallocationStack, StackLimit, and StackBase entries
     mov r9, [gs:0x1478]      ; DeallocationStack
     push r9
-    mov r9, [gs:0x16]        ; StackLimit
+    mov r9, [gs:0x10]        ; StackLimit
     push r9
     mov r9, [gs:0x8]         ; StackBase
     push r9
@@ -194,7 +194,7 @@ cmi_coroutine_context_switch:
     ;
     ; Write the new stack info to Windows TIB without touching the stack
     mov [gs:0x8], r10         ; Update StackBase
-    mov [gs:0x16], r11        ; Update StackLimit
+    mov [gs:0x10], r11        ; Update StackLimit
     mov [gs:0x1478], rax      ; Update DeallocationStack
     ;
     ; Done, safe to switch to the new stack, advancing past the used TIB entries
