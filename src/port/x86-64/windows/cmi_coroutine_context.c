@@ -157,10 +157,6 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_trampoline;
 
-    /* Set the flags register, Interrupt Enable on */
-    stkptr -= 8u;
-    *(uint64_t *)stkptr = 0x202ull;
-
     #ifndef NMXCSR
         /* Set the XMM status register MXCSR, default value (masked fp exceptions) */
         stkptr -= 8u;
@@ -206,13 +202,13 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     }
 
     #ifndef NMXCSR
-        /* Add space for 10 XMM registers * 16 bytes + 8 bytes for alignment */
-        stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
-        (void)cmi_memset(stkptr, 0, 168);
-    #else
-        /* Already aligned, 160 bytes for XMM registers only */
+        /* Add space for 10 XMM registers * 16 bytes */
         stkptr = (unsigned char *)((uintptr_t)stkptr - 160);
         (void)cmi_memset(stkptr, 0, 160);
+    #else
+        /* Also add 8 extra bytes for alignment */
+        stkptr = (unsigned char *)((uintptr_t)stkptr - 168);
+        (void)cmi_memset(stkptr, 0, 168);
     #endif
 
     /* "Push" the stack deallocation ptr, stack limit, stack base (to TIB via GS register) */

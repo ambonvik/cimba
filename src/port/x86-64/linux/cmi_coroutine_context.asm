@@ -32,9 +32,6 @@ global cmi_coroutine_trampoline
 ; In effect taking a (sub-)continuation at this point in execution.
 ;
 %macro save_context 0
-    ; Save flags register
-    pushfq
-
     %ifndef NMXCSR
         ; Allocate space and save MXCSR (SSE status register)
         sub rsp, 8
@@ -68,8 +65,8 @@ global cmi_coroutine_trampoline
         add rsp, 8
     %endif
 
-    ; Restore flags
-    popfq
+    ; Enfore cleared direction flag
+    cld
 %endmacro
 
 ;-------------------------------------------------------------------------------

@@ -73,9 +73,6 @@ cmi_coroutine_set_stack_teb:
 ; this macro (i.e. it was 16-byte aligned, then RIP got pushed, now we are here)
 ;
 %macro save_context 0
-    ; Save flags register
-    pushfq
-
     %ifndef NMXCSR
         ; Allocate space and save MXCSR (SSE status register)
         sub rsp, 8
@@ -94,11 +91,11 @@ cmi_coroutine_set_stack_teb:
     ;
     ; Save XMM registers
     %ifndef NMXCSR
-        ; Add 8 bytes padding for alignment
-        sub rsp, 168
-    %else
         ; No padding needed, even number of pushes
         sub rsp, 160
+    %else
+        ; Add 8 bytes padding for alignment
+        sub rsp, 168
     %endif
     ;
     movaps [rsp + 144], xmm15
@@ -129,9 +126,9 @@ cmi_coroutine_set_stack_teb:
     movaps xmm14, [rsp + 128]
     movaps xmm15, [rsp + 144]
     %ifndef NMXCSR
-        add rsp, 168
-    %else
         add rsp, 160
+    %else
+        add rsp, 168
     %endif
     ;
     ; Restore general purpose registers
@@ -150,8 +147,8 @@ cmi_coroutine_set_stack_teb:
         add rsp, 8
     %endif
     ;
-    ; Restore flags
-    popfq
+    ; Clear direction flag
+    cld
 %endmacro
 
 ;-------------------------------------------------------------------------------

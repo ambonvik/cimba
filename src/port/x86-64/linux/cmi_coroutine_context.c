@@ -89,11 +89,11 @@ bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
             cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
             cmb_assert_debug((uintptr_t *)cp->stack_pointer < (uintptr_t *)cp->stack_base);
             #ifndef NMXCSR
-                /* Total 9 slots pushed: Trampoline, Flags, MXCSR, RBP, RBX, R12, R13, R14, R15 */
-                cmb_assert_debug((((uintptr_t)cp->stack_pointer + 8u) % 16u) == 0u);
+                /* Even number of slots pushed: Trampoline, MXCSR, RBP, RBX, R12, R13, R14, R15 */
+                cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
             #else
-               /* Total 8 slots pushed: MXCSR is gone. */
-               cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
+                /* Odd number of slots pushed: MXCSR is gone. */
+                cmb_assert_debug((((uintptr_t)cp->stack_pointer + 8u) % 16u) == 0u);
             #endif
         }
     }
@@ -103,11 +103,11 @@ bool cmi_coroutine_stack_valid(const struct cmi_coroutine *cp)
         cmb_assert_debug((uintptr_t *)cp->stack_pointer > (uintptr_t *)cp->stack_limit);
         cmb_assert_debug((uintptr_t *)cp->stack_pointer < (uintptr_t *)cp->stack_base);
         #ifndef NMXCSR
-            /* Total 9 slots pushed: Trampoline, Flags, MXCSR, RBP, RBX, R12, R13, R14, R15 */
-            cmb_assert_debug((((uintptr_t)cp->stack_pointer + 8u) % 16u) == 0u);
-        #else
-            /* Total 8 slots pushed: MXCSR is gone. */
+            /* Even number of slots pushed: Trampoline, MXCSR, RBP, RBX, R12, R13, R14, R15 */
             cmb_assert_debug(((uintptr_t)cp->stack_pointer % 16u) == 0u);
+         #else
+            /* Odd number of slots pushed: MXCSR is gone. */
+            cmb_assert_debug((((uintptr_t)cp->stack_pointer + 8u) % 16u) == 0u);
         #endif
     }
 
@@ -166,9 +166,11 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     stkptr -= 8u;
     *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_trampoline;
 
+#if 0
     /* Clear the flag register, enable interrupts */
     stkptr -= 8u;
     *(uint64_t *)stkptr = 0x0202ull;
+#endif
 
     #ifndef NMXCSR
         /* Default MXCSR value */
