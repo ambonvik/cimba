@@ -114,6 +114,7 @@ void cmi_hashheap_initialize(struct cmi_hashheap *hp,
 
     hp->heap_count = 0u;
     hp->item_counter = 0u;
+    hp->tombstones = 0u;
     hp->heap_compare = (cmp == NULL) ? default_compare : cmp;
 
     /* Lazy initialization of hashmap, only at first actual need for it */
@@ -161,6 +162,7 @@ void cmi_hashheap_clear(struct cmi_hashheap *hp)
         cmi_memset(hp->heap, 0u, total_bts);
 
         hp->heap_count = 0u;
+        hp->tombstones = 0u;
         hp->map_active = false;
     }
 }
@@ -417,9 +419,32 @@ cmb_assert_debug(hp != NULL);
         hash_rehash(hp, hash_old, old_hashsz);
     }
 
+    /* The rehash dropped every tombstone */
+    hp->tombstones = 0u;
     cmi_aligned_free(heap_old_block);
 }
 
+/*
+* hashheap_compact - Reclaim tombstones without growing. Rebuilds the hash map
+* at its current size from the live heap entries, restoring empty slots that
+* had bled into tombstones. Needed because the grow-triggered rehash only fires
+* when the heap fills; a workload that holds the live count below that
+* threshold while churning heavily would otherwise accumulate tombstones
+* indefinitely, lengthening every lookup (which only terminates on a genuinely
+* empty slot, never on a tombstone).
+*/
+static void hashheap_compact(struct cmi_hashheap *hp)
+{
+    cmb_assert_debug(hp != NULL);
+    cmb_assert_debug(hp->heap != NULL);
+    cmb_assert_debug(hp->hash_map != NULL);
+    cmb_assert_debug(hp->map_active);
+
+    const size_t hash_bts = (hp->heap_size << 1u) * sizeof(struct cmi_hash_tag);
+    cmi_memset(hp->hash_map, 0u, hash_bts);
+    hash_init(hp);
+    hp->tombstones = 0u;
+}
 
 /*
  * cmi_hashheap_enqueue - Insert item in queue, return unique event hash_key.
@@ -443,8 +468,12 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
     if (hp->heap_count == hp->heap_size) {
        hashheap_grow(hp);
     }
+    else if (hp->map_active &&
+            (hp->heap_count + hp->tombstones >= (3 * (hp->heap_size << 1)) / 4)) {
+        hashheap_compact(hp);
+    }
 
-    /* Now we have, put the new entry at the end */
+    /* Now we have space, put the new entry at the end */
     cmb_assert_debug(hp->heap_count < hp->heap_size);
     const uint64_t hc = ++hp->heap_count;
     hp->item_counter += 1u;
@@ -465,6 +494,12 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
 
     if (hp->map_active) {
         const uint64_t idx = hash_find_slot(hp, hashkey);
+        if (hash[idx].hash_key != 0u) {
+            /* Reclaiming a tombstone. */
+            cmb_assert_debug(hp->tombstones > 0u);
+            hp->tombstones--;
+        }
+
         hash[idx].hash_key = hashkey;
         hash[idx].heap_index = hc;
         heap[hc].hash_index = idx;
@@ -501,6 +536,7 @@ void **cmi_hashheap_dequeue(struct cmi_hashheap *hp)
         /* Mark it as deleted (a tombstone) in the hash map */
         const uint64_t idx = heap[0u].hash_index;
         hp->hash_map[idx].heap_index = 0u;
+        hp->tombstones++;
     }
 
     /* Reshuffle the heap */
@@ -550,6 +586,7 @@ bool cmi_hashheap_remove(struct cmi_hashheap *hp, const uint64_t hashkey)
     cmb_assert_debug(hp->heap[heapidx].hash_key == hashkey);
     uint64_t hashidx = hp->heap[heapidx].hash_index;
     hp->hash_map[hashidx].heap_index = 0u;
+    hp->tombstones++;
 
     /* Remove entry from heap */
     if (heapidx == hp->heap_count) {

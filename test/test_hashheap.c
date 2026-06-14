@@ -208,6 +208,115 @@ void test_hashheap(uint64_t seed)
     cmi_test_print_line("*");
 }
 
+/*
+ * test_hashheap_churn - Stress the tombstone reclamation (issue M1).
+ *
+ * Holds the live count well below the heap capacity while churning heavily, so
+ * the heap never grows and the grow-triggered rehash never fires. Without
+ * compaction the hash map bleeds empty slots into tombstones without bound, and
+ * lookups (which only stop at a genuinely empty slot) keep getting longer. With
+ * it, tombstones are reclaimed once they reach half the hash slots (heap_size).
+ * Verifies correctness throughout, that the heap does not grow, that compaction
+ * actually fires repeatedly, and that the tombstone count stays bounded.
+ *
+ * Deterministic by construction: no use of the random generator, so its output
+ * does not depend on the seed.
+ */
+#define CHURN_LIVE       100u
+#define CHURN_ITERATIONS 50000u
+
+static void test_hashheap_churn(void)
+{
+    cmi_test_print_line("*");
+    printf("Testing tombstone reclamation under churn\n");
+
+    struct cmi_hashheap *hhp = cmi_hashheap_create();
+    cmb_assert_always(hhp != NULL);
+
+    /* Small heap so compaction is reached quickly; live count stays below it. */
+    cmi_hashheap_initialize(hhp, 8u, heap_order_check);     /* heap_size = 256 */
+    const uint64_t heap_size = hhp->heap_size;
+    cmb_assert_always(CHURN_LIVE < heap_size);
+
+    /* Ring buffer of the currently live keys, oldest at 'head'. */
+    uint64_t ring[CHURN_LIVE];
+
+    /* Prime the queue with CHURN_LIVE entries. */
+    uint64_t payload = 0u;
+    for (uint64_t ui = 0u; ui < CHURN_LIVE; ui++) {
+        payload++;
+        const double d = (double)((payload * 2654435761u) % 1000u);
+        ring[ui] = cmi_hashheap_enqueue(hhp, (void *)(uintptr_t)payload,
+                                        NULL, NULL, NULL, 0u, d, 0);
+    }
+
+    uint64_t head = 0u;
+    uint64_t removes = 0u;
+    uint64_t compactions = 0u;
+    uint64_t max_tombstones = 0u;
+
+    for (uint64_t it = 0u; it < CHURN_ITERATIONS; it++) {
+        /* Retire the oldest live key. */
+        const uint64_t oldkey = ring[head];
+        cmb_assert_always(cmi_hashheap_is_enqueued(hhp, oldkey) == true);
+        cmb_assert_always(cmi_hashheap_remove(hhp, oldkey) == true);
+        cmb_assert_always(cmi_hashheap_is_enqueued(hhp, oldkey) == false);
+        removes++;
+
+        /* Insert a fresh one. A compaction fires exactly when the tombstone
+         * count had reached the trigger (half the hash slots) on entry. */
+        const uint64_t tomb_before = hhp->tombstones;
+        const uint64_t entries_before = cmi_hashheap_count(hhp);
+        payload++;
+        const double d = (double)((payload * 2654435761u) % 1000u);
+        const uint64_t newkey = cmi_hashheap_enqueue(hhp,
+                                    (void *)(uintptr_t)payload,
+                                    NULL, NULL, NULL, 0u, d, 0);
+        if (tomb_before + entries_before >= 1.5 * heap_size) {
+            compactions++;
+            cmb_assert_always(hhp->tombstones == 0u);
+        }
+        ring[head] = newkey;
+        head = (head + 1u) % CHURN_LIVE;
+
+        /* The heap must not have grown, and tombstones must stay bounded. */
+        cmb_assert_always(hhp->heap_size == heap_size);
+        cmb_assert_always(hhp->heap_count == CHURN_LIVE);
+        cmb_assert_always(hhp->heap_count + hhp->tombstones <= 1.5 * heap_size);
+        if (hhp->tombstones > max_tombstones) {
+            max_tombstones = hhp->tombstones;
+        }
+
+        /* The new key is live and carries the right payload. */
+        cmb_assert_always(cmi_hashheap_is_enqueued(hhp, newkey) == true);
+        void **item = cmi_hashheap_item(hhp, newkey);
+        cmb_assert_always(item != NULL);
+        cmb_assert_always(item[0] == (void *)(uintptr_t)payload);
+
+        /* Periodically verify every live key is still findable. */
+        if ((it % 5000u) == 0u) {
+            for (uint64_t ui = 0u; ui < CHURN_LIVE; ui++) {
+                cmb_assert_always(cmi_hashheap_is_enqueued(hhp, ring[ui]) == true);
+            }
+        }
+    }
+
+    /* Compaction must have actually fired, repeatedly. */
+    cmb_assert_always(compactions > 0u);
+
+    printf("  live = %u, heap_size = %" PRIu64 ", iterations = %u\n",
+           CHURN_LIVE, heap_size, CHURN_ITERATIONS);
+    printf("  removes = %" PRIu64 ", compactions = %" PRIu64
+           ", max tombstones = %" PRIu64 "\n",
+           removes, compactions, max_tombstones);
+    printf("  final live count = %" PRIu64 ", tombstones = %" PRIu64 "\n",
+           cmi_hashheap_count(hhp), hhp->tombstones);
+
+    cmi_hashheap_terminate(hhp);
+    cmi_hashheap_destroy(hhp);
+    cmi_test_print_line("*");
+}
+
 int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
@@ -236,6 +345,7 @@ int main(const int argc, char *argv[])
     const clock_t start_time = clock();
 
     test_hashheap(seed);
+    test_hashheap_churn();
 
     if (timing_enabled) {
         const clock_t end_time = clock();

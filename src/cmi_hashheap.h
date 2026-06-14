@@ -103,10 +103,11 @@ struct cmi_hashheap {
     cmi_heap_compare_func *heap_compare;
     uint64_t heap_size;     /* Max number of items */
     uint64_t heap_count;    /* Current number of items */
-    uint64_t item_counter;
-    bool map_active;
-    uint16_t heap_exp_init;
-    uint16_t heap_exp_cur;
+    uint64_t item_counter;  /* Running counter */
+    uint64_t tombstones;    /* Current number */
+    bool map_active;        /* Is the hash map turned on? */
+    uint16_t heap_exp_init; /* Initial sizing, */
+    uint16_t heap_exp_cur;  /* Current sizing */
 };
 
 /*

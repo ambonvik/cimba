@@ -205,3 +205,9 @@ Dequeued item: 0x8
 No more items
 Cleaning up
 ********************************************************************************
+********************************************************************************
+Testing tombstone reclamation under churn
+  live = 100, heap_size = 256, iterations = 50000
+  removes = 50000, compactions = 170, max tombstones = 284
+  final live count = 100, tombstones = 96
+********************************************************************************
