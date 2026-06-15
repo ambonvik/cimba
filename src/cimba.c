@@ -253,14 +253,18 @@ uint64_t cimba_run(void *your_experiment_array,
     const uint32_t nthreads = (cmg_worker_threads == 0u) ? cmi_cpu_cores() : cmg_worker_threads;
     pthread_t *threads = cmi_calloc(nthreads, sizeof(*threads));
     for (uint64_t ui = 0u; ui < nthreads; ui++) {
-        pthread_create(&threads[ui], NULL, worker_thread_func, (void *)ui);
+        /* A failure here will be fatal, so check */
+        const int rc = pthread_create(&threads[ui], NULL, worker_thread_func, (void *)ui);
+        cmb_assert_always(rc == 0);
     }
 
     /* ...worker threads are executing your trials in the background here... */
 
     /* Wait for all worker threads to finish */
     for (uint64_t ui = 0u; ui < nthreads; ui++) {
-        pthread_join(threads[ui], NULL);
+        /* We are about to exit anyway, so less critical, but could as well check. */
+        const int rc = pthread_join(threads[ui], NULL);
+        cmb_assert_always(rc == 0);
     }
 
     cmi_free(threads);
