@@ -139,10 +139,10 @@ extern uint64_t cmb_random_sfc64(void);
 extern uint64_t cmb_random_fmix64(uint64_t seed, uint64_t nonce);
 
 /**
- * @brief Continuous uniform distribution on the interval [0, 1].
+ * @brief Continuous uniform distribution on the interval [0, 1).
  *
  * A 64-bit double has a 53-bit significand. We discard the bottom 11 bits and
- * scale the result by 2^(-53) to get a number in [0.0, 1.0].
+ * scale the result by 2^(-53) to get a number in [0.0, 1.0).
  *
  * See also https://en.wikipedia.org/wiki/Continuous_uniform_distribution
  */
@@ -153,7 +153,7 @@ static inline double cmb_random(void)
 }
 
 /**
- * @brief Continuous uniform distribution on the interval `[min, max]`.
+ * @brief Continuous uniform distribution on the interval `[min, max)`.
  *
  * Often used in lack of any other information about a distribution than
  * the endpoints. Assuming a uniform distribution between may then be
@@ -168,13 +168,13 @@ static inline double cmb_random_uniform(const double min, const double max)
     cmb_assert_release(min < max);
 
     const double r = min + (max - min) * cmb_random();
-    cmb_assert_debug((r >= min) && (r <= max));
+    cmb_assert_debug((r >= min) && (r < max));
 
     return r;
 }
 
 /**
- * @brief Triangular distribution on the interval `[min, max]` with peak at
+ * @brief Triangular distribution on the interval `[min, max)` with peak at
  *        `mode`, where `min < mode < max`.
  *
  * The probability density function is zero at `min` and `max`, and reaches a

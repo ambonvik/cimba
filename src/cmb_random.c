@@ -514,7 +514,7 @@ double cmb_random_triangular(const double min,
         x = (max - sqrt((1.0 - u) * (max- min) * (max - mode)));
     }
 
-    cmb_assert_debug((x >= min) && (x <= max));
+    cmb_assert_debug((x >= min) && (x < max));
     return x;
 }
 

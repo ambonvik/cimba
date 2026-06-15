@@ -695,8 +695,8 @@ As an illustration, consider the function :c:func:`cmb_random_uniform()`:
         return r;
     }
 
-The function generates a pseudo-random uniform variate on the interval ``[min, max]``. We
-use those argument names instead of, say, ``[a, b]`` to make the expectation clear. We
+The function generates a pseudo-random uniform variate on the interval ``[min, max)``. We
+use those argument names instead of, say, ``[a, b)`` to make the expectation clear. We
 then enforce it with a release assert. If ``min`` is not strictly less than ``max``, we
 stop right there. Alternatively, we could be "helpful" and generate samples for intervals
 with reversed limits, but it is more likely than not that both a zero-width interval and an
@@ -886,12 +886,12 @@ sample values from it according to whatever distribution is needed.
 
 The basic :c:func:`cmb_random_sfc64()` returns an unsigned 64-bit bit pattern from the PRNG.
 This is a bit spartan for most purposes. The function :c:func:`cmb_random()` instead returns
-the sample as a ``double`` between zero and one, inclusive. The first unit test in
+the sample as a ``double`` between zero and one. The first unit test in
 ``test/test_random.c`` checks the output of :c:func:`cmb_random()` against its expected values:
 
 .. code-block:: none
 
-    Quality testing basic random number generator cmb_random(), uniform on [0,1]
+    Quality testing basic random number generator cmb_random(), uniform on [0,1)
     Drawing 100000000 samples...
 
     Expected: N 100000000  Mean   0.5000  StdDev   0.2887  Variance  0.08333  Skewness    0.000  Kurtosis   -1.200

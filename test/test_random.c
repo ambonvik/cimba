@@ -104,7 +104,16 @@ static void print_expected(const uint64_t n,
 
 static void test_quality_random(uint64_t nsamples)
 {
-    printf("\nQuality testing basic random number generator cmb_random(), uniform on [0,1]\n");
+    printf("\nQuality testing basic random number generator cmb_random(), uniform on [0,1)\n");
+
+    /* Verify the range stated above, using same formula as in cmb_random() */
+    const uint64_t all_zeros = UINT64_C(0x0000000000000000);
+    const double rmin = ldexp((double)(all_zeros >> 11), -53);
+    cmb_assert_always(rmin == 0.0);
+    const uint64_t all_ones = UINT64_C(0xFFFFFFFFFFFFFFFF);
+    const double rmax = ldexp((double)(all_ones >> 11), -53);
+    cmb_assert_always((rmax < 1.0) && (1.0 - rmax) > 0.0);
+
     QTEST_PREPARE();
 
     /* Handle test execution outside macro to capture moments as well */
