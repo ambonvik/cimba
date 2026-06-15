@@ -236,7 +236,7 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size,
     cmb_assert_always(raw != NULL);
 
     DWORD old_protect;
-    const int ok = VirtualProtect(raw, pagesz, PAGE_READWRITE | PAGE_NOACCESS, &old_protect);
+    const int ok = VirtualProtect(raw, pagesz, PAGE_NOACCESS, &old_protect);
     cmb_assert_always(ok != 0);
 
     /* The stack grows downwards; the base is at the top */
