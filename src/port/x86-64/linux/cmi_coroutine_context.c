@@ -239,7 +239,8 @@ void cmi_coroutine_stack_free(unsigned char *stack)
 
     /* Unprotect guard page to avoid complaints */
     const size_t pagesz = cmi_pagesize();
-    mprotect(stack, pagesz, PROT_READ | PROT_WRITE | PROT_EXEC);
+    const int r = mprotect(stack, pagesz, PROT_READ | PROT_WRITE);
+    cmb_assert_always(r == 0);
 
     cmi_aligned_free(stack);
 }
