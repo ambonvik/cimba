@@ -421,7 +421,7 @@ static inline double cmb_random_hypoexponential(const unsigned n, const double *
  *
  * See also https://en.wikipedia.org/wiki/Hyperexponential_distribution
  */
-extern double cmb_random_hyperexponential(unsigned n,
+extern double cmb_random_hyperexponential(uint64_t n,
                                           const double *ma,
                                           const double *pa);
 
@@ -747,7 +747,7 @@ extern int cmb_random_flip(void);
  * See also https://en.wikipedia.org/wiki/Bernoulli_distribution
  */
 [[maybe_unused]]
-static inline unsigned cmb_random_bernoulli(const double p)
+static inline unsigned int cmb_random_bernoulli(const double p)
 {
     cmb_assert_release((p >= 0.0) && (p <= 1.0));
 
@@ -767,7 +767,7 @@ static inline unsigned cmb_random_bernoulli(const double p)
  *
  * See also https://en.wikipedia.org/wiki/Geometric_distribution
  */
-extern unsigned cmb_random_geometric(double p);
+extern uint64_t cmb_random_geometric(double p);
 
 /**
  * @brief Binomial distribution, number of successes in n independent Bernoulli
@@ -781,7 +781,7 @@ extern unsigned cmb_random_geometric(double p);
  *
  * See also https://en.wikipedia.org/wiki/Geometric_distribution
  */
-extern unsigned cmb_random_binomial(unsigned n, double p);
+extern uint64_t cmb_random_binomial(uint64_t n, double p);
 
 /**
  * @brief Negative binomial distribution, the number of failures before the
@@ -799,7 +799,7 @@ extern unsigned cmb_random_binomial(unsigned n, double p);
  *
  * See also https://en.wikipedia.org/wiki/Negative_binomial_distribution
  */
-extern unsigned cmb_random_negative_binomial(unsigned m, double p);
+extern uint64_t cmb_random_negative_binomial(uint64_t m, double p);
 
 /**
  * @brief Pascal distribution an alias for the negative binomial distribution,
@@ -810,7 +810,7 @@ extern unsigned cmb_random_negative_binomial(unsigned m, double p);
  * See also https://en.wikipedia.org/wiki/Negative_binomial_distribution
  */
 [[maybe_unused]]
-static inline unsigned cmb_random_pascal(const unsigned m, const double p)
+static inline uint64_t cmb_random_pascal(const uint64_t m, const double p)
 {
     return cmb_random_negative_binomial(m, p);
 }
@@ -829,29 +829,38 @@ static inline unsigned cmb_random_pascal(const unsigned m, const double p)
  *
  * See also https://en.wikipedia.org/wiki/Poisson_distribution
  */
-extern unsigned cmb_random_poisson(double r);
+extern uint64_t cmb_random_poisson(double r);
+
+/**
+ * @brief A discrete uniform distribution on `[0, 1, ..., n-1]` for `n > 0`.
+ *
+ * See also https://en.wikipedia.org/wiki/Discrete_uniform_distribution
+ */
+extern uint64_t cmb_random_discrete_uniform(uint64_t n);
 
 /**
  * @brief A discrete uniform distribution on `[a, a+1, a+2, ..., b]` for
  *        `a < b`. The function name reflects what happens for `a = 1`, `b = 6`.
  *
  * See also https://en.wikipedia.org/wiki/Discrete_uniform_distribution
+ *
+ * @param a Lower end of range, x >= a
+ * @param b Upper end of range, x <= b
  */
 [[maybe_unused]]
-static inline long cmb_random_dice(const long a, const long b)
+static inline int64_t cmb_random_dice(const int64_t a, const int64_t b)
 {
-    cmb_assert (a < b);
+    cmb_assert_release(a < b);
 
-    const double x = (double)(b - a + 1) * cmb_random();
-    return (long)(floor((double)a + x));
+    const int64_t r = a + cmb_random_discrete_uniform(b - a + 1u);
+    cmb_assert_debug((r >= a) && (r <= b));
+
+    return r;
 }
 
 /**
  * @brief A non-uniform discrete distribution among `n` alternatives. It returns
  *        the selected array index `i` on `[0, n-1]` with a probability `pa[i]`.
- *
- * The probabilities in `pa[]` should sum to 1.0, i.e., mutually exclusive,
- * collectively exhaustive.
  *
  * This function uses a very simple O(n) implementation. For anything larger
  * than ~15 values, use the alias sampling method below instead.
@@ -863,19 +872,44 @@ static inline long cmb_random_dice(const long a, const long b)
  * `cmb_random.c` for an example of alias sampling from a table of values.
  *
  * @param n Number of entries
- * @param pa The probabilities for each of the entries, array size ``n``
- *
+ * @param pa The probabilities for each of the entries, array size ``n``. The
+ *           probabilities in `pa[]` should sum to 1.0, i.e., mutually exclusive,
+ *           collectively exhaustive.
  */
-extern unsigned cmb_random_loaded_dice(unsigned n, const double *pa);
+extern uint64_t cmb_random_discrete_nonuniform(uint64_t n, const double *pa);
+
+/**
+* @brief A discrete non-uniform distribution on `[a, a+1, a+2, ..., b]` for
+ *        integer `a < b`. The function name reflects what happens for `a = 1`, `b = 6`.
+ *
+ * @param a Lower end of range, x >= a
+ * @param b Upper end of range, x <= b
+ * @param pa Array of probabilities for outcome a, a+1, ..., b-1, b. The array
+ *           must be size `n = b -a + 1`. The array must sum to 1.0.
+ */
+[[maybe_unused]]
+static inline int64_t cmb_random_loaded_dice(const int64_t a, const int64_t b,
+                                             const double *pa)
+{
+    cmb_assert_release(a < b);
+    cmb_assert_release(pa != NULL);
+
+    const uint64_t n = b - a + 1u;
+    const int64_t r = a + cmb_random_discrete_nonuniform(n, pa);
+
+    cmb_assert_debug((r >= a) && (r <= b));
+    return r;
+}
+
 
 /**
  * @brief Alias table using integer encoding of the probabilities for fast
  *        look-up
  */
 struct cmb_random_alias {
-    unsigned n;         /**< The number of entries */
-    uint64_t *uprob;    /**< Probabilities encoded as unsigned 64-bit integers */
-    unsigned *alias;    /**< Alias indexes */
+    uint64_t n;         /**< The number of entries */
+    uint64_t *uprob;    /**< Probabilities encoded as uint64_t 64-bit integers */
+    uint64_t *alias;    /**< Alias indexes */
 };
 
 /**
@@ -894,7 +928,7 @@ struct cmb_random_alias {
  *         table.
  */
 
-extern struct cmb_random_alias *cmb_random_alias_create(unsigned n,
+extern struct cmb_random_alias *cmb_random_alias_create(uint64_t n,
                                                         const double *pa);
 
 /**
@@ -919,18 +953,7 @@ extern struct cmb_random_alias *cmb_random_alias_create(unsigned n,
  *        `pa[i]`
 
  */
-[[maybe_unused]]
-static inline unsigned cmb_random_alias_sample(const struct cmb_random_alias *ap)
-{
-    cmb_assert_release(ap != NULL);
-
-    const unsigned idx = (unsigned) (floor(ap->n * cmb_random()));
-    const bool c = (cmb_random_sfc64() >= ap->uprob[idx]);
-    const unsigned r = (c) ? ap->alias[idx] : idx;
-
-    cmb_assert_debug(r < ap->n);
-    return r;
-}
+extern uint64_t cmb_random_alias_sample(const struct cmb_random_alias *ap);
 
 /**
  * @brief Destroy alias lookup table created by `cmb_random_alias_create()`
