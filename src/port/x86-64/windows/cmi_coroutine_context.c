@@ -236,7 +236,8 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size,
     cmb_assert_always(raw != NULL);
 
     DWORD old_protect;
-    VirtualProtect(raw, pagesz, PAGE_READWRITE | PAGE_GUARD, &old_protect);
+    const int ok = VirtualProtect(raw, pagesz, PAGE_READWRITE | PAGE_NOACCESS, &old_protect);
+    cmb_assert_always(ok != 0);
 
     /* The stack grows downwards; the base is at the top */
     *base_p = raw + size + pagesz;
@@ -250,6 +251,8 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size,
 /* Free memory previously allocated for a stack */
 void cmi_coroutine_stack_free(unsigned char *stack)
 {
+    cmb_assert_release(stack != NULL);
+
     int r = VirtualFree(stack, 0, MEM_RELEASE);
     cmb_assert_always(r != 0);
 }
