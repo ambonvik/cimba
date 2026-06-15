@@ -851,9 +851,9 @@ static void print_discrete_expects(const uint64_t nsamples, const unsigned n, co
 
 static void test_quality_loaded_dice(const uint64_t nsamples, const unsigned n, double pa[n])
 {
-    printf("\nQuality testing loaded dice distribution, n = %u\n", n);
+    printf("\nQuality testing discrete non-uniform distribution, n = %u\n", n);
     QTEST_PREPARE();
-    QTEST_EXECUTE((double)cmb_random_loaded_dice(n, pa), (x >= 0) && (x <= (n - 1)));
+    QTEST_EXECUTE((double)cmb_random_discrete_nonuniform(n, pa), (x >= 0) && (x <= (n - 1)));
 
     print_discrete_expects(nsamples, n, pa);
 
@@ -895,7 +895,7 @@ static void test_speed_vose_alias(const uint64_t nsamples, const unsigned init, 
 
         const clock_t cs_simple = clock();
         for (unsigned ui = 0; ui < nsamples; ui++) {
-            (void)cmb_random_loaded_dice(n, pa);
+            (void)cmb_random_discrete_nonuniform(n, pa);
         }
 
         const clock_t ce_simple = clock();

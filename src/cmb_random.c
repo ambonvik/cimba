@@ -1,7 +1,7 @@
 /*
  * cmb_random.c - pseudo-random number generators and distributions
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
  *
  * The normal and exponential distributions below are based on code at
  *      https://github.com/cd-mcfarland/fast_prng
@@ -288,15 +288,15 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x)
  * Hyperexponential on [0, oo), choosing and samples one of n exponential
  * distributions. The probability of selecting distribution i is p_arr[i],
  * the mean of that distribution is m_arr[i].
- * The overall mean is the sum of p_arr[i] * m_arr[i], the variance a more
- * complicated sum of terms, see
+ * The overall mean is the sum of p_arr[i] * m_arr[i].
+ * The variance is a more complicated sum of terms, see
  * https://en.wikipedia.org/wiki/Hyperexponential_distribution
  *
  * Assumes that p_arr sums to 1.0. Uses a simple O(n) implementation.
  * If n is large and speed is important, consider using O(1) alias sampling to
  * select the distribution instead of using this function.
  */
-double cmb_random_hyperexponential(const unsigned n,
+double cmb_random_hyperexponential(const uint64_t n,
                                    const double ma[],
                                    const double pa[])
 {
@@ -304,7 +304,7 @@ double cmb_random_hyperexponential(const unsigned n,
     cmb_assert_release(ma != NULL);
     cmb_assert_release(pa != NULL);
 
-    const unsigned ui = cmb_random_loaded_dice(n, pa);
+    const uint64_t ui = cmb_random_discrete_nonuniform(n, pa);
     cmb_assert_debug(ui < n);
     const double x = cmb_random_exponential(ma[ui]);
 
@@ -555,7 +555,7 @@ int cmb_random_flip(void)
  * Geometric distribution, the number of trials until
  * and including the first success.
  */
-unsigned cmb_random_geometric(const double p)
+uint64_t cmb_random_geometric(const double p)
 {
     cmb_assert((p > 0.0) && (p <= 1.0));
 
@@ -565,20 +565,20 @@ unsigned cmb_random_geometric(const double p)
         denom = -log(1.0 - p);
     }
 
-    unsigned x = (unsigned)ceil(cmb_random_std_exponential() / denom);
+    uint64_t x = (uint64_t)ceil(cmb_random_std_exponential() / denom);
 
     cmb_assert_debug(x >= 1u);
     return x;
 }
 
 /* Binomial distribution, the number of successes in n trials */
-unsigned cmb_random_binomial(const unsigned n, const double p)
+uint64_t cmb_random_binomial(const uint64_t n, const double p)
 {
     cmb_assert_release(n > 0);
     cmb_assert_release((p > 0.0) && (p <= 1.0));
 
-    unsigned sctr = 0;
-    for (unsigned ui = 0u; ui < n; ui++) {
+    uint64_t sctr = 0;
+    for (uint64_t ui = 0u; ui < n; ui++) {
         sctr += cmb_random_bernoulli(p);
     }
 
@@ -590,13 +590,13 @@ unsigned cmb_random_binomial(const unsigned n, const double p)
  * Negative binomial distribution, number of failures until m'th success,
  * where p > 0 is the probability of success in each trial.
  */
-unsigned cmb_random_negative_binomial(const unsigned m, const double p)
+uint64_t cmb_random_negative_binomial(const uint64_t m, const double p)
 {
     cmb_assert_release(m > 0);
     cmb_assert((p > 0.0) && (p <= 1.0));
 
-    unsigned fctr = 0;
-    for (unsigned ui = 0u; ui < m; ui++) {
+    uint64_t fctr = 0;
+    for (uint64_t ui = 0u; ui < m; ui++) {
         /* The geometric distribution includes the final success, subtract it */
         fctr += cmb_random_geometric(p) - 1u;
     }
@@ -606,15 +606,15 @@ unsigned cmb_random_negative_binomial(const unsigned m, const double p)
 
 /*
  * Poisson distribution, number of arrivals with rate r in unit time,
- * using our fast exponential distribution to simulate it arrival by arrival.
+ * using our fast exponential distribution to simulate it, arrival by arrival.
  */
-unsigned cmb_random_poisson(const double r)
+uint64_t cmb_random_poisson(const double r)
 {
     cmb_assert_release(r > 0.0);
 
     const double m = 1.0 / r;
     double t = 0.0;
-    unsigned ctr = 0;
+    uint64_t ctr = 0;
     for (;;) {
         t += cmb_random_exponential(m);
         if (t <= 1.0) {
@@ -631,20 +631,46 @@ unsigned cmb_random_poisson(const double r)
 }
 
 /*
- * Non-uniform discrete distribution, simple cdf inversion method.
+ * Generate a uniform integer on [0, s) by using Daniel Lemire's "nearly
+ * divisionless" algorithm. See:
+ *  https://arxiv.org/pdf/1805.10941
+ *  https://lemire.me/blog/2019/06/06/nearly-divisionless-random-integer-generation-on-various-systems/
  */
+uint64_t cmb_random_discrete_uniform (const uint64_t s)
+{
+    cmb_assert_debug(s > 0u);
+
+    uint64_t x = cmb_random_sfc64();
+    __uint128_t m = (__uint128_t) x * (__uint128_t) s;
+    uint64_t l = (uint64_t) m;
+    if (l < s) {
+        const uint64_t t = -s % s;
+        while (l < t) {
+            x = cmb_random_sfc64();
+            m = ( __uint128_t ) x * ( __uint128_t ) s;
+            l = ( uint64_t ) m;
+        }
+    }
+
+    return m >> 64u;
+}
+
 static double sum_tolerance = 1.0e-3;
-static bool sums_to_one(const unsigned n, const double p[n])
+static bool sums_to_one(const uint64_t n, const double p[n])
 {
     double sum = 0.0;
-    for (unsigned ui = 0u; ui < n; ui++) {
+    for (uint64_t ui = 0u; ui < n; ui++) {
         sum += p[ui];
     }
 
     return (fabs(sum - 1.0) <= sum_tolerance) ? true : false;
 }
 
-unsigned cmb_random_loaded_dice(const unsigned n, const double *pa)
+/*
+ * Non-uniform discrete distribution on [0, n-1], typically used for selecting
+ * in an array.
+ */
+uint64_t cmb_random_discrete_nonuniform(const uint64_t n, const double *pa)
 {
     cmb_assert_release(n > 0);
     cmb_assert_release(pa != NULL);
@@ -652,7 +678,7 @@ unsigned cmb_random_loaded_dice(const unsigned n, const double *pa)
 
     const double x = cmb_random();
     double q = 0.0;
-    unsigned ui;
+    uint64_t ui;
     for (ui = 0; ui < n; ui++) {
         q += pa[ui];
         if (x < q) {
@@ -690,24 +716,24 @@ static inline uint64_t alias_secure(const double p)
 }
 
 /* Create an alias lookup table before sampling */
-struct cmb_random_alias *cmb_random_alias_create(const unsigned n,
+struct cmb_random_alias *cmb_random_alias_create(const uint64_t n,
                                                  const double *pa) {
-    cmb_assert_release(n > 0);
+    cmb_assert_release(n > 0u);
     cmb_assert_release(sums_to_one(n, pa));
 
     struct cmb_random_alias *alp = NULL;
     double *work = cmi_calloc(n, sizeof(double));
     double psum = 0.0;
-    for (unsigned ai = 0; ai < n; ai++) {
+    for (uint64_t ai = 0; ai < n; ai++) {
         psum += pa[ai];
     }
     cmb_assert_debug(fabs(psum - 1.0) <= sum_tolerance);
 
-    unsigned *small = cmi_calloc(n, sizeof(unsigned));
-    unsigned *large = cmi_calloc(n, sizeof(unsigned));
-    unsigned idxs = 0;
-    unsigned idxl = 0;
-    for (unsigned ui = 0; ui < n; ui++) {
+    uint64_t *small = cmi_calloc(n, sizeof(uint64_t));
+    uint64_t *large = cmi_calloc(n, sizeof(uint64_t));
+    uint64_t idxs = 0;
+    uint64_t idxl = 0;
+    for (uint64_t ui = 0; ui < n; ui++) {
         work[ui] = pa[ui] * n  / psum;
         if (work[ui] < 1.0) {
             small[idxs++] = ui;
@@ -720,11 +746,11 @@ struct cmb_random_alias *cmb_random_alias_create(const unsigned n,
     alp = cmi_malloc(sizeof *alp);
     alp->n = n;
     alp->uprob = cmi_calloc(n, sizeof(uint64_t));
-    alp->alias = cmi_calloc(n, sizeof(unsigned));
+    alp->alias = cmi_calloc(n, sizeof(uint64_t));
 
     while ((idxs > 0) && (idxl > 0)) {
-        const unsigned l = small[--idxs];
-        const unsigned g = large[--idxl];
+        const uint64_t l = small[--idxs];
+        const uint64_t g = large[--idxl];
         alp->uprob[l] = alias_secure(work[l]);
         alp->alias[l] = g;
         work[g] = (work[g] + work[l]) - 1.0;
@@ -737,12 +763,12 @@ struct cmb_random_alias *cmb_random_alias_create(const unsigned n,
     }
 
     while (idxl > 0) {
-        const unsigned g = large[--idxl];
+        const uint64_t g = large[--idxl];
         alp->uprob[g] = UINT64_MAX;
     }
 
     while (idxs > 0) {
-        const unsigned l = small[--idxs];
+        const uint64_t l = small[--idxs];
         alp->uprob[l] = UINT64_MAX;
     }
 
@@ -752,6 +778,19 @@ struct cmb_random_alias *cmb_random_alias_create(const unsigned n,
 
     return alp;
 }
+
+uint64_t cmb_random_alias_sample(const struct cmb_random_alias *ap)
+{
+    cmb_assert_release(ap != NULL);
+
+    const uint64_t idx = cmb_random_discrete_uniform(ap->n);
+    const bool c = (cmb_random_sfc64() >= ap->uprob[idx]);
+    const uint64_t r = (c) ? ap->alias[idx] : idx;
+
+    cmb_assert_debug(r < ap->n);
+    return r;
+}
+
 
 /* Deallocate the alias lookup table when done sampling */
 void cmb_random_alias_destroy(struct cmb_random_alias *ap)
