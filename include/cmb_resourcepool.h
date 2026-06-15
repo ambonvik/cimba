@@ -134,6 +134,17 @@ extern uint64_t cmb_resourcepool_held_by_process(struct cmb_resourcepool *rpp,
  * In particular, do not assume that the process has received the requested
  * req_amount when it returns.
  *
+ * Note that this is not deadlock-proof. Two processes may each capture some of
+ * a limited resource and then wait forever for each other to release the
+ * remainder. Any logic needed to prevent this belongs in the user model, since
+ * there may be many different ways of preventing and breaking deadlocks, with
+ * slightly different outcomes in the simulation. One simple way is to use a
+ * cmb_resource as a mutex or binary semaphore and have the calling processes
+ * acquire the mutex before acquiring from the resource pool, releasing it
+ * once the cmb_resourcepool_acquire() call returns. This will guarantee that
+ * only one process can be accumulating from the resource pool at a time,
+ * preventing any deadlock from occurring in the model.
+ *
  * @memberof cmb_resourcepool
  * @param rpp Pointer to a resource pool.
  * @param req_amount The requested amount.
