@@ -563,7 +563,7 @@ void cmb_dataset_histogram_print(const struct cmb_dataset *dsp,
     if (low_lim == high_lim) {
         /* Autoscale to dataset range */
         low_lim = dsp->min;
-        high_lim = dsp->max;
+        high_lim = dsp->max + 1.0;
     }
 
     const unsigned datarange = (unsigned)ceil(high_lim - low_lim);
