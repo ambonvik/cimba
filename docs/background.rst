@@ -258,6 +258,17 @@ thing. There is no need to refactor the whole call chain to yield generators at 
 levels if you change something deep in the call chain. This is why we insisted on
 proper *stackful* coroutines.
 
+One thing to be aware of: Recent generations of x86-64 CPUs have strong protection
+against stack-smashing exploits. This protects against a common cybersec attack where a
+stack-allocated buffer is overwritten and the attacker can change the return pointer,
+enabling arbitrary code execution. This protection is called Control-flow Enforcement
+Technology (CET). Cimba intentionally changes the stack and return pointers, and
+informs the CPU that this is to be expected. *Linking Cimba will turn the Intel CET
+(shadow stack + IBT) off for the host process on x86-64.* For this reason, it would be a
+potential security risk to combine a Cimba simulation with code that reads unchecked user
+input into fixed-size stack buffers, since one layer of protection against possible
+exploits is disabled.
+
 We will soon return to Cimba's processes and their interactions, but if the reader has
 been paying attention, there is something else we need to address first: We just said
 *"inheriting all properties and methods from the coroutine class"*, but we also just

@@ -4,7 +4,7 @@
 ; For 64-bits Linux on AMD64/x86-64 architecture.
 ; Written in NASM syntax.
 ;
-; Copyright (c) Asbjørn M. Bonvik 2025.
+; Copyright (c) Asbjørn M. Bonvik 2025-26.
 ;
 ; Licensed under the Apache License, Version 2.0 (the "License");
 ; you may not use this file except in compliance with the License.
@@ -19,6 +19,22 @@
 ; limitations under the License.
 
 default rel
+
+; Explicit Intel CET posture: This object honors no CET features.
+; GNU_PROPERTY_X86_FEATURE_1_AND with value 0 -> no IBT, no SHSTK. The linker
+; AND-merges this across all inputs, so it keeps Intel CET disabled for any
+; binary that links Cimba.
+section .note.gnu.property note alloc noexec nowrite align=8
+    dd 4                    ; n_namesz  = sizeof "GNU\0"
+    dd 16                   ; n_descsz  = size of the property array (incl. pad)
+    dd 5                    ; n_type    = NT_GNU_PROPERTY_TYPE_0
+    db "GNU", 0             ; n_name
+    dd 0xc0000002           ; pr_type   = GNU_PROPERTY_X86_FEATURE_1_AND
+    dd 4                    ; pr_datasz = 4
+    dd 0                    ; pr_data   = 0  -> no IBT (0x1), no SHSTK (0x2)
+    dd 0                    ; pad to 8-byte alignment
+
+section .note.GNU-stack noalloc noexec nowrite progbits
 
 section .text
 global cmi_cpu_has_rdseed
