@@ -3,7 +3,7 @@
 ********************************************************************************
 Using seed: 0x34f05c64d7ad598f
 
-Quality testing basic random number generator cmb_random(), uniform on [0,1]
+Quality testing basic random number generator cmb_random(), uniform on [0,1)
 Drawing 1000000 samples...
 
 Expected: N  1000000  Mean   0.5000  StdDev   0.2887  Variance  0.08333  Skewness    0.000  Kurtosis   -1.200
