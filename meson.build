@@ -47,7 +47,7 @@ buildtype_flags = {
     'plain'   : [],
 }
 
-# No-holds-barred optimized build: meson setup --buildtype=release -Dbenchopt=true
+# No-holds-barred optimized build: meson setup --buildtype=release -Dbenchopt=use
 benchopt_flags = [
     '-O3',
     '-DNDEBUG',
@@ -57,10 +57,11 @@ benchopt_flags = [
     '-fprofile-correction',
 ]
 
+# Need to generate profile before using it
 benchopt_gen_flags = [
     '-O3',
     '-fprofile-generate',
-    '-fno-omit-framepointer',
+    '-fno-omit-frame-pointer',
 ]
 
 buildtype = get_option('buildtype')
