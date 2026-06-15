@@ -21,10 +21,11 @@
 #define CIMBA_CMI_SLIST_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "cmi_mempool.h"
 
-#define cmi_offset_of(type, member) ((size_t)&(((type *)0)->member))
+#define cmi_offset_of(type, member) offsetof(type, member)
 
 #define cmi_container_of(ptr, type, member) \
 ((type *)((char *)(ptr) - cmi_offset_of(type, member)))
@@ -53,6 +54,7 @@ static inline void cmi_slist_terminate(struct cmi_slist_head *head)
 static inline void cmi_slist_destroy(struct cmi_slist_head *head)
 {
     cmb_assert_release(head != NULL);
+
     cmi_free(head);
 }
 

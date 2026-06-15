@@ -42,7 +42,7 @@ static inline void *cmi_malloc(const size_t sz)
     return rp;
 }
 
-static inline void *cmi_calloc(const unsigned n, const size_t sz)
+static inline void *cmi_calloc(const size_t n, const size_t sz)
 {
     cmb_assert_debug(n > 0);
     cmb_assert_debug(sz > 0);

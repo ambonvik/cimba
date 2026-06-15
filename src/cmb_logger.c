@@ -214,7 +214,7 @@ int cmb_logger_vfprintf(FILE *fp,
             ret += r;
         }
 
-        r += fprintf(fp, "\n");
+        r = fprintf(fp, "\n");
         logger_assert_debug(r > 0);
         ret += r;
 

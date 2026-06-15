@@ -21,6 +21,7 @@ Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
 Hash map inactive
 ------------------------------------- Hash -------------------------------------
 Hash idx	Hash key	Heap idx
+       0	       0	       0
        1	       0	       0
        2	       0	       0
        3	       0	       0
@@ -36,7 +37,6 @@ Hash idx	Hash key	Heap idx
       13	       0	       0
       14	       0	       0
       15	       0	       0
-      16	       0	       0
 --------------------------------------------------------------------------------
 Dequeued item: 0x5
 Dequeued item: 0x3
@@ -60,6 +60,7 @@ Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
 Hash map active
 ------------------------------------- Hash -------------------------------------
 Hash idx	Hash key	Heap idx
+       0	       0	       0
        1	      13	       7
        2	       0	       0
        3	       0	       0
@@ -91,7 +92,6 @@ Hash idx	Hash key	Heap idx
       29	       0	       0
       30	       8	       9
       31	       0	       0
-      32	       0	       0
 --------------------------------------------------------------------------------
 Removing hash keys 8u and 10u
 Reprioritizing hash key 9u
@@ -109,6 +109,7 @@ Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
 Hash map active
 ------------------------------------- Hash -------------------------------------
 Hash idx	Hash key	Heap idx
+       0	       0	       0
        1	      13	       7
        2	       0	       0
        3	       0	       0
@@ -140,7 +141,6 @@ Hash idx	Hash key	Heap idx
       29	       0	       0
       30	       8	       0
       31	       0	       0
-      32	       0	       0
 --------------------------------------------------------------------------------
 Cancelling value 0xC (hash key 13)
 ------------------------------------- Heap -------------------------------------
@@ -156,6 +156,7 @@ Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
 Hash map active
 ------------------------------------- Hash -------------------------------------
 Hash idx	Hash key	Heap idx
+       0	       0	       0
        1	      13	       0
        2	       0	       0
        3	       0	       0
@@ -187,7 +188,6 @@ Hash idx	Hash key	Heap idx
       29	       0	       0
       30	       8	       0
       31	       0	       0
-      32	       0	       0
 --------------------------------------------------------------------------------
 Dequeued item: 0xB
 Next item: 0x6

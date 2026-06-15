@@ -96,7 +96,7 @@ void cmi_hashheap_initialize(struct cmi_hashheap *hp,
     /* Initialize the powers-of-two growth parameters */
     hp->heap_exp_init = hexp;
     hp->heap_exp_cur = hexp;
-    hp->heap_size = 1u << hp->heap_exp_cur;
+    hp->heap_size = UINT64_C(1) << hp->heap_exp_cur;
 
     const size_t heap_bts = (hp->heap_size + 1u) * sizeof(struct cmi_heap_tag);
     const size_t hash_bts = (hp->heap_size << 1u) * sizeof(struct cmi_hash_tag);
@@ -156,7 +156,8 @@ void cmi_hashheap_clear(struct cmi_hashheap *hp)
     cmb_assert_release(hp != NULL);
 
     if (hp->heap != NULL) {
-        const size_t heap_bts = (hp->heap_size + 2u) * sizeof(struct cmi_heap_tag);
+        /* Adding one for the working space at the end */
+        const size_t heap_bts = (hp->heap_size + 1u) * sizeof(struct cmi_heap_tag);
         const size_t hash_bts = (hp->heap_size << 1u) * sizeof(struct cmi_hash_tag);
         const size_t total_bts = heap_bts + hash_bts;
         cmi_memset(hp->heap, 0u, total_bts);
@@ -389,7 +390,7 @@ cmb_assert_debug(hp != NULL);
     const uint64_t old_heapsz = hp->heap_size;
 
     hp->heap_exp_cur++;
-    hp->heap_size = 1u << hp->heap_exp_cur;
+    hp->heap_size = UINT64_C(1) << hp->heap_exp_cur;
 
     const size_t heap_bts = (hp->heap_size + 1u) * sizeof(struct cmi_heap_tag);
     const size_t hash_bts = (hp->heap_size << 1u) * sizeof(struct cmi_hash_tag);
@@ -926,7 +927,7 @@ void cmi_hashheap_hash_print(const struct cmi_hashheap *hp, FILE *fp)
     fprintf(fp, "Hash map %s\n", hp->map_active ? "active" : "inactive");
     fprintf(fp, "------------------------------------- Hash -------------------------------------\n");
     fprintf(fp, "Hash idx\tHash key\tHeap idx\n");
-    for (uint64_t ui = 1u; ui <= 2 * hp->heap_size; ui++) {
+    for (uint64_t ui = 0u; ui < 2 * hp->heap_size; ui++) {
         const struct cmi_hash_tag *htp = &(hp->hash_map[ui]);
         fprintf(fp, "%8" PRIu64 "\t%8" PRIu64 "\t%8" PRIu64 "\n", ui, htp->hash_key, htp->heap_index);
     }
