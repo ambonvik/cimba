@@ -51,19 +51,32 @@ cmi_cpu_has_rdrand:
     pop rbx            ; Restore RBX
     ret
 
+%define RDSEED_RETRIES 100
+%define RDRAND_RETRIES 10
+
 ; Get rdseed from system entropy buffer
 cmi_rdseed:
-    rdseed rax              ; Request a 64-bit true random value in RAX
-    jnc cmi_rdseed_retry    ; Check carry flag, retry if not set as call failed
+    mov ecx, RDSEED_RETRIES
+.retry:
+    rdseed rax                  ; Request a 64-bit true random value in RAX
+    jc .done                    ; CF=1 -> success, value in RAX
+    pause
+    dec ecx
+    jnz .retry
+    xor eax, eax                ; exhausted -> 0 (invalid-seed sentinel)
+.done:
     ret
-cmi_rdseed_retry:
-    pause                   ; Entropy buffer empty, wait a few cycles for refill
-    jmp cmi_rdseed          ; ... and retry
 
-; Get rdrand (used if rdseed is not available)
 cmi_rdrand:
-    rdrand rax              ; Request a 64-bit true random value in RAX
-    jnc cmi_rdrand          ; Retry immediately if carry flag not set
+    mov ecx, RDRAND_RETRIES
+.retry:
+    rdrand rax
+    jc .done
+    pause
+    dec ecx
+    jnz .retry
+    xor eax, eax
+.done:
     ret
 
 ; Get current thread ID (used if rdseed and rdrand are not available)
