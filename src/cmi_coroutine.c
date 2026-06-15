@@ -120,6 +120,8 @@ struct cmi_coroutine *cmi_coroutine_create(void)
 {
     struct cmi_coroutine *cp = cmi_malloc(sizeof(*cp));
     cmi_memset(cp, 0, sizeof(*cp));
+    /* In case we ever need to run a thread cleanup handler on this */
+    cp->heap_allocated = true;
 
     return cp;
 }
@@ -188,7 +190,11 @@ void cmi_coroutine_terminate(struct cmi_coroutine *cp)
     registry_remove(cp);
     cmi_tsan_destroy_fiber(cp->tsan_fiber);
     cmi_coroutine_stack_free(cp->stack);
+
+    /* Preserve the heap allocation status for possible thread cleanup handling */
+    const bool heap_allocated = cp->heap_allocated;
     cmi_memset(cp, 0, sizeof(*cp));
+    cp->heap_allocated = heap_allocated;
 }
 
 /*
@@ -210,8 +216,9 @@ void cmi_coroutine_destroy(struct cmi_coroutine *cp)
         cmi_coroutine_stack_free(cp->stack);
     }
 
+    cmb_assert_debug(cp->heap_allocated);
     cmi_free(cp);
-}
+ }
 
 /*
  * cmi_coroutine_start - Load the given function and argument into the given
@@ -409,7 +416,9 @@ void cmi_coroutine_thread_cleanup(void *arg)
         registry_remove(cp);
         cmi_coroutine_stack_free(cp->stack);
         cmi_tsan_destroy_fiber(cp->tsan_fiber);
-        cmi_free(cp);
+        if (cp->heap_allocated) {
+            cmi_free(cp);
+        }
     }
 
     coroutine_current = coroutine_main;

@@ -64,6 +64,8 @@
 #ifndef CIMBA_CMI_COROUTINE_H
 #define CIMBA_CMI_COROUTINE_H
 
+#include <stdbool.h>
+
 #include "cmb_assert.h"
 #include "cmi_config.h"
 
@@ -142,6 +144,7 @@ struct cmi_coroutine {
     void *tsan_fiber;
     struct cmi_coroutine *reg_prev;
     struct cmi_coroutine *reg_next;
+    bool heap_allocated;
 };
 
 /*
