@@ -48,7 +48,7 @@
                            if (!(x)) { \
                               fprintf(stderr, \
                               "assert(%s) failed in file %s line %d\n", \
-                              #x, __FILE__, __LINE__); \
+                              #x, CMB_FILE_NAME, __LINE__); \
                               abort(); \
                            } \
                         } while (0)

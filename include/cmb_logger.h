@@ -144,8 +144,8 @@ extern int cmb_logger_vfprintf(FILE *fp,
  * @param fmtstr printf-like format string
  * @param ... Arguments to the format string.
  */
-#define cmb_logger_fatal(fp, fmtstr, ...) \
-    cmi_logger_fatal(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+#define cmb_logger_fatal(fp, ...) \
+    cmi_logger_fatal(fp, __func__, __LINE__, __VA_ARGS__)
 
 /**
  * @brief Wrapper for an error message. Terminates the thread when called.
@@ -155,8 +155,8 @@ extern int cmb_logger_vfprintf(FILE *fp,
  * @param fmtstr printf-like format string
  * @param ... Arguments to the format string.
  */
-#define cmb_logger_error(fp, fmtstr, ...) \
-    cmi_logger_error(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+#define cmb_logger_error(fp, ...) \
+    cmi_logger_error(fp, __func__, __LINE__, __VA_ARGS__)
 
 /**
  * @brief Wrapper for a warning message. Written as a macro to provide the
@@ -165,8 +165,8 @@ extern int cmb_logger_vfprintf(FILE *fp,
  * @param fmtstr printf-like format string
  * @param ... Arguments to the format string.
  */
-#define cmb_logger_warning(fp, fmtstr, ...) \
-    cmi_logger_warning(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+#define cmb_logger_warning(fp, ...) \
+    cmi_logger_warning(fp, __func__, __LINE__, __VA_ARGS__)
 
 /**
  * @brief Wrapper for an information message. Written as a macro to provide the
@@ -177,10 +177,10 @@ extern int cmb_logger_vfprintf(FILE *fp,
  * @param ... Arguments to the format string.
  */
 #ifndef NLOGINFO
-  #define cmb_logger_info(fp, fmtstr, ...) \
-    cmi_logger_info(fp, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+  #define cmb_logger_info(fp, ...) \
+    cmi_logger_info(fp, __func__, __LINE__, __VA_ARGS__)
 #else
-  #define cmb_logger_info(fp, fmtstr, ...) ((void)(0))
+  #define cmb_logger_info(fp, ...) ((void)(0))
 #endif
 
 /**
@@ -193,24 +193,26 @@ extern int cmb_logger_vfprintf(FILE *fp,
  * @param fmtstr printf-like format string
  * @param ... Arguments to the format string.
  */
-#define cmb_logger_user(fp, flags, fmtstr, ...) \
-    cmi_logger_user(fp, flags, __func__, __LINE__, fmtstr, ##__VA_ARGS__)
+#define cmb_logger_user(fp, flags, ...) \
+    cmi_logger_user(fp, flags, __func__, __LINE__, __VA_ARGS__)
 
 /** @cond */
 /* The trial index is maintained by the worker threads in cimba.c, we use it in logging messages */
 extern CMB_THREAD_LOCAL uint64_t cmi_logger_trial_idx;
 
 /* Actual functions wrapped by the macros above */
+CMB_NORETURN
 extern void cmi_logger_fatal(FILE *fp, const char *func, int line, const char *fmtstr, ...)
-                      __attribute__((noreturn, format(printf, 4, 5)));
+                            CMB_ATTR_PRINTF(4, 5);
+CMB_NORETURN
 extern void cmi_logger_error(FILE *fp, const char *func, int line, const char *fmtstr, ...)
-                      __attribute__((noreturn, format(printf, 4, 5)));
+                            CMB_ATTR_PRINTF(4, 5);
 extern void cmi_logger_warning(FILE *fp, const char *func, int line, const char *fmtstr, ...)
-                      __attribute__((format(printf, 4, 5)));
+                            CMB_ATTR_PRINTF(4, 5);
 extern void cmi_logger_info(FILE *fp, const char *func, int line, const char *fmtstr, ...)
-                      __attribute__((format(printf, 4, 5)));
+                            CMB_ATTR_PRINTF(4, 5);
 extern void cmi_logger_user(FILE *fp, uint32_t flags, const char *func, int line, const char *fmtstr, ...)
-                      __attribute__((format(printf, 5, 6)));
+                            CMB_ATTR_PRINTF(5, 6);
 /** @endcond */
 
 #endif /* CIMBA_CMB_LOGGER_H */

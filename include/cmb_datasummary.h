@@ -129,7 +129,7 @@ extern uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
  * @param dsp Pointer to a data summary.
  * @return The number of samples included in the data summary.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline uint64_t cmb_datasummary_count(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
@@ -145,7 +145,7 @@ static inline uint64_t cmb_datasummary_count(const struct cmb_datasummary *dsp)
  * @param dsp Pointer to a data summary.
  * @return The largest sample included in the data summary.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline double cmb_datasummary_max(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
@@ -161,7 +161,7 @@ static inline double cmb_datasummary_max(const struct cmb_datasummary *dsp)
  * @param dsp Pointer to a data summary.
  * @return The smallest sample included in the data summary.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline double cmb_datasummary_min(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
@@ -177,7 +177,7 @@ static inline double cmb_datasummary_min(const struct cmb_datasummary *dsp)
  * @param dsp Pointer to a data summary.
  * @return The mean of the samples included in the data summary.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline double cmb_datasummary_mean(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
@@ -193,7 +193,7 @@ static inline double cmb_datasummary_mean(const struct cmb_datasummary *dsp)
  * @param dsp Pointer to a data summary.
  * @return The sample variance of the samples included in the data summary.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline double cmb_datasummary_variance(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
@@ -216,7 +216,7 @@ static inline double cmb_datasummary_variance(const struct cmb_datasummary *dsp)
  * @param dsp Pointer to a data summary.
  * @return The sample standard deviation of the samples in the data summary.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline double cmb_datasummary_stddev(const struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);

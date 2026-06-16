@@ -119,7 +119,7 @@ extern int64_t cmb_resource_preempt(struct cmb_resource *rp);
  * @param rp Pointer to an initialized resource object.
  * @return The name of the process as a null-terminated text string.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline const char *cmb_resource_name(const struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
@@ -137,7 +137,7 @@ static inline const char *cmb_resource_name(const struct cmb_resource *rp)
  * @param rp Pointer to resource
  * @return The number of units in use, 0 or 1
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline uint64_t cmb_resource_in_use(const struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
@@ -153,7 +153,7 @@ static inline uint64_t cmb_resource_in_use(const struct cmb_resource *rp)
  * @param rp Pointer to resource
  * @return The number of units not in use, 0 or 1
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline uint64_t cmb_resource_available(const struct cmb_resource *rp)
 {
     cmb_assert_debug(rp != NULL);
@@ -172,7 +172,7 @@ static inline uint64_t cmb_resource_available(const struct cmb_resource *rp)
  *
  * @return One if the process holds the resource, zero otherwise.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline uint64_t cmb_resource_held_by_process(const struct cmb_resource *rp,
                                                     const struct cmb_process *pp) {
     cmb_assert_debug(rp != NULL);

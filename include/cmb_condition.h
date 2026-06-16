@@ -177,7 +177,7 @@ extern bool cmb_condition_remove(struct cmb_condition *cvp,
  * @param cvp Pointer to a condition variable.
  * @param rgp Pointer to a resource guard.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline void cmb_condition_subscribe(struct cmb_condition *cvp,
                                            struct cmb_resourceguard *rgp) {
     cmb_assert_release(cvp != NULL);
@@ -196,7 +196,7 @@ static inline void cmb_condition_subscribe(struct cmb_condition *cvp,
  *
  * @return `true` if the found, `false` if not.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline bool cmb_condition_unsubscribe(struct cmb_condition *cvp,
                                              struct cmb_resourceguard *rgp) {
     cmb_assert_release(cvp != NULL);

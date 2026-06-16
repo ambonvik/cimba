@@ -149,7 +149,7 @@ extern uint64_t cimba_run(void *your_experiment_array,
 
 /** @cond */
 /* Wrapper for deprecated long form */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline void cimba_run_experiment(void *your_experiment_array,
                                         uint64_t num_trials,
                                         size_t trial_struct_size,

@@ -26,6 +26,8 @@
 #ifndef CIMBA_CMB_ASSERT_H
 #define CIMBA_CMB_ASSERT_H
 
+#include "cmi_config.h"
+
 /**
  * @brief The function that reports and aborts when a `cmb_assert_*`is
  * triggered.
@@ -34,7 +36,7 @@
  * function, and you will be able to see the call stack and variable
  * values at that point.
  */
-[[noreturn]]
+CMB_NORETURN
 extern void cmi_assert_failed(const char *sourcefile,
                               const char *func,
                               int line,
@@ -49,7 +51,7 @@ extern void cmi_assert_failed(const char *sourcefile,
          * Disappears if `NDEBUG` (or `NASSERT`) is defined. Typically used for
          * verifying invariants and postconditions during development.
          */
-        #define cmb_assert_debug(x) ((x) ? (void)(0) : (cmi_assert_failed(__FILE_NAME__, __func__, __LINE__, #x)))
+        #define cmb_assert_debug(x) ((x) ? (void)(0) : (cmi_assert_failed(CMB_FILE_NAME, __func__, __LINE__, #x)))
     #else
         #define cmb_assert_debug(x) do { (void)sizeof(x); } while (0)
     #endif /* ifndef NDEBUG */
@@ -63,7 +65,7 @@ extern void cmi_assert_failed(const char *sourcefile,
      * thoroughly debugged model where all parameters are known to be valid and
      * the last ounce of speed is wanted.
      */
-    #define cmb_assert_release(x) ((x) ? (void)(0) : (cmi_assert_failed(__FILE_NAME__, __func__, __LINE__, #x)))
+    #define cmb_assert_release(x) ((x) ? (void)(0) : (cmi_assert_failed(CMB_FILE_NAME, __func__, __LINE__, #x)))
 #else
     #define cmb_assert_debug(x)  do { (void)sizeof(x); } while (0)
     #define cmb_assert_release(x)  do { (void)sizeof(x); } while (0)
@@ -79,7 +81,7 @@ extern void cmi_assert_failed(const char *sourcefile,
  * `NASSERT` are defined. Typically used for critical error checking that should
  * never be turned off but could use the same output format as other asserts.
  */
-#define cmb_assert_always(x) ((x) ? (void)(0) : (cmi_assert_failed(__FILE_NAME__, __func__, __LINE__, #x)))
+#define cmb_assert_always(x) ((x) ? (void)(0) : (cmi_assert_failed(CMB_FILE_NAME, __func__, __LINE__, #x)))
 
 /**
  * @brief Macro to suppress "unused argument" compiler warning for functions

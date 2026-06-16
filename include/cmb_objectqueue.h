@@ -143,7 +143,7 @@ extern int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void *object);
  * @param oqp Pointer to an object queue
  * @return A null-terminated string containing the name of the object queue.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline const char *cmb_objectqueue_name(struct cmb_objectqueue *oqp)
 {
     cmb_assert_debug(oqp != NULL);
@@ -161,7 +161,7 @@ static inline const char *cmb_objectqueue_name(struct cmb_objectqueue *oqp)
  * @param oqp Pointer to an object queue
  * @return The current queue length
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline uint64_t cmb_objectqueue_length(struct cmb_objectqueue *oqp)
 {
     cmb_assert_debug(oqp != NULL);
@@ -177,7 +177,7 @@ static inline uint64_t cmb_objectqueue_length(struct cmb_objectqueue *oqp)
  * @param oqp Pointer to an object queue
  * @return The available space in the queue
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline uint64_t cmb_objectqueue_space(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);

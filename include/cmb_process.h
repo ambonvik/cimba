@@ -206,7 +206,7 @@ extern void cmb_process_start(struct cmb_process *pp);
  * outside a named process, such as the main process that executes the event
  * dispatcher.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline struct cmb_process *cmb_process_current(void)
 {
     const struct cmi_coroutine *cp = cmi_coroutine_current();
@@ -222,7 +222,7 @@ static inline struct cmb_process *cmb_process_current(void)
  * @return Whatever signal value is passed by whatever process causing this one
  *         to resume again, possibly itself by setting a timer before calling.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline int64_t cmb_process_yield(void)
 {
     const struct cmb_process *pp = (struct cmb_process *)cmi_coroutine_current();
@@ -276,7 +276,7 @@ extern uint64_t cmb_process_timer_add(struct cmb_process *pp, double dur, int64_
  *              or something user-application defined.
  * @return The handle of the scheduled timeout event
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline uint64_t cmb_process_timer_set(struct cmb_process *pp, const double dur, const int64_t sig)
 {
     cmb_assert_release(pp != NULL);
@@ -408,7 +408,7 @@ extern int64_t cmb_process_stop(struct cmb_process *tgt, void *retval);
  *               `cmb_coroutine` `exit_value`.
  * @return CMB_PROCESS_SUCCESS (0) for successful stop, non-zero otherwise.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline int64_t cmb_process_kill(struct cmb_process *tgt, void *retval)
 {
     return cmb_process_stop(tgt, retval);
@@ -424,7 +424,7 @@ static inline int64_t cmb_process_kill(struct cmb_process *tgt, void *retval)
  * @memberof cmb_process
  * @param pp Pointer to a process.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline const char *cmb_process_name(const struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
@@ -453,7 +453,7 @@ extern void cmb_process_name_set(struct cmb_process *pp,
  * @param pp Pointer to a process.
  * @return Pointer to the process context.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline void *cmb_process_context(const struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
@@ -468,7 +468,7 @@ static inline void *cmb_process_context(const struct cmb_process *pp)
  * @param pp Pointer to a process.
  * @return The current priority value.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline int64_t cmb_process_priority(const struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
@@ -492,7 +492,7 @@ extern void cmb_process_priority_set(struct cmb_process *pp, int64_t pri);
  * @param pp Pointer to a process.
  * @return The current state of the process and its underlying coroutine.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline enum cmb_process_state cmb_process_status(const struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);

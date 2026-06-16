@@ -160,7 +160,7 @@ extern int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp);
  * @param bp Pointer to the buffer object.
  * @return A null-terminated string containing the name of the buffer.
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
 {
     cmb_assert_debug(bp != NULL);
@@ -177,7 +177,7 @@ static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
  * @param bp Pointer to a buffer
  * @return The current buffer level
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline uint64_t cmb_buffer_level(struct cmb_buffer *bp)
 {
     cmb_assert_debug(bp != NULL);
@@ -193,7 +193,7 @@ static inline uint64_t cmb_buffer_level(struct cmb_buffer *bp)
  * @param bp Pointer to a buffer
  * @return The available space in the buffer
  */
-[[maybe_unused]]
+CMB_MAYBE_UNUSED
 static inline uint64_t cmb_buffer_space(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
