@@ -647,6 +647,9 @@ static void wakeup_event_interrupt(void *vp, void *arg)
 extern void wakeup_event_resource(void *vp, void *arg);
 /* Friendly function in cmb_resource.c */
 extern void wakeup_event_preempt(void *vp, void *arg);
+/* Forward declaration, soon to be defined in this file */
+static void resume_event(void *vp, void *arg);
+
 /*
  * Clear the list of things this process is waiting for
  */
@@ -703,6 +706,7 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
     cmb_event_pattern_cancel(wakeup_event_resource, pp, CMB_ANY_OBJECT);
     cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
     cmb_event_pattern_cancel(wakeup_event_preempt, pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(resume_event, pp, CMB_ANY_OBJECT);
  }
 
 /*
@@ -800,9 +804,14 @@ static void resume_event(void *vp, void *arg)
                     pp->name, (int64_t)arg);
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
-    cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
-
-    (void)cmi_coroutine_resume(cp, arg);
+    if (cp->status == CMI_COROUTINE_RUNNING) {
+        (void)cmi_coroutine_resume(cp, arg);
+    }
+    else {
+        cmb_logger_warning(stdout,
+                           "Process resume wakeup call found process %s dead",
+                           cmb_process_name(pp));
+   }
 }
 
 /*
