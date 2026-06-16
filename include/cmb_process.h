@@ -165,6 +165,45 @@ extern void cmb_process_initialize(struct cmb_process *pp,
                                    int64_t priority);
 
 /**
+ * @brief Initialize process parameters and allocates memory for the underlying
+ * coroutine stack with explicit size. Used if this particular process is expected
+ * to have a deep call stack and needs non-standard space. Does not start the
+ * process yet.
+ *
+ * A minimum stack size for a process with few local variables and no deep
+ * function calls could be as low as 16 Kb. If the stack is too small, it will
+ * trigger a segfault immediately on overflow.
+ *
+ * A "normal" stack size is 64-128 kB, the default sizes on Linux and Windows,
+ * respectively.
+ *
+ * A "large" stack size could be up to 1 MB for deeply nested function calls
+ * with lots of local variables. If *that* is not large enough, perhaps it is
+ * worth reconsidering what data structures the program allocates on the stack
+ * and consider using the heap instead.
+ *
+ * Note that the stack size will be rounded up to a multiple of the page size,
+ * and then a guard page added at the end. Total memory use will therefore be
+ * larger than the `stacksize` argument value times the number of processes.
+*
+ * @memberof cmb_process
+ * @param pp Pointer to an already created process.
+ * @param name Null terminated string for the process name.
+ * @param procfunc The process function that will be executed when the process starts.
+ * @param context The second argument to the process function, after the pointer
+ *                 to the process itself.
+ * @param priority The initial priority for the process, used in various
+ *                 priority queues the process may find itself in.
+ * @param stacksize Size of the process coroutine stack in bytes.
+ */
+extern void cmb_process_initialize_wssz(struct cmb_process *pp,
+                                        const char *name,
+                                        cmb_process_func procfunc,
+                                        void *context,
+                                        int64_t priority,
+                                        size_t stacksize);
+
+/**
  * @brief Deallocate memory for the underlying coroutine stack but not for the
  * process object itself. In particular, the process exit value is still there.
  *
@@ -512,5 +551,21 @@ static inline enum cmb_process_state cmb_process_status(const struct cmb_process
  * @param pp Pointer to a process.
  */
 extern void *cmb_process_exit_value(const struct cmb_process *pp);
+
+/**
+ * @brief  Get the current default stack size for cmb_process'es.
+ */
+extern size_t cmb_process_default_stacksize(void);
+
+/**
+ * @brief  Set the global default stack size for cmb_process'es. Will take
+ * effect for all calls to `cmb_process_initialize` from now on, but will not
+ * retroactively change the stack size for any already created processes.
+ *
+ * @param sz Stack size, in bytes. Will be rounded up to a multiple of the
+ *           system page size, 4096 bytes on the x86-64 architecture, and a
+ *           guard page added.
+ */
+extern void cmb_process_default_stacksize_set(size_t sz);
 
 #endif /* CIMBA_CMB_PROCESS_H */

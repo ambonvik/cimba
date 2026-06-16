@@ -130,10 +130,10 @@ struct cmi_coroutine *cmi_coroutine_create(void)
  * cmi_coroutine_initialize - Create a stack context for the coroutine
  */
 void cmi_coroutine_initialize(struct cmi_coroutine *cp,
-                        cmi_coroutine_func *crfunction,
-                        void *context,
-                        cmi_coroutine_exit_func *crexit,
-                        const size_t stack_size)
+                              cmi_coroutine_func *crfunction,
+                              void *context,
+                              cmi_coroutine_exit_func *crexit,
+                              size_t stack_size)
 {
     /* Create a dummy main coroutine if not already existing */
     if (coroutine_main == NULL) {
@@ -145,6 +145,9 @@ void cmi_coroutine_initialize(struct cmi_coroutine *cp,
     /* Initialize the coroutine struct and allocate the stack */
     cp->parent = NULL;
     cp->caller = NULL;
+    if (stack_size == 0u) {
+        stack_size = CMI_COROUTINE_DEFAULT_STACKSIZE;
+    }
     cp->stack = cmi_coroutine_stack_alloc(stack_size, &(cp->stack_base), &(cp->stack_limit));
     /* Will be set on first transfer */
     cp->stack_pointer = NULL;

@@ -40,6 +40,9 @@ CMB_THREAD_LOCAL struct cmi_mempool cmi_process_holdabletags
 CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags
     = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_waiter), 4u);
 
+/* Default stack size, unless told otherwise */
+static size_t default_stacksize = CMI_COROUTINE_DEFAULT_STACKSIZE;
+
 /*
  * cmb_process_create - Allocate memory for the process.
  */
@@ -53,6 +56,34 @@ struct cmb_process *cmb_process_create(void)
 }
 
 /*
+ * cmb_process_initialize_wssz - Initialize, with an explicit stack size
+ * parameter exposed to calling code. Sets up a process object and allocates its
+ * coroutine stack. Does not start the process yet.
+ */
+void cmb_process_initialize_wssz(struct cmb_process *pp,
+                            const char *name,
+                            cmb_process_func procfunc,
+                            void *context,
+                            const int64_t priority,
+                            size_t stacksize)
+{
+    cmb_assert_release(pp != NULL);
+
+    cmi_coroutine_initialize((struct cmi_coroutine *)pp,
+                       (cmi_coroutine_func *)procfunc,
+                       context,
+                       (cmi_coroutine_exit_func *)cmb_process_exit,
+                       stacksize);
+
+    cmb_process_name_set(pp, name);
+    pp->priority = priority;
+
+    cmi_slist_initialize(&pp->awaits);
+    cmi_slist_initialize(&pp->waiters);
+    cmi_slist_initialize(&pp->resources);
+}
+
+/*
  * cmb_process_initialize - Set up a process object and allocate its
  * coroutine stack. Does not start the process yet.
  */
@@ -62,20 +93,8 @@ void cmb_process_initialize(struct cmb_process *pp,
                             void *context,
                             const int64_t priority)
 {
-    cmb_assert_release(pp != NULL);
-
-    cmi_coroutine_initialize((struct cmi_coroutine *)pp,
-                       (cmi_coroutine_func *)procfunc,
-                       context,
-                       (cmi_coroutine_exit_func *)cmb_process_exit,
-                       CMI_COROUTINE_DEFAULT_STACKSIZE);
-
-    cmb_process_name_set(pp, name);
-    pp->priority = priority;
-
-    cmi_slist_initialize(&pp->awaits);
-    cmi_slist_initialize(&pp->waiters);
-    cmi_slist_initialize(&pp->resources);
+    const size_t stack_size = __atomic_load_n(&default_stacksize, __ATOMIC_RELAXED);
+    cmb_process_initialize_wssz(pp, name, procfunc, context, priority, stack_size);
 }
 
 /*
@@ -198,6 +217,25 @@ void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
 
         rhead = rhead->next;
     }
+}
+
+/*
+ * cmb_process_default_stacksize - get global variable for all future inits
+ */
+size_t cmb_process_default_stacksize(void)
+{
+    const size_t stacksize = __atomic_load_n(&default_stacksize, __ATOMIC_RELAXED);
+
+    return stacksize;
+}
+
+/*
+ * cmb_process_default_stacksize_set - set global variable for all future inits
+ */
+void cmb_process_default_stacksize_set(const size_t stacksize)
+{
+    cmb_assert_release(stacksize > 0);
+    __atomic_store_n(&default_stacksize, stacksize, __ATOMIC_RELAXED);
 }
 
 /*
@@ -699,7 +737,7 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
     /* Make sure any previously scheduled wakeup event does not happen.
      * The fast way to do this would be to use wildcard CMB_ANY_ACTION,
      * but we need to allow for the possibility of some user-scheduled event
-     * that just happens to have process pp as its subject. Hence a more
+     * that just happens to have process pp as its subject. Hence, a more
      * surgical approach, searching for the specific event types */
     cmb_event_pattern_cancel(wakeup_event_time, pp, CMB_ANY_OBJECT);
     cmb_event_pattern_cancel(wakeup_event_process, pp, CMB_ANY_OBJECT);
