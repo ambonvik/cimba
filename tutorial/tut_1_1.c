@@ -2,6 +2,10 @@
 
 void *arrival(struct cmb_process *me, void *ctx)
 {
+    /* We have not introduced cmb_unused() yet in the tutorial text at this
+     * point, but use it nevertheless to silence unnecessary compiler warnings
+     * about unused function arguments when building the entire Cimba library.
+     * cmb_unused suppresses that warning, stating "it is intentional". */
     cmb_unused(me);
 
     struct cmb_buffer *bp = ctx;
