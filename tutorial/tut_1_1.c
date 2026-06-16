@@ -2,6 +2,8 @@
 
 void *arrival(struct cmb_process *me, void *ctx)
 {
+    cmb_unused(me);
+
     struct cmb_buffer *bp = ctx;
     while (true) {
         const double rate = 0.75;
@@ -15,6 +17,8 @@ void *arrival(struct cmb_process *me, void *ctx)
 
 void *service(struct cmb_process *me, void *ctx)
 {
+    cmb_unused(me);
+
     struct cmb_buffer *bp = ctx;
     while (true) {
         const double rate = 1.0;

@@ -11,6 +11,8 @@ struct simulation {
 
 void end_sim(void *subject, void *object)
 {
+    cmb_unused(subject);
+
     struct simulation *sim = object;
     cmb_logger_user(stdout, USERFLAG1, "--- Game Over ---");
     cmb_process_stop(sim->arr, NULL);
@@ -19,6 +21,8 @@ void end_sim(void *subject, void *object)
 
 void *arrival(struct cmb_process *me, void *ctx)
 {
+    cmb_unused(me);
+
     struct cmb_buffer *bp = ctx;
     while (true) {
         const double rate = 0.75;
@@ -34,6 +38,8 @@ void *arrival(struct cmb_process *me, void *ctx)
 
 void *service(struct cmb_process *me, void *ctx)
 {
+    cmb_unused(me);
+
     struct cmb_buffer *bp = ctx;
     while (true) {
         const double rate = 1.0;
