@@ -35,7 +35,6 @@ common_flags = [
     '-Wno-pedantic',
     '-D_POSIX_C_SOURCE=200809L',
     '-fno-semantic-interposition',
-    '-DNMXCSR',
 ]
 
 # Flags per build type
@@ -53,6 +52,7 @@ benchopt_flags = [
     '-DNDEBUG',
     '-DNLOGINFO',
     '-DNASSERT',
+    '-DNMXCSR',
     '-fprofile-use',
     '-fprofile-correction',
 ]
@@ -60,6 +60,10 @@ benchopt_flags = [
 # Need to generate profile before using it
 benchopt_gen_flags = [
     '-O3',
+    '-DNDEBUG',
+    '-DNLOGINFO',
+    '-DNASSERT',
+    '-DNMXCSR',
     '-fprofile-generate',
     '-fno-omit-frame-pointer',
 ]
