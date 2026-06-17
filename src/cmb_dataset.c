@@ -18,6 +18,7 @@
  */
 
 #include <float.h>
+#include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -298,6 +299,7 @@ uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
 /* Assumes that v is already sorted */
 static double data_array_median(const unsigned n, const double v[n])
 {
+    cmb_assert_release(n > 0u);
     cmb_assert_debug(cmi_dataset_is_sorted(n, v));
 
     double r;
@@ -342,7 +344,14 @@ void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(fp != NULL);
 
-    if (dsp->xa != NULL) {
+    if (dsp->xa == NULL) {
+        cmb_logger_warning(fp, "No data to display in five-number summary");
+    }
+    else if (dsp->count < 4u) {
+        cmb_logger_warning(fp, "Not enough data for five-number summary, only have %" PRIu64,
+            dsp->count);
+    }
+    else {
         struct cmb_dataset dsc = { 0 };
         cmb_dataset_copy(&dsc, dsp);
         cmb_dataset_sort(&dsc);
@@ -371,9 +380,6 @@ void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
                 ((lead_ins) ? "  Max " : "\t"), max);
         cmb_assert_release(r > 0);
         cmb_dataset_reset(&dsc);
-    }
-    else {
-        cmb_logger_warning(fp, "No data to display in five-number summary");
     }
 }
 
