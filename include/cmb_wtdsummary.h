@@ -27,6 +27,7 @@
 #ifndef CIMBA_CMB_WTDSUMMARY_H
 #define CIMBA_CMB_WTDSUMMARY_H
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -131,6 +132,7 @@ extern uint64_t cmb_wtdsummary_merge(struct cmb_wtdsummary *tgt,
  * @param wsp Pointer to a weighted data summary.
  * @return The number of samples in the weighted data summary.
  */
+CMB_MAYBE_UNUSED
 static inline uint64_t cmb_wtdsummary_count(const struct cmb_wtdsummary *wsp)
 {
     cmb_assert_release(wsp != NULL);
@@ -145,6 +147,7 @@ static inline uint64_t cmb_wtdsummary_count(const struct cmb_wtdsummary *wsp)
  * @param wsp Pointer to a weighted data summary.
  * @return The largest sample value in the data summary.
  */
+CMB_MAYBE_UNUSED
 static inline double cmb_wtdsummary_max(const struct cmb_wtdsummary *wsp)
 {
     cmb_assert_release(wsp != NULL);
@@ -159,6 +162,7 @@ static inline double cmb_wtdsummary_max(const struct cmb_wtdsummary *wsp)
  * @param wsp Pointer to a weighted data summary.
  * @return The smallest sample value in the data summary.
  */
+CMB_MAYBE_UNUSED
 static inline double cmb_wtdsummary_min(const struct cmb_wtdsummary *wsp)
 {
     cmb_assert_release(wsp != NULL);
@@ -173,6 +177,7 @@ static inline double cmb_wtdsummary_min(const struct cmb_wtdsummary *wsp)
  * @param wsp Pointer to a weighted data summary.
  * @return The weighted mean of the samples in the weighted data summary.
  */
+CMB_MAYBE_UNUSED
 static inline double cmb_wtdsummary_mean(const struct cmb_wtdsummary *wsp)
 {
     cmb_assert_release(wsp != NULL);
@@ -181,67 +186,82 @@ static inline double cmb_wtdsummary_mean(const struct cmb_wtdsummary *wsp)
 }
 
 /**
- * @brief The weighted sample variance of the samples in the weighted data
- *        summary.
+ * @brief The time-weighted (population) variance of the weighted data summary.
  *
- * @memberof cmb_wtdsummary
- * @param wsp Pointer to a weighted data summary.
- * @return The weighted sample variance of the samples in the weighted data
- * summary.
+ * Normalized by the total weight, so it is invariant to how the weight was
+ * segmented and to the scale of the weights. For duration weights this is the
+ * variance of the time-stationary distribution.
  */
+CMB_MAYBE_UNUSED
 static inline double cmb_wtdsummary_variance(const struct cmb_wtdsummary *wsp)
 {
     cmb_assert_release(wsp != NULL);
+    cmb_assert_release(wsp->ds.cookie == CMI_INITIALIZED);
 
-    return cmb_datasummary_variance((struct cmb_datasummary *)wsp);
+    double r = 0.0;
+    if (wsp->wsum > 0.0) {
+        r = wsp->ds.m2 / wsp->wsum;          /* population weighted variance */
+    }
+
+    cmb_assert_debug(r >= 0.0);
+
+    return r;
 }
 
 /**
- * @brief The weighted sample standard deviation of the samples in the weighted
- *        data summary.
- *
- * @memberof cmb_wtdsummary
- * @param wsp Pointer to a weighted data summary.
- * @return The weighted sample standard deviation of the samples in the weighted
- *         data summary.
+ * @brief The time-weighted (population) standard deviation.
  */
+CMB_MAYBE_UNUSED
 static inline double cmb_wtdsummary_stddev(const struct cmb_wtdsummary *wsp)
 {
     cmb_assert_release(wsp != NULL);
+    cmb_assert_release(wsp->ds.cookie == CMI_INITIALIZED);
 
-    return cmb_datasummary_stddev((struct cmb_datasummary *)wsp);
+    const double var = cmb_wtdsummary_variance(wsp);
+
+    return (var > 0.0) ? sqrt(var) : 0.0;    /* guard tiny negative round-off */
 }
 
 /**
- * @brief The weighted sample skewness of the samples in the weighted data
- *        summary.
+ * @brief The time-weighted (population) skewness.
  *
- * @memberof cmb_wtdsummary
- * @param wsp Pointer to a data summary.
- * @return The weighted sample skewness of the samples in the weighted data
- *         summary.
+ *   (m3/W) / (m2/W)^{3/2}  ==  sqrt(W) * m3 / m2^{3/2}
+ *
+ * No finite-sample correction is applied: an effective sample size is not
+ * well defined for analytic (e.g. duration) weights. Returns 0 when there is
+ * no spread (m2 == 0).
  */
+CMB_MAYBE_UNUSED
 static inline double cmb_wtdsummary_skewness(const struct cmb_wtdsummary *wsp)
 {
     cmb_assert_release(wsp != NULL);
+    cmb_assert_release(wsp->ds.cookie == CMI_INITIALIZED);
 
-    return cmb_datasummary_skewness((struct cmb_datasummary *)wsp);
+    double r = 0.0;
+    if ((wsp->wsum > 0.0) && (wsp->ds.m2 > 0.0)) {
+        r = sqrt(wsp->wsum) * wsp->ds.m3 / pow(wsp->ds.m2, 1.5);
+    }
+
+    return r;
 }
 
 /**
- * @brief The weighted sample excess kurtosis of the samples in the weighted
- *        data summary.
+ * @brief The time-weighted (population) excess kurtosis.
  *
- * @memberof cmb_wtdsummary
- * @param wsp Pointer to a weighted data summary
- * @return The weighted sample excess kurtosis of the samples in the weighted
- *         data summary.
+ *   (m4/W) / (m2/W)^2 - 3  ==  W * m4 / m2^2 - 3
  */
+CMB_MAYBE_UNUSED
 static inline double cmb_wtdsummary_kurtosis(const struct cmb_wtdsummary *wsp)
 {
     cmb_assert_release(wsp != NULL);
+    cmb_assert_release(wsp->ds.cookie == CMI_INITIALIZED);
 
-    return cmb_datasummary_kurtosis((struct cmb_datasummary *)wsp);
+    double r = 0.0;
+    if ((wsp->wsum > 0.0) && (wsp->ds.m2 > 0.0)) {
+        r = wsp->wsum * wsp->ds.m4 / (wsp->ds.m2 * wsp->ds.m2) - 3.0;
+    }
+
+    return r;
 }
 
 /**

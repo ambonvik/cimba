@@ -21,6 +21,7 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 
 #include "cmb_logger.h"
@@ -194,12 +195,43 @@ uint64_t cmb_wtdsummary_merge(struct cmb_wtdsummary *tgt,
 }
 
 void cmb_wtdsummary_print(const struct cmb_wtdsummary *wsp,
-                        FILE *fp,
-                        const bool lead_ins)
+                          FILE *fp,
+                          const bool lead_ins)
 {
     cmb_assert_release(wsp != NULL);
-    cmb_assert_release(((struct cmb_datasummary *)wsp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(wsp->ds.cookie == CMI_INITIALIZED);
+    cmb_assert_release(fp != NULL);
 
-    cmb_datasummary_print((struct cmb_datasummary *)wsp, fp, lead_ins);
+    const uint64_t count = cmb_wtdsummary_count(wsp);
+
+    int r = fprintf(fp, "%s%8" PRIu64, ((lead_ins) ? "N " : ""), count);
+    cmb_assert_release(r > 0);
+
+    if (count > 0u) {
+        r = fprintf(fp, "%s%#8.4g",
+                    ((lead_ins) ? "  Mean " : "\t"), cmb_wtdsummary_mean(wsp));
+        cmb_assert_release(r > 0);
+    }
+    if (count > 1u) {
+        const double var = cmb_wtdsummary_variance(wsp);
+        r = fprintf(fp, "%s%#8.4g",
+                    ((lead_ins) ? "  StdDev " : "\t"), cmb_wtdsummary_stddev(wsp));
+        cmb_assert_release(r > 0);
+        r = fprintf(fp, "%s%#8.4g",
+                    ((lead_ins) ? "  Variance " : "\t"), var);
+        cmb_assert_release(r > 0);
+    }
+    if (count > 2u) {
+        r = fprintf(fp, "%s%#8.4g",
+                    ((lead_ins) ? "  Skewness " : "\t"), cmb_wtdsummary_skewness(wsp));
+        cmb_assert_release(r > 0);
+    }
+    if (count > 3u) {
+        r = fprintf(fp, "%s%#8.4g",
+                    ((lead_ins) ? "  Kurtosis " : "\t"), cmb_wtdsummary_kurtosis(wsp));
+        cmb_assert_release(r > 0);
+    }
+
+    r = fprintf(fp, "\n");
+    cmb_assert_release(r > 0);
 }
-
