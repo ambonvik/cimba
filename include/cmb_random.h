@@ -268,7 +268,12 @@ CMB_MAYBE_UNUSED
 static inline double cmb_random_logistic(const double m, const double s)
 {
     cmb_assert_release(s > 0.0);
-    const double x = cmb_random();
+
+    /* Loop to protect against the extremely unlikely case of drawing 0.0 */
+    double x = 0.0;
+    while (x == 0.0) {
+        x = cmb_random();
+    }
 
     return m + s * log(x / (1.0 - x));
 }
@@ -751,7 +756,7 @@ static inline unsigned int cmb_random_bernoulli(const double p)
 {
     cmb_assert_release((p >= 0.0) && (p <= 1.0));
 
-    return (cmb_random() <= p) ? 1 : 0;
+    return (cmb_random() < p) ? 1 : 0;
 }
 
 /**
