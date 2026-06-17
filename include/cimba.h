@@ -117,6 +117,35 @@ typedef void (cimba_trial_func)(void *trial_struct);
  * need to determine the appropriate closing time and schedule an event for that
  * inside your simulation. See `test/test_cimba.c` for an example.
  *
+ * Your trial function is also responsible for managing the seeds used by any
+ * pseudo-random number generators. The generators should be initialized with a
+ * seed at the start of each trial. If you just want independent trials with no
+ * need for reproducibility, call `cmb_random_hwseed()` to get one based on
+ * hardware entropy. It will provide each trial with a unique, truly random seed.
+ *
+ * If you need both randomness and reproducibility, call `cmb_random_hwseed()`
+ * once in your main program to get a master seed, use `cmb_random_splitmix64()`
+ * with that master seed and a running trial counter to get a unique and
+ * reproducible seed for each trial, store this trial seed in your trial struct,
+ * and then let the trial function use this pre-calculated and stored seed to
+ * initialize the PRNG's for that trial.
+ *
+ * The recommended seed generation approach is along these lines:
+ *
+ *     uint64_t master_seed = cmb_random_hwseed();
+ *     struct trial *experiment = calloc(num_trials, sizeof(*experiment));
+ *     for (unsigned trl_idx = 0u; trl_idx < num_trials; trl_idx++) {
+ *          experiment[trl_idx].seed = cmb_random_fmix64(master_seed, trl_idx);
+ *     }
+ *
+ * and then, in your trial function, given the pointer `trl` to one specific
+ * `struct trial` to run in your experiment array:
+ *
+ *     cmb_random_initialize(trl->seed);
+ *
+ * See `test/test_cimba.c` for one example of this, combined with optional
+ * command line arguments for an externally provided master seed.
+ *
  * When `cimba_run_experiment()` returns, the results fields of the trial
  * structs that constitute your experiment array will be filled in.
  *
