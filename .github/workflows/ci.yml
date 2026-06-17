@@ -109,7 +109,7 @@ jobs:
   linux-tsan:
     runs-on: ubuntu-latest
     env:
-      TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+      TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1:handle_segv=0:handle_sigbus=0
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
