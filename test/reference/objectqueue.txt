@@ -11,7 +11,7 @@ Execute simulation...
 
 Report statistics
 Queue lengths for Queue:
-N   569734  Mean    4.992  StdDev    1.538  Variance    2.366  Skewness  0.01058  Kurtosis    5.840
+N   569734  Mean    4.992  StdDev    3.672  Variance    13.48  Skewness 0.004433  Kurtosis   -1.448
 --------------------------------------------------------------------------------
 ( -Infinity,      0.000)   |
 [     0.000,      1.000)   |#################################################=

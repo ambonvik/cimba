@@ -11,7 +11,7 @@ Schedule end event
 Execute simulation...
 Report statistics...
 Buffer levels for Buf
-N    42114  Mean    4.985  StdDev    2.253  Variance    5.075  Skewness  0.01232  Kurtosis    1.767
+N    42114  Mean    4.985  StdDev    4.623  Variance    21.37  Skewness 0.006004  Kurtosis   -1.868
 --------------------------------------------------------------------------------
 ( -Infinity,      0.000)   |
 [     0.000,      1.000)   |##################################################

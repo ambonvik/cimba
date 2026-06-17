@@ -92,7 +92,7 @@ Execute simulation
 --------------------------------------------------------------------------------
 Report statistics...
 Resource utilization for Resource_1:
-N       30  Mean   0.9816  StdDev   0.1247  Variance  0.01555  Skewness   -8.276  Kurtosis    71.49
+N       30  Mean   0.9816  StdDev   0.1343  Variance  0.01804  Skewness   -7.172  Kurtosis    49.44
 --------------------------------------------------------------------------------
 ( -Infinity,      0.000)   |
 [     0.000,      1.000)   |=
