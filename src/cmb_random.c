@@ -424,7 +424,7 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
     }
     else {
         /* At the inflection point */
-        cmb_assert(jdx == nor_zig_inflection);
+        cmb_assert_debug(jdx == nor_zig_inflection);
         for (;;) {
             const double *dpx = &(cmi_random_nor_zig_pdf_x[jdx]);
             const double x = zig_nor_convert_x(dpx, i_cand_x);
@@ -447,7 +447,7 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
     }
 
     /* Not reached */
-    cmb_assert(0);
+    cmb_assert_debug(false);
 }
 
 /*
@@ -557,12 +557,20 @@ int cmb_random_flip(void)
  */
 uint64_t cmb_random_geometric(const double p)
 {
-    cmb_assert((p > 0.0) && (p <= 1.0));
+    cmb_assert_release((p > 0.0) && (p <= 1.0));
 
+    if (p == 1.0) {
+        /* Special case, the log below would overflow */
+        return 1u;
+    }
+
+    /* Caching for cases where many samples are required with same p,
+     * avoids redoing the same expensive log operation over and over. */
     static CMB_THREAD_LOCAL double prev = 0.0;
     static CMB_THREAD_LOCAL double denom = 0.0;
     if (p != prev) {
         denom = -log(1.0 - p);
+        prev = p;
     }
 
     uint64_t x = (uint64_t)ceil(cmb_random_std_exponential() / denom);
@@ -593,7 +601,12 @@ uint64_t cmb_random_binomial(const uint64_t n, const double p)
 uint64_t cmb_random_negative_binomial(const uint64_t m, const double p)
 {
     cmb_assert_release(m > 0);
-    cmb_assert((p > 0.0) && (p <= 1.0));
+    cmb_assert_release((p > 0.0) && (p <= 1.0));
+
+    if (p == 1.0) {
+        /* Special case, guaranteed to succeed on first trial */
+        return 0u;
+    }
 
     uint64_t fctr = 0;
     for (uint64_t ui = 0u; ui < m; ui++) {
@@ -677,9 +690,10 @@ uint64_t cmb_random_discrete_nonuniform(const uint64_t n, const double *pa)
     cmb_assert_release(sums_to_one(n, pa));
 
     const double x = cmb_random();
+
     double q = 0.0;
     uint64_t ui;
-    for (ui = 0; ui < n; ui++) {
+    for (ui = 0; ui < n - 1; ui++) {
         q += pa[ui];
         if (x < q) {
             break;
