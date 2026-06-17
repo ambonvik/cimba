@@ -82,6 +82,7 @@ CMB_THREAD_LOCAL uint64_t cmi_logger_trial_idx = CMI_NO_TRIAL_IDX;
  */
 extern CMB_THREAD_LOCAL jmp_buf cmi_worker_recovery;
 extern CMB_THREAD_LOCAL bool cmi_worker_recovery_armed;
+extern void cmi_event_queue_cleanup(void);
 
 /*
  * Default time formatting function.
@@ -239,6 +240,7 @@ void cmi_logger_fatal(FILE *fp,
         va_end(args);
     }
 
+    cmi_event_queue_cleanup();
     abort();
 }
 
@@ -256,6 +258,7 @@ void cmi_logger_error(FILE *fp,
         va_end(args);
     }
 
+    cmi_event_queue_cleanup();
     if (cmi_worker_recovery_armed) {
         CMI_RECOVERY_JUMP(cmi_worker_recovery);
     }
