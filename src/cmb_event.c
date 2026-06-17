@@ -137,6 +137,16 @@ void cmb_event_queue_clear(void)
 }
 
 /*
+ * Emergency cleanup called on error recovery to avoid memory leak
+ */
+void cmi_event_queue_cleanup(void)
+{
+    if (event_queue != NULL) {
+        cmb_event_queue_terminate();
+    }
+}
+
+/*
  * cmi_event_queue_reset - Discard any current event queue so the next
  * cmb_event_queue_initialize finds the empty queue it expects. Unlike
  * cmb_event_queue_terminate, this is safe to call whether or not a queue is
