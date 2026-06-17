@@ -21,9 +21,7 @@
  * limitations under the License.
  */
 
-#include <assert.h>
 #include <errno.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -50,6 +48,9 @@ static void test_action(void *subject, void *object)
 /* Another event: Closes the bar for good */
 static void end_sim(void *subject, void *object)
 {
+    cmb_unused(subject);
+    cmb_unused(object);
+
     cmb_logger_info(stdout, "%p\t%s\t%s", (void *)end_sim, (char *)subject, (char *)object);
     cmb_logger_warning(stdout, "===> end_sim: game over <===");
     cmb_event_queue_clear();
@@ -77,7 +78,12 @@ static const char *hhmmss_formatter(const double t)
                                FMTBUFLEN,
                                "%02d-%02d:%02d:%06.3f",
                                days + 1u, hours, minutes, seconds);
-    assert((r > 0) && (r < FMTBUFLEN));
+    if ((r <= 0) || (r > FMTBUFLEN)) {
+        fprintf(stderr,
+            "hhmmss_formatter error: Given t = %f, buffer size %d, snprintf returned %d\n",
+            t, FMTBUFLEN, r);
+        abort();
+    }
 
     return fmtbuf;
 }
