@@ -124,7 +124,7 @@ else
     message('Skipping tut_5_1: HDF5 not found.')
 endif
 
-if hdf5_dep.found() and cuda_dep.found()
+if get_option('enable_cuda_tutorials') and hdf5_dep.found() and cuda_dep.found()
     cuda_inc = include_directories('/opt/cuda/include')
 
     executable('tut_5_2',
@@ -146,7 +146,7 @@ else
 endif
 
 
-if cuda_dep.found()
+if get_option('enable_cuda_tutorials') and cuda_dep.found()
     cuda_inc = include_directories('/opt/cuda/include')
 
     executable('tut_5_3',

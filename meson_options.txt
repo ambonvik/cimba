@@ -4,6 +4,12 @@ option('enable_docs',
        description : 'Build the docs'
 )
 
+option('enable_cuda_tutorials',
+       type : 'boolean',
+       value : true,
+       description : 'Build the CUDA tutorial examples (tut_5_2, tut_5_3)'
+)
+
 option('benchopt',
        type    : 'combo',
        choices : ['none', 'generate', 'use'],

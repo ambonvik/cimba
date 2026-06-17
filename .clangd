@@ -1,3 +1,5 @@
+If:
+  PathMatch: .*\.cu
 CompileFlags:
   Add:
     - --cuda-path=/opt/cuda
