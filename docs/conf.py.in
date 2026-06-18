@@ -40,3 +40,6 @@ exhale_args = {
 primary_domain = 'c'
 highlight_language = 'c'
 
+suppress_warnings = ["duplicate_declaration.c", "toc.not_included"]
+
+

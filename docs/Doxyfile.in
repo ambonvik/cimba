@@ -22,4 +22,7 @@ HAVE_DOT = YES
 CLASS_GRAPHS = YES
 COLLABORATION_GRAPHS = YES
 CLASS_DIAGRAMS = YES
-PREDEFINED = __attribute__(x)=
+PREDEFINED = __attribute__(x)= \
+             CMB_MAYBE_UNUSED= \
+             CMB_NORETURN= \
+             CMB_THREAD_LOCAL=
