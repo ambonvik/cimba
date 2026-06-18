@@ -902,13 +902,16 @@ static inline int64_t cmb_random_loaded_dice(const int64_t a, const int64_t b,
     cmb_assert_release(a < b);
     cmb_assert_release(pa != NULL);
 
-    const uint64_t n = b - a + 1u;
-    const int64_t r = a + cmb_random_discrete_nonuniform(n, pa);
+    /* Avoid potential overflow in edge cases, assuming a two's complement machine */
+    const uint64_t span = (uint64_t)b - (uint64_t)a;
+    cmb_assert_release(span < UINT64_MAX);
+    const uint64_t n = span + 1u;
+    const uint64_t offset = cmb_random_discrete_nonuniform(n, pa);
+    const int64_t r = (int64_t)((uint64_t)a + offset);
 
     cmb_assert_debug((r >= a) && (r <= b));
     return r;
 }
-
 
 /**
  * @brief Alias table using integer encoding of the probabilities for fast
