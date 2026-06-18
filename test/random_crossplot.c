@@ -24,7 +24,7 @@ int main(void)
 {
     const unsigned n = 1000000;
 
-    cmb_random_initialize(cmb_random_get_hwseed());
+    cmb_random_initialize(cmb_random_hwseed());
     FILE *fp = fopen("random_crossplot.dat", "w");
     for (unsigned ui = 0; ui < n; ui++) {
         const double x = cmb_random();
@@ -34,5 +34,8 @@ int main(void)
 
     fclose(fp);
     write_gnuplot_commands();
-    system("gnuplot -persistent random_crossplot.gp");
+    if (system("gnuplot -persistent random_crossplot.gp") != 0) {
+        cmb_logger_warning(stderr, "gnuplot launch failed");
+    }
+
 }
