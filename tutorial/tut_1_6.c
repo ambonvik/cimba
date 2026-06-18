@@ -233,7 +233,9 @@ int main(void)
     printf("It took %g sec\n", elapsed);
 
     write_gnuplot_commands();
-    (void)system("gnuplot -persistent tut_1_6.gp");
+    if (system("gnuplot -persistent tut_1_6.gp") != 0) {
+        cmb_logger_warning(stderr, "gnuplot launch failed");
+    }
 
     return 0;
 }

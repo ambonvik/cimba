@@ -299,7 +299,9 @@ static void test_wsummary(const uint64_t nsamples)
         cmb_assert_always(fabs(cmb_wtdsummary_variance(r) - ev) <= 1e-7 * fmax(1.0, fabs(ev)));
         cmb_assert_always(fabs(cmb_wtdsummary_skewness(r) - es) <= 1e-5 * fmax(1.0, fabs(es)));
         cmb_assert_always(fabs(cmb_wtdsummary_kurtosis(r) - ek) <= 1e-5 * fmax(1.0, fabs(ek)));
-        free(xs); free(ws);
+
+        free(xs);
+        free(ws);
         cmb_wtdsummary_destroy(r);
     }
 
@@ -502,6 +504,8 @@ void test_dataset(const uint64_t nsamples)
 
     printf("\nCleaning up: cmb_datasummary_terminate, cmb_dataset_destroy\n");
     cmb_datasummary_terminate(&dsum);
+    cmb_dataset_terminate(&ds);
+    cmb_dataset_terminate(dsp);
     cmb_dataset_destroy(dsp);
 
     cmi_test_print_line("=");

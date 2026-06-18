@@ -291,7 +291,7 @@ int main(const int argc, char *argv[])
 
     printf("Finished experiment, writing results to file\n");
     ui_exp = 0u;
-    FILE *datafp = fopen("tut_1_6.dat", "w");
+    FILE *datafp = fopen("tut_1_7.dat", "w");
     fprintf(datafp, "# utilization\tavg_queue_length\tconf_interval\n");
     for (unsigned ui_rho = 0u; ui_rho < n_rhos; ui_rho++) {
         const double ar = experiment[ui_exp].arr_rate;
@@ -325,14 +325,15 @@ int main(const int argc, char *argv[])
     }
 
     write_gnuplot_commands();
-    (void)system("gnuplot -persistent tut_1_6.gp");
-
+    if (system("gnuplot -persistent tut_1_7.gp") != 0) {
+        cmb_logger_warning(stderr, "gnuplot launch failed");
+    }
     return 0;
 }
 
 void write_gnuplot_commands(void)
 {
-    FILE *cmdfp = fopen("tut_1_6.gp", "w");
+    FILE *cmdfp = fopen("tut_1_7.gp", "w");
 
     fprintf(cmdfp, "set terminal qt size 1200,700 enhanced font 'Arial,12'\n");
     fprintf(cmdfp, "set title \"Impact of utilization in M/M/1 queue\" font \"Times Bold, 18\" \n");

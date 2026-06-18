@@ -571,7 +571,9 @@ int main(const int argc, char **argv)
     if (plot_graphics) {
         /* Pop up the Gnuplot graphics window before exiting */
         write_gnuplot_commands(ncvs, cvs);
-        (void)system("gnuplot -persistent test_cimba.gp");
+        if (system("gnuplot -persistent test_cimba.gp") != 0) {
+            cmb_logger_warning(stderr, "gnuplot launch failed");
+        }
     }
 
     cmi_test_print_line("*");

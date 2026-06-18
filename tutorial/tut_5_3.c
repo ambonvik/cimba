@@ -1046,8 +1046,9 @@ int main(int argc, char **argv)
     cmi_free(terrains);
 
     write_gnuplot_commands();
-    (void)system("gnuplot -persistent tut_5_3.gp");
-
+    if (system("gnuplot -persistent tut_5_3.gp") != 0) {
+        cmb_logger_warning(stderr, "gnuplot launch failed");
+    }
     return 0;
 }
 
