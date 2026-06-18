@@ -713,10 +713,10 @@ without a single comment in the code. We are not about to prove total correctnes
 strict C.A.R. Hoare sense, but the function shown above does constitute a logical
 `Hoare triple <https://en.wikipedia.org/wiki/Hoare_logic#Hoare_triple>`_.
 
-There is also an cm̀b_assert_always()` that remains also if `NASSERT`is defined. This
+There is also an `cmb_assert_always()` that remains also if `NASSERT` is defined. This
 is for use in test programs that need to demonstrate correctness independent of the
 compilation options. Internally in Cimba, this is only used in the cmi_memutils.h
-wrappers for `malloc()`and his friends to thest for out-of-memory conditions. These
+wrappers for `malloc()` and his friends to thest for out-of-memory conditions. These
 function calls are slow anyway, and the consequences of an invalid pointer could be
 hard to trace down, so they will be stopped immediately with very little performance cost.
 

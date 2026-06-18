@@ -556,7 +556,7 @@ between the two patterns:
 
 .. code-block:: c
 
-    cmb_logger_flags_off(CMB_LOGGER_INFO) | USERFLAG1);
+    cmb_logger_flags_off(CMB_LOGGER_INFO | USERFLAG1);
 
 
 As you would expect,
@@ -3438,6 +3438,7 @@ thread starts running, and can be obtained from user code by calling
 Internally in ``cimba.c`` the following happens:
 
 .. code-block:: C
+
     /* User-defined context per thread */
     CMB_THREAD_LOCAL void *cmi_thread_context = NULL;
 
@@ -3588,4 +3589,4 @@ parallel, efficiently utilizing all the compute power available on a recent
 multi-core, multi-GPU desktop PC for discrete event simulation. For more detailed
 information about the various fetures of Cimba, please see
 the in-depth :ref:`the background section <background>` and
-the detailed :ref:`API reference pages <api/library_root>`.
+the detailed :doc:`API reference pages </api/library_root>`.
