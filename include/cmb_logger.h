@@ -141,8 +141,8 @@ extern int cmb_logger_vfprintf(FILE *fp,
  *        Written as a macro to provide the calling function name and line
  *        number automatically.
  * @param fp File pointer, possibly `stderr`
- * @param fmtstr printf-like format string
- * @param ... Arguments to the format string.
+ * @param ... A printf-like format string, followed by the arguments to the
+ *            format string.
  */
 #define cmb_logger_fatal(fp, ...) \
     cmi_logger_fatal(fp, __func__, __LINE__, __VA_ARGS__)
@@ -152,8 +152,8 @@ extern int cmb_logger_vfprintf(FILE *fp,
  *        Written as a macro to provide the calling function name and line
  *        number automatically.
  * @param fp File pointer, possibly `stderr`
- * @param fmtstr printf-like format string
- * @param ... Arguments to the format string.
+ * @param ... A printf-like format string, followed by the arguments to the
+ *            format string.
  */
 #define cmb_logger_error(fp, ...) \
     cmi_logger_error(fp, __func__, __LINE__, __VA_ARGS__)
@@ -162,8 +162,8 @@ extern int cmb_logger_vfprintf(FILE *fp,
  * @brief Wrapper for a warning message. Written as a macro to provide the
  *        calling function name and line number automatically.
  * @param fp File pointer, possibly `stdout` or `stderr`
- * @param fmtstr printf-like format string
- * @param ... Arguments to the format string.
+ * @param ... A printf-like format string, followed by the arguments to the
+ *            format string.
  */
 #define cmb_logger_warning(fp, ...) \
     cmi_logger_warning(fp, __func__, __LINE__, __VA_ARGS__)
@@ -173,8 +173,8 @@ extern int cmb_logger_vfprintf(FILE *fp,
  *        calling function name and line number automatically. Goes away entirely
  *        if compiled with -DNLOGINFO (like assert() and -DNDEBUG)
  * @param fp File pointer, possibly `stdout`
- * @param fmtstr printf-like format string
- * @param ... Arguments to the format string.
+ * @param ... A printf-like format string, followed by the arguments to the
+ *            format string.
  */
 #ifndef NLOGINFO
   #define cmb_logger_info(fp, ...) \
@@ -190,8 +190,8 @@ extern int cmb_logger_vfprintf(FILE *fp,
  * @param flags The user-defined logging bitmask for this logging call, to be
  *              matched against the current logging bitmask. If bitwise `and` is
  *              non-zero, this will be printed.
- * @param fmtstr printf-like format string
- * @param ... Arguments to the format string.
+ * @param ... A printf-like format string, followed by the arguments to the
+ *            format string.
  */
 #define cmb_logger_user(fp, flags, ...) \
     cmi_logger_user(fp, flags, __func__, __LINE__, __VA_ARGS__)
