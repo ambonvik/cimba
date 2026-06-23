@@ -48,8 +48,7 @@ struct cmi_holdable;
  * the resource.
  *
  * The process pointer argument is needed since the calling (current) process is
- * not the victim process here. The handle arg is for cases where the resource
- * can look it up in its hash map for efficiency, zero if not applicable.
+ * not the victim process here.
  */
 typedef void (cmi_holdable_drop_func)(struct cmi_holdable *hrp,
                                       const struct cmb_process *pp);
