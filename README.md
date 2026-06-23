@@ -111,14 +111,6 @@ It is a general-purpose discrete event simulation library, in the spirit of a
 * and quite a few more application domains of similar kinds, where overall system 
   complexity arises from interactions between relatively simple components.
 
-As an example, this screen shot shows one frame from a simulation of an AWACS 
-trying to detect 1000 ground targets across a 1000 x 1000 nm synthetic map. The size of 
-each target is its current radar cross section, the color is the current detection status. 
-The vectors on the sphere representing the AWACS indicate the current direction of the 
-platform and the current direction of the radar lobe. The visualization was done in ParaView.
-
-![AWACS racetrack](images/tut_5_1c.png)
-
 If you look under the hood, you will also find additional reusable internal components.
 Cimba contains stackful coroutines doing their own thing on thread-safe cactus stacks. 
 There are fast memory pool allocators for generic small objects and hash-heaps combining 
@@ -312,6 +304,14 @@ synthetic terrain with one arcsecond resolution. The sensor process models a sca
 surveillance radar including 
 line-of-sight geometry, terrain masking, constant-gamma clutter with CA-CFAR detection, 
 and specular multipath. The model uses radar dwell itervals (time steps) of 0.04 seconds.
+
+The screen shot below shows one frame from a simulation of this simulation. The size of
+each target is its current radar cross-section, the color is the current detection status.
+The vectors on the sphere representing the AWACS indicate the current direction of the
+platform and the current direction of the radar lobe. The visualization is done in 
+ParaView.
+
+![AWACS racetrack](images/tut_5_1c.png)
 
 Cimba is able to harness all the computing power available in modern computer 
 architectures for your simulation purposes, whatever they are.
