@@ -534,7 +534,7 @@ void cmi_dataset_histogram_print(const struct cmi_dataset_histogram *hp,
         data_print_blocks(fp, scale, hp->hbins[ui]);
     }
 
-    r = fprintf(fp, "[%#10.4g,  Infinity )   |", hp->high_lim);
+    r = fprintf(fp, "[%#10.4g,   Infinity)   |", hp->high_lim);
     cmb_assert_release(r > 0);
     data_print_blocks(fp, scale, hp->hbins[hp->num_bins - 1u]);
     data_print_line(fp, symbol_thin, line_length);
