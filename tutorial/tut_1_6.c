@@ -16,7 +16,7 @@ struct trial {
     /* Parameters */
     double arr_rate;
     double srv_rate;
-    double warmup_time;
+    double warmup_s;
     double dur_s;
     /* Results */
     uint64_t seed_used;
@@ -58,7 +58,7 @@ static void stop_rec(void *subject, void *object)
 }
 
 
-void *arrival(struct cmb_process *me, void *vctx)
+void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
 
@@ -80,7 +80,7 @@ void *arrival(struct cmb_process *me, void *vctx)
     }
 }
 
-void *service(struct cmb_process *me, void *vctx)
+void *service_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
 
@@ -125,14 +125,14 @@ void run_MM1_trial(void *vtrl)
     cmb_buffer_initialize(ctx.sim->que, "Queue", CMB_UNLIMITED);
 
     ctx.sim->arr = cmb_process_create();
-    cmb_process_initialize(ctx.sim->arr, "Arrival", arrival, &ctx, 0);
+    cmb_process_initialize(ctx.sim->arr, "Arrival", arrival_proc, &ctx, 0);
     cmb_process_start(ctx.sim->arr);
 
     ctx.sim->srv = cmb_process_create();
-    cmb_process_initialize(ctx.sim->srv, "Service", service, &ctx, 0);
+    cmb_process_initialize(ctx.sim->srv, "Server", service_proc, &ctx, 0);
     cmb_process_start(ctx.sim->srv);
 
-    double t = trl->warmup_time;
+    double t = trl->warmup_s;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
     t += trl->dur_s;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
@@ -177,7 +177,7 @@ int main(void)
 
     printf("Setting up experiment\n");
     const unsigned n_trials = n_rhos * n_reps;
-    struct trial *experiment = calloc(n_trials, sizeof(*experiment));
+    struct trial *experiment = cmi_calloc(n_trials, sizeof(*experiment));
 
     uint64_t ui_exp = 0u;
     double rho = rho_start;
@@ -185,7 +185,7 @@ int main(void)
         for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
             experiment[ui_exp].arr_rate = rho * srv_rate;
             experiment[ui_exp].srv_rate = srv_rate;
-            experiment[ui_exp].warmup_time = warmup_time;
+            experiment[ui_exp].warmup_s = warmup_time;
             experiment[ui_exp].dur_s = duration;
             experiment[ui_exp].seed_used = 0u;
             experiment[ui_exp].avg_queue_length = 0.0;
@@ -224,7 +224,7 @@ int main(void)
     }
 
     fclose(datafp);
-    free(experiment);
+    cmi_free(experiment);
 
     struct timespec end_time;
     clock_gettime(CLOCK_MONOTONIC, &end_time);

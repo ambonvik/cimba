@@ -13,7 +13,7 @@ struct trial {
     /* Parameters */
     double arr_rate;
     double srv_rate;
-    double warmup_time;
+    double warmup_s;
     double dur_s;
     /* Results */
     double avg_queue_length;
@@ -54,7 +54,7 @@ static void stop_rec(void *subject, void *object)
 }
 
 
-void *arrival(struct cmb_process *me, void *vctx)
+void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
 
@@ -76,7 +76,7 @@ void *arrival(struct cmb_process *me, void *vctx)
     }
 }
 
-void *service(struct cmb_process *me, void *vctx)
+void *service_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
 
@@ -111,8 +111,7 @@ void run_MM1_trial(void *vtrl)
     const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
 
-    cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG1);
+    cmb_logger_flags_off(CMB_LOGGER_INFO | USERFLAG1);
 
     cmb_event_queue_initialize(0.0);
 
@@ -120,14 +119,14 @@ void run_MM1_trial(void *vtrl)
     cmb_buffer_initialize(ctx.sim->que, "Queue", CMB_UNLIMITED);
 
     ctx.sim->arr = cmb_process_create();
-    cmb_process_initialize(ctx.sim->arr, "Arrival", arrival, &ctx, 0);
+    cmb_process_initialize(ctx.sim->arr, "Arrival", arrival_proc, &ctx, 0);
     cmb_process_start(ctx.sim->arr);
 
     ctx.sim->srv = cmb_process_create();
-    cmb_process_initialize(ctx.sim->srv, "Service", service, &ctx, 0);
+    cmb_process_initialize(ctx.sim->srv, "Server", service_proc, &ctx, 0);
     cmb_process_start(ctx.sim->srv);
 
-    double t = trl->warmup_time;
+    double t = trl->warmup_s;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
     t += trl->dur_s;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
@@ -154,20 +153,13 @@ void run_MM1_trial(void *vtrl)
 
 }
 
-void load_params(struct trial *trlp)
-{
-    cmb_assert_release(trlp != NULL);
-
-    trlp->arr_rate = 0.75;
-    trlp->srv_rate = 1.0;
-    trlp->warmup_time = 1000.0;
-    trlp->dur_s = 1e6;
-}
-
 int main(void)
 {
     struct trial trl = {};
-    load_params(&trl);
+    trl.arr_rate = 0.75;
+    trl.srv_rate = 1.0;
+    trl.warmup_s = 1000.0;
+    trl.dur_s = 1e6;
 
     run_MM1_trial(&trl);
 

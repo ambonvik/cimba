@@ -15,7 +15,7 @@ void end_sim(void *subject, void *object)
     cmb_process_stop(sim->srv, NULL);
 }
 
-void *arrival(struct cmb_process *me, void *ctx)
+void *arrival_proc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
 
@@ -30,7 +30,7 @@ void *arrival(struct cmb_process *me, void *ctx)
     }
 }
 
-void *service(struct cmb_process *me, void *ctx)
+void *service_proc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
 
@@ -57,11 +57,11 @@ int main(void)
     cmb_buffer_initialize(sim.que, "Queue", CMB_UNLIMITED);
 
     sim.arr = cmb_process_create();
-    cmb_process_initialize(sim.arr, "Arrival", arrival, sim.que, 0);
+    cmb_process_initialize(sim.arr, "Arrival", arrival_proc, sim.que, 0);
     cmb_process_start(sim.arr);
 
     sim.srv = cmb_process_create();
-    cmb_process_initialize(sim.srv, "Service", service, sim.que, 0);
+    cmb_process_initialize(sim.srv, "Server", service_proc, sim.que, 0);
     cmb_process_start(sim.srv);
 
     cmb_event_schedule(end_sim, NULL, &sim, 10.0, 0);

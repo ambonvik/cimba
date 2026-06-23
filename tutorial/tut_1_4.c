@@ -19,7 +19,7 @@ void end_sim(void *subject, void *object)
     cmb_process_stop(sim->srv, NULL);
 }
 
-void *arrival(struct cmb_process *me, void *ctx)
+void *arrival_proc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
 
@@ -36,7 +36,7 @@ void *arrival(struct cmb_process *me, void *ctx)
     }
 }
 
-void *service(struct cmb_process *me, void *ctx)
+void *service_proc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
 
@@ -58,8 +58,7 @@ int main(void)
     const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
 
-    cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG1);
+    cmb_logger_flags_off(CMB_LOGGER_INFO | USERFLAG1);
 
     cmb_event_queue_initialize(0.0);
 
@@ -69,14 +68,14 @@ int main(void)
     cmb_buffer_recording_start(sim.que);
 
     sim.arr = cmb_process_create();
-    cmb_process_initialize(sim.arr, "Arrival", arrival, sim.que, 0);
+    cmb_process_initialize(sim.arr, "Arrival", arrival_proc, sim.que, 0);
     cmb_process_start(sim.arr);
 
     sim.srv = cmb_process_create();
-    cmb_process_initialize(sim.srv, "Service", service, sim.que, 0);
+    cmb_process_initialize(sim.srv, "Server", service_proc, sim.que, 0);
     cmb_process_start(sim.srv);
 
-    cmb_event_schedule(end_sim, NULL, &sim, 1e6, 0);
+    cmb_event_schedule(end_sim, NULL, &sim, 1.0e6, 0);
     cmb_event_queue_execute();
 
     cmb_buffer_recording_stop(sim.que);

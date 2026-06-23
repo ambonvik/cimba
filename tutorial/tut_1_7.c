@@ -18,6 +18,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <errno.h>
 #include <cimba.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -47,7 +48,7 @@ struct trial {
     /* Parameters */
     double arr_rate;
     double srv_rate;
-    double warmup_time;
+    double warmup_s;
     double dur_s;
     /* Results */
     uint64_t seed_used;
@@ -104,7 +105,7 @@ static void stop_rec(void *subject, void *object)
 /*
  * The arrival process, a memoryless Poisson process
  */
-void *arrival(struct cmb_process *me, void *vctx)
+void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
 
@@ -129,7 +130,7 @@ void *arrival(struct cmb_process *me, void *vctx)
 /*
  * The service process, exponentially distributed service times.
  */
-void *service(struct cmb_process *me, void *vctx)
+void *service_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
 
@@ -166,8 +167,7 @@ void run_MM1_trial(void *vtrl)
     ctx.trl = trl;
 
     /* Set up our trial housekeeping */
-    cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG1);
+    cmb_logger_flags_off(CMB_LOGGER_INFO | USERFLAG1);
     cmb_event_queue_initialize(0.0);
     cmb_random_initialize(trl->seed_used);
     cmb_logger_user(stdout, USERFLAG2,
@@ -180,16 +180,16 @@ void run_MM1_trial(void *vtrl)
 
     /* Create the arrival process */
     ctx.sim->arr = cmb_process_create();
-    cmb_process_initialize(ctx.sim->arr, "Arrival", arrival, &ctx, 0);
+    cmb_process_initialize(ctx.sim->arr, "Arrival", arrival_proc, &ctx, 0);
     cmb_process_start(ctx.sim->arr);
 
     /* Create the service process */
     ctx.sim->srv = cmb_process_create();
-    cmb_process_initialize(ctx.sim->srv, "Service", service, &ctx, 0);
+    cmb_process_initialize(ctx.sim->srv, "Server", service_proc, &ctx, 0);
     cmb_process_start(ctx.sim->srv);
 
     /* Schedule the simulation control events */
-    double t = trl->warmup_time;
+    double t = trl->warmup_s;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
     t += trl->dur_s;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
@@ -226,7 +226,7 @@ int main(const int argc, char *argv[])
     /* Can be set on command line */
     bool timing_enabled = false;
     uint64_t master_seed = cmb_random_hwseed();
-    unsigned n_reps = 10;
+    uint32_t n_reps = 10;
     double warmup_time = 1000.0;
     double duration = 1.0e6;
 
@@ -236,29 +236,57 @@ int main(const int argc, char *argv[])
     const double rho_step = 0.025;
     const double srv_rate = 1.0;
 
+    /* Parse command line options, if any */
     int opt;
     while ((opt = getopt(argc, argv, "d:n:s:tw:")) != -1) {
         switch (opt) {
-            case 'd':
-                duration = (double)strtod(optarg, NULL);
+            case 'd': {
+                errno = 0;
+                duration = strtod(optarg, NULL);
+                if (errno != 0 || duration <= 0.0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
                 break;
-            case 'n':
-                n_reps = (unsigned)strtoull(optarg, NULL, 0);
+            }
+            case 'n': {
+                errno = 0;
+                n_reps = (uint32_t)strtoul(optarg, NULL, 0);
+                if (errno != 0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
                 break;
-            case 's':
+            }
+            case 's': {
+                errno = 0;
                 master_seed = (uint64_t)strtoull(optarg, NULL, 0);
+                if (errno != 0 || master_seed == 0u) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
                 break;
-            case 't':
+            }
+            case 't': {
                 timing_enabled = true;
                 break;
-            case 'w':
+            }
+            case 'w': {
+                errno = 0;
                 warmup_time = (double)strtod(optarg, NULL);
+                if (errno != 0 || warmup_time < 0.0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
                 break;
-            default:
+            }
+            default: {
                 fprintf(stderr, "Usage: %s [-d <duration>][-n <num_replications>][-s <seed>][-t][-w <warmup_time>]\n", argv[0]);
                 return EXIT_FAILURE;
+            }
         }
     }
+
     printf("Cimba version %s\n", cimba_version());
     struct timespec start_time;
     if (timing_enabled) {
@@ -266,8 +294,9 @@ int main(const int argc, char *argv[])
     }
 
     printf("Setting up experiment\n");
+    printf("Master seed: 0x%" PRIx64 "\n", master_seed);
     const unsigned n_trials = n_rhos * n_reps;
-    struct trial *experiment = calloc(n_trials, sizeof(*experiment));
+    struct trial *experiment = cmi_calloc(n_trials, sizeof(*experiment));
 
     uint64_t ui_exp = 0u;
     double rho = rho_start;
@@ -275,7 +304,7 @@ int main(const int argc, char *argv[])
         for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
             experiment[ui_exp].arr_rate = rho * srv_rate;
             experiment[ui_exp].srv_rate = srv_rate;
-            experiment[ui_exp].warmup_time = warmup_time;
+            experiment[ui_exp].warmup_s = warmup_time;
             experiment[ui_exp].dur_s = duration;
             experiment[ui_exp].seed_used = cmb_random_fmix64(master_seed, ui_exp);
             experiment[ui_exp].avg_queue_length = 0.0;
@@ -314,7 +343,7 @@ int main(const int argc, char *argv[])
     }
 
     fclose(datafp);
-    free(experiment);
+    cmi_free(experiment);
 
     if (timing_enabled) {
         struct timespec end_time;
@@ -328,6 +357,7 @@ int main(const int argc, char *argv[])
     if (system("gnuplot -persistent tut_1_7.gp") != 0) {
         cmb_logger_warning(stderr, "gnuplot launch failed");
     }
+
     return 0;
 }
 
@@ -343,7 +373,7 @@ void write_gnuplot_commands(void)
     fprintf(cmdfp, "set xrange [0.0:1.0]\n");
     fprintf(cmdfp, "set yrange [0:50]\n");
     fprintf(cmdfp, "f(x) = x**2 / (1.0 - x)\n");
-    fprintf(cmdfp, "datafile = 'tut_1_6.dat'\n");
+    fprintf(cmdfp, "datafile = 'tut_1_7.dat'\n");
     fprintf(cmdfp, "plot datafile with yerrorbars lc rgb \"black\", \\\n");
     fprintf(cmdfp, "        f(x) title \"M/M/1\" with lines lw 2 lc rgb \"gray\"\n");
 

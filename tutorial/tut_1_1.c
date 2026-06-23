@@ -1,11 +1,7 @@
 #include <cimba.h>
 
-void *arrival(struct cmb_process *me, void *ctx)
+void *arrival_proc(struct cmb_process *me, void *ctx)
 {
-    /* We have not introduced cmb_unused() yet in the tutorial text at this
-     * point, but use it nevertheless to silence unnecessary compiler warnings
-     * about unused function arguments when building the entire Cimba library.
-     * cmb_unused suppresses that warning, stating "it is intentional". */
     cmb_unused(me);
 
     struct cmb_buffer *bp = ctx;
@@ -19,7 +15,7 @@ void *arrival(struct cmb_process *me, void *ctx)
     }
 }
 
-void *service(struct cmb_process *me, void *ctx)
+void *service_proc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
 
@@ -45,11 +41,11 @@ int main(void)
     cmb_buffer_initialize(que, "Queue", CMB_UNLIMITED);
 
     struct cmb_process *arr_proc = cmb_process_create();
-    cmb_process_initialize(arr_proc, "Arrival", arrival, que, 0);
+    cmb_process_initialize(arr_proc, "Arrival", arrival_proc, que, 0);
     cmb_process_start(arr_proc);
 
     struct cmb_process *serv_proc = cmb_process_create();
-    cmb_process_initialize(serv_proc, "Service", service, que, 0);
+    cmb_process_initialize(serv_proc, "Server", service_proc, que, 0);
     cmb_process_start(serv_proc);
 
     cmb_event_queue_execute();
