@@ -31,6 +31,7 @@ struct context {
 void end_sim(void *subject, void *object)
 {
     cmb_unused(subject);
+    cmb_assert_debug(object != NULL);
 
     const struct context *ctx = object;
     const struct simulation *sim = ctx->sim;
@@ -42,6 +43,7 @@ void end_sim(void *subject, void *object)
 static void start_rec(void *subject, void *object)
 {
     cmb_unused(subject);
+    cmb_assert_debug(object != NULL);
 
     const struct context *ctx = object;
     const struct simulation *sim = ctx->sim;
@@ -51,6 +53,7 @@ static void start_rec(void *subject, void *object)
 static void stop_rec(void *subject, void *object)
 {
     cmb_unused(subject);
+    cmb_assert_debug(object != NULL);
 
     const struct context *ctx = object;
     const struct simulation *sim = ctx->sim;
@@ -61,6 +64,7 @@ static void stop_rec(void *subject, void *object)
 void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
+    cmb_assert_debug(vctx != NULL);
 
     const struct context *ctx = vctx;
     const struct simulation *sim = ctx->sim;
@@ -83,6 +87,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
 void *service_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
+    cmb_assert_debug(vctx != NULL);
 
     const struct context *ctx = vctx;
     const struct simulation *sim = ctx->sim;
@@ -104,7 +109,7 @@ void *service_proc(struct cmb_process *me, void *vctx)
 
 void run_MM1_trial(void *vtrl)
 {
-    cmb_assert_release(vtrl != NULL);
+    cmb_assert_debug(vtrl != NULL);
     struct trial *trl = vtrl;
 
     struct context ctx = {};
@@ -112,8 +117,7 @@ void run_MM1_trial(void *vtrl)
     ctx.sim = &sim;
     ctx.trl = trl;
 
-    cmb_logger_flags_off(CMB_LOGGER_INFO);
-    cmb_logger_flags_off(USERFLAG1);
+    cmb_logger_flags_off(CMB_LOGGER_INFO | USERFLAG1);
     cmb_event_queue_initialize(0.0);
     trl->seed_used = cmb_random_hwseed();
     cmb_random_initialize(trl->seed_used);

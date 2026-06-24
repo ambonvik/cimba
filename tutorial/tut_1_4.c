@@ -12,6 +12,7 @@ struct simulation {
 void end_sim(void *subject, void *object)
 {
     cmb_unused(subject);
+    cmb_assert_debug(object != NULL);
 
     struct simulation *sim = object;
     cmb_logger_user(stdout, USERFLAG1, "--- Game Over ---");
@@ -22,6 +23,7 @@ void end_sim(void *subject, void *object)
 void *arrival_proc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
+    cmb_assert_debug(ctx != NULL);
 
     struct cmb_buffer *bp = ctx;
     while (true) {
@@ -39,6 +41,7 @@ void *arrival_proc(struct cmb_process *me, void *ctx)
 void *service_proc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
+    cmb_assert_debug(ctx != NULL);
 
     struct cmb_buffer *bp = ctx;
     while (true) {
@@ -84,6 +87,8 @@ int main(void)
     struct cmb_timeseries *ts = cmb_buffer_history(sim.que);
     double pacf_arr[21];
     cmb_timeseries_PACF(ts, 20, pacf_arr, NULL);
+    printf("\nPartial autocorrelation coefficients for %s levels\n",
+            cmb_buffer_name(sim.que));
     cmb_timeseries_correlogram_print(ts, stdout, 20, pacf_arr);
 
     cmb_process_terminate(sim.srv);

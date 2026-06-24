@@ -220,6 +220,7 @@ void run_MM1_trial(void *vtrl)
 }
 
 void write_gnuplot_commands(void);
+double t_crit_95(const uint32_t n);
 
 int main(const int argc, char *argv[])
 {
@@ -337,7 +338,7 @@ int main(const int argc, char *argv[])
         cmb_assert_debug(cmb_datasummary_count(&cds) == n_reps);
         const double sample_avg = cmb_datasummary_mean(&cds);
         const double sample_sd = cmb_datasummary_stddev(&cds);
-        const double t_crit = 2.228;
+        const double t_crit = t_crit_95(n_reps);
         fprintf(datafp, "%f\t%f\t%f\n", rho_used, sample_avg, t_crit * sample_sd);
         cmb_datasummary_terminate(&cds);
     }
@@ -378,4 +379,56 @@ void write_gnuplot_commands(void)
     fprintf(cmdfp, "        f(x) title \"M/M/1\" with lines lw 2 lc rgb \"gray\"\n");
 
     fclose(cmdfp);
+}
+
+/*
+ * Table lookup for the critical values for two-sided 95 % confidence intervals,
+ * see https://www.stat.purdue.edu/~lfindsen/stat503/t-Dist.pdf
+ */
+double t_crit_95(const uint32_t n)
+{
+    cmb_assert_debug(n > 0u);
+
+    #define NUM_TVALS 62u
+    static uint32_t n_vals[NUM_TVALS] = {
+         1,  2,  3,  4,  5,  6,  7,  8,  9, 10,
+        11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+        21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+        31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+        41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+        60, 70, 80, 90,100,120,140,180,200,500,
+        1000, UINT32_MAX
+    };
+
+    static double t_vals[NUM_TVALS] = {
+        12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228,
+         2.201, 2.179, 2.160, 2.145, 2.131, 2.120, 2.110, 2.101, 2.093, 2.086,
+         2.080, 2.074, 2.069, 2.064, 2.060, 2.056, 2.052, 2.048, 2.045, 2.042,
+         2.040, 2.037, 2.035, 2.032, 2.030, 2.028, 2.026, 2.024, 2.023, 2.021,
+         2.020, 2.018, 2.017, 2.015, 2.014, 2.013, 2.012, 2.011, 2.010, 2.009,
+         2.000, 1.994, 1.990, 1.987, 1.984, 1.980, 1.977, 1.973, 1.972, 1.965,
+         1.962, 1.960
+    };
+
+    for (uint32_t ui = 0u; ui < NUM_TVALS; ui++) {
+        if (n_vals[ui] == n) {
+            return t_vals[ui];
+        }
+
+        if (n_vals[ui] > n) {
+            /* Interpolate between values */
+            const uint32_t n_range = n_vals[ui] - n_vals[ui - 1];
+            const double t_range = t_vals[ui] - t_vals[ui - 1];
+            const double frac = (double)(n - n_vals[ui - 1]) / (double)n_range;
+            cmb_assert_debug(frac >= 0.0 && frac <= 1.0);
+            const double t_ret = t_vals[ui] - frac * t_range;
+
+            cmb_assert_debug((t_ret >= t_vals[ui -1]) && (t_ret <= t_vals[ui]));
+            return t_ret;
+        }
+    }
+
+    /* Should never get this far */
+    cmb_logger_error(stderr, "Critical value lookup failed");
+    #undef NUM_TVALS
 }

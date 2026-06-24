@@ -22,6 +22,7 @@ void end_sim(void *subject, void *object)
 void *arrival_proc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
+    cmb_assert_debug(ctx != NULL);
 
     struct cmb_buffer *bp = ctx;
     while (true) {
@@ -39,6 +40,7 @@ void *arrival_proc(struct cmb_process *me, void *ctx)
 void *service_proc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
+    cmb_assert_debug(ctx != NULL);
 
     struct cmb_buffer *bp = ctx;
     while (true) {
