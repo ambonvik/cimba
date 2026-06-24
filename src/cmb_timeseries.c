@@ -271,11 +271,6 @@ void cmb_timeseries_histogram_print(const struct cmb_timeseries *tsp,
         high_lim = dsp->max;
     }
 
-    const unsigned datarange = (unsigned)ceil(high_lim - low_lim);
-    if (datarange < num_bins) {
-        num_bins = (datarange > 0u) ? datarange : 1u;
-    }
-
     struct cmi_dataset_histogram *hp = NULL;
     hp = cmi_dataset_histogram_create(num_bins, low_lim, high_lim);
     timeseries_histogram_fill(hp, dsp->count, dsp->xa, tsp->wa);
@@ -532,9 +527,9 @@ void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
 
     const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
             ((lead_ins) ? "Min " : ""), xmin,
-            ((lead_ins) ? "  First " : "\t"), x025,
+            ((lead_ins) ? "  First_Q " : "\t"), x025,
             ((lead_ins) ? "  Median " : "\t"), x050,
-            ((lead_ins) ? "  Third " : "\t"), x075,
+            ((lead_ins) ? "  Third_Q " : "\t"), x075,
             ((lead_ins) ? "  Max " : "\t"), xmax);
     cmb_assert_release(r > 0);
 

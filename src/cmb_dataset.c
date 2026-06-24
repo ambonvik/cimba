@@ -374,9 +374,9 @@ void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
 
         const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
                 ((lead_ins) ? "Min " : ""), min,
-                ((lead_ins) ? "  First " : "\t"), q1,
+                ((lead_ins) ? "  First_Q " : "\t"), q1,
                 ((lead_ins) ? "  Median " : "\t"), med,
-                ((lead_ins) ? "  Third " : "\t"), q3,
+                ((lead_ins) ? "  Third_Q " : "\t"), q3,
                 ((lead_ins) ? "  Max " : "\t"), max);
         cmb_assert_release(r > 0);
         cmb_dataset_reset(&dsc);
@@ -569,12 +569,7 @@ void cmb_dataset_histogram_print(const struct cmb_dataset *dsp,
     if (low_lim == high_lim) {
         /* Autoscale to dataset range */
         low_lim = dsp->min;
-        high_lim = dsp->max + 1.0;
-    }
-
-    const unsigned datarange = (unsigned)ceil(high_lim - low_lim);
-    if (datarange < num_bins) {
-        num_bins = (datarange > 0u) ? datarange : 1u;
+        high_lim = dsp->max;
     }
 
     struct cmi_dataset_histogram *hp = NULL;

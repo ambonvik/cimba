@@ -180,10 +180,11 @@ void cmb_priorityqueue_report_print(struct cmb_priorityqueue *pqp, FILE *fp) {
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
     (void)cmb_timeseries_summarize(ts, ws);
     cmb_wtdsummary_print(ws, fp, true);
+    const double qmax = cmb_wtdsummary_max(ws);
     cmb_wtdsummary_destroy(ws);
 
-    const unsigned nbin = (pqp->capacity > 20) ? 20 : pqp->capacity + 1;
-    cmb_timeseries_histogram_print(ts, fp, nbin, 0.0, (double)(pqp->capacity + 1u));
+    const uint32_t nbins = (qmax > 10.0) ? 10 : (uint32_t)(qmax + 1.0);
+    cmb_timeseries_histogram_print(ts, fp, nbins, 0.0, qmax + 1.0);
 }
 
 int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
