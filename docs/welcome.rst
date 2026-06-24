@@ -56,11 +56,15 @@ It is powerful, fast, reliable, and free.
       distributions like normal and exponential are implemented by state-of-the-art
       ziggurat rejection sampling for speed and accuracy.
 
-    * As a C program, easy integration with other libraries and programs. You could call
-      CUDA routines to enhance your simulation models with GPU-powered agentic behavior
-      or drive a fancy graphics interface like a 3D visualization of a manufacturing
-      plant. You could even call the Cimba simulation engine from other programming
-      languages, since the C calling convention is standard and well-documented.
+    * Cimba makes it easy to set up a proper experimental design as an array of trials,
+      execute those in parallel, and calculate the necessary statistics, all in a single
+      program.
+
+    * As a C program, Cimba is easy to integrate with other libraries and programs. You
+      can call CUDA routines for model physics or to enhance your simulation models with
+      GPU-powered agentic behavior. You could even call the Cimba simulation engine from
+      other programming languages, since the C calling convention is standard and well-
+      documented.
 
 * *Fast*: The speed from multithreaded parallel execution translates to high
   resolution in your simulation modelling. You can run hundreds of replications
