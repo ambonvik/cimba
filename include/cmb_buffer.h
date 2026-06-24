@@ -161,7 +161,7 @@ extern int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp);
  * @return A null-terminated string containing the name of the buffer.
  */
 CMB_MAYBE_UNUSED
-static inline const char *cmb_buffer_get_name(struct cmb_buffer *bp)
+static inline const char *cmb_buffer_name(struct cmb_buffer *bp)
 {
     cmb_assert_debug(bp != NULL);
 

@@ -147,7 +147,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
     cmb_logger_user(stdout,
                     USERFLAG1,
                     "Started arrival, queue %s",
-                    cmb_buffer_get_name(bp));
+                    cmb_buffer_name(bp));
     cmb_assert_always(ctx->trl->utilization > 0.0);
     const double mean_interarr = 1.0 / ctx->trl->utilization;
 
@@ -179,7 +179,7 @@ void *service_proc(struct cmb_process *me, void *vctx)
     cmb_logger_user(stdout,
                     USERFLAG1,
                     "Started service, queue %s",
-                    cmb_buffer_get_name(bp));
+                    cmb_buffer_name(bp));
 
     const double cv = ctx->trl->service_cv;
     cmb_assert_always(cv > 0.0);

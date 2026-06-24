@@ -6,8 +6,11 @@ corner without this warranting a new major release. We will summarize new featur
 changes, and bug fixes below. For complete details, see the git commit history.
 
 ### Incremental changes on the way to the official 3.0.0 release
+* Breaking change: `cmb_buffer_get_name()` renamed to `cmb_buffer_name()` for
+  consistency with other similar functions, and to avoid any confusion with the
+  `cmb_buffer_get()` function.
 * Breaking change: `cmb_random_loaded_dice(int64_t a, int64_t b, double *pa[b - a + 1])` 
-  now takes   three arguments, the end points `a` and `b` in addition to the probability 
+  now takes three arguments, the end points `a` and `b` in addition to the probability 
   array `pa`. The new function `cmb_random_discrete_nonuniform(uint64_t n, double *pa[n])` 
   has the earlier semantics, returning a value on `[0, n-1]`. This gives better symmetry with
   `cmb_random_dice(int64_t a, int64_t b)` and `cmb_random_discrete_uniform(uint64_t n)`.

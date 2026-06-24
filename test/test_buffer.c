@@ -99,7 +99,7 @@ void *putterfunc(struct cmb_process *me, void *vctx)
         cmb_assert_always((n >= (uint64_t)1) && (n <= (uint64_t)15));
         uint64_t m = n;
         cmb_logger_user(stdout, USERFLAG1, "Putting %" PRIu64 " into %s...",
-                        n, cmb_buffer_get_name(bp));
+                        n, cmb_buffer_name(bp));
 
         sig = cmb_buffer_put(bp, &m);
         if (sig == CMB_PROCESS_SUCCESS) {
@@ -137,7 +137,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
         const uint64_t n = cmb_random_dice(1, 15);
         cmb_assert_always((n >= (uint64_t)1) && (n <= (uint64_t)15));
         cmb_logger_user(stdout, USERFLAG1, "Getting %" PRIu64 " from %s...",
-                        n, cmb_buffer_get_name(bp));
+                        n, cmb_buffer_name(bp));
 
         uint64_t m = n;
         sig = cmb_buffer_get(bp, &m);
