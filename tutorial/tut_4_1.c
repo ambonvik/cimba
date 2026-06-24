@@ -75,7 +75,7 @@ struct trial {
     double unloading_time_avg[2];
 
     /* Control parameters */
-    double warmup_time;
+    double warmup_s;
     double dur_s;
 
     /* Results */
@@ -382,7 +382,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
                         ((struct cmb_process *)shp)->name,
                         *t_sys_p);
 
-        if (cmb_time() > trlp->warmup_time) {
+        if (cmb_time() > trlp->warmup_s) {
             /* Add it to the statistics */
             cmb_dataset_add(simp->time_in_system[shp->size], *t_sys_p);
         }
@@ -519,7 +519,7 @@ void run_trial(void *vtrl)
     cmi_slist_initialize(sim.departed_ships);
 
     /* Schedule the simulation control events */
-    double t = trlp->warmup_time;
+    double t = trlp->warmup_s;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
     t += trlp->dur_s;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
@@ -534,6 +534,8 @@ void run_trial(void *vtrl)
         printf("\nSystem times for %s ships:\n", ((i == 0) ? "small" : "large"));
         const unsigned n = cmb_dataset_count(sim.time_in_system[i]);
         if (n > 0) {
+            cmb_dataset_fivenum_print(sim.time_in_system[i], stdout, true);
+
             struct cmb_datasummary dsumm;
             cmb_dataset_summarize(sim.time_in_system[i], &dsumm);
             cmb_datasummary_print(&dsumm, stdout, true);
@@ -547,10 +549,12 @@ void run_trial(void *vtrl)
         const struct cmb_timeseries *hist = cmb_resourcepool_get_history(sim.berths[i]);
         const unsigned n = cmb_timeseries_count(hist);
         if (n > 0) {
+            cmb_timeseries_fivenum_print(hist, stdout, true);
+
             struct cmb_wtdsummary wsumm;
             cmb_timeseries_summarize(hist, &wsumm);
             cmb_wtdsummary_print(&wsumm, stdout, true);
-            const unsigned nvals = (unsigned)cmb_wtdsummary_max(&wsumm);
+            const unsigned nvals = (unsigned)cmb_wtdsummary_max(&wsumm) + 1u;
             cmb_timeseries_histogram_print(hist, stdout, nvals, 0.0, (double)nvals);
         }
     }
@@ -559,14 +563,21 @@ void run_trial(void *vtrl)
     const struct cmb_timeseries *hist = cmb_resourcepool_get_history(sim.tugs);
     const unsigned n = cmb_timeseries_count(hist);
     if (n > 0) {
+        cmb_timeseries_fivenum_print(hist, stdout, true);
+
         struct cmb_wtdsummary wsumm;
         cmb_timeseries_summarize(hist, &wsumm);
         cmb_wtdsummary_print(&wsumm, stdout, true);
-        const unsigned nvals = (unsigned)cmb_wtdsummary_max(&wsumm);
+        const unsigned nvals = (unsigned)cmb_wtdsummary_max(&wsumm) + 1u;
         cmb_timeseries_histogram_print(hist, stdout, nvals, 0.0, (double)nvals);
     }
 
     /* Clean up */
+    cmb_process_terminate(sim.weather);
+    cmb_process_destroy(sim.weather);
+    cmb_process_terminate(sim.tide);
+    cmb_process_destroy(sim.tide);
+
     for (int i = 0; i < 2; i++) {
         cmb_dataset_destroy(sim.time_in_system[i]);
         cmb_resourcepool_destroy(sim.berths[i]);
@@ -575,8 +586,6 @@ void run_trial(void *vtrl)
     cmb_condition_destroy(sim.harbormaster);
     cmb_condition_destroy(sim.davyjones);
     cmb_resourcepool_destroy(sim.tugs);
-    cmb_process_destroy(sim.weather);
-    cmb_process_destroy(sim.tide);
 
     /* Final housekeeping to leave everything as we found it */
     cmb_event_queue_terminate();
@@ -598,7 +607,7 @@ void load_params(struct trial *trlp)
     trlp->unloading_time_avg[SMALL] = 8.0;
     trlp->unloading_time_avg[LARGE] = 12.0;
 
-    trlp->warmup_time = 24.0;
+    trlp->warmup_s = 24.0;
     trlp->dur_s = 24.0 * 7 * 52;
 }
 

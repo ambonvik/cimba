@@ -47,7 +47,7 @@ const unsigned num_berths[N_SIZES][N_LEVELS] = { { 6, 7, 8, 9, 10 },
 const double unloading_time_avg[N_SIZES] = { 8.0, 12.0 };
 
 const double warmup_time = 24.0 * 30;
-const double duration = 24.0 * 7 * 52 * 10;
+const double duration = 24.0 * 365;
 
 /* This implicitly assumes that N_SIZES == 2 */
 enum ship_size {
@@ -105,7 +105,7 @@ struct trial {
     double unloading_time_avg[2];
 
     /* Control parameters */
-    double warmup_time;
+    double warmup_s;
     double dur_s;
 
     /* Results */
@@ -430,7 +430,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
                         ((struct cmb_process *)shp)->name,
                         *t_sys_p);
 
-        if (cmb_time() > trlp->warmup_time) {
+        if (cmb_time() > trlp->warmup_s) {
             /* Add it to the statistics */
             cmb_dataset_add(simp->time_in_system[shp->size], *t_sys_p);
         }
@@ -513,7 +513,7 @@ void run_trial(void *vtrl)
     trlp->seed_used = cmb_random_hwseed();
     cmb_random_initialize(trlp->seed_used);
 
-    cmb_logger_user(stdout, USERFLAG2, "seed: 0x%016" PRIx64, trlp->seed_used);
+    cmb_logger_user(stdout, USERFLAG2, "Started, seed 0x%016" PRIx64, trlp->seed_used);
 
     /* Create and initialize the statistics collectors */
     for (unsigned i = 0; i < N_SIZES; i++) {
@@ -566,7 +566,7 @@ void run_trial(void *vtrl)
     cmi_slist_initialize(&(sim.departed_ships));
 
     /* Schedule the simulation control events */
-    double t = trlp->warmup_time;
+    double t = trlp->warmup_s;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
     t += trlp->dur_s;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
@@ -584,6 +584,11 @@ void run_trial(void *vtrl)
     }
 
     /* Clean up */
+    cmb_process_terminate(sim.weather);
+    cmb_process_destroy(sim.weather);
+    cmb_process_terminate(sim.tide);
+    cmb_process_destroy(sim.tide);
+
     for (unsigned i = 0; i < N_SIZES; i++) {
         cmb_dataset_destroy(sim.time_in_system[i]);
         cmb_resourcepool_destroy(sim.berths[i]);
@@ -592,8 +597,7 @@ void run_trial(void *vtrl)
     cmb_condition_destroy(sim.harbormaster);
     cmb_condition_destroy(sim.davyjones);
     cmb_resourcepool_destroy(sim.tugs);
-    cmb_process_destroy(sim.weather);
-    cmb_process_destroy(sim.tide);
+
 
     /* Final housekeeping to leave everything as we found it */
     cmb_event_queue_terminate();
@@ -632,7 +636,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_time = warmup_time;
+                experiment[ui_trl].warmup_s = warmup_time;
                 experiment[ui_trl].dur_s = duration;
 
                 ui_trl++;
@@ -654,7 +658,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_time = warmup_time;
+                experiment[ui_trl].warmup_s = warmup_time;
                 experiment[ui_trl].dur_s = duration;
 
                 ui_trl++;
@@ -676,7 +680,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_time = warmup_time;
+                experiment[ui_trl].warmup_s = warmup_time;
                 experiment[ui_trl].dur_s = duration;
 
                 ui_trl++;
@@ -698,7 +702,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_time = warmup_time;
+                experiment[ui_trl].warmup_s = warmup_time;
                 experiment[ui_trl].dur_s = duration;
 
                 ui_trl++;
@@ -712,7 +716,7 @@ int main(void)
 
     printf("Finished experiment, writing results to file\n");
     ui_trl = 0u;
-    FILE *datafp = fopen("tut_2_2.dat", "w");
+    FILE *datafp = fopen("tut_4_2.dat", "w");
     fprintf(datafp, "# arr_rate\tref_depth\tn_tg\tn_bts\tn_btl\tavg_t_small\tci_t_small\tavg_t_large\tci_t_small\n");
     for (unsigned ui_sc = 0u; ui_sc < N_SCENARIOS; ui_sc++) {
         /* Dredging levels */
@@ -863,84 +867,88 @@ int main(void)
     printf("It took %g sec\n", elapsed);
 
     write_gnuplot_commands();
-    (void)system("gnuplot -persistent tut_2_2.gp");
+    (void)system("gnuplot -persistent tut_4_2.gp");
 
     return 0;
 }
 
 void write_gnuplot_commands(void)
 {
-    FILE *cmdfp = fopen("tut_2_2.gp", "w");
+    static char labelbuf[32];
+    static const double row_label_y[N_SCENARIOS] = { 0.80, 0.50, 0.20 };
+    static const double column_label_x[N_PARAMS] = { 0.22, 0.44, 0.67, 0.89 };
+    static const char *xlabels[N_PARAMS] = {
+        "Dredged depth",
+        "Number of tugs",
+        "Number of small berths",
+        "Number of large berths"
+    };
+    static const char *xranges[N_PARAMS] = {
+        "[14.5:17.5]",
+        "[9:15]",
+        "[5:11]",
+        "[2:8]"
+    };
+    unsigned scenario;
+    unsigned param;
+    FILE *cmdfp = fopen("tut_4_2.gp", "w");
 
     fprintf(cmdfp, "set terminal qt size 1200,1000 enhanced font 'Arial,9'\n");
     fprintf(cmdfp, "set multiplot layout 3,4 rowsfirst \\\n");
     fprintf(cmdfp, "title \"Harbor improvement opportunities\" font 'Helvetica,16'\\\n");
-    fprintf(cmdfp, "margins 0.1, 0.95, 0.1, 0.9 spacing 0.1, 0.15\n");
+    fprintf(cmdfp, "margins 0.16, 0.95, 0.1, 0.88 spacing 0.1, 0.15\n");
     fprintf(cmdfp, "set grid\n");
     fprintf(cmdfp, "set ylabel \"Avg time in system\" font 'Arial,9'\n");
-    fprintf(cmdfp, "set yrange [0:24]\n");
-    fprintf(cmdfp, "datafile = 'tut_2_2.dat'\n");
+    fprintf(cmdfp, "set yrange [0:30]\n");
+    fprintf(cmdfp, "datafile = 'tut_4_2.dat'\n");
+    for (param = 0; param < N_PARAMS; ++param) {
+        fprintf(cmdfp,
+                "set label %u \"%s\" at screen %.2f,0.91 center font 'Helvetica,12'\n",
+                param + 10u, xlabels[param], column_label_x[param]);
+    }
 
-    fprintf(cmdfp, "set xlabel \"Dredged depth\"\n");
-    fprintf(cmdfp, "set xrange [14.5:17.5]\n");
-    fprintf(cmdfp, "plot datafile using 2:6:7 index 0 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 2:8:9 index 0 with errorbars notitle lc rgb \"red\"\n");
+    for (scenario = 0; scenario < N_SCENARIOS; ++scenario) {
+        (void)snprintf(labelbuf, sizeof(labelbuf), "Arrival rate %4.3f",
+            arrival_rate[scenario]);
+        fprintf(cmdfp,
+                "set label 1 \"%s\" at screen 0.05,%.2f center rotate by 90 "
+                "font 'Helvetica,12'\n",
+                labelbuf, row_label_y[scenario]);
 
-    fprintf(cmdfp, "set xlabel \"Number of tugs\"\n");
-    fprintf(cmdfp, "set xrange [9:15]\n");
-    fprintf(cmdfp, "plot datafile using 3:6:7 index 1 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 3:8:9 index 1 with errorbars notitle lc rgb \"red\"\n");
+        for (param = 0; param < N_PARAMS; ++param) {
+            unsigned index = scenario * N_PARAMS + param;
 
-    fprintf(cmdfp, "set xlabel \"Number of small berths\"\n");
-    fprintf(cmdfp, "set xrange [5:11]\n");
-    fprintf(cmdfp, "plot datafile using 4:6:7 index 2 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 4:8:9 index 2 with errorbars notitle lc rgb \"red\"\n");
+            fprintf(cmdfp, "set xlabel \"%s\"\n", xlabels[param]);
+            fprintf(cmdfp, "set xrange %s\n", xranges[param]);
+            if (scenario == 0u && param == 0u) {
+                fprintf(cmdfp,
+                        "set key at screen 0.95,0.965 top right opaque box spacing 1.0 "
+                        "font 'Helvetica,10'\n");
+                fprintf(cmdfp,
+                        "plot datafile using %u:6:7 index %u with errorbars title 'Small ships' "
+                        "lc rgb \"black\",\\\n",
+                        param + 2u, index);
+                fprintf(cmdfp,
+                        "     datafile using %u:8:9 index %u with errorbars title 'Large ships' "
+                        "lc rgb \"red\"\n",
+                        param + 2u, index);
+                fprintf(cmdfp, "unset key\n");
+            } else {
+                fprintf(cmdfp,
+                        "plot datafile using %u:6:7 index %u with errorbars notitle "
+                        "lc rgb \"black\",\\\n",
+                        param + 2u, index);
+                fprintf(cmdfp,
+                        "     datafile using %u:8:9 index %u with errorbars notitle "
+                        "lc rgb \"red\"\n",
+                        param + 2u, index);
+            }
 
-    fprintf(cmdfp, "set xlabel \"Number of large berths\"\n");
-    fprintf(cmdfp, "set xrange [2:8]\n");
-    fprintf(cmdfp, "plot datafile using 5:6:7 index 3 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 5:8:9 index 3 with errorbars notitle lc rgb \"red\"\n");
-
-    fprintf(cmdfp, "set xlabel \"Dredged depth\"\n");
-    fprintf(cmdfp, "set xrange [14.5:17.5]\n");
-    fprintf(cmdfp, "plot datafile using 2:6:7 index 4 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 2:8:9 index 4 with errorbars notitle lc rgb \"red\"\n");
-
-    fprintf(cmdfp, "set xlabel \"Number of tugs\"\n");
-    fprintf(cmdfp, "set xrange [9:15]\n");
-    fprintf(cmdfp, "plot datafile using 3:6:7 index 5 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 3:8:9 index 5 with errorbars notitle lc rgb \"red\"\n");
-
-    fprintf(cmdfp, "set xlabel \"Number of small berths\"\n");
-    fprintf(cmdfp, "set xrange [5:11]\n");
-    fprintf(cmdfp, "plot datafile using 4:6:7 index 6 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 4:8:9 index 6 with errorbars notitle lc rgb \"red\"\n");
-
-    fprintf(cmdfp, "set xlabel \"Number of large berths\"\n");
-    fprintf(cmdfp, "set xrange [2:8]\n");
-    fprintf(cmdfp, "plot datafile using 5:6:7 index 7 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 5:8:9 index 7 with errorbars notitle lc rgb \"red\"\n");
-
-    fprintf(cmdfp, "set xlabel \"Dredged depth\"\n");
-    fprintf(cmdfp, "set xrange [14.5:17.5]\n");
-    fprintf(cmdfp, "plot datafile using 2:6:7 index 8 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 2:8:9 index 8 with errorbars notitle lc rgb \"red\"\n");
-
-    fprintf(cmdfp, "set xlabel \"Number of tugs\"\n");
-    fprintf(cmdfp, "set xrange [9:15]\n");
-    fprintf(cmdfp, "plot datafile using 3:6:7 index 9 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 3:8:9 index 9 with errorbars notitle lc rgb \"red\"\n");
-
-    fprintf(cmdfp, "set xlabel \"Number of small berths\"\n");
-    fprintf(cmdfp, "set xrange [5:11]\n");
-    fprintf(cmdfp, "plot datafile using 4:6:7 index 10 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 4:8:9 index 10 with errorbars notitle lc rgb \"red\"\n");
-
-    fprintf(cmdfp, "set xlabel \"Number of large berths\"\n");
-    fprintf(cmdfp, "set xrange [2:8]\n");
-    fprintf(cmdfp, "plot datafile using 5:6:7 index 11 with errorbars notitle lc rgb \"black\",\\\n");
-    fprintf(cmdfp, "     datafile using 5:8:9 index 11 with errorbars notitle lc rgb \"red\"\n");
-
+            if (param == 0u) {
+                fprintf(cmdfp, "unset label 1\n");
+            }
+        }
+    }
 
     fprintf(cmdfp, "unset multiplot\n");
 
