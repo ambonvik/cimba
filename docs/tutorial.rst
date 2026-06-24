@@ -540,6 +540,7 @@ format strings and arguments:
     void end_sim(void *subject, void *object)
     {
         cmb_unused(subject);
+        cmb_assert_debug(object != NULL);
 
         struct simulation *sim = object;
         cmb_logger_user(stdout, USERFLAG1, "--- Game Over ---");
@@ -550,6 +551,7 @@ format strings and arguments:
     void *arrival_proc(struct cmb_process *me, void *ctx)
     {
         cmb_unused(me);
+        cmb_assert_debug(ctx != NULL);
 
         struct cmb_buffer *bp = ctx;
         while (true) {
@@ -567,6 +569,7 @@ format strings and arguments:
     void *service_proc(struct cmb_process *me, void *ctx)
     {
         cmb_unused(me);
+        cmb_assert_debug(ctx != NULL);
 
         struct cmb_buffer *bp = ctx;
         while (true) {
@@ -580,6 +583,50 @@ format strings and arguments:
             cmb_process_hold(t_srv);
         }
     }
+
+.. _tut_1_assert:
+
+.. admonition:: Asserts and debuggers
+
+    Notice the :c:macro:`cmb_assert_debug()` in this code
+    fragment. It is a custom version of the standard ``assert()`` macro, triggering
+    a hard stop if the condition evaluates to ``false``. Our custom asserts come in
+    three flavors, :c:macro:`cmb_assert_debug()`, :c:macro:`cmb_assert_release()`, and
+    :c:macro:`cmb_assert_always()`.
+    The ``_debug`` assert
+    behaves like the standard one and goes away if the preprocessor symbol ``NDEBUG``
+    is ``#defined``. The ``_release`` assert is still there, but also goes away if ``NASSERT``
+    is ``#defined``. The ``_always`` assert remains in the code, no matter what.
+    See :ref:`the background section <background_error>` for more details.
+
+    We will trip one and see how it looks. We temporarily replace the
+    exponentially distributed service time with a normally distributed one, mean
+    1.0 and sigma 0.25. This will almost surely generate a negative value
+    sooner or later, which will cause the service process to try to hold for a
+    negative time, resuming in its own past. That should not be possible:
+
+    .. code-block:: c
+
+                // const double t_srv = cmb_random_exponential(t_srv_mean);
+                const double t_srv = cmb_random_normal(1.0, 0.25);
+
+    Sure enough::
+
+        /home/ambonvik/github/cimba/build/tutorial/tut_1_5
+        9359.5	Service	cmb_process_hold (272):  Fatal: Assert "dur >= 0.0" failed, source file cmb_process.c, seed 0x9bec8a16f0aa802a
+
+        Process finished with exit code 134 (interrupted by signal 6:SIGABRT)
+
+    The output line lists the simulated time, the process, the function and line of code,
+    the condition that failed, the source code file where it blew up, and even the random
+    number seed that was used to initialize the run in case you want to reproduce the
+    error with additional logging enabled.
+
+    If using a debugger, place a breakpoint  in :c:func:`cmi_assert_failed()`.
+    If some assert trips, control will always go there. You can then page up the stack
+    and see exactly what happened.
+
+    .. image:: ../images/debugger_assert.png
 
 We also suppress the (debug build only) Cimba informationals from the main function:
 
@@ -719,22 +766,24 @@ than half filled.
 
 We can also get a pointer to the :c:struct:`cmb_timeseries` object by
 calling :c:func:`cmb_buffer_history()` and doing further analysis on
-that. As an
-example, let's do the first 20 partial autocorrelation coefficients of the queue
-length time series and print a correlogram of that as well:
+that. As an example, let's do the first 20 partial autocorrelation coefficients of
+the queue length time series and print a correlogram of that as well:
 
 .. code-block:: c
 
     struct cmb_timeseries *ts = cmb_buffer_history(sim.que);
     double pacf_arr[21];
     cmb_timeseries_PACF(ts, 20, pacf_arr, NULL);
+    printf("\nPartial autocorrelation coefficients for %s levels\n",
+            cmb_buffer_name(sim.que));
     cmb_timeseries_print_correlogram(ts, stdout, 20, pacf_arr);
 
 Output:
 
 .. code-block:: none
 
-               -1.0                              0.0                              1.0
+    Partial autocorrelation coefficients for Queue levels
+              -1.0                              0.0                              1.0
     --------------------------------------------------------------------------------
        1   0.953                                  |###############################-
        2   0.340                                  |###########-
@@ -800,62 +849,6 @@ a ``struct context``, and pass that between the functions.
 
 For now, we just declare these structs as local variables on the stack.
 
-We define a small helper function to load the parameters into the ``trial``:
-
-.. code-block:: c
-
-    void load_params(struct trial *trl)
-    {
-        cmb_assert_release(trl != NULL);
-
-        trl->arr_rate = 0.75;
-        trl->srv_rate = 1.0;
-        trl->warmup_time = 1000.0;
-        trl->duration = 1e6;
-    }
-
-.. _tut_1_assert:
-
-.. admonition:: Asserts and debuggers
-
-    Notice the :c:macro:`cmb_assert_release()` in this code
-    fragment. It is a custom version of the standard ``assert()`` macro, triggering
-    a hard stop if the condition evaluates to ``false``. Our custom asserts come in
-    two flavors, :c:macro:`cmb_assert_debug()` and :c:macro:`cmb_assert_release()`.
-    The ``_debug`` assert
-    behaves like the standard one and goes away if the preprocessor symbol ``NDEBUG``
-    is ``#defined``. The ``_release`` assert is still there, but also goes away if ``NASSERT``
-    is ``#defined``. See :ref:`the background section <background_error>` for details.
-
-    We will trip one and see how it looks. We temporarily replace the
-    exponentially distributed service time with a normally distributed one, mean
-    1.0 and sigma 0.25. This will almost surely generate a negative value
-    sooner or later, which will cause the service process to try to hold for a
-    negative time, resuming in its own past. That should not be possible:
-
-    .. code-block:: c
-
-                // const double t_srv = cmb_random_exponential(t_srv_mean);
-                const double t_srv = cmb_random_normal(1.0, 0.25);
-
-    Sure enough::
-
-        /home/ambonvik/github/cimba/build/tutorial/tut_1_5
-        9359.5	Service	cmb_process_hold (272):  Fatal: Assert "dur >= 0.0" failed, source file cmb_process.c, seed 0x9bec8a16f0aa802a
-
-        Process finished with exit code 134 (interrupted by signal 6:SIGABRT)
-
-    The output line lists the simulated time, the process, the function and line of code,
-    the condition that failed, the source code file where it blew up, and even the random
-    number seed that was used to initialize the run in case you want to reproduce the
-    error with additional logging enabled.
-
-    If using a debugger, place a breakpoint  in :c:func:`cmi_assert_failed()`.
-    If some assert trips, control will always go there. You can then page up the stack
-    and see exactly what happened.
-
-    .. image:: ../images/debugger_assert.png
-
 
 We also need a pair of events to turn data recording on and off at specified times:
 
@@ -864,19 +857,21 @@ We also need a pair of events to turn data recording on and off at specified tim
     static void start_rec(void *subject, void *object)
     {
         cmb_unused(subject);
-        const struct context *ctx = object;
+        cmb_assert_debug(object != NULL);
 
+        const struct context *ctx = object;
         const struct simulation *sim = ctx->sim;
-        cmb_buffer_start_recording(sim->que);
+        cmb_buffer_recording_start(sim->que);
     }
 
     static void stop_rec(void *subject, void *object)
     {
         cmb_unused(subject);
-        const struct context *ctx = object;
+        cmb_assert_debug(object != NULL);
 
+        const struct context *ctx = object;
         const struct simulation *sim = ctx->sim;
-        cmb_buffer_stop_recording(sim->que);
+        cmb_buffer_recording_stop(sim->que);
     }
 
 As the last refactoring step before we parallelize, we move the simulation driver
@@ -888,10 +883,10 @@ queue length, and store it in the ``trial`` results field:
 
 .. code-block:: c
 
-        struct cmb_wtdsummary wtdsum;
-        const struct cmb_timeseries *ts = cmb_buffer_history(ctx.sim->que);
-        cmb_timeseries_summarize(ts, &wtdsum);
-        ctx.trl->avg_queue_length = cmb_wtdsummary_mean(&wtdsum);
+    struct cmb_wtdsummary wtdsum;
+    const struct cmb_timeseries *ts = cmb_buffer_history(ctx.sim->que);
+    cmb_timeseries_summarize(ts, &wtdsum);
+    ctx.trl->avg_queue_length = cmb_wtdsummary_mean(&wtdsum);
 
 The ``main()`` function is now reduced to this:
 
@@ -900,7 +895,10 @@ The ``main()`` function is now reduced to this:
     int main(void)
     {
         struct trial trl = {};
-        load_params(&trl);
+        trl.arr_rate = 0.75;
+        trl.srv_rate = 1.0;
+        trl.warmup_s = 1000.0;
+        trl.dur_s = 1e6;
 
         run_MM1_trial(&trl);
 
@@ -1158,14 +1156,13 @@ Seed management
 ^^^^^^^^^^^^^^^
 
 Since we used ``cmb_random_hwseed()`` to seed the pseudo-random number generators in
-each trial, these will be independent, identically distributed (IID) samples from our
-model. Our pseudo-random number generators are seeded with real entropy from the
-computer hardware. If we run it again, we will get a slightly different result. This
-independence is of course a good thing, but we may also need reproducibility.
+each trial, our pseudo-random number generators are seeded with real entropy from the
+computer hardware. If we run the model again, we will get a slightly different result.
+This independence is of course a good thing, but we may also need reproducibility.
 
 We can make our simulation reproducible by providing a master seed as input, e.g., on the
 command line, and then use a hashing function to create different seeds for each trial in
-the experiment. We can also set other simulation parameters in the same way:
+the experiment. We can also provide other simulation parameters in the same way:
 
 .. code-block:: c
 
@@ -1317,7 +1314,7 @@ confidence intervals are tighter:
 
 
 This concludes our first tutorial. We have followed the development steps from a
-first minimal model to demonstrate process interactions to a complete parallelized
+first minimal model with basic process interactions to a complete parallelized
 experiment with graphical output. The files ``tutorial/tut_1_*.c`` include working
 code for each stage of development.
 
@@ -1421,7 +1418,8 @@ yield (and resume) points are hidden inside functions like :c:func:`cmb_process_
 or :c:func:`cmb_resource_acquire()`. Inside the call, control may (or may not) be
 passed to some other process. The call will only return when control is transferred
 back to this process. To the calling process just sitting on its own stack, it
-looks very simple, but a lot of things may be happening elsewhere in the meantime.
+looks very simple, just another function call, but a lot of things may be happening
+elsewhere in the model in the meantime.
 
 A yielded process does not have any guarantees for what may be happening to it
 before it resumes control. Other processes may act on this process, perhaps
@@ -1603,7 +1601,7 @@ to just the simulation struct. We can then write something like:
 
             /* Drop some amount */
             if (amount_held > 1u) {
-                const uint64_t amount_rel = cmb_random_dice(1, (long)amount_held);
+                const uint64_t amount_rel = cmb_random_dice(1, amount_held);
                 cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
                                 amount_held, amount_rel);
                 cmb_resourcepool_release(sp, amount_rel);
@@ -1764,6 +1762,11 @@ efficient and predictable. If the application needs different allocation rules,
 it can either adjust process priorities dynamically or create a derived class
 with a custom demand function.
 
+It is possible to create deadlocks if multiple processes are waiting for each other.
+If you build a model with that property, such as Dijkstra's famous Dining Philosophers,
+the purpose of the model could be to compare the performance of different deadlock
+prevention algorithms. That logic belongs in the user model, not hidden inside Cimba.
+
 Real world uses
 ^^^^^^^^^^^^^^^
 
@@ -1774,7 +1777,7 @@ We wanted to make very sure that this is correct in all possible
 sequences of events, hence this frantic stress test with preemptions and
 interruptions galore.
 
-The preempt and interrupt mechanisms will be important in a range of real-world
+The preempt and interrupt mechanisms are important in a range of real-world
 modeling applications, ranging from hospital emergency room triage operations to
 manufacturing job shops and machine breakdown processes.
 
@@ -1817,8 +1820,8 @@ the process. We will make our customers a derived class from the
 specifics.
 
 The use case is to model an amusement park with guests wanting to use various
-attractions, where the park operator wants us to analyze ways of influencing customer
-behavior. The overall metric is the time spent in the park per visitor and the
+attractions. Our customer, the park operator, wants us to analyze ways of influencing
+customer behavior. The overall metric is the time spent in the park per visitor and the
 breakdown of this time between riding, waiting, and walking. The time unit is minutes.
 
 Classes derived from cmb_process
@@ -1835,7 +1838,7 @@ Basically, in object-oriented C, the ``struct`` becomes the class. By placing on
 struct as the first member of another, the outer struct effectively becomes a derived
 class from the inner one. A pointer to the outer struct will point to the same address
 as the inner struct, and one can freely cast the same pointer value between the two
-types.
+types. They exist at the same memory address.
 
 For example, we want our server process to also contain a pointer to the queue it gets
 visitors from, the number of visitors that can board for each run of the ride, and the
@@ -1953,7 +1956,10 @@ resuming them as active processes. It can look like this:
 Since our processes are *asymmetric* coroutines, the :c:func:`cmb_process_resume()` call
 does not directly resume the target process (coroutine), but schedules an event that will
 make the dispatcher resume the target process (coroutine). That way, all control passes
-through the dispatcher, and all coroutines are resumed by the dispatcher only.
+through the dispatcher, and all processes are resumed by the dispatcher only. For this
+server function, that implies that :c:func:`cmb_process_resume()` is a non-blocking
+call. It returns immediately and the server can unload all visitors before yielding the
+CPU in the :c:func:`cmb_priorityqueue_get()` or :c:func:`cmb_process_hold()` calls.
 
 Setting and clearing timers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -2130,7 +2136,9 @@ and it awakes with a start and shows signs of impatience.
 
 Note that the timers remain active past the call to :c:func:`cmb_priorityqueue_put()`.
 The timers are part of the process state, not the function call. They remain active
-until either going off or getting cancelled / cleared.
+until either going off or getting cancelled / cleared. In this case, we cancel the
+jockeying timer if the reneging timer goes off, but not the other way around, since
+they model two different behaviors.
 
 Note also that one of the first things the server process does after getting a visitor
 from the priority queue is to call :c:func:`cmb_process_timers_clear()` to make sure it
@@ -2139,8 +2147,8 @@ first things the visitor process does after waking up on a timer signal is to ca
 :c:func:`cmb_priorityqueue_cancel()` to make sure that it is not admitted on a ride
 when it actually is walking away from that attraction.
 
-The entire dynamic of having the same process object both act as an active, opinionated
-agent in its simulated world, and act as a passive object being handled by other
+The entire dynamic of having the same process object act both as an active opinionated
+agent in its simulated world, and as a passive object being handled by other
 processes is enabled by our processes being stackful coroutines. When suspended, their
 entire state is safely stored on their own execution stack until it is resumed from the
 same point where it left off. Our processes are first-class objects that can be passed
@@ -2210,6 +2218,13 @@ calling :c:func:`cmb_random_alias_create()`. We can then sample it as often as n
 calling :c:func:`cmb_random_alias_sample()`, and clean it up when no longer needed by
 calling :c:func:`cmb_random_alias_destroy()`. The overhead in construction and
 destruction pays for itself in overall efficiency already for *n > 7* or so.
+
+.. note::
+
+    The alert reader will notice that this collapses our usual four-part harmony of
+    ``_create()``, ``_initialize()``, ``_terminate()``; and ``_destroy()`` into just the
+    two functions ``_create()`` and ``_destroy()``. Since we are not planning to create any
+    derived classes from the alias table, we found this a reasonable exception to make.
 
 It looks like this in the ``struct attraction``:
 
@@ -2320,113 +2335,133 @@ Running it, we get output like this:
 .. code-block:: none
 
     Number of rides taken:
-    N      489  Mean    2.656  StdDev    2.065  Variance    4.263  Skewness    1.161  Kurtosis    1.826
+    N      477  Mean    2.696  StdDev    2.171  Variance    4.712  Skewness    1.504  Kurtosis    4.213
     Time spent in park:
-    N      489  Mean    57.29  StdDev    28.75  Variance    826.4  Skewness    1.922  Kurtosis    5.839
+    N      477  Mean    58.68  StdDev    31.71  Variance    1006.  Skewness    2.786  Kurtosis    13.48
     Riding times:
-    N      489  Mean    18.25  StdDev    15.74  Variance    247.8  Skewness    1.437  Kurtosis    3.119
+    N      477  Mean    18.75  StdDev    16.99  Variance    288.5  Skewness    1.971  Kurtosis    7.142
     Waiting times:
-    N      489  Mean    5.135  StdDev    5.840  Variance    34.11  Skewness    1.506  Kurtosis    2.701
+    N      477  Mean    4.877  StdDev    5.794  Variance    33.57  Skewness    1.985  Kurtosis    7.021
     Walking times:
-    N      489  Mean    32.36  StdDev    10.38  Variance    107.7  Skewness    1.819  Kurtosis    6.464
+    N      477  Mean    33.30  StdDev    12.12  Variance    146.9  Skewness    2.914  Kurtosis    15.28
 
     Detailed queue reports:
     Queue lengths for Queue_01_00:
-    N      291  Mean   0.6106  StdDev    1.966  Variance    3.864  Skewness    1.035  Kurtosis   -1.130
+    N      286  Mean   0.4110  StdDev   0.7480  Variance   0.5594  Skewness    2.007  Kurtosis    4.068
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
     [     0.000,      1.000)   |##################################################
-    [     1.000,      2.000)   |################-
-    [     2.000,      3.000)   |######-
-    [     3.000,      4.000)   |###-
-    [     4.000,      5.000)   |#-
-    [     5.000,  Infinity )   |=
+    [     1.000,      2.000)   |#############-
+    [     2.000,      3.000)   |#####-
+    [     3.000,      4.000)   |#-
+    [     4.000,      5.000)   |-
+    [     5.000,   Infinity)   |
     --------------------------------------------------------------------------------
     Queue lengths for Queue_02_00:
-    N      208  Mean  0.02090  StdDev   0.3534  Variance   0.1249  Skewness    3.552  Kurtosis    11.59
+    N      195  Mean  0.02044  StdDev   0.1670  Variance  0.02788  Skewness    9.533  Kurtosis    105.4
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
     [     0.000,      1.000)   |##################################################
     [     1.000,      2.000)   |=
-    [     2.000,  Infinity )   |-
+    [     2.000,      3.000)   |-
+    [     3.000,      4.000)   |-
+    [     4.000,   Infinity)   |
     --------------------------------------------------------------------------------
     Queue lengths for Queue_03_00:
-    N      226  Mean  0.05570  StdDev   0.5429  Variance   0.2947  Skewness    2.165  Kurtosis    2.624
+    N      226  Mean  0.07242  StdDev   0.3426  Variance   0.1174  Skewness    6.695  Kurtosis    61.08
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
-    [     0.000,      1.000)   |##################################################
+    [     0.000,      1.000)   |##################################################-
     [     1.000,      2.000)   |##-
-    [     2.000,  Infinity )   |-
+    [     2.000,      3.000)   |-
+    [     3.000,      4.000)   |-
+    [     4.000,      5.000)   |-
+    [     5.000,      6.000)   |-
+    [     6.000,   Infinity)   |
     --------------------------------------------------------------------------------
     Queue lengths for Queue_04_00:
-    N      124  Mean   0.6596  StdDev    1.430  Variance    2.046  Skewness  -0.1934  Kurtosis   -2.882
+    N      127  Mean   0.7141  StdDev   0.5106  Variance   0.2608  Skewness  -0.2920  Kurtosis  -0.5959
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |#######################=
+    [     1.000,      2.000)   |##################################################
+    [     2.000,      3.000)   |##-
+    [     3.000,   Infinity)   |
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_04_01:
+    N       97  Mean   0.6702  StdDev   0.4936  Variance   0.2436  Skewness  -0.4400  Kurtosis   -1.116
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
     [     0.000,      1.000)   |##########################-
     [     1.000,      2.000)   |##################################################
-    [     2.000,  Infinity )   |-
-    --------------------------------------------------------------------------------
-    Queue lengths for Queue_04_01:
-    N       87  Mean   0.6489  StdDev    1.839  Variance    3.383  Skewness -0.05056  Kurtosis   -2.938
-    --------------------------------------------------------------------------------
-    ( -Infinity,      0.000)   |
-    [     0.000,      1.000)   |##############################=
-    [     1.000,      2.000)   |##################################################
-    [     2.000,  Infinity )   |#=
+    [     2.000,      3.000)   |=
+    [     3.000,   Infinity)   |
     --------------------------------------------------------------------------------
     Queue lengths for Queue_04_02:
-    N       42  Mean   0.5169  StdDev    2.566  Variance    6.586  Skewness -0.01380  Kurtosis   -3.189
+    N       47  Mean   0.6594  StdDev   0.6268  Variance   0.3929  Skewness   0.4075  Kurtosis  -0.6762
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
-    [     0.000,      1.000)   |##############################################=
-    [     1.000,  Infinity )   |##################################################
+    [     0.000,      1.000)   |###########################################-
+    [     1.000,      2.000)   |##################################################
+    [     2.000,      3.000)   |########=
+    [     3.000,   Infinity)   |
     --------------------------------------------------------------------------------
     Queue lengths for Queue_05_00:
-    N      228  Mean   0.6369  StdDev    1.959  Variance    3.836  Skewness   0.6569  Kurtosis   -2.050
+    N      230  Mean   0.5964  StdDev   0.9796  Variance   0.9596  Skewness    1.978  Kurtosis    4.189
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
     [     0.000,      1.000)   |##################################################
-    [     1.000,      2.000)   |#####################=
-    [     2.000,      3.000)   |##########-
-    [     3.000,      4.000)   |##=
+    [     1.000,      2.000)   |################=
+    [     2.000,      3.000)   |#######-
+    [     3.000,      4.000)   |###-
     [     4.000,      5.000)   |=
-    [     5.000,  Infinity )   |-
+    [     5.000,      6.000)   |=
+    [     6.000,   Infinity)   |
     --------------------------------------------------------------------------------
     Queue lengths for Queue_06_00:
-    N      203  Mean   0.2927  StdDev    1.465  Variance    2.147  Skewness   0.9759  Kurtosis   -1.616
+    N      202  Mean   0.2753  StdDev   0.5940  Variance   0.3529  Skewness    2.572  Kurtosis    7.949
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
     [     0.000,      1.000)   |##################################################
-    [     1.000,      2.000)   |########-
-    [     2.000,      3.000)   |###=
-    [     3.000,  Infinity )   |=
+    [     1.000,      2.000)   |##########=
+    [     2.000,      3.000)   |##-
+    [     3.000,      4.000)   |-
+    [     4.000,      5.000)   |-
+    [     5.000,   Infinity)   |
     --------------------------------------------------------------------------------
     Queue lengths for Queue_07_00:
-    N      200  Mean   0.2457  StdDev    1.284  Variance    1.649  Skewness   0.9909  Kurtosis   -1.588
-    --------------------------------------------------------------------------------
-    ( -Infinity,      0.000)   |
-    [     0.000,      1.000)   |#################################################=
-    [     1.000,      2.000)   |########=
-    [     2.000,      3.000)   |###-
-    [     3.000,  Infinity )   |-
-    --------------------------------------------------------------------------------
-    Queue lengths for Queue_08_00:
-    N      178  Mean   0.4554  StdDev    1.750  Variance    3.062  Skewness   0.5572  Kurtosis   -2.401
+    N      214  Mean   0.2654  StdDev   0.5742  Variance   0.3297  Skewness    2.359  Kurtosis    5.642
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
     [     0.000,      1.000)   |##################################################
-    [     1.000,      2.000)   |#################-
-    [     2.000,      3.000)   |#######=
-    [     3.000,  Infinity )   |=
+    [     1.000,      2.000)   |##########-
+    [     2.000,      3.000)   |##-
+    [     3.000,      4.000)   |=
+    [     4.000,   Infinity)   |
     --------------------------------------------------------------------------------
-    Queue lengths for Queue_09_00:
-    N      198  Mean   0.2153  StdDev    1.199  Variance    1.438  Skewness    1.078  Kurtosis   -1.344
+    Queue lengths for Queue_08_00:
+    N      145  Mean   0.3593  StdDev   0.6692  Variance   0.4478  Skewness    2.041  Kurtosis    4.269
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
-    [     0.000,      1.000)   |#################################################=
-    [     1.000,      2.000)   |#######=
-    [     2.000,      3.000)   |##-
-    [     3.000,  Infinity )   |-
+    [     0.000,      1.000)   |##################################################
+    [     1.000,      2.000)   |#############=
+    [     2.000,      3.000)   |###=
+    [     3.000,      4.000)   |=
+    [     4.000,      5.000)   |-
+    [     5.000,   Infinity)   |
+    --------------------------------------------------------------------------------
+    Queue lengths for Queue_09_00:
+    N      188  Mean   0.2708  StdDev   0.6848  Variance   0.4689  Skewness    3.649  Kurtosis    17.04
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      1.000)   |##################################################-
+    [     1.000,      2.000)   |########=
+    [     2.000,      3.000)   |#=
+    [     3.000,      4.000)   |-
+    [     4.000,      5.000)   |-
+    [     5.000,      6.000)   |-
+    [     6.000,      7.000)   |-
+    [     7.000,   Infinity)   |
     --------------------------------------------------------------------------------
 
 ...and finally, it reports the trial outcomes that would be passed on to the experiment
@@ -2436,15 +2471,15 @@ array if we parallelized this simulation in the same way as the first (and next)
 
     Trial outcomes:
     ---------------
-    Average number of rides: 2.66
-    Average time in park: 57.29
-    Average time in rides: 18.25
-    Average time in queues: 5.13
-    Average time walking: 32.36
+    Average number of rides: 2.70
+    Average time in park: 58.68
+    Average time in rides: 18.75
+    Average time in queues: 4.88
+    Average time walking: 33.30
 
 We will skip parallelizing this example, since it would be the same as
 :ref:`parallelizing the first tutorial <tut_1_parallel>`, and will instead move
-to the final tutorial.
+to the next tutorial.
 
 .. _tut_4:
 
@@ -2624,8 +2659,7 @@ function is a predicate returning a ``bool``, either ``true`` or ``false``, esse
 saying to the guard "wake me up when this becomes true".
 
 For a :c:struct:`cmb_resource`, the demand function is internal and pre-defined,
-evaluating
-to ``true`` if the resource is available. When a process releases the
+evaluating to ``true`` if the resource is available. When a process releases the
 resource, the guard is signaled, the predicate evaluates to ``true``, and the
 highest priority waiting process gets the resource and returns successfully from
 its :c:func:`cmb_resource_acquire()` (or :c:func:`cmb_resource_preempt()`) call as the
@@ -2635,7 +2669,8 @@ Similarly, the :c:struct:`cmb_resourcepool` is a counting semaphore, where there
 certain number of resource items and a process can acquire and release more
 than one unit at a time. Again, if not enough is available, the process files its
 demand with the guard and waits. This demand function is also internal and
-pre-defined.
+pre-defined. It evaluates to true if *some* amount of the resource is available, since
+a waiting process may collect its request piecewise.
 
 The :c:struct:`cmb_condition` exposes the resource guard and demand mechanism to the user
 application. It does not provide any particular resource object, but lets a
@@ -2655,9 +2690,8 @@ for the :c:struct:`cmb_condition` to provide complex combinations of "wait for a
 resource guard gets signaled, the :c:struct:`cmb_condition` will also be signaled.
 
 The :c:struct:`cmb_condition` is still a passive object, not an active process. It only
-responds to calls like :c:struct:`cmb_condition_wait` and
-:c:func:`cmb_condition_signal` from some active :c:struct:`cmb_process`. If not signaled
-from a process, it does nothing.
+responds to calls like :c:struct:`cmb_condition_wait` and :c:func:`cmb_condition_signal`
+from some active :c:struct:`cmb_process`. If not signaled from a process, it does nothing.
 
 Armed with this knowledge, we can now define the demand predicate function for
 a ship requesting permission from the harbormaster to dock:
@@ -2919,9 +2953,9 @@ We next write the arrival process generating ships:
         }
     }
 
-As we see, Cimba processes can create other processes as needed. These simply become
+As we see, Cimba processes can create other processes as needed. These become
 additional asymmetric coroutines executing on their own stacks with no special handling
-needed. There are no "function coloring" issues involved. The processes switch
+needed. There are no "function coloring" issues. The processes switch
 seamlessly between being active agents and passive objects as needed. For the programmer,
 mentally placing oneself in a process and just focusing on what that process does is a
 very powerful encapsulation of complexity.
@@ -3087,7 +3121,6 @@ Building and running our new harbor simulation, we get output similar to this:
 
 .. code-block:: none
 
-    [ambonvik@Threadripper tutorial]$ ./tut_2_1 | more
     1.5696	Arrivals	arrival_proc (335):  Ship_000001_large started
     1.5696	Ship_000001_large	ship_proc (227):  Ship_000001_large arrives
     1.5696	Ship_000001_large	is_ready_to_dock (209):  All good for Ship_000001_large
@@ -3167,103 +3200,109 @@ Building and running our new harbor simulation, we get output similar to this:
 
 .. code-block:: none
 
-    /home/ambonvik/github/cimba/build/tutorial/tut_2_1
-
     System times for small ships:
-    N     3278  Mean    10.81  StdDev    2.408  Variance    5.798  Skewness    1.346  Kurtosis    3.049
+    Min    7.126  First_Q    9.097  Median    10.39  Third_Q    12.11  Max    32.92
+    N     3298  Mean    10.89  StdDev    2.552  Variance    6.512  Skewness    1.775  Kurtosis    6.340
     --------------------------------------------------------------------------------
-    ( -Infinity,      7.051)   |
-    [     7.051,      7.989)   |###################=
-    [     7.989,      8.927)   |##############################################=
-    [     8.927,      9.865)   |##################################################
-    [     9.865,      10.80)   |################################################=
-    [     10.80,      11.74)   |########################################-
-    [     11.74,      12.68)   |############################-
-    [     12.68,      13.62)   |#####################-
-    [     13.62,      14.55)   |#############-
-    [     14.55,      15.49)   |#######-
-    [     15.49,      16.43)   |#####-
-    [     16.43,      17.37)   |#=
-    [     17.37,      18.31)   |#-
-    [     18.31,      19.24)   |#=
-    [     19.24,      20.18)   |=
-    [     20.18,      21.12)   |=
-    [     21.12,      22.06)   |=
-    [     22.06,      22.99)   |-
-    [     22.99,      23.93)   |-
-    [     23.93,      24.87)   |-
-    [     24.87,      25.81)   |
-    [     25.81,  Infinity )   |-
+    ( -Infinity,      7.126)   |
+    [     7.126,      8.416)   |##########################-
+    [     8.416,      9.706)   |##################################################
+    [     9.706,      11.00)   |#################################################=
+    [     11.00,      12.29)   |##################################-
+    [     12.29,      13.58)   |#####################=
+    [     13.58,      14.87)   |############=
+    [     14.87,      16.16)   |#####-
+    [     16.16,      17.44)   |##=
+    [     17.44,      18.73)   |#=
+    [     18.73,      20.02)   |#-
+    [     20.02,      21.31)   |=
+    [     21.31,      22.60)   |-
+    [     22.60,      23.89)   |-
+    [     23.89,      25.18)   |-
+    [     25.18,      26.47)   |-
+    [     26.47,      27.76)   |-
+    [     27.76,      29.05)   |
+    [     29.05,      30.34)   |-
+    [     30.34,      31.63)   |
+    [     31.63,      32.92)   |
+    [     32.92,   Infinity)   |-
     --------------------------------------------------------------------------------
 
     System times for large ships:
-    N     1060  Mean    17.34  StdDev    5.548  Variance    30.78  Skewness    2.024  Kurtosis    7.243
+    Min    10.30  First_Q    13.21  Median    15.37  Third_Q    18.31  Max    48.60
+    N     1081  Mean    16.49  StdDev    4.832  Variance    23.35  Skewness    2.000  Kurtosis    6.453
     --------------------------------------------------------------------------------
-    ( -Infinity,      10.38)   |
-    [     10.38,      12.67)   |###################################=
-    [     12.67,      14.96)   |##################################################
-    [     14.96,      17.25)   |#########################################-
-    [     17.25,      19.54)   |##############################=
-    [     19.54,      21.83)   |#################-
-    [     21.83,      24.12)   |##############-
-    [     24.12,      26.41)   |#####=
-    [     26.41,      28.70)   |#####=
-    [     28.70,      30.99)   |####-
-    [     30.99,      33.28)   |##=
-    [     33.28,      35.56)   |-
-    [     35.56,      37.85)   |-
-    [     37.85,      40.14)   |-
-    [     40.14,      42.43)   |-
-    [     42.43,      44.72)   |-
-    [     44.72,      47.01)   |
-    [     47.01,      49.30)   |
-    [     49.30,      51.59)   |-
-    [     51.59,      53.88)   |-
-    [     53.88,      56.17)   |
-    [     56.17,  Infinity )   |-
+    ( -Infinity,      10.30)   |
+    [     10.30,      12.22)   |###################################-
+    [     12.22,      14.13)   |#################################################=
+    [     14.13,      16.05)   |##################################################
+    [     16.05,      17.96)   |######################################=
+    [     17.96,      19.88)   |########################-
+    [     19.88,      21.79)   |############-
+    [     21.79,      23.71)   |##########-
+    [     23.71,      25.62)   |####=
+    [     25.62,      27.54)   |#####-
+    [     27.54,      29.45)   |##-
+    [     29.45,      31.36)   |=
+    [     31.36,      33.28)   |=
+    [     33.28,      35.19)   |-
+    [     35.19,      37.11)   |#-
+    [     37.11,      39.02)   |=
+    [     39.02,      40.94)   |-
+    [     40.94,      42.85)   |
+    [     42.85,      44.77)   |-
+    [     44.77,      46.68)   |
+    [     46.68,      48.60)   |
+    [     48.60,   Infinity)   |-
     --------------------------------------------------------------------------------
 
     Utilization of small berths:
-    N     5890  Mean    3.809  StdDev    2.069  Variance    4.280  Skewness  -0.2231  Kurtosis   -1.621
+    Min    0.000  First_Q    3.000  Median    4.000  Third_Q    5.000  Max    6.000
+    N     5859  Mean    3.839  StdDev    1.671  Variance    2.792  Skewness  -0.2813  Kurtosis  -0.9255
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
-    [     0.000,      1.000)   |#####-
-    [     1.000,      2.000)   |#################-
+    [     0.000,      1.000)   |####-
+    [     1.000,      2.000)   |################-
     [     2.000,      3.000)   |################################=
     [     3.000,      4.000)   |#######################################-
-    [     4.000,      5.000)   |########################################-
-    [     5.000,      6.000)   |##################################=
-    [     6.000,  Infinity )   |##################################################
+    [     4.000,      5.000)   |##########################################=
+    [     5.000,      6.000)   |###################################-
+    [     6.000,      7.000)   |##################################################
+    [     7.000,   Infinity)   |
     --------------------------------------------------------------------------------
 
     Utilization of large berths:
-    N     1766  Mean    1.797  StdDev    2.347  Variance    5.509  Skewness  -0.1321  Kurtosis   -2.636
+    Min    0.000  First_Q    1.000  Median    2.000  Third_Q    3.000  Max    3.000
+    N     1853  Mean    1.816  StdDev    1.031  Variance    1.063  Skewness  -0.3223  Kurtosis   -1.102
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
-    [     0.000,      1.000)   |####################-
+    [     0.000,      1.000)   |###################-
     [     1.000,      2.000)   |#######################################-
-    [     2.000,      3.000)   |######################################=
-    [     3.000,  Infinity )   |##################################################
+    [     2.000,      3.000)   |###########################################-
+    [     3.000,      4.000)   |##################################################
+    [     4.000,   Infinity)   |
     --------------------------------------------------------------------------------
 
     Utilization of tugs:
-    N    16311  Mean   0.8651  StdDev   0.9467  Variance   0.8962  Skewness    2.449  Kurtosis    8.635
+    Min    0.000  First_Q    0.000  Median    0.000  Third_Q    1.000  Max    10.00
+    N    16456  Mean   0.8756  StdDev    1.305  Variance    1.703  Skewness    1.815  Kurtosis    3.444
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
     [     0.000,      1.000)   |##################################################
-    [     1.000,      2.000)   |######################-
+    [     1.000,      2.000)   |######################=
     [     2.000,      3.000)   |####=
-    [     3.000,      4.000)   |#######=
+    [     3.000,      4.000)   |########-
     [     4.000,      5.000)   |###-
     [     5.000,      6.000)   |=
     [     6.000,      7.000)   |=
     [     7.000,      8.000)   |-
     [     8.000,      9.000)   |-
     [     9.000,      10.00)   |-
-    [     10.00,  Infinity )   |-
+    [     10.00,      11.00)   |-
+    [     11.00,   Infinity)   |
     --------------------------------------------------------------------------------
-    Avg time in system, small ships: 10.812688
-    Avg time in system, large ships: 17.341350
+    Avg time in system, small ships: 10.890823
+    Avg time in system, large ships: 16.488005
 
 You can find the code for this single-threaded stage in
 `tutorial/tut_4_1.c <https://github.com/ambonvik/cimba/blob/main/tutorial/tut_4_1.c>`__.
@@ -3279,23 +3318,20 @@ scenarios where traffic increases by 10 % and 25 % above today's baseline levels
 
 Time to fire up more computing power.
 
-Setting up our experiment, we believe that the factors dredging depth, number of tugs,
-and number
-of small and large berths are largely independent. We can probably vary one at a time
-rather than setting up a factorial experiment (which may still be computationally more
-efficient to do). To ensure that the SPA also has numbers it can use beyond next
-year's budget, we try five levels of each parameter, dredging in steps of 0.5 meters
-and adding tugs and berths in steps of one. We again run ten replications of each
+Setting up our experiment, we have the factors dredging depth, number of tugs,
+and number of small and large berths. To ensure that the SPA also has numbers it can use
+beyond next year's budget, we try five levels of each parameter, dredging in steps of 0.5
+meters and adding tugs and berths in steps of one. We again run ten replications of each
 parameter set. This gives us 4 * 5 * 3 = 60 parameter combinations and 60 * 10 = 600 trials.
-We will run each trial for 10 years of simulated time, i.e. 10 * 365 * 24 = 87360 time units,
-allowing 30 days' warmup time before we start collecting data.
+We will run each trial for one year of simulated time, i.e. 365 * 24 = 8760 time
+units, allowing 30 days' warmup time before we start collecting data.
 
 Writing the ``main()`` function is straightforward, albeit somewhat tedious. It does
 the same as in :ref:`the previous tutorial <tut_3>`: Sets up the experiment as an array
 of trials, executes it in parallel on the available CPU cores, assembles the output as a data
 file, and plots it in a separate gnuplot window.
 
-We compile and run, and 4.1 seconds later, this chart appears, showing our 60
+We compile and run, and this chart appears, showing our 60
 parameter combinations, the average time in the system for small (blue) and large ships
 (red) under each set of parameters, and tight 95 % confidence intervals based
 on our 10 replications of each parameter combination:
@@ -3407,7 +3443,7 @@ Features included in this sensor model:
 * Detection scaling from the radar equation (range^4, RCS), referenced to
   a calibrated range and RCS, with per-target-state RCS.
 
-* Surface clutter from a constant-gamma (Barton/Morchin) model, incidence angle
+* Surface clutter from a constant-gamma model, incidence angle
   dependent, gamma chosen per terrain biome and integrated over the resolution cell.
 
 * Cell-averaging CA-CFAR detection over non-coherently integrated pulses, above a
@@ -3417,7 +3453,7 @@ Features included in this sensor model:
   from the surrounding clutter. Hiding targets with velocity zero are difficult to
   distinguish from clutter, moving targets less so.
 
-* Specular multipath (Lloyd's-mirror lobing) with a per-biome
+* Specular multipath with a per-biome
   reflection coefficient attenuated by Rayleigh surface roughness.
 
 * Probabilistic detection drawn independently per dwell.
@@ -3439,7 +3475,7 @@ Deliberately omitted from the model:
 * Tracking: detections are per-dwell only. There is no association, M-of-N, or
   track formation.
 
-These omitted features could of course also be added, but the chosen level of detail
+The omitted features could of course also be added, but the chosen level of detail
 leaves a sufficiently realistic radar model to give reasonable and compute-intensive
 physics, while limiting the amount of technical detail not relevant to our current
 purpose. Our aim here is to provide a somewhat realistic geometry and and detection model
@@ -3823,6 +3859,6 @@ In these five tutorials, we have gone from a basic M/M/1 queue simulation to a n
 military grade AWACS scenario running on 64 CPU cores and two GPUs (10496 cores each) in
 parallel, efficiently utilizing all the compute power available on a recent
 multi-core, multi-GPU desktop PC for discrete event simulation. For more detailed
-information about the various fetures of Cimba, please see
+information about the various features of Cimba, please see
 the in-depth :ref:`the background section <background>` and
 the detailed :doc:`API reference pages </api/library_root>`.
