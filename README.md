@@ -46,9 +46,8 @@ It is fast, powerful, reliable, and free.
 
   * Processes implemented as asymmetric stackful coroutines. A simulated process can
     yield and resume control from any level of a function call stack, allowing 
-    well-structured coding of arbitrarily large simulation models. This makes it 
-    natural to express agentic behavior by conceptually placing oneself "inside" that 
-    process and describing what it does. A simulated process can run in an infinite loop 
+    well-structured coding of arbitrarily large simulation models. 
+    A simulated process can run in an infinite loop 
     or act as a one-shot customer passing through the system, being both an active 
     agent and a passive object as needed.
 
@@ -64,12 +63,15 @@ It is fast, powerful, reliable, and free.
   
   * Integrated logging and data collection features that make it easy
     to get a model running and understand what is happening inside it, including 
-    custom asserts to pinpoint sources of errors. 
+    custom asserts to pinpoint sources of errors.
+  
+  * An entire experiment design can be expressed as an array of trials with various 
+    parameters, all trials executed in parallel, and statistics calculated, all in the 
+    same program.
 
   * As a C library, Cimba allows easy integration with other libraries and programs. You 
-    could call CUDA routines to enhance your simulation models with GPU-powered agentic 
-    behavior or drive a fancy graphics interface like a 3D visualization of a 
-    manufacturing plant. 
+    could call CUDA routines to calculate model physics or to enhance your simulation 
+    models with GPU-powered agentic behavior.
     You could even call the Cimba simulation engine from other programming languages, 
     since the C calling convention is standard and well-documented. 
 
