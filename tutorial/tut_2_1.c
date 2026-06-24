@@ -118,7 +118,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
 
         /* Drop some amount */
         if (amount_held > 1u) {
-            const uint64_t amount_rel = cmb_random_dice(1, (long)amount_held);
+            const uint64_t amount_rel = cmb_random_dice(1, amount_held);
             cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
                             amount_held, amount_rel);
             cmb_resourcepool_release(sp, amount_rel);
@@ -201,7 +201,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
 
         /* Drop some amount */
         if (amount_held > 1u) {
-            const uint64_t amount_rel = cmb_random_dice(1, (long)amount_held);
+            const uint64_t amount_rel = cmb_random_dice(1, amount_held);
             cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
                             amount_held, amount_rel);
             cmb_resourcepool_release(sp, amount_rel);
