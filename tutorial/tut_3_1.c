@@ -40,7 +40,7 @@
  */
 const double arrival_rate = 0.5;
 const double percent_goldcards = 0.25;
-const double duration = 16 * 60.0;
+const double duration_h = 16 * 60.0;
 
 /* All multiplied by each visitors patience */
 const unsigned balking_threshold = 10;
@@ -154,7 +154,7 @@ struct simulation {
 
 /* A single trial is defined by these parameters and generates these results. */
 struct trial {
-    double dur_s;
+    double duration_h;
     uint64_t seed_used;
     double avg_time_in_park;
     double avg_time_riding;
@@ -614,7 +614,7 @@ void run_trial(void *vtrl)
     cmb_process_initialize(sim.departures, "Departures", departure_proc, &ctx, 0);
     cmb_process_start(sim.departures);
 
-    cmb_event_schedule(end_sim, NULL, &ctx, duration, 0);
+    cmb_event_schedule(end_sim, NULL, &ctx, duration_h, 0);
 
     /* Run this trial */
     cmb_event_queue_execute();
@@ -669,7 +669,7 @@ void load_params(struct trial *trlp)
 {
     cmb_assert_release(trlp != NULL);
 
-    trlp->dur_s = duration;
+    trlp->duration_h = duration_h;
 }
 
 /*

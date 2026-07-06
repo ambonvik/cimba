@@ -46,8 +46,8 @@ const unsigned num_berths[N_SIZES][N_LEVELS] = { { 6, 7, 8, 9, 10 },
                                                  { 3, 4, 5, 6, 7 } };
 const double unloading_time_avg[N_SIZES] = { 8.0, 12.0 };
 
-const double warmup_time = 24.0 * 30;
-const double duration = 24.0 * 365;
+const double warmup_h = 24.0 * 30;
+const double duration_h = 24.0 * 365;
 
 /* This implicitly assumes that N_SIZES == 2 */
 enum ship_size {
@@ -106,7 +106,7 @@ struct trial {
 
     /* Control parameters */
     double warmup_s;
-    double dur_s;
+    double duration_h;
 
     /* Results */
     uint64_t seed_used;
@@ -568,7 +568,7 @@ void run_trial(void *vtrl)
     /* Schedule the simulation control events */
     double t = trlp->warmup_s;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
-    t += trlp->dur_s;
+    t += trlp->duration_h;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
     /* Set a large negative priority for the stop event to ensure normal events go first */
     cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
@@ -636,8 +636,8 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_s = warmup_time;
-                experiment[ui_trl].dur_s = duration;
+                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].duration_h = duration_h;
 
                 ui_trl++;
             }
@@ -658,8 +658,8 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_s = warmup_time;
-                experiment[ui_trl].dur_s = duration;
+                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].duration_h = duration_h;
 
                 ui_trl++;
             }
@@ -680,8 +680,8 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_s = warmup_time;
-                experiment[ui_trl].dur_s = duration;
+                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].duration_h = duration_h;
 
                 ui_trl++;
             }
@@ -702,8 +702,8 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_s = warmup_time;
-                experiment[ui_trl].dur_s = duration;
+                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].duration_h = duration_h;
 
                 ui_trl++;
             }
