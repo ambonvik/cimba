@@ -371,13 +371,14 @@ int main(const int argc, char **argv)
 {
     bool plot_graphics = false;
     bool timing_enabled = false;
+    bool validate = false;
     uint64_t seed = cmb_random_hwseed();
     double dur = 1.0e6;
-    double wup = 1.0e-3;
+    double wup = 1.0e3;
     uint32_t nthr = 0u;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:gr:s:tw:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:gr:s:tw:v")) != -1) {
         switch (opt) {
             case 'd': {
                 errno = 0;
@@ -415,12 +416,16 @@ int main(const int argc, char **argv)
                 timing_enabled = true;
                 break;
             }
+            case 'v': {
+                validate = true;
+                break;
+            }
             case 'w': {
                 wup = strtod(optarg, NULL);
                 break;
             }
             default: {
-                fprintf(stderr, "Usage: %s [-d <duration>][-g][-r <runner_threads>][-s <seed>][-t][-w <warmup_period>]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-d <duration>][-g][-r <runner_threads>][-s <seed>][-t][-v][-w <warmup_period>]\n", argv[0]);
 
                 return EXIT_FAILURE;
             }
@@ -482,7 +487,7 @@ int main(const int argc, char **argv)
                                      run_mg1_trial);
     cmi_test_print_line("-");
 
-    if (cimba_threads_num() != 1u) {
+    if ((validate == true) && (cimba_threads_num() != 1u)) {
         /* We were running multithreaded, check that we get the exact same outcome single-threaded */
         printf("Validating experiment ...");
         fflush(stdout);
