@@ -34,11 +34,13 @@ struct cmi_slist_head {
     struct cmi_slist_head *next;
 };
 
+CMB_MAYBE_UNUSED
 static inline struct cmi_slist_head *cmi_slist_create(void)
 {
     return cmi_malloc(sizeof(struct cmi_slist_head));
 }
 
+CMB_MAYBE_UNUSED
 static inline void cmi_slist_initialize(struct cmi_slist_head *head)
 {
     cmb_assert_debug(head != NULL);
@@ -46,11 +48,13 @@ static inline void cmi_slist_initialize(struct cmi_slist_head *head)
     head->next = NULL;
 }
 
+CMB_MAYBE_UNUSED
 static inline void cmi_slist_terminate(struct cmi_slist_head *head)
 {
     cmb_assert_debug(head != NULL);
 }
 
+CMB_MAYBE_UNUSED
 static inline void cmi_slist_destroy(struct cmi_slist_head *head)
 {
     cmb_assert_release(head != NULL);
@@ -58,12 +62,13 @@ static inline void cmi_slist_destroy(struct cmi_slist_head *head)
     cmi_free(head);
 }
 
-
+CMB_MAYBE_UNUSED
 static inline bool cmi_slist_is_empty(const struct cmi_slist_head *head)
 {
     return (head->next == NULL);
 }
 
+CMB_MAYBE_UNUSED
 static inline void cmi_slist_push(struct cmi_slist_head *head,
                                   struct cmi_slist_head *new)
 {
@@ -74,6 +79,7 @@ static inline void cmi_slist_push(struct cmi_slist_head *head,
     head->next = new;
 }
 
+CMB_MAYBE_UNUSED
 static inline struct cmi_slist_head *cmi_slist_pop(struct cmi_slist_head *head)
 {
     cmb_assert_debug(head != NULL);
@@ -86,6 +92,7 @@ static inline struct cmi_slist_head *cmi_slist_pop(struct cmi_slist_head *head)
     return ret;
 }
 
+CMB_MAYBE_UNUSED
 static inline struct cmi_slist_head *cmi_slist_peek(const struct cmi_slist_head *head)
 {
     cmb_assert_debug(head != NULL);
