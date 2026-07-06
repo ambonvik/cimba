@@ -76,7 +76,7 @@ struct trial {
     unsigned num_tugs;
     unsigned num_berths[2];
     double unloading_time_avg[2];
-    double dur_s;
+    double duration_h;
     /* Outcomes */
     struct cmb_dataset *system_time[2];
 };
@@ -473,7 +473,7 @@ void set_test_parameters(struct trial *trl, double dur)
     trl->unloading_time_avg[SMALL] = 8.0;
     trl->unloading_time_avg[LARGE] = 12.0;
 
-    trl->dur_s = dur;
+    trl->duration_h = dur;
 }
 
 /* The test function running the simulation */
