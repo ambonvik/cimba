@@ -109,6 +109,7 @@ extern void cmi_mempool_expand(struct cmi_mempool *mp);
 /*
  * Pop an object off the pool stack, allocating more objects if necessary.
  */
+CMB_MAYBE_UNUSED
 static inline void *cmi_mempool_alloc(struct cmi_mempool *mp)
 {
     cmb_assert_release(mp != NULL);
@@ -142,6 +143,7 @@ static inline void *cmi_mempool_alloc(struct cmi_mempool *mp)
 /*
  * Push an object back on the pool stack for later reuse.
  */
+CMB_MAYBE_UNUSED
 static inline void cmi_mempool_free(struct cmi_mempool *mp, void *op)
 {
     cmb_assert_release(mp != NULL);
@@ -156,6 +158,6 @@ static inline void cmi_mempool_free(struct cmi_mempool *mp, void *op)
  * Deallocate any allocated memory in the thread local pools.
  * Call when exiting a pthread.
  */
-extern void cmi_mempool_cleanup(void *arg);
+extern void cmi_mempool_thread_cleanup(void);
 
 #endif /* CIMBA_CMI_MEMPOOL_H */

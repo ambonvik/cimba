@@ -30,6 +30,7 @@
 #include "cmi_coroutine.h"
 #include "cmi_mempool.h"
 #include "cmi_memutils.h"
+#include "cmi_thread.h"
 
 /* Only used from here, no header file needed */
 extern uint32_t cmi_cpu_cores(void);
@@ -46,11 +47,15 @@ static cimba_thread_init_func *cmg_thread_init_func = NULL;
 static void *cmg_thread_init_usrarg = NULL;
 static cimba_thread_exit_func *cmg_thread_exit_func = NULL;
 static pthread_mutex_t cmg_experiment_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_t cmg_main_thread;
 
 /* Using GCC/Clang __atomic built-in rather than C11 stdatomic.h due to clangd
  * false positives that have no clean workaround as of early 2026. Hence
  * declaring cmg_next_trial_idx as plain static uint64_t instead of _Atomic */
 static uint64_t cmg_next_trial_idx;
+
+/* Control variable to ensure that atexit() gets armed only once */
+pthread_once_t cmg_atexit_armed = PTHREAD_ONCE_INIT;
 
 /* User-defined context per thread */
 CMB_THREAD_LOCAL void *cmi_thread_context = NULL;
@@ -62,6 +67,46 @@ CMB_THREAD_LOCAL uint64_t cmi_thread_id = UINT64_C(0);
 CMB_THREAD_LOCAL jmp_buf cmi_worker_recovery;
 CMB_THREAD_LOCAL bool cmi_worker_recovery_armed = false;
 static uint64_t cmi_failed_trials;
+
+/*
+ * This function will run _before_ the start of main(), guaranteed before any
+ * other pthread launches. It catches the id of the main thread for later
+ * comparison to determine if some code is running in the main thread or
+ * in some other pthread.
+ */
+__attribute__((constructor))
+static void thread_capture_main(void)
+{
+    cmg_main_thread = pthread_self();
+}
+
+/* Predicate to distinguish between main thread and worker threads */
+bool cmi_thread_in_main(void) {
+    return pthread_equal(pthread_self(), cmg_main_thread);
+}
+
+/* Call signature as expected by pthread_cleanup_push() */
+void cmi_thread_pthread_cleanup(void *arg)
+{
+    cmb_unused(arg);
+
+    /* The sequence is important here, mempools last */
+    cmi_coroutine_thread_cleanup();
+    cmi_mempool_thread_cleanup();
+}
+
+/* Call signature as expected by atexit() */
+void cmi_thread_main_cleanup(void)
+{
+    cmi_coroutine_thread_cleanup();
+    cmi_mempool_thread_cleanup();
+}
+
+void cmi_thread_arm_atexit_cleanup(void)
+{
+    const int rc = atexit(cmi_thread_main_cleanup);
+    cmb_assert_always(rc == 0);
+}
 
 /*
  * cimba_version - Return the version string as const char *
@@ -164,8 +209,7 @@ static void *worker_thread_func(void *arg)
     }
 
     /* Make sure we free any thread local allocations before we exit */
-    pthread_cleanup_push(cmi_mempool_cleanup, NULL);
-    pthread_cleanup_push(cmi_coroutine_thread_cleanup, NULL);
+    pthread_cleanup_push(cmi_thread_pthread_cleanup, NULL);
 
     /* Any user-defined cleanup needed? */
     pthread_cleanup_push(thread_exit_wrapper, cmi_thread_context);
@@ -213,7 +257,6 @@ static void *worker_thread_func(void *arg)
      }
 
     /* Made it this far, execute the cleanup functions before exiting */
-    pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
 

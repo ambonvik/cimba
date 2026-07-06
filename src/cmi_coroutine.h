@@ -64,8 +64,6 @@
 #ifndef CIMBA_CMI_COROUTINE_H
 #define CIMBA_CMI_COROUTINE_H
 
-#include <stdbool.h>
-
 #include "cmb_assert.h"
 #include "cmi_config.h"
 
@@ -139,12 +137,13 @@ struct cmi_coroutine {
     unsigned char *stack_limit;
     unsigned char *stack;
     unsigned char *stack_base;
+    size_t stack_size;
     cmi_coroutine_exit_func *cr_exit;
     void *exit_value;
     void *tsan_fiber;
     struct cmi_coroutine *reg_prev;
     struct cmi_coroutine *reg_next;
-    bool heap_allocated;
+    bool pool_allocated;
 };
 
 /*
@@ -250,6 +249,7 @@ static inline enum cmi_coroutine_state cmi_coroutine_status(const struct cmi_cor
  * cmi_coroutine_context - Return the current context pointer of the given
  * coroutine
  */
+CMB_MAYBE_UNUSED
 static inline void *cmi_coroutine_context(const struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
@@ -261,6 +261,7 @@ static inline void *cmi_coroutine_context(const struct cmi_coroutine *cp)
  * cmi_coroutine_exit_value - Return the exit value of the given coroutine,
  * NULL if it has not yet returned (or if it returned NULL).
  */
+CMB_MAYBE_UNUSED
 static inline void *cmi_coroutine_exit_value(const struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
@@ -291,7 +292,7 @@ extern void *cmi_coroutine_launch(struct cmi_coroutine *cp, void *arg);
  * Cleanup handler to be called on thread termination,
  * will free() all still allocated stacks in this thread
  */
-extern void cmi_coroutine_thread_cleanup(void *arg);
+extern void cmi_coroutine_thread_cleanup(void);
 
 /*
  * cmi_coroutine_reset_to_main - Re-establish the thread's main coroutine as the

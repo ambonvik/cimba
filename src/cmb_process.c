@@ -50,7 +50,6 @@ struct cmb_process *cmb_process_create(void)
 {
     struct cmb_process *pp = cmi_malloc(sizeof(*pp));
     cmi_memset(pp, 0, sizeof(*pp));
-    pp->core.heap_allocated = true;
 
     return pp;
 }
@@ -125,7 +124,6 @@ void cmb_process_destroy(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    cmb_assert_debug(pp->core.heap_allocated == true);
     cmi_free(pp);
 }
 

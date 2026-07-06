@@ -22,10 +22,12 @@
  * limitations under the License.
  */
 
+#include <pthread.h>
 #include <stdio.h>
 
 #include "cmi_mempool.h"
 #include "cmi_slist.h"
+#include "cmi_thread.h"
 
 /* Initial size of the memory chunk list as such */
 #define CHUNK_LIST_SIZE 64u
@@ -164,6 +166,11 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
 
         /* Initialize sets cookie to CMI_INITIALIZED and allocates chunk_list */
         cmi_mempool_initialize(mp, mp->obj_sz, mp->incr_num);
+
+        /* Register the cleanup before exiting program */
+        if (cmi_thread_in_main()) {
+            pthread_once(&cmg_atexit_armed, cmi_thread_arm_atexit_cleanup);
+        }
     }
 
     /* Doubling on each increment */
@@ -200,10 +207,8 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
  * cmi_mempool_cleanup - Function to deallocate any allocated memory in the
  * thread local pools. Call when exiting a pthread.
  */
-void cmi_mempool_cleanup(void *arg)
+void cmi_mempool_thread_cleanup(void)
 {
-    cmb_unused(arg);
-
     while (!cmi_slist_is_empty(&static_pools)) {
         struct cmi_slist_head *phead = cmi_slist_pop(&static_pools);
         struct static_pools_tag *stp = cmi_container_of(phead,

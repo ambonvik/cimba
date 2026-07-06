@@ -276,3 +276,9 @@ void cmi_coroutine_os_adopt_stack(const struct cmi_coroutine *cp)
 
     cmi_coroutine_set_stack_teb(cp->stack_base, cp->stack_limit, cp->stack);
 }
+
+/* Called from the thread exit handler to deallocate any memory pools */
+void cmi_coroutine_stack_cleanup(void)
+{
+        /* For now, nothing */
+}
