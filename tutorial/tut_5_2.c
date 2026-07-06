@@ -769,7 +769,7 @@ struct simulation {
  */
 struct trial {
     struct terrain *terrain;
-    double dur_s;
+    double duration_s;
     uint64_t seed_used;
     unsigned num_found;
 };
@@ -938,7 +938,7 @@ void run_trial(void *vtrl)
 
     /* Schedule the simulation control events */
     printf("Scheduling end event\n");
-    double t_end_s = trl->dur_s;
+    double t_end_s = trl->duration_h;
     cmb_event_schedule(end_sim, &sim, NULL, t_end_s, 0);
 
     /* Process to write output events */
@@ -1052,7 +1052,7 @@ int main(int argc, char **argv)
     struct terrain *tp = terrain_create();
     terrain_initialize(tp, fwidth_nm, fheight_nm, ref_lat, ref_lon, trl.seed_used);
     trl.terrain = tp;
-    trl.dur_s = dur_h * 3600.0;
+    trl.duration_h = dur_h * 3600.0;
 
     const clock_t mid_time = clock();
     const double tergen_time = (double)(mid_time - start_time) / CLOCKS_PER_SEC;
