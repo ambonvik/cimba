@@ -614,7 +614,9 @@ void test_condition(uint64_t seed, double dur)
     cmb_condition_destroy(sim.harbormaster);
     cmb_condition_destroy(sim.davyjones);
     cmb_resourcepool_destroy(sim.tugs);
+    cmb_process_terminate(sim.weather);
     cmb_process_destroy(sim.weather);
+    cmb_process_terminate(sim.tide);
     cmb_process_destroy(sim.tide);
 
     cmb_event_queue_terminate();
