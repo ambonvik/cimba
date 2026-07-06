@@ -817,7 +817,7 @@ void run_trial(void *vtrl)
     cmb_process_start((struct cmb_process *)radar);
 
     /* Schedule the simulation control events */
-    double t_end_s = trl->duration_h;
+    double t_end_s = trl->duration_s;
     cmb_event_schedule(end_sim, &sim, NULL, t_end_s, 0);
 
     /* Run this trial */
@@ -992,7 +992,7 @@ int main(int argc, char **argv)
                 experiment[ui_trl].flight_level = flt_lvl;
                 experiment[ui_trl].terrain = terrains[ut];
                 experiment[ui_trl].seed = cmb_random_fmix64(master_seed, SEED_TRIAL + ui_trl);
-                experiment[ui_trl].duration_h = dur_h * 3600.0;
+                experiment[ui_trl].duration_s = dur_h * 3600.0;
 
                 /* Sentinel value to detect aborted trials */
                 experiment[ui_trl].num_found = -1;
