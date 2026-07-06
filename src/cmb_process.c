@@ -124,6 +124,11 @@ void cmb_process_destroy(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
+    if (((struct cmi_coroutine *)pp)->stack != NULL) {
+        /* Still live, we helpfully clean it up */
+        cmb_process_terminate(pp);
+    }
+
     cmi_free(pp);
 }
 
