@@ -27,12 +27,20 @@
 #include <xmmintrin.h>
 
 #include "cmb_assert.h"
-
 #include "cmi_coroutine.h"
 #include "cmi_memutils.h"
 
 /* Assembly function, see src/arc/cmi_coroutine_context_*.asm */
 extern void cmi_coroutine_trampoline(void);
+
+/* Intrusive singly linked list of recycled stacks */
+struct stack_tag {
+    size_t size;                /* Size of stacks in this list */
+    unsigned char *head;        /* The intrusive list */
+    struct stack_tag *next;     /* Next list, a different size stack */
+};
+
+CMB_THREAD_LOCAL static struct stack_tag *stack_list = NULL;
 
 /*
  * Linux-specific code to allocate and initialize stack for a new coroutine,
@@ -145,6 +153,7 @@ bool cmi_coroutine_registers_valid(const struct cmi_coroutine *cp)
     #endif
 }
 
+/* Initialize a new stack with necessary stack frame */
 void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 {
     cmb_assert_release(cp != NULL);
@@ -215,34 +224,110 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 }
 
-/* Allocate memory suitable for a stack, including one extra guard page */
-unsigned char *cmi_coroutine_stack_alloc(const size_t size, unsigned char **base_p, unsigned char **limit_p)
+/*
+ * Allocate memory suitable for a stack, including one extra guard page.
+ * The mprotect call is badly serializing for multithreaded applications,
+ * hence managing a pool of recycled stacks of various sizes, assuming that
+ * the application will only use a few different stack sizes. (Most likely, just
+ * one size, all stacks the same size.)
+ */
+unsigned char *cmi_coroutine_stack_alloc(const size_t size_req, unsigned char **base_p, unsigned char **limit_p)
 {
+    cmb_assert_debug(size_req > 0u);
+    cmb_assert_debug((base_p != NULL) && (limit_p != NULL));
+
     const size_t pagesz = cmi_pagesize();
-    unsigned char *raw = cmi_aligned_alloc(pagesz, size + pagesz);
-    cmb_assert_always(raw != NULL);
+    cmb_assert_debug(size_req <= SIZE_MAX - pagesz);
+    const size_t size_rnd = (size_req + pagesz - 1u) & ~(pagesz - 1u);
 
-    const int r = mprotect(raw, pagesz, PROT_NONE);
-    cmb_assert_always(r == 0);
+    /* Do we have one lying around? */
+    unsigned char *stack_raw = NULL;
+    struct stack_tag *st = stack_list;
+    while (st != NULL) {
+        if (st->size == size_rnd) {
+            if (st->head != NULL) {
+                stack_raw = st->head;
+                unsigned char **nextloc = (unsigned char **)(stack_raw + pagesz);
+                st->head = *nextloc;
+            }
+            break;
+        }
+        st = st->next;
+    }
 
-    /* Stack grows downwards, base is at the top */
-    *base_p = raw + size + pagesz;
-    *limit_p = raw + pagesz;
+    if (stack_raw == NULL) {
+        /* None lying around, create one */
+        stack_raw = cmi_aligned_alloc(pagesz, size_rnd + pagesz);
+        cmb_assert_always(stack_raw != NULL);
+        /* Protect the guard page */
+        const int r = mprotect(stack_raw, pagesz, PROT_NONE);
+        cmb_assert_always(r == 0);
+    }
 
-    return raw;
+    /* Stack grows downwards, the stack base is at the top */
+    *base_p = stack_raw + pagesz + size_rnd;
+    /* The usable stack space ends here, growing beyond will trigger segfault */
+    *limit_p = stack_raw + pagesz;
+    cmb_assert_debug(((uintptr_t)*base_p - (uintptr_t)*limit_p) == size_rnd);
+
+    return stack_raw;
 }
 
-/* Free memory previously allocated for a stack */
-void cmi_coroutine_stack_free(unsigned char *stack)
+/* Free memory previously allocated for a stack, pushing it back on pool */
+void cmi_coroutine_stack_free(unsigned char *stack_raw, size_t size_req)
 {
-    cmb_assert_release(stack != NULL);
+    cmb_assert_release(stack_raw != NULL);
 
-    /* Unprotect guard page to avoid complaints */
     const size_t pagesz = cmi_pagesize();
-    const int r = mprotect(stack, pagesz, PROT_READ | PROT_WRITE);
-    cmb_assert_always(r == 0);
+    cmb_assert_debug(size_req <= SIZE_MAX - pagesz);
+    const size_t size_rnd = (size_req + pagesz - 1u) & ~(pagesz - 1u);
 
-    cmi_aligned_free(stack);
+    struct stack_tag *st = stack_list;
+    while (st != NULL) {
+        if (st->size == size_rnd) {
+            /* Found its slot, push it */
+            unsigned char **nextloc = (unsigned char **)(stack_raw + pagesz);
+            *nextloc = st->head;
+            st->head = stack_raw;
+            return;
+        }
+        else {
+            st = st->next;
+        }
+    }
+
+    /* Made it here, so first stack this size to be recycled */
+    st = cmi_malloc(sizeof(*st));
+    *(unsigned char **)(stack_raw + pagesz) = NULL;
+    st->size = size_rnd;
+    st->head = stack_raw;
+    st->next = stack_list;
+    stack_list = st;
+}
+
+void cmi_coroutine_stack_cleanup(void)
+{
+    const size_t pagesz = cmi_pagesize();
+    struct stack_tag *st = stack_list;
+    while (st != NULL) {
+        while (st->head != NULL) {
+            unsigned char *raw = st->head;
+            unsigned char *next = *(unsigned char **)(raw + pagesz);   /* before free */
+
+            /* Unprotect guard page to avoid complaints */
+            const int r = mprotect(raw, pagesz, PROT_READ | PROT_WRITE);
+            cmb_assert_always(r == 0);
+            cmi_aligned_free(raw);
+
+            st->head = next;
+        }
+
+        struct stack_tag *next = st->next;
+        cmi_free(st);
+        st = next;
+    }
+
+    stack_list = NULL;
 }
 
 /*
@@ -255,14 +340,14 @@ unsigned char *cmi_coroutine_stackbase(void)
     int r = pthread_getattr_np(pthread_self(), &attrs);
     cmb_assert_release(r == 0);
 
-    void *stack_end;
+    void *stack_lowend;
     size_t stack_size;
-    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
+    r = pthread_attr_getstack(&attrs, &stack_lowend, &stack_size);
     cmb_assert_release(r == 0);
 
     pthread_attr_destroy(&attrs);
 
-    return (unsigned char *)stack_end + stack_size;
+    return (unsigned char *)stack_lowend + stack_size;
 }
 
 unsigned char *cmi_coroutine_stacklimit(void)
@@ -270,16 +355,16 @@ unsigned char *cmi_coroutine_stacklimit(void)
     pthread_attr_t attrs;
     pthread_attr_init(&attrs);
     int r = pthread_getattr_np(pthread_self(), &attrs);
-    cmb_assert_debug(r == 0);
+    cmb_assert_release(r == 0);
 
-    void *stack_end;
+    void *stack_lowend;
     size_t stack_size;
-    r = pthread_attr_getstack(&attrs, &stack_end, &stack_size);
-    cmb_assert_debug(r == 0);
+    r = pthread_attr_getstack(&attrs, &stack_lowend, &stack_size);
+    cmb_assert_release(r == 0);
 
     pthread_attr_destroy(&attrs);
 
-    return stack_end;
+    return stack_lowend;
 }
 
 unsigned char *cmi_coroutine_stackraw(void)
