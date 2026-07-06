@@ -726,8 +726,8 @@ history like this:
     cmb_buffer_stop_recording(sim.que);
     cmb_buffer_print_report(sim.que, stdout);
 
-We increase the running time from ten to one million time units by schedulign the
-``end_sim``event at time 1.0e6, compile, and run.
+We increase the running time from ten to one million time units by scheduling the
+``end_sim`` event at time 1.0e6, compile, and run.
 Very shortly thereafter, output appears:
 
 .. code-block:: none
@@ -2483,8 +2483,8 @@ to the next tutorial.
 
 .. _tut_4:
 
-A LNG tanker harbor with complex resources and conditions
----------------------------------------------------------
+More complex resources and conditions
+-------------------------------------
 
 Once upon a time, a harbor simulation with tugs puttering about was the author's
 first exposure to Simula67, coroutines, and object-oriented programming. The
@@ -3352,6 +3352,12 @@ conditions in the simulated world. We also used the internal :c:struct:`cmi_slis
 :c:struct:`cmi_hashheap` as
 handy building blocks for other purposes, and leave it to you to discover additional
 possibilities.
+
+Cimba and design of experiments
+--------------------------------
+
+(Work in progress)
+
 
 Adding CUDA GPU power for simulation physics
 --------------------------------------------
