@@ -55,6 +55,10 @@ extern struct cmi_process_awaitable *cmi_process_add_awaitable(struct cmb_proces
                                                 enum cmi_process_awaitable_type type,
                                                 void *awaitable);
 
+/* Returns true iff pp currently has a RESOURCE awaitable enqueued under this key.
+ * The key is globally unique, so this identifies one specific wait episode. */
+extern bool cmi_process_awaiting_key(const struct cmb_process *pp, uint64_t key);
+
 /* Return the enqueue key under which `pp` is currently waiting in the guard
  * pointed to by `guard`, or 0 if `pp` is not waiting in that guard. */
 extern uint64_t cmi_process_guard_key(const struct cmb_process *pp,
