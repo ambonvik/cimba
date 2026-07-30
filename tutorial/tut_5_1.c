@@ -355,7 +355,7 @@ void terrain_initialize(struct terrain *tp,
     tp->y_max = (y_span / 2.0f);
 
     printf("Generating %d x %d terrain grid...\n", tp->cols, tp->rows);
-    tp->map = cmi_calloc(tp->cols * tp->rows, sizeof(float));
+    tp->map = cmi_calloc((size_t)tp->cols * (size_t)tp->rows, sizeof(float));
 
     const time_t start = time(NULL);
     struct cmb_datasummary tds = {};

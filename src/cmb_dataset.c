@@ -656,8 +656,8 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
     }
 
     /* Create an intermediary un * un matrix */
-    double **phi = cmi_malloc((n + 1u) * sizeof(double *));
-    phi[0] = cmi_calloc((n + 1) * (n + 1), sizeof(double));
+    double **phi = cmi_malloc(((size_t)n + 1u) * sizeof(double *));
+    phi[0] = cmi_calloc(((size_t)n + 1u) * ((size_t)n + 1u), sizeof(double));
     for (unsigned ui = 1u; ui <= n; ui++) {
         phi[ui] = phi[0] + ui * n;
     }
