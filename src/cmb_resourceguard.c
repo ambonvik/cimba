@@ -160,32 +160,80 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
     /* Yield to the dispatcher, collect the return signal value when resumed */
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
 
-    /* Back here, possibly much later. Return the signal that resumed us. */
+    /* Back here, possibly much later. Clearly not waiting for this anymore. */
+    (void)cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_RESOURCE, rgp);
+    /* Make sure we do not accidentally cancel the wrong event. */
     if (sig != CMB_PROCESS_SUCCESS) {
-        cmi_hashheap_cancel((struct cmi_hashheap *)rgp, key);
+        if (cmi_hashheap_is_enqueued((struct cmi_hashheap *)rgp, key)) {
+            /* Still queued: an ordinary interrupt/timeout while waiting. ALl good. */
+            (void)cmi_hashheap_cancel((struct cmi_hashheap *)rgp, key);
+        }
+        else if (sig != CMB_PROCESS_CANCELLED) {
+            /* Special case: We were already dequeued (resource to be granted) but are
+             * now resumed by some other signal (e.g. a timeout at the same timestamp)
+             * before the scheduled wakeup event fired and the process actually resumed.
+             * Assumed intentional, so hand the resource opportunity to the next waiter.
+             * Our own grant event is now stale and will be discarded by
+             * wakeup_event_resource_granted's key check. */
+            (void)cmb_resourceguard_signal(rgp);
+        }
     }
 
     cmb_assert_debug(!cmi_hashheap_is_enqueued((struct cmi_hashheap *)rgp, key));
-    cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_RESOURCE, rgp);
-
     return sig;
 }
 
 /*
- * wakeup_event_resource - The event that actually resumes the process coroutine
- */
-void wakeup_event_resource(void *vp, void *arg)
+ * wakeup_event_resource_granted - An event that actually resumes the process.
+ * A granted waiter is resumed with SUCCESS, but only if it is still parked in
+ * the guard wait this grant was issued for. arg carries the unique enqueue key;
+ * if the process has since left that wait (timeout, cancel, teardown), its
+ * RESOURCE awaitable is gone and this grant is stale — discard it silently. */
+static void wakeup_event_resource_granted(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
     struct cmb_process *pp = (struct cmb_process *)vp;
-    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64,
-                pp->name, (int64_t)arg);
+    const uint64_t key = (uint64_t)arg;
+    if (!cmi_process_awaiting_key(pp, key)) {
+        cmb_logger_info(stdout, "Stale grant for %s, discarded", pp->name);
+        return;
+    }
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
-        (void)cmi_coroutine_resume(cp, arg);
+        (void)cmi_coroutine_resume(cp, (void *)CMB_PROCESS_SUCCESS);
     }
+}
+
+/*
+ * wakeup_event_resource_cancelled - An event that actually resumes the process.
+ * As above, but delivering CANCELLED. Same staleness guard.
+ */
+static void wakeup_event_resource_cancelled(void *vp, void *arg)
+{
+    cmb_assert_debug(vp != NULL);
+
+    struct cmb_process *pp = (struct cmb_process *)vp;
+    const uint64_t key = (uint64_t)arg;
+    if (!cmi_process_awaiting_key(pp, key)) {
+        cmb_logger_info(stdout, "Stale grant for %s, discarded", pp->name);
+        return;
+    }
+
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
+    if (cp->status == CMI_COROUTINE_RUNNING) {
+        (void)cmi_coroutine_resume(cp, (void *)CMB_PROCESS_CANCELLED);
+    }
+}
+
+/* Cancel any pending grant/cancel wakeup targeting pp. The staleness check in
+ * the handlers dereferences pp, so no such event may outlive the process. */
+void cmi_resourceguard_cancel_wakeups(struct cmb_process *pp)
+{
+    cmb_assert_release(pp != NULL);
+    cmb_event_pattern_cancel(wakeup_event_resource_granted,   pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(wakeup_event_resource_cancelled, pp, CMB_ANY_OBJECT);
 }
 
 /*
@@ -227,11 +275,13 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
             /* Yes, pull the process off the queue and schedule wakeup event */
             cmb_logger_info(stdout, "Scheduling wakeup event for %s", pp->name);
             (void)cmi_hashheap_dequeue(hp);
+            /* Make sure we have the right wait target */
+            const uint64_t key = cmi_process_guard_key(pp, rgp);
+            cmb_assert_debug(key != UINT64_C(0));
             const double time = cmb_time();
             const int64_t priority = cmb_process_priority(pp);
-            (void)cmb_event_schedule(wakeup_event_resource, pp,
-                                    (void *)CMB_PROCESS_SUCCESS,
-                                    time, priority);
+            (void)cmb_event_schedule(wakeup_event_resource_granted, pp,
+                                     (void *)key, time, priority);
             ret = true;
         }
     }
@@ -268,9 +318,8 @@ bool cmb_resourceguard_cancel(struct cmb_resourceguard *rgp,
         (void)cmi_hashheap_cancel(hp, key);
         const double time = cmb_time();
         const int64_t priority = cmb_process_priority(pp);
-        (void)cmb_event_schedule(wakeup_event_resource, pp,
-                                 (void *)CMB_PROCESS_CANCELLED,
-                                 time, priority);
+        (void)cmb_event_schedule(wakeup_event_resource_cancelled, pp,
+                                 (void *)key, time, priority);
         ret = true;
     }
 
