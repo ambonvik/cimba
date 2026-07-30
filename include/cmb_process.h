@@ -99,6 +99,15 @@
 #define CMB_PROCESS_TIMEOUT INT64_C(-5)
 
 /**
+ * @brief Return code indicating that an awaited process is summarily terminated
+ *        or destroyed without going through the proper exiting stage first.
+ *        Should never happen, but we need the return value to assert it didn't.
+ * @relates cmb_process
+ */
+#define CMB_PROCESS_TERMINATED INT64_C(-6)
+
+
+/**
  * @brief The states a process can be in (direct from the underlying coroutine)
  * @relates cmb_process
  */
