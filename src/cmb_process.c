@@ -46,7 +46,7 @@ static size_t default_stacksize = CMI_COROUTINE_DEFAULT_STACKSIZE;
 /* Friendly function in cmb_resource.c, not part of the public interface */
 extern void wakeup_event_preempt(void *vp, void *arg);
 
-/* Friendly functions in cmb_resourceguard.c, */
+/* Friendly functions in cmb_resourceguard.c, not part of the public interface */
 extern void cmi_resourceguard_cancel_wakeups(struct cmb_process *pp);
 extern bool cmi_resourceguard_remove_key(struct cmb_resourceguard *rgp, uint64_t key);
 
@@ -705,9 +705,6 @@ bool cmi_process_awaiting_key(const struct cmb_process *pp, const uint64_t key)
     return false;
 }
 
-/* Just declare that this exists */
-void cmi_process_cancel_awaiteds(struct cmb_process *pp);
-
 /*
  * wakeup_event_interrupt - The event that actually interrupts the
  * process coroutine after being scheduled by cmb_process_interrupt.
@@ -771,7 +768,7 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
             const bool found = cmi_resourceguard_remove_key(rgp, pa->guard_key);
             if (!found) {
                 /* Special handling: Awaitable guard_key non-zero, but no matching key found in
-                 * resource guard, indicates that there is a wakeup event already scheduled.
+                 * resource guard, may indicate that there is a wakeup event already scheduled.
                  * Assumed intentional, so hand the resource opportunity to the next waiter.
                  * The pending grant event is now stale and will be discarded by
                  * wakeup_event_resource_granted's key check with no damage done. */
@@ -799,7 +796,7 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
      * The fast way to do this would be to use wildcard CMB_ANY_ACTION,
      * but we need to allow for the possibility of some user-scheduled event
      * that just happens to have process pp as its subject. Hence, a more
-     * surgical approach, searching for the specific event types */
+     * surgical approach, searching repeatedly for the specific event types */
     cmb_event_pattern_cancel(wakeup_event_time, pp, CMB_ANY_OBJECT);
     cmb_event_pattern_cancel(wakeup_event_process, pp, CMB_ANY_OBJECT);
     cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
