@@ -508,6 +508,42 @@ void test_dataset(const uint64_t nsamples)
     cmb_dataset_terminate(dsp);
     cmb_dataset_destroy(dsp);
 
+    printf("\nTesting dataset merger\n");
+    cmb_dataset_initialize(&ds);
+    dsp = cmb_dataset_create();
+    cmb_dataset_initialize(dsp);
+    printf("Generating new samples\n");
+    for (uint32_t ui = 0; ui < nsamples; ui++) {
+        (void)cmb_dataset_add(&ds, cmb_random());
+        (void)cmb_dataset_add(dsp, cmb_random());
+    }
+
+    struct cmb_dataset *dst = cmb_dataset_create();
+    cmb_dataset_initialize(dst);
+    cmb_assert_always(cmb_dataset_count(dst) == 0);
+    printf("Merging into heap dataset, cmb_dataset_merge\n");
+    un = cmb_dataset_merge(dst, &ds, dsp);
+    cmb_assert_always(un == cmb_dataset_count(dst));
+    cmb_assert_always(un == 2u * nsamples);
+    printf("Merging into stack dataset, cmb_dataset_merge\n");
+    un = cmb_dataset_merge(&ds, dsp, dst);
+    cmb_assert_always(un == cmb_dataset_count(&ds));
+    cmb_assert_always(un == 3u * nsamples);
+    printf("Merging with itself, cmb_dataset_merge\n");
+    un = cmb_dataset_merge(dst, dsp, dsp);
+    cmb_assert_always(un == cmb_dataset_count(dst));
+    cmb_assert_always(un == 2u * nsamples);
+    printf("Merging itself into itself, cmb_dataset_merge\n");
+    un = cmb_dataset_merge(dst, dst, dst);
+    cmb_assert_always(un == cmb_dataset_count(dst));
+    cmb_assert_always(un == 4u * nsamples);
+    printf("\nCleaning up: cmb_datasummary_terminate, cmb_dataset_destroy\n");
+    cmb_dataset_terminate(&ds);
+    cmb_dataset_terminate(dst);
+    cmb_dataset_destroy(dst);
+    cmb_dataset_terminate(dsp);
+    cmb_dataset_destroy(dsp);
+
     cmi_test_print_line("=");
 }
 
