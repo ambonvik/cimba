@@ -114,6 +114,7 @@ static void wake_process_waiters(struct cmi_slist_head *waiters, int64_t signal)
 /*
  * cmb_process_terminate - Deallocates memory for the underlying coroutine stack
  * but not for the process object itself. The process exit value is still there.
+ * A running process should be stopped before being terminated.
  *
  * If necessary, the terminated process can still be restarted by first calling
  * _initialize and then _start, but until a use case for this is identified, we
@@ -123,7 +124,13 @@ extern void cmb_process_terminate(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
 
-    /* Should not have any waiters or hold any resources at this point, but make sure */
+    /* Should not have any other processes waiting for this one.
+     * Make sure the terminating process is properly stopped and any
+     * waiters are signaled correctly.     */
+    cmb_assert_release(cmi_slist_is_empty(&pp->waiters));
+    cmi_slist_terminate(&pp->waiters);
+
+    /* Should not have any waiters or hold any resources either, but check. */
     if (!cmi_slist_is_empty(&pp->awaits)) {
         cmb_logger_warning(stdout,
             "Terminating %s while still awaiting something", pp->name);
@@ -131,14 +138,7 @@ extern void cmb_process_terminate(struct cmb_process *pp)
     }
     cmi_slist_terminate(&pp->awaits);
 
-    if (!cmi_slist_is_empty(&pp->waiters)) {
-        cmb_logger_warning(stdout,
-            "Terminating %s while processes still wait for it", pp->name);
-        wake_process_waiters(&pp->waiters, CMB_PROCESS_TERMINATED);
-    }
-    cmi_slist_terminate(&pp->waiters);
-
-    if (!cmi_slist_is_empty(&pp->awaits)) {
+    if (!cmi_slist_is_empty(&pp->resources)) {
         cmb_logger_warning(stdout,
             "Terminating %s while still holding resources", pp->name);
         cmi_process_drop_resources(pp);
@@ -338,6 +338,30 @@ uint64_t cmi_process_guard_key(const struct cmb_process *pp, const void *guard)
 }
 
 /*
+ * cmi_process_has_awaitable - check if the item is in the process' awaitable list
+ */
+bool cmi_process_has_awaitable(const struct cmb_process *pp,
+                               const enum cmi_process_awaitable_type type,
+                               const void *awaitable)
+{
+    cmb_assert_debug(pp != NULL);
+
+    const struct cmi_slist_head *ahead = &(pp->awaits);
+    while (ahead->next != NULL) {
+        const struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
+                                                    struct cmi_process_awaitable,
+                                                    listhead);
+        if ((awp->type == type) && (awp->ptr == awaitable)) {
+            return true;
+        }
+
+        ahead = ahead->next;
+    }
+
+    return false;
+}
+
+/*
  * cmi_process_remove_awaitable - remove an item from the awaitable list.
  * Will remove the first (assumed only) event of that type if the last
  * argument is NULL.
@@ -400,13 +424,18 @@ static void wakeup_event_time(void *vp, void *arg)
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
 
-    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64, pp->name, (int64_t)arg);
     cmb_assert_debug(!cmi_slist_is_empty(&(pp->awaits)));
-    const uint64_t thisevent = cmb_event_current();
+    const uint64_t this_event = cmb_event_current();
     const bool found = cmi_process_remove_awaitable(pp,
                                                     CMI_PROCESS_AWAITABLE_TIME,
-                                                    (void *)thisevent);
-    cmb_assert_debug(found == true);
+                                                    (void *)this_event);
+    if (!found) {
+        /* Process is no longer waiting for this timeout,
+         * something happened to the process in the meantime */
+        cmb_logger_info(stdout,
+                        "Process %s scheduled wakeup event is stale", pp->name);
+        return;
+    }
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
@@ -503,7 +532,12 @@ static void wakeup_event_process(void *vp, void *arg)
     const bool found = cmi_process_remove_awaitable(pp,
                                                     CMI_PROCESS_AWAITABLE_PROCESS,
                                                     NULL);
-    cmb_assert_debug(found == true);
+    if (!found) {
+        /* Process is no longer waiting for this, a stale wakeup event */
+        cmb_logger_info(stdout,
+                        "Process %s scheduled wakeup event is stale", pp->name);
+        return;
+    }
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
@@ -553,8 +587,13 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
         /* Yield to the dispatcher and collect the return signal value */
         const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
 
-        /* Possibly much later, verify that it is valid */
-        cmb_assert_debug(sig != CMB_PROCESS_TERMINATED);
+        /* Possibly much later, no longer waiting on that process.
+         * Drop our tag from its waiter list (if not already done) and
+         * from our PROCESS awaitable list. */
+        (void)cmi_process_remove_waiter(awaited, me);
+        (void)cmi_process_remove_awaitable(me, CMI_PROCESS_AWAITABLE_PROCESS,
+                                           (void *)awaited);
+
         return sig;
     }
 }
@@ -582,7 +621,14 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     /* Yield to the dispatcher and collect the return signal value */
     const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
 
-    /* Possibly much later */
+    /* Back here, possibly much later.
+     * Evidently, we are no longer waiting for this event.
+     * Deregister from the event's waiter list (if not done already)
+     * and drop our EVENT awaitable. */
+    (void)cmi_event_remove_waiter(ev_handle, me);
+    (void)cmi_process_remove_awaitable(me, CMI_PROCESS_AWAITABLE_EVENT,
+                                       (void *)ev_handle);
+
     return ret;
 }
 
@@ -630,6 +676,14 @@ static void cmi_process_drop_resources(struct cmb_process *pp)
     cmb_assert_debug(cmi_slist_is_empty(held));
 }
 
+/*
+ * cmi_process_remove_waiter - remove a process from the waiters' list.
+ * The list may already be empty: a waiter deregisters on its way out of
+ * cmb_process_wait_process regardless of what resumed it, and on the
+ * ordinary success path wake_process_waiters has already emptied the list
+ * to deliver that very wakeup. Nothing to remove, so report not-found.
+ *
+ */
 bool cmi_process_remove_waiter(struct cmb_process *pp,
                                const struct cmb_process *waiter)
 {
@@ -637,8 +691,6 @@ bool cmi_process_remove_waiter(struct cmb_process *pp,
     cmb_assert_debug(waiter != NULL);
 
     struct cmi_slist_head *waiters = &(pp->waiters);
-    cmb_assert_debug(!cmi_slist_is_empty(waiters));
-
     while (waiters->next != NULL) {
         struct cmi_process_waiter *pw = cmi_container_of(waiters->next,
                                                   struct cmi_process_waiter,
@@ -738,7 +790,17 @@ static void wakeup_event_interrupt(void *vp, void *arg)
 static void resume_event(void *vp, void *arg);
 
 /*
- * Clear the list of things this process is waiting for
+ * cmi_process_cancel_awaiteds - Clear the list of things this process is
+ *                               waiting for, also cancelling any associated
+ *                               wakeup events that may be pending.
+ *
+ * Completion wakeups validate against the process's own awaitables at
+ * dispatch, so a stale one is discarded lazily — no sweep needed for
+ * resource, condition, timer, event, or process wakeup events.
+ *
+ * However, the abnormal wakeups interrupt, preempt, and the unadorned resume
+ * do not carry information about what awaitable (using that event slot for the
+ * signal value to be returned instead), so we need to sweep for those.
  */
 void cmi_process_cancel_awaiteds(struct cmb_process *pp)
 {
@@ -792,16 +854,10 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
         cmi_mempool_free(&cmi_process_awaitabletags, pa);
     }
 
-    /* Make sure any previously scheduled wakeup event does not happen.
-     * The fast way to do this would be to use wildcard CMB_ANY_ACTION,
-     * but we need to allow for the possibility of some user-scheduled event
-     * that just happens to have process pp as its subject. Hence, a more
-     * surgical approach, searching repeatedly for the specific event types */
-    cmb_event_pattern_cancel(wakeup_event_time, pp, CMB_ANY_OBJECT);
-    cmb_event_pattern_cancel(wakeup_event_process, pp, CMB_ANY_OBJECT);
+    /* Make sure any previously scheduled wakeup events do not happen */
     cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
-    cmb_event_pattern_cancel(wakeup_event_preempt, pp, CMB_ANY_OBJECT);
-    cmb_event_pattern_cancel(resume_event, pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(wakeup_event_preempt,   pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(resume_event,           pp, CMB_ANY_OBJECT);
  }
 
 /*

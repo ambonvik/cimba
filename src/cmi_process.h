@@ -55,6 +55,16 @@ extern struct cmi_process_awaitable *cmi_process_add_awaitable(struct cmb_proces
                                                 enum cmi_process_awaitable_type type,
                                                 void *awaitable);
 
+extern bool cmi_process_has_awaitable(const struct cmb_process *pp,
+                                      enum cmi_process_awaitable_type type,
+                                      const void *awaitable);
+
+extern bool cmi_process_remove_awaitable(struct cmb_process *pp,
+                                         enum cmi_process_awaitable_type type,
+                                         const void *awaitable);
+
+extern void cmi_process_cancel_awaiteds(struct cmb_process *pp);
+
 /* Returns true iff pp currently has a RESOURCE awaitable enqueued under this key.
  * The key is globally unique, so this identifies one specific wait episode. */
 extern bool cmi_process_awaiting_key(const struct cmb_process *pp, uint64_t key);
@@ -63,12 +73,6 @@ extern bool cmi_process_awaiting_key(const struct cmb_process *pp, uint64_t key)
  * pointed to by `guard`, or 0 if `pp` is not waiting in that guard. */
 extern uint64_t cmi_process_guard_key(const struct cmb_process *pp,
                                       const void *guard);
-
-extern bool cmi_process_remove_awaitable(struct cmb_process *pp,
-                                         enum cmi_process_awaitable_type type,
-                                         const void *awaitable);
-
-extern void cmi_process_cancel_awaiteds(struct cmb_process *pp);
 
 /*
  * cmi_process_holdable - Things that can be held by a process.

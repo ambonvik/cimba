@@ -237,25 +237,27 @@ int64_t cmb_event_priority(const uint64_t handle)
 }
 
 /*
- * wakeup_event_event - The event that resumes the process after being scheduled by
- *           cmb_process_wait_event
+ * wakeup_event_event_occurred - The event that resumes the process after
+ *          being scheduled by cmb_process_wait_event
  */
-static void wakeup_event_event(void *vp, void *arg)
+static void wakeup_event_event_occurred(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
+    const uint64_t handle = (uint64_t)arg;
+    cmb_assert_debug(handle != UINT64_C(0));
 
-    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64, pp->name, (int64_t)arg);
-    cmb_assert_debug(!cmi_slist_is_empty(&(pp->awaits)));
-
-    const bool found = cmi_process_remove_awaitable(pp,
-                                                    CMI_PROCESS_AWAITABLE_EVENT,
-                                                    NULL);
-    cmb_assert_debug(found == true);
+    /* Stale unless pp is still parked in the wait this wakeup was issued for. */
+    if (!cmi_process_has_awaitable(pp,
+                                   CMI_PROCESS_AWAITABLE_EVENT,
+                                   (void *)handle)) {
+        cmb_logger_info(stdout, "Stale event wakeup for %s, discarded", pp->name);
+        return;
+    }
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
-        (void)cmi_coroutine_resume(cp, arg);
+        (void)cmi_coroutine_resume(cp, (void *)CMB_PROCESS_SUCCESS);
     }
     else {
         cmb_logger_warning(stdout,
@@ -264,8 +266,39 @@ static void wakeup_event_event(void *vp, void *arg)
     }
 }
 
-void wake_event_waiters(struct cmi_slist_head *waiters,
-                        const int64_t signal)
+/*
+ * wakeup_event_event_cancelled - The event that resumes the process after
+ *          being scheduled by cmb_process_wait_event, in this case on bad news.
+ *          There is some duplication of code here, since we need to use arg
+ *          to identify precisely what event we are referring to.
+ */
+static void wakeup_event_event_cancelled(void *vp, void *arg)
+{
+    cmb_assert_debug(vp != NULL);
+    struct cmb_process *pp = (struct cmb_process *)vp;
+    const uint64_t handle = (uint64_t)arg;
+    cmb_assert_debug(handle != UINT64_C(0));
+
+    /* Stale unless pp is still parked in the wait this wakeup was issued for. */
+    if (!cmi_process_has_awaitable(pp,
+                                   CMI_PROCESS_AWAITABLE_EVENT,
+                                   (void *)handle)) {
+        cmb_logger_info(stdout, "Stale event wakeup for %s, discarded", pp->name);
+        return;
+    }
+
+    struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
+    if (cp->status == CMI_COROUTINE_RUNNING) {
+        (void)cmi_coroutine_resume(cp, (void *)CMB_PROCESS_CANCELLED);
+    }
+    else {
+        cmb_logger_warning(stdout,
+                          "Event wait wakeup call found process %s dead",
+                          cmb_process_name(pp));
+    }
+}
+
+static void wake_event_waiters_occurred(struct cmi_slist_head *waiters, const uint64_t ev_handle)
 {
     cmb_assert_debug(waiters != NULL);
 
@@ -279,7 +312,31 @@ void wake_event_waiters(struct cmi_slist_head *waiters,
         const double time = cmb_time();
         const int64_t priority = cmb_process_priority(pp);
 
-        (void)cmb_event_schedule(wakeup_event_event, pp, (void *)signal,
+        (void)cmb_event_schedule(wakeup_event_event_occurred,
+                                 pp, (void *)ev_handle,
+                                 time, priority);
+        cmi_mempool_free(&cmi_process_waitertags, pw);
+    }
+
+    cmb_assert_debug(cmi_slist_is_empty(waiters));
+}
+
+static void wake_event_waiters_cancelled(struct cmi_slist_head *waiters, const uint64_t ev_handle)
+{
+    cmb_assert_debug(waiters != NULL);
+
+    while (!cmi_slist_is_empty(waiters)) {
+        struct cmi_slist_head *head = cmi_slist_pop(waiters);
+        struct cmi_process_waiter *pw = cmi_container_of(head,
+                                                      struct cmi_process_waiter,
+                                                      listhead);
+        struct cmb_process *pp = pw->proc;
+        cmb_assert_debug(pp != NULL);
+        const double time = cmb_time();
+        const int64_t priority = cmb_process_priority(pp);
+
+        (void)cmb_event_schedule(wakeup_event_event_cancelled,
+                                 pp, (void *)ev_handle,
                                  time, priority);
         cmi_mempool_free(&cmi_process_waitertags, pw);
     }
@@ -308,9 +365,10 @@ bool cmb_event_execute_next(void)
     cmb_assert_debug(new_time >= sim_time);
     sim_time = new_time;
 
-    /* Wake any processes waiting for this event */
+    /* Schedule wakeup calls for any processes waiting for this event */
+    const uint64_t handle = event_queue->heap[0].hash_key;
     if (!cmi_slist_is_empty(&(ev.waiters))) {
-        wake_event_waiters(&(ev.waiters), CMB_PROCESS_SUCCESS);
+        wake_event_waiters_occurred(&(ev.waiters), handle);
     }
 
     /* Execute the event */
@@ -353,7 +411,7 @@ uint64_t cmb_event_current(void)
 bool cmb_event_cancel(const uint64_t handle)
 {
     cmb_assert_release(event_queue != NULL);
-    cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
+
     if (!cmi_hashheap_is_enqueued(event_queue, handle)) {
         return false;
     }
@@ -363,7 +421,7 @@ bool cmb_event_cancel(const uint64_t handle)
     (void)cmi_hashheap_cancel(event_queue, handle);
 
     if (!cmi_slist_is_empty(&(tmp.waiters))) {
-        wake_event_waiters(&(tmp.waiters), CMB_PROCESS_CANCELLED);
+        wake_event_waiters_cancelled(&(tmp.waiters), handle);
     }
 
     return true;
@@ -377,7 +435,7 @@ bool cmb_event_reschedule(const uint64_t handle, const double time)
 {
     cmb_assert_release(time >= sim_time);
     cmb_assert_release(event_queue != NULL);
-    cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
+
     if (!cmi_hashheap_is_enqueued(event_queue, handle)) {
         return false;
     }
@@ -398,7 +456,7 @@ bool cmb_event_reprioritize(const uint64_t handle,
                             const int64_t priority)
 {
     cmb_assert_release(event_queue != NULL);
-    cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
+
     if (!cmi_hashheap_is_enqueued(event_queue, handle)) {
         return false;
     }
@@ -554,7 +612,10 @@ bool cmi_event_remove_waiter(const uint64_t key, const struct cmb_process *pp)
 {
     cmb_assert_release(event_queue != NULL);
     cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
-    cmb_assert_release(cmi_hashheap_is_enqueued(event_queue, key));
+
+    if (!cmi_hashheap_is_enqueued(event_queue, key)) {
+        return false;
+    }
 
     struct event_peek *tmp = (struct event_peek *)cmi_hashheap_item(event_queue, key);
     struct cmi_slist_head *whead = &(tmp->waiters);
