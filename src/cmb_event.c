@@ -344,6 +344,14 @@ static void wake_event_waiters_cancelled(struct cmi_slist_head *waiters, const u
     cmb_assert_debug(cmi_slist_is_empty(waiters));
 }
 
+void cmi_event_cancel_wakeups(const struct cmb_process *pp)
+{
+    cmb_assert_debug(pp != NULL);
+
+    cmb_event_pattern_cancel(wakeup_event_event_occurred, pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(wakeup_event_event_cancelled, pp, CMB_ANY_OBJECT);
+}
+
 /*
  * cmb_event_execute_next - Remove and execute the next event, update the clock.
  * cmi_hashheap_dequeue returns a pointer to the current location of the event.
