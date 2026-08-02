@@ -54,7 +54,9 @@ static pthread_t cmg_main_thread;
  * declaring cmg_next_trial_idx as plain static uint64_t instead of _Atomic */
 static uint64_t cmg_next_trial_idx;
 
-/* Control variable to ensure that atexit() gets armed only once */
+/*
+ * Control variable to ensure that atexit() gets armed only once. External scope.
+ */
 pthread_once_t cmg_atexit_armed = PTHREAD_ONCE_INIT;
 
 /* User-defined context per thread */
