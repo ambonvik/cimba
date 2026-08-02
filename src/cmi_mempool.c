@@ -39,7 +39,7 @@ struct static_pools_tag {
 };
 
 /* The list of all thread local pools */
-CMB_THREAD_LOCAL struct cmi_slist_head static_pools = { NULL };
+static CMB_THREAD_LOCAL struct cmi_slist_head static_pools = { NULL };
 
 /*
  * cmi_mempool_create - Allocate memory for a (zeroed) memory pool object.
