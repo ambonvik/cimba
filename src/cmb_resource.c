@@ -242,10 +242,9 @@ void cmb_resource_release(struct cmb_resource *rp) {
 
     struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
     struct cmb_process *pp = cmb_process_current();
-    cmb_assert_debug(pp != NULL);
+    cmb_assert_release(pp != NULL);
+    cmb_assert_release(rp->holder == pp);
     cmi_process_remove_holdable(pp, hrp);
-
-    cmb_assert_debug(rp->holder == pp);
     rp->holder = NULL;
     record_sample(rp);
 
@@ -258,7 +257,7 @@ void cmb_resource_release(struct cmb_resource *rp) {
  * wakeup_event_preempt - The event handler that actually resumes the
  * process coroutine after being scheduled by cmb_resource_preempt
  */
-void wakeup_event_preempt(void *vp, void *arg)
+static void wakeup_event_preempt(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
 
@@ -284,6 +283,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     cmb_logger_info(stdout, "Preempting resource %s", hrp->base.name);
 
     struct cmb_process *victim = rp->holder;
+    cmb_assert_release(victim != cmb_process_current());
     if (victim == NULL) {
         /* Easy, grab it */
         cmb_logger_info(stdout, "Preempt found %s free", hrp->base.name);
@@ -322,4 +322,13 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     }
 
     return ret;
+}
+
+/* Cancel any pending wakeup targeting pp. The staleness check in
+ * the handlers dereferences pp, so no such event may outlive the process. */
+void cmi_resource_cancel_wakeups(struct cmb_process *pp)
+{
+    cmb_assert_release(pp != NULL);
+
+    cmb_event_pattern_cancel(wakeup_event_preempt,   pp, CMB_ANY_OBJECT);
 }
