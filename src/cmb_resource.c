@@ -85,6 +85,7 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
 void cmb_resource_terminate(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
+    cmb_assert_release(cmi_hashheap_count((struct cmi_hashheap *)&(rp->guard)) == 0u);
 
     if (rp->holder != NULL) {
         resource_drop_holder(&(rp->core), rp->holder);

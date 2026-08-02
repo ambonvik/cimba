@@ -65,7 +65,8 @@ extern void cmb_resource_initialize(struct cmb_resource *rp,
                                     const char *name);
 
 /**
- * @brief Un-initializes a resource object.
+ * @brief Un-initializes a resource object. Ensure that no processes
+ *        are waiting for the resource before terminating it.
  *
  * @memberof cmb_resource
  * @param rp Pointer to an already allocated resource object.
