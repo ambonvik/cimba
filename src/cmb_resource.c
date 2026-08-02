@@ -327,9 +327,9 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
 
 /* Cancel any pending wakeup targeting pp. The staleness check in
  * the handlers dereferences pp, so no such event may outlive the process. */
-void cmi_resource_cancel_wakeups(struct cmb_process *pp)
+void cmi_resource_cancel_wakeups(const struct cmb_process *pp)
 {
-    cmb_assert_release(pp != NULL);
+    cmb_assert_debug(pp != NULL);
 
-    cmb_event_pattern_cancel(wakeup_event_preempt,   pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(wakeup_event_preempt, pp, CMB_ANY_OBJECT);
 }
