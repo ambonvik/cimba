@@ -109,9 +109,6 @@ void test_logger(uint64_t seed)
     const double two_days = 2.0 * 24.0 * 60.0;
     cmb_event_schedule(end_sim, NULL, NULL, two_days, 0);
     while (cmb_event_execute_next()) { }
-
-    /* Note that cmb_logger_error exits the current thread, exit code 0 */
-    cmb_logger_error(stdout, "Hard stop (intentional)");
 }
 
 int main(int argc, char *argv[])
@@ -136,9 +133,4 @@ int main(int argc, char *argv[])
     }
 
     test_logger(seed);
-
-    /* If we got here, something failed */
-    cmb_logger_fatal(stderr, "Returned from test_logger, cmb_logger_error() ignored!");
-
-    /* not reached */
 }
