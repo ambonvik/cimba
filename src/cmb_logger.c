@@ -263,8 +263,8 @@ void cmi_logger_error(FILE *fp,
         CMI_RECOVERY_JUMP(cmi_worker_recovery);
     }
     else {
-        /* Not running inside a Cimba worker — fall back to thread exit */
-        pthread_exit(NULL);
+        /* Not running inside a Cimba worker — fall back to exit with error code */
+        exit(EXIT_FAILURE);
     }
     /* Not reached */
 }
