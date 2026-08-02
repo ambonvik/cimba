@@ -611,7 +611,6 @@ void cmi_event_add_waiter(const uint64_t key, struct cmb_process *pp)
 bool cmi_event_remove_waiter(const uint64_t key, const struct cmb_process *pp)
 {
     cmb_assert_release(event_queue != NULL);
-    cmb_assert_release(cmi_hashheap_count(event_queue) > 0u);
 
     if (!cmi_hashheap_is_enqueued(event_queue, key)) {
         return false;
