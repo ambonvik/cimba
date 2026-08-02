@@ -29,11 +29,11 @@
 #include "cmi_thread.h"
 
 /* The main and current coroutine pointers */
-CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_main = NULL;
-CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_current = NULL;
+static CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_main = NULL;
+static CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_current = NULL;
 
 /* Thread local mempool of recycled coroutine objects */
-CMB_THREAD_LOCAL struct cmi_mempool coroutine_pool
+static CMB_THREAD_LOCAL struct cmi_mempool coroutine_pool
     = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_coroutine), 16u);
 
 /* Backing storage for the per-thread main coroutine. In TLS so it is
