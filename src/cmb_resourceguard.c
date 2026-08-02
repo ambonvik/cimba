@@ -57,7 +57,7 @@ struct observer_tag {
 };
 
 /* Thread local mempool of tags for observer tags */
-CMB_THREAD_LOCAL struct cmi_mempool observer_tagpool
+static CMB_THREAD_LOCAL struct cmi_mempool observer_tagpool
     = CMI_MEMPOOL_STATIC_INIT(sizeof(struct observer_tag), 16u);
 
 /* Counter for assigning hash map handles and ensuring FIFO order */
@@ -232,7 +232,8 @@ static void wakeup_event_resource_cancelled(void *vp, void *arg)
 void cmi_resourceguard_cancel_wakeups(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
-    cmb_event_pattern_cancel(wakeup_event_resource_granted,   pp, CMB_ANY_OBJECT);
+
+    cmb_event_pattern_cancel(wakeup_event_resource_granted, pp, CMB_ANY_OBJECT);
     cmb_event_pattern_cancel(wakeup_event_resource_cancelled, pp, CMB_ANY_OBJECT);
 }
 
