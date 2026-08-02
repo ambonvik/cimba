@@ -147,7 +147,7 @@ uint32_t cimba_threads_num(void)
 
 uint32_t cimba_threads_use(uint32_t n_threads)
 {
-    cmg_worker_threads = n_threads;
+    __atomic_store_n(&cmg_worker_threads, n_threads, __ATOMIC_RELAXED);
 
     const uint32_t r = (cmg_worker_threads == 0u) ? cmi_cpu_cores()
                                                   : cmg_worker_threads;
