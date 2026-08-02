@@ -43,8 +43,11 @@ CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags
 /* Default stack size, unless told otherwise */
 static size_t default_stacksize = CMI_COROUTINE_DEFAULT_STACKSIZE;
 
+/* Friendly function in cmb_event.c, not part of the public interface */
+void cmi_event_cancel_wakeups(const struct cmb_process *pp);
+
 /* Friendly function in cmb_resource.c, not part of the public interface */
-extern void cmi_resource_cancel_wakeups(struct cmb_process *pp);
+extern void cmi_resource_cancel_wakeups(const struct cmb_process *pp);
 
 /* Friendly functions in cmb_resourceguard.c, not part of the public interface */
 extern void cmi_resourceguard_cancel_wakeups(struct cmb_process *pp);
@@ -58,6 +61,7 @@ extern bool cmi_event_remove_waiter(uint64_t key, const struct cmb_process *pp);
 static void cmi_process_drop_resources(struct cmb_process *pp);
 static void wake_process_waiters(struct cmi_slist_head *waiters, int64_t signal);
 static void wakeup_event_interrupt(void *vp, void *arg);
+static void wakeup_event_process(void *vp, void *arg);
 static void resume_event(void *vp, void *arg);
 
 /*
@@ -167,11 +171,10 @@ void cmb_process_destroy(struct cmb_process *pp)
      * staleness checks in the wakeup handlers dereference it. */
     cmi_resource_cancel_wakeups(pp);
     cmi_resourceguard_cancel_wakeups(pp);
+    cmi_event_cancel_wakeups(pp);
     cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(wakeup_event_process, pp, CMB_ANY_OBJECT);
     cmb_event_pattern_cancel(resume_event, pp, CMB_ANY_OBJECT);
-
-
-    /* TODO: Make sure preempts, interrupts, and plain resumes also are covered */
 
     cmi_free(pp);
 }
@@ -429,9 +432,8 @@ int64_t cmb_process_hold(const double dur)
 static void wakeup_event_time(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
-    struct cmb_process *pp = (struct cmb_process *)vp;
 
-    cmb_assert_debug(!cmi_slist_is_empty(&(pp->awaits)));
+    struct cmb_process *pp = (struct cmb_process *)vp;
     const uint64_t this_event = cmb_event_current();
     const bool found = cmi_process_remove_awaitable(pp,
                                                     CMI_PROCESS_AWAITABLE_TIME,
