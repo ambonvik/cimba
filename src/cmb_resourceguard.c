@@ -231,7 +231,7 @@ static void wakeup_event_resource_cancelled(void *vp, void *arg)
  * the handlers dereferences pp, so no such event may outlive the process. */
 void cmi_resourceguard_cancel_wakeups(struct cmb_process *pp)
 {
-    cmb_assert_release(pp != NULL);
+    cmb_assert_debug(pp != NULL);
 
     cmb_event_pattern_cancel(wakeup_event_resource_granted, pp, CMB_ANY_OBJECT);
     cmb_event_pattern_cancel(wakeup_event_resource_cancelled, pp, CMB_ANY_OBJECT);
