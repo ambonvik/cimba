@@ -44,7 +44,7 @@ CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags
 static size_t default_stacksize = CMI_COROUTINE_DEFAULT_STACKSIZE;
 
 /* Friendly function in cmb_resource.c, not part of the public interface */
-extern void wakeup_event_preempt(void *vp, void *arg);
+extern void cmi_resource_cancel_wakeups(struct cmb_process *pp);
 
 /* Friendly functions in cmb_resourceguard.c, not part of the public interface */
 extern void cmi_resourceguard_cancel_wakeups(struct cmb_process *pp);
@@ -53,6 +53,12 @@ extern bool cmi_resourceguard_remove_key(struct cmb_resourceguard *rgp, uint64_t
 /* Friendly functions in cmi_event.c, not part of the public interface */
 extern void cmi_event_add_waiter(uint64_t key, struct cmb_process *pp);
 extern bool cmi_event_remove_waiter(uint64_t key, const struct cmb_process *pp);
+
+/* Forward declarations */
+static void cmi_process_drop_resources(struct cmb_process *pp);
+static void wake_process_waiters(struct cmi_slist_head *waiters, int64_t signal);
+static void wakeup_event_interrupt(void *vp, void *arg);
+static void resume_event(void *vp, void *arg);
 
 /*
  * cmb_process_create - Allocate memory for the process.
@@ -107,10 +113,6 @@ void cmb_process_initialize(struct cmb_process *pp,
     cmb_process_initialize_wssz(pp, name, procfunc, context, priority, stack_size);
 }
 
-/* Forward declarations */
-static void cmi_process_drop_resources(struct cmb_process *pp);
-static void wake_process_waiters(struct cmi_slist_head *waiters, int64_t signal);
-
 /*
  * cmb_process_terminate - Deallocates memory for the underlying coroutine stack
  * but not for the process object itself. The process exit value is still there.
@@ -163,7 +165,13 @@ void cmb_process_destroy(struct cmb_process *pp)
 
     /* Unconditional: pp is about to become un-dereferenceable, and the
      * staleness checks in the wakeup handlers dereference it. */
+    cmi_resource_cancel_wakeups(pp);
     cmi_resourceguard_cancel_wakeups(pp);
+    cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(resume_event, pp, CMB_ANY_OBJECT);
+
+
+    /* TODO: Make sure preempts, interrupts, and plain resumes also are covered */
 
     cmi_free(pp);
 }
@@ -408,7 +416,6 @@ int64_t cmb_process_hold(const double dur)
         /* Whatever woke us up was not the scheduled wakeup call, cancel it */
         cmb_logger_info(stdout, "Woken up by signal %" PRIi64, sig);
         cmb_process_timer_cancel(pp, handle);
-        cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
     }
 
     return sig;
@@ -438,15 +445,20 @@ static void wakeup_event_time(void *vp, void *arg)
     }
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
-    cmb_assert_debug(cp->status == CMI_COROUTINE_RUNNING);
-    (void)cmi_coroutine_resume(cp, arg);
+    if (cp->status == CMI_COROUTINE_RUNNING) {
+        (void)cmi_coroutine_resume(cp, arg);
+    }
+    else {
+        cmb_logger_warning(stdout,
+                          "Timer wakeup call found process %s dead",
+                          cmb_process_name(pp));
+    }
+
 }
 
 /*
- * cmb_process_timer_add - Set a timeout event without suspending the process
- *
- * Returns CMB_PROCESS_TIMEOUT when returning normally after the
- * specified duration, something else if not.
+ * cmb_process_timer_add - Set a timeout event without suspending the process.
+ * Returns the handle of the scheduled timeout event.
  */
 uint64_t cmb_process_timer_add(struct cmb_process *pp,
                                const double dur,
@@ -854,10 +866,10 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
         cmi_mempool_free(&cmi_process_awaitabletags, pa);
     }
 
-    /* Make sure any previously scheduled wakeup events do not happen */
+    /* Make sure any previously scheduled wakeup events do not happen. */
+    cmi_resource_cancel_wakeups(pp);
     cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
-    cmb_event_pattern_cancel(wakeup_event_preempt,   pp, CMB_ANY_OBJECT);
-    cmb_event_pattern_cancel(resume_event,           pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(resume_event, pp, CMB_ANY_OBJECT);
  }
 
 /*
