@@ -614,10 +614,21 @@ void test_condition(uint64_t seed, double dur)
     cmb_condition_destroy(sim.harbormaster);
     cmb_condition_destroy(sim.davyjones);
     cmb_resourcepool_destroy(sim.tugs);
+
     cmb_process_terminate(sim.weather);
     cmb_process_destroy(sim.weather);
     cmb_process_terminate(sim.tide);
     cmb_process_destroy(sim.tide);
+
+    cmb_process_terminate(sim.arrivals);
+    cmb_process_destroy(sim.arrivals);
+    cmb_process_terminate(sim.departures);
+    cmb_process_destroy(sim.departures);
+
+    cmi_hashheap_terminate(sim.active_ships);
+    cmi_hashheap_destroy(sim.active_ships);
+    cmi_slist_terminate(sim.departed_ships);
+    cmi_slist_destroy(sim.departed_ships);
 
     cmb_event_queue_terminate();
     cmb_random_terminate();
