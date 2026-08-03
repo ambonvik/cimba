@@ -292,7 +292,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
         record_sample(rp);
         ret = CMB_PROCESS_SUCCESS;
     }
-    else if (myprio >= victim->priority) {
+    else if (myprio > victim->priority) {
         /* Kick it out. No record_sample needed, the resource remains occupied. */
         cmi_process_remove_holdable(victim, hrp);
         cmi_process_cancel_awaiteds(victim);
