@@ -39,51 +39,49 @@ Execute simulation
     5.8983	Target_1	preemptable (154):  Releasing Resource_1
     5.8983	Target_3	preemptable (149):  Holding Resource_1
     6.0411	Target_1	preemptable (146):  Acquiring Resource_1
-    6.3280	Target_3	preemptable (160):  Resource_1 preempted, signal -1
     6.4576	Target_2	preemptable (146):  Acquiring Resource_1
-    6.8149	Target_1	preemptable (149):  Holding Resource_1
-    6.9968	Target_1	preemptable (154):  Releasing Resource_1
-    6.9968	Target_2	preemptable (149):  Holding Resource_1
-    7.1636	Target_2	preemptable (154):  Releasing Resource_1
-    7.3187	Target_1	preemptable (146):  Acquiring Resource_1
-    7.3187	Target_1	preemptable (149):  Holding Resource_1
-    7.6090	Target_3	preemptable (146):  Acquiring Resource_1
-    7.7236	Target_2	preemptable (146):  Acquiring Resource_1
-    11.276	Target_1	preemptable (154):  Releasing Resource_1
-    11.276	Target_3	preemptable (149):  Holding Resource_1
-    11.457	Target_1	preemptable (146):  Acquiring Resource_1
-    11.528	Target_3	preemptable (154):  Releasing Resource_1
-    11.528	Target_1	preemptable (149):  Holding Resource_1
-    11.738	Target_1	preemptable (154):  Releasing Resource_1
-    11.738	Target_2	preemptable (149):  Holding Resource_1
-    11.905	Target_3	preemptable (146):  Acquiring Resource_1
-    12.310	Target_2	preemptable (154):  Releasing Resource_1
-    12.775	Target_2	preemptable (146):  Acquiring Resource_1
-    13.018	Target_1	preemptable (146):  Acquiring Resource_1
-    13.114	Target_1	preemptable (149):  Holding Resource_1
-    13.865	Target_1	preemptable (154):  Releasing Resource_1
-    13.865	Target_3	preemptable (149):  Holding Resource_1
-    14.872	Target_1	preemptable (146):  Acquiring Resource_1
-    15.242	Target_3	preemptable (154):  Releasing Resource_1
-    15.242	Target_1	preemptable (149):  Holding Resource_1
-    15.576	Target_1	preemptable (154):  Releasing Resource_1
-    15.576	Target_2	preemptable (149):  Holding Resource_1
-    15.605	Target_3	preemptable (146):  Acquiring Resource_1
-    16.431	Target_2	preemptable (154):  Releasing Resource_1
-    17.357	Target_1	preemptable (146):  Acquiring Resource_1
-    18.459	Target_1	preemptable (149):  Holding Resource_1
-    20.001	Target_1	preemptable (154):  Releasing Resource_1
-    20.001	Target_3	preemptable (149):  Holding Resource_1
-    20.148	Target_3	preemptable (154):  Releasing Resource_1
-    20.256	Target_1	preemptable (146):  Acquiring Resource_1
-    20.739	Target_3	preemptable (146):  Acquiring Resource_1
-    21.266	Target_2	preemptable (146):  Acquiring Resource_1
-    22.836	Target_1	preemptable (149):  Holding Resource_1
-    24.251	Target_1	preemptable (154):  Releasing Resource_1
-    24.251	Target_3	preemptable (149):  Holding Resource_1
-    24.478	Target_3	preemptable (154):  Releasing Resource_1
-    24.478	Target_2	preemptable (149):  Holding Resource_1
-    24.869	Target_3	preemptable (146):  Acquiring Resource_1
+    6.8751	Target_3	preemptable (154):  Releasing Resource_1
+    6.8751	Target_1	preemptable (149):  Holding Resource_1
+    7.3620	Target_3	preemptable (146):  Acquiring Resource_1
+    8.1561	Target_1	preemptable (154):  Releasing Resource_1
+    8.3380	Target_2	preemptable (149):  Holding Resource_1
+    8.5049	Target_2	preemptable (154):  Releasing Resource_1
+    8.5049	Target_3	preemptable (149):  Holding Resource_1
+    9.0649	Target_2	preemptable (146):  Acquiring Resource_1
+    9.7778	Target_1	preemptable (146):  Acquiring Resource_1
+    12.463	Target_3	preemptable (154):  Releasing Resource_1
+    12.463	Target_1	preemptable (149):  Holding Resource_1
+    12.643	Target_3	preemptable (146):  Acquiring Resource_1
+    12.714	Target_1	preemptable (154):  Releasing Resource_1
+    12.924	Target_2	preemptable (149):  Holding Resource_1
+    13.091	Target_1	preemptable (146):  Acquiring Resource_1
+    13.497	Target_2	preemptable (154):  Releasing Resource_1
+    13.497	Target_1	preemptable (149):  Holding Resource_1
+    13.961	Target_2	preemptable (146):  Acquiring Resource_1
+    14.301	Target_1	preemptable (154):  Releasing Resource_1
+    14.301	Target_3	preemptable (149):  Holding Resource_1
+    14.641	Target_1	preemptable (146):  Acquiring Resource_1
+    15.052	Target_3	preemptable (154):  Releasing Resource_1
+    15.052	Target_1	preemptable (149):  Holding Resource_1
+    16.058	Target_3	preemptable (146):  Acquiring Resource_1
+    16.429	Target_1	preemptable (154):  Releasing Resource_1
+    16.429	Target_2	preemptable (149):  Holding Resource_1
+    16.762	Target_2	preemptable (154):  Releasing Resource_1
+    16.791	Target_1	preemptable (146):  Acquiring Resource_1
+    17.617	Target_1	preemptable (149):  Holding Resource_1
+    18.543	Target_2	preemptable (146):  Acquiring Resource_1
+    19.645	Target_1	preemptable (154):  Releasing Resource_1
+    19.645	Target_3	preemptable (149):  Holding Resource_1
+    19.815	Target_1	preemptable (146):  Acquiring Resource_1
+    21.187	Target_3	preemptable (154):  Releasing Resource_1
+    21.187	Target_1	preemptable (149):  Holding Resource_1
+    21.335	Target_1	preemptable (154):  Releasing Resource_1
+    21.335	Target_2	preemptable (149):  Holding Resource_1
+    21.442	Target_3	preemptable (146):  Acquiring Resource_1
+    21.925	Target_1	preemptable (146):  Acquiring Resource_1
+    24.022	Target_2	preemptable (154):  Releasing Resource_1
+    24.022	Target_1	preemptable (149):  Holding Resource_1
+    24.120	Target_2	preemptable (146):  Acquiring Resource_1
     25.000	dispatcher	end_sim_evt (130):  ===> end_sim: game over <===
     25.000	dispatcher	end_sim_evt (132):  Stopping process Target_1
     25.000	dispatcher	end_sim_evt (132):  Stopping process Target_2
@@ -92,7 +90,7 @@ Execute simulation
 --------------------------------------------------------------------------------
 Report statistics...
 Resource utilization for Resource_1:
-N       30  Mean   0.9816  StdDev   0.1343  Variance  0.01804  Skewness   -7.172  Kurtosis    49.44
+N       28  Mean   0.9878  StdDev   0.1097  Variance  0.01203  Skewness   -8.897  Kurtosis    77.16
 --------------------------------------------------------------------------------
 ( -Infinity,      0.000)   |
 [     0.000,     0.5000)   |=
