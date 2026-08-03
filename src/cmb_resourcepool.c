@@ -460,6 +460,8 @@ int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rpp,
                 const struct cmi_holdable *hrp = (struct cmi_holdable *)rpp;
                 const bool found = cmi_process_remove_holdable(victim, hrp);
                 cmb_assert_debug(found == true);
+                /* It may be waiting for more, cancel that */
+                cmi_process_cancel_awaiteds(victim);
 
                 /* Schedule a wakeup for it, but do not switch context yet */
                 cmb_process_interrupt(victim, CMB_PROCESS_PREEMPTED, victim->priority);
