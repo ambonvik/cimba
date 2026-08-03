@@ -40,6 +40,9 @@ CMB_THREAD_LOCAL struct cmi_mempool cmi_process_holdabletags
 CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags
     = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_waiter), 4u);
 
+/* Thread local counter for assigning process handles. */
+static CMB_THREAD_LOCAL uint64_t handle_counter = 0u;
+
 /* Default stack size, unless told otherwise */
 static size_t default_stacksize = CMI_COROUTINE_DEFAULT_STACKSIZE;
 
@@ -95,8 +98,9 @@ void cmb_process_initialize_wssz(struct cmb_process *pp,
                        (cmi_coroutine_exit_func *)cmb_process_exit,
                        stacksize);
 
-    cmb_process_name_set(pp, name);
+    pp->handle = ++handle_counter;
     pp->priority = priority;
+    cmb_process_name_set(pp, name);
 
     cmi_slist_initialize(&pp->awaits);
     cmi_slist_initialize(&pp->waiters);
@@ -120,7 +124,7 @@ void cmb_process_initialize(struct cmb_process *pp,
 /*
  * cmb_process_terminate - Deallocates memory for the underlying coroutine stack
  * but not for the process object itself. The process exit value is still there.
- * A running process should be stopped before being terminated.
+ * The process handle is zeroed to mark it invalid.
  *
  * If necessary, the terminated process can still be restarted by first calling
  * _initialize and then _start, but until a use case for this is identified, we
@@ -129,11 +133,13 @@ void cmb_process_initialize(struct cmb_process *pp,
 extern void cmb_process_terminate(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
+    cmb_assert_release(cmb_process_status(pp) != CMB_PROCESS_RUNNING);
 
-    /* Should not have any other processes waiting for this one.
-     * Make sure the terminating process is properly stopped and any
-     * waiters are signaled correctly.     */
-    cmb_assert_release(cmi_slist_is_empty(&pp->waiters));
+    /* Should not have any other processes waiting for this one at this point.
+     * This should never happen, since any waiting processes are signaled when
+     * the process finishes - which according to the assert above already must
+     * have happened before this.     */
+    cmb_assert_debug(cmi_slist_is_empty(&pp->waiters));
     cmi_slist_terminate(&pp->waiters);
 
     /* Should not have any waiters or hold any resources either, but check. */
@@ -151,6 +157,7 @@ extern void cmb_process_terminate(struct cmb_process *pp)
     }
     cmi_slist_terminate(&pp->resources);
 
+    pp->handle = 0u;
     cmi_coroutine_terminate((struct cmi_coroutine *)pp);
 }
 

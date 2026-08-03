@@ -115,6 +115,7 @@ enum cmb_process_state {
 */
 struct cmb_process {
     struct cmi_coroutine core;              /**< The parent coroutine */
+    uint64_t handle;                        /**< Unique identifier */
     int64_t priority;                       /**< The current process priority */
     struct cmi_slist_head awaits;           /**< What this process is waiting for, if anything */
     struct cmi_slist_head resources;        /**< Any resources held by this process */
@@ -207,9 +208,11 @@ extern void cmb_process_initialize_wssz(struct cmb_process *pp,
  * @brief Deallocate memory for the underlying coroutine stack but not for the
  * process object itself. In particular, the process exit value is still there.
  *
- * The process must be finished (exited, stopped, returned) before getting here.
- * Do not confuse this object destructor function with cmb_process_stop to force
- * a running process to exit non-voluntarily. Call that first.
+ * The process must be finished (exited, stopped, or returned) before calling.
+ * Do not confuse this object destructor function with `cmb_process_stop` (or
+ * its alias `cmb_process_kill`) forcing a running process to exit non-
+ * voluntarily. Call one of those first if nuking a running process from the
+ * outside.
  *
  * @memberof cmb_process
  * @param pp Pointer to an already created process.

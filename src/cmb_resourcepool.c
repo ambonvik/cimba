@@ -21,7 +21,7 @@
  * processes acquiring, holding, releasing, and preempting various amounts of
  * the resource capacity. The hashheap is sorted to keep the holder most likely
  * to be preempted at the front, i.e. lowest priority and last in. The hashheap
- * uses the process pointer (memory address) as its hash_key to get O(1) access.
+ * uses the unique process handle as its hash_key to get O(1) access.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
@@ -68,9 +68,10 @@ struct cmb_resourcepool *cmb_resourcepool_create(void)
 
 /*
  * holder_queue_check - Test if heap_tag *a should go before *b. If so, return
- * true. Ranking lower priority (rank_i64) before higher, then LIFO based on handle
- * value. Used to identify the most likely victim for resource preemption, hence
- * ranking in the opposite order of the waiting room.
+ * true. Ranking lower priority (rank_i64) before higher, then LIFO based on
+ * entry timestamp (rank_d64), finally LIFO on handle value. Used to identify
+ * the victim for resource preemption, hence ranking in the opposite order of
+ * the waiting room.
  */
 static bool holder_queue_check(const struct cmi_heap_tag *a,
                                const struct cmi_heap_tag *b)
@@ -83,12 +84,25 @@ static bool holder_queue_check(const struct cmi_heap_tag *a,
         ret = true;
     }
     else if (a->rank_i64 == b->rank_i64) {
-        if (a->hash_key > b->hash_key) {
+        if (a->rank_d64 > b->rank_d64) {
             ret = true;
+        }
+        else if (a->rank_d64 == b->rank_d64) {
+            if (a->hash_key > b->hash_key) {
+                ret = true;
+            }
         }
     }
 
     return ret;
+}
+
+static inline uint64_t holder_key(const struct cmb_process *pp)
+{
+    cmb_assert_debug(pp != NULL);
+    cmb_assert_debug(pp->handle != UINT64_C(0));
+    
+    return pp->handle;
 }
 
 /*
@@ -104,7 +118,7 @@ static void resourcepool_drop_holder(struct cmi_holdable *rhp,
     struct cmb_resourcepool *rpp = (struct cmb_resourcepool *)rhp;
     cmb_assert_debug(rpp->in_use <= rpp->capacity);
     struct cmi_hashheap *hhp = &(rpp->holders);
-    const uint64_t key = (uint64_t)pp;
+    const uint64_t key = holder_key(pp);
     const uint64_t heapidx = cmi_hash_find_index(hhp, key);
 
     if (heapidx != 0u) {
@@ -125,15 +139,17 @@ static void resourcepool_drop_holder(struct cmi_holdable *rhp,
  */
 static void reprioritize_holder(struct cmi_holdable *rhp,
                                 const struct cmb_process *pp,
-                                const int64_t pri)
+                                const int64_t priority)
 {
     cmb_assert_release(rhp != NULL);
     cmb_assert_release(pp != NULL);
 
     struct cmb_resourcepool *sp = (struct cmb_resourcepool *)rhp;
     struct cmi_hashheap *hp = &(sp->holders);
-    const uint64_t key = (uint64_t)pp;
-    cmi_hashheap_reprioritize(hp, key, 0.0, pri);
+    const uint64_t key = holder_key(pp);
+    cmb_assert_release(cmi_hashheap_is_enqueued(hp, key));
+    const double timestamp = cmi_hashheap_drank(hp, key);
+    cmi_hashheap_reprioritize(hp, key, timestamp, priority);
 }
 
 /*
@@ -222,7 +238,7 @@ static uint64_t reset_holder(struct cmi_hashheap *hp,
     cmb_assert_release(pp != NULL);
     cmb_assert_release(amount > 0u);
 
-    const uint64_t key = (uint64_t)pp;
+    const uint64_t key = holder_key(pp);
     struct pool_item *pi = (struct pool_item *)cmi_hashheap_item(hp, key);
     cmb_assert_debug(pi != NULL);
     cmb_assert_debug(pi->holder == pp);
@@ -296,7 +312,7 @@ uint64_t cmb_resourcepool_held_by_process(struct cmb_resourcepool *rpp,
     cmb_assert_debug(pp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)rpp)->cookie == CMI_INITIALIZED);
 
-    const uint64_t key = (uint64_t)pp;
+    const uint64_t key = holder_key(pp);
     struct cmi_hashheap *hhp = &(rpp->holders);
     const uint64_t heapidx = cmi_hash_find_index(hhp, key);
     if (heapidx != 0u) {
@@ -331,7 +347,7 @@ static void update_record(struct cmb_resourcepool *rpp,
 
     cmb_assert_release(((struct cmi_resourcebase *)rpp)->cookie == CMI_INITIALIZED);
 
-    const uint64_t key = (uint64_t)pp;
+    const uint64_t key = holder_key(pp);
     struct cmi_hashheap *hhp = &(rpp->holders);
     const uint64_t heapidx = cmi_hash_find_index(hhp, key);
     if (heapidx != 0u) {
@@ -346,10 +362,11 @@ static void update_record(struct cmb_resourcepool *rpp,
         cmi_slist_push(&(pp->resources), &(hp->listhead));
 
         /* Not held already, create a new resource pool holder entry for the process */
+        const double timestamp = cmb_time();
         const uint64_t new_key = cmi_hashheap_enqueue(hhp,
                                                      (void *)pp, (void *)amount,
                                                      NULL, NULL,
-                                                     key, 0.0, pp->priority);
+                                                     key, timestamp, pp->priority);
         cmb_assert_debug(new_key == key);
     }
 }
@@ -372,7 +389,7 @@ int64_t cmi_pool_acquire_inner(struct cmb_resourcepool *rpp,
     /* Does the caller already hold some? */
     uint64_t initially_held = 0u;
     struct cmi_hashheap *hhp = &(rpp->holders);
-    const uint64_t key = (uint64_t)caller;
+    const uint64_t key = holder_key(caller);
     const uint64_t heapidx = cmi_hash_find_index(hhp, key);
     if (heapidx != 0u) {
         /* It does. Note the amount in case we need to roll back to here */
@@ -553,7 +570,6 @@ int64_t cmb_resourcepool_preempt(struct cmb_resourcepool *rpp,
     return cmi_pool_acquire_inner(rpp, req_amount, true);
 }
 
-
 /*
  * cmb_resourcepool_release - Release rel_amount of the resource, not necessarily
  * everything that the calling process holds.
@@ -568,7 +584,7 @@ void cmb_resourcepool_release(struct cmb_resourcepool *rpp, const uint64_t rel_a
 
     struct cmb_process *pp = cmb_process_current();
     cmb_assert_debug(pp != NULL);
-    const uint64_t key = (uint64_t)pp;
+    const uint64_t key = holder_key(pp);
 
     struct cmi_hashheap *hhp = &(rpp->holders);
     struct pool_item *pi = (struct pool_item *)cmi_hashheap_item(hhp, key);
