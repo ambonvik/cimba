@@ -93,8 +93,8 @@ It is fast, powerful, reliable, and free.
     claim, right here: https://github.com/ambonvik/cimba/actions
 
   * The code is routinely reviewed by the latest and greatest AI tools as they become 
-    available, most recently Anthropic Claude Opus 4.8 (May 2026) and Claude Fable 5 
-    (June 2026). Any bugs identified by these reviews are fixed and a follow-up review 
+    available, most recently Anthropic Claude Fable 5 (July 2026) and Claude Opus 5
+    (August 2026). Any bugs identified by these reviews are fixed and a follow-up review 
     done. The latest reviews can be found here: https://github.com/ambonvik/cimba/tree/main/code_reviews
 
 * *Free*: Cimba should fit well into the budget of most research groups.
