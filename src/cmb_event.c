@@ -237,10 +237,10 @@ int64_t cmb_event_priority(const uint64_t handle)
 }
 
 /*
- * wakeup_event_event_occurred - The event that resumes the process after
+ * wakeup_event_occurred - The event that resumes the process after
  *          being scheduled by cmb_process_wait_event
  */
-static void wakeup_event_event_occurred(void *vp, void *arg)
+static void wakeup_event_occurred(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
@@ -267,12 +267,12 @@ static void wakeup_event_event_occurred(void *vp, void *arg)
 }
 
 /*
- * wakeup_event_event_cancelled - The event that resumes the process after
+ * wakeup_event_cancelled - The event that resumes the process after
  *          being scheduled by cmb_process_wait_event, in this case on bad news.
  *          There is some duplication of code here, since we need to use arg
  *          to identify precisely what event we are referring to.
  */
-static void wakeup_event_event_cancelled(void *vp, void *arg)
+static void wakeup_event_cancelled(void *vp, void *arg)
 {
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
@@ -312,7 +312,7 @@ static void wake_event_waiters_occurred(struct cmi_slist_head *waiters, const ui
         const double time = cmb_time();
         const int64_t priority = cmb_process_priority(pp);
 
-        (void)cmb_event_schedule(wakeup_event_event_occurred,
+        (void)cmb_event_schedule(wakeup_event_occurred,
                                  pp, (void *)ev_handle,
                                  time, priority);
         cmi_mempool_free(&cmi_process_waitertags, pw);
@@ -335,7 +335,7 @@ static void wake_event_waiters_cancelled(struct cmi_slist_head *waiters, const u
         const double time = cmb_time();
         const int64_t priority = cmb_process_priority(pp);
 
-        (void)cmb_event_schedule(wakeup_event_event_cancelled,
+        (void)cmb_event_schedule(wakeup_event_cancelled,
                                  pp, (void *)ev_handle,
                                  time, priority);
         cmi_mempool_free(&cmi_process_waitertags, pw);
@@ -348,8 +348,8 @@ void cmi_event_cancel_wakeups(const struct cmb_process *pp)
 {
     cmb_assert_debug(pp != NULL);
 
-    cmb_event_pattern_cancel(wakeup_event_event_occurred, pp, CMB_ANY_OBJECT);
-    cmb_event_pattern_cancel(wakeup_event_event_cancelled, pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(wakeup_event_occurred, pp, CMB_ANY_OBJECT);
+    cmb_event_pattern_cancel(wakeup_event_cancelled, pp, CMB_ANY_OBJECT);
 }
 
 /*
