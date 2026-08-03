@@ -165,13 +165,13 @@ void test_process(uint64_t seed)
 
     printf("Creating waiting processes ...\n");
     char buf[32];
-    struct cmb_process *cpp3 = NULL;
+    struct cmb_process *waiters[3];
     for (unsigned ui = 0u; ui < 3u; ui++) {
         sprintf(buf, "Waiter_%u", ui);
-        cpp3 = cmb_process_create();
-        cmb_assert_always(cpp3 != NULL);
-        cmb_process_initialize(cpp3, buf, procfunc3, cpp2, cmb_random_dice(-5, 5));
-        cmb_process_start(cpp3);
+        waiters[ui] = cmb_process_create();
+        cmb_assert_always(waiters[ui] != NULL);
+        cmb_process_initialize(waiters[ui], buf, procfunc3, cpp2, cmb_random_dice(-5, 5));
+        cmb_process_start(waiters[ui]);
     }
 
     cmi_test_print_line("-");
@@ -194,6 +194,11 @@ void test_process(uint64_t seed)
     printf("cmb_process_destroy ...\n");
     cmb_process_destroy(cpp1);
     cmb_process_destroy(cpp2);
+
+    for (unsigned ui = 0u; ui < 3u; ui++) {
+        cmb_process_terminate(waiters[ui]);
+        cmb_process_destroy(waiters[ui]);
+    }
 
     printf("cmb_event_queue_terminate ...\n");
     cmb_event_queue_terminate();
