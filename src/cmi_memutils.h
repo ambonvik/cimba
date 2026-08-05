@@ -32,6 +32,7 @@
 /*
  * Convenience functions to encapsulate repetitive error handling
  */
+CMB_MAYBE_UNUSED
 static inline void *cmi_malloc(const size_t sz)
 {
     cmb_assert_debug(sz > 0);
@@ -42,6 +43,7 @@ static inline void *cmi_malloc(const size_t sz)
     return rp;
 }
 
+CMB_MAYBE_UNUSED
 static inline void *cmi_calloc(const size_t n, const size_t sz)
 {
     cmb_assert_debug(n > 0);
@@ -53,20 +55,25 @@ static inline void *cmi_calloc(const size_t n, const size_t sz)
     return rp;
 }
 
+/* Note: cmi_realloc with first arg NULL works exactly like cmi_malloc(sz) */
+CMB_MAYBE_UNUSED
 static inline void *cmi_realloc(void* restrict p, const size_t sz)
 {
-    cmb_assert_debug(p != NULL);
     cmb_assert_debug(sz > 0);
 
     void *tmp = realloc(p, sz);
     if (tmp == NULL) {
-        free(p);
+        if (p != NULL) {
+            free(p);
+        }
+
         cmb_logger_fatal(stderr, "Out of memory");
     }
 
     return tmp;
 }
 
+CMB_MAYBE_UNUSED
 static inline void cmi_free(void *p)
 {
     cmb_assert_always(p != NULL);
@@ -74,6 +81,7 @@ static inline void cmi_free(void *p)
     free(p);
 }
 
+CMB_MAYBE_UNUSED
 static inline void *cmi_memcpy(void* restrict dest, const void* restrict src, const size_t sz)
 {
     cmb_assert_debug(dest != NULL);
@@ -86,6 +94,7 @@ static inline void *cmi_memcpy(void* restrict dest, const void* restrict src, co
     return rp;
 }
 
+CMB_MAYBE_UNUSED
 static inline void *cmi_memset(void* restrict ptr, const int c, const size_t n)
 {
     cmb_assert_debug(ptr != NULL);
@@ -100,6 +109,7 @@ static inline void *cmi_memset(void* restrict ptr, const int c, const size_t n)
 /*
  * cmi_is_power_of_two - Predicate helper function
  */
+CMB_MAYBE_UNUSED
 static inline bool cmi_is_power_of_two(const size_t n)
 {
     /* A power of two has only one bit set */
