@@ -35,6 +35,13 @@
 #include "cmi_hashheap.h"
 #include "cmi_memutils.h"
 
+/* The initial capacity of the heap is 2^QUEUE_INIT_EXP items, resizing as needed */
+#define QUEUE_INIT_EXP 3
+
+/* Temporary index buffer for pattern matches, static thread local for efficiency */
+static CMB_THREAD_LOCAL uint64_t *match_buf = NULL;
+static CMB_THREAD_LOCAL uint64_t match_buf_size = UINT64_C(0);
+
 /*
  * cmi_hashheap_create - Allocate memory for a new hashheap struct.
  */
@@ -846,17 +853,21 @@ uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
         return 0u;
     }
 
-    /* Allocate space enough to match everything in the heap */
-    uint64_t *tmp = cmi_malloc(hp->heap_count * sizeof(*tmp));
-
+    /* Make sure the buffer is large enough to match everything in the heap */
+    const uint64_t hsz = hp->heap_size;
+    if (hsz > match_buf_size) {
+        /* Safe also for initial call, since realloc reverts to malloc if target
+         * is NULL, and our cmb_calloc wrapper includes the return value test */
+        match_buf = (uint64_t*)cmi_realloc(match_buf, hsz);
+        match_buf_size = hsz;
+    }
     /* First pass, recording the matches */
     uint64_t cnt = 0u;
-
     for (uint64_t ui = 1; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
         if (item_match(htp, val1, val2, val3, val4)) {
             /* Matched, note it on the list */
-            tmp[cnt++] = hp->heap[ui].hash_key;
+            match_buf[cnt++] = hp->heap[ui].hash_key;
         }
     }
 
@@ -865,10 +876,9 @@ uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
      * heap reshuffling underneath us for each cancellation.
      */
     for (uint64_t ui = 0u; ui < cnt; ui++) {
-        cmi_hashheap_remove(hp, tmp[ui]);
+        cmi_hashheap_remove(hp, match_buf[ui]);
     }
 
-    cmi_free(tmp);
     return cnt;
 }
 
@@ -934,4 +944,17 @@ void cmi_hashheap_hash_print(const struct cmi_hashheap *hp, FILE *fp)
 
     fprintf(fp, "--------------------------------------------------------------------------------\n");
     fflush(fp);
+}
+
+/*
+ * cmi_hashheap_thread_cleanup - Function to deallocate any allocated memory in the
+ * thread local match buffer. Call when exiting a pthread.
+ */
+void cmi_hashheap_thread_cleanup(void)
+{
+    if (match_buf != NULL) {
+        cmi_free(match_buf);
+        match_buf = NULL;
+        match_buf_size = UINT64_C(0);
+    }
 }

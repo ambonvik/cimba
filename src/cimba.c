@@ -88,25 +88,27 @@ bool cmi_thread_in_main(void) {
 }
 
 /* Call signature as expected by pthread_cleanup_push() */
-void cmi_thread_pthread_cleanup(void *arg)
+static void thread_pthread_cleanup(void *arg)
 {
     cmb_unused(arg);
 
     /* The sequence is important here, mempools last */
+    cmi_hashheap_thread_cleanup();
     cmi_coroutine_thread_cleanup();
     cmi_mempool_thread_cleanup();
 }
 
 /* Call signature as expected by atexit() */
-void cmi_thread_main_cleanup(void)
+static void thread_main_cleanup(void)
 {
+    cmi_hashheap_thread_cleanup();
     cmi_coroutine_thread_cleanup();
     cmi_mempool_thread_cleanup();
 }
 
 void cmi_thread_arm_atexit_cleanup(void)
 {
-    const int rc = atexit(cmi_thread_main_cleanup);
+    const int rc = atexit(thread_main_cleanup);
     cmb_assert_always(rc == 0);
 }
 
@@ -211,7 +213,7 @@ static void *worker_thread_func(void *arg)
     }
 
     /* Make sure we free any thread local allocations before we exit */
-    pthread_cleanup_push(cmi_thread_pthread_cleanup, NULL);
+    pthread_cleanup_push(thread_pthread_cleanup, NULL);
 
     /* Any user-defined cleanup needed? */
     pthread_cleanup_push(thread_exit_wrapper, cmi_thread_context);

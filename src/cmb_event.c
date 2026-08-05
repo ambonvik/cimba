@@ -45,6 +45,9 @@ static CMB_THREAD_LOCAL struct cmi_hashheap *event_queue = NULL;
 /* The initial capacity of the heap is 2^QUEUE_INIT_EXP items, resizing as needed */
 #define QUEUE_INIT_EXP 3
 
+/* Temporary index buffer for pattern matches, static thread local for efficiency */
+static CMB_THREAD_LOCAL uint64_t *match_buf = NULL;
+static CMB_THREAD_LOCAL uint64_t match_buf_size = UINT64_C(0);
 
 /* The memory layout of an event */
 struct event_peek {
@@ -126,6 +129,12 @@ void cmb_event_queue_terminate(void)
     cmi_hashheap_destroy(event_queue);
     event_queue = NULL;
     sim_time = 0.0;
+
+    if (match_buf != NULL) {
+        cmi_free(match_buf);
+        match_buf = NULL;
+        match_buf_size = UINT64_C(0);
+    }
 }
 
 /*
@@ -519,8 +528,11 @@ uint64_t cmb_event_pattern_count(cmb_event_func *action,
  * Two-pass approach: Allocate temporary storage for the list of matching
  * handles in the first pass, then cancel these in the second pass.
  * Returns the number of events canceled, possibly zero.
- * Duplicates code from cmi_hashheap to also cancel any processes
- * waiting for canceled events.
+ *
+ * Partially duplicates code from cmi_hashheap to be able to cancel any
+ * processes waiting for canceled events by calling cmb_event_cancel().
+ * The alternate design would be to provide a callback function to
+ * cmi_hashheap_cancel(), which would probably be less efficient.
  */
 uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
                                   const void *subject,
@@ -528,33 +540,42 @@ uint64_t cmb_event_pattern_cancel(cmb_event_func *action,
 {
     cmb_assert_release(event_queue != NULL);
 
-    uint64_t cnt = 0u;
     if ((event_queue->heap == NULL) || (event_queue->heap_count == 0u)) {
-        return cnt;
+        return 0u;
     }
 
-    /* Allocate space enough to match everything in the heap */
-    const uint64_t hcnt = event_queue->heap_count;
-    uint64_t *tmp = cmi_malloc(hcnt * sizeof(*tmp));
+    /* Make sure the buffer is large enough to match everything in the heap */
+    const uint64_t hsz = event_queue->heap_size;
+    if (hsz > match_buf_size) {
+        /* Safe also for initial call, since realloc reverts to malloc if target
+         * is NULL, and our cmb_calloc wrapper includes the return value test */
+        match_buf = (uint64_t*)cmi_realloc(match_buf, hsz);
+        match_buf_size = hsz;
+    }
+
+    /* Convoluted type cast to circumvent the C language barrier between
+     * pointers to functions and pointers to objects. We know that this is safe
+     * on the intended target architectures such as x86-64 (but verify when
+     * porting to some other architecture) */
+    const void *vaction = *(void**)&action;
 
     /* First pass, recording the matches */
-    const void *vaction = *(void**)&action;
-    for (uint64_t ui = 1; ui <= hcnt; ui++) {
+    uint64_t cnt = 0u;
+    for (uint64_t ui = 1; ui <= event_queue->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(event_queue->heap[ui]);
-        if (((vaction == htp->item[0]) || (action == CMB_ANY_ACTION))
-               && ((subject == htp->item[1]) || (subject == CMB_ANY_SUBJECT))
-               && ((object == htp->item[2]) || (object == CMB_ANY_OBJECT))) {
-             /* Matched, note it on the list */
-            tmp[cnt++] = event_queue->heap[ui].hash_key;
+        if (((action == CMB_ANY_ACTION) || (vaction == htp->item[0]))
+            && ((subject == CMB_ANY_SUBJECT) || (subject == htp->item[1]))
+            && ((object == CMB_ANY_OBJECT) || (object == htp->item[2]))) {
+            /* Matched, note it in the index buffer */
+            match_buf[cnt++] = event_queue->heap[ui].hash_key;
         }
     }
 
     /* Second pass, cancel the matching events */
     for (uint64_t ui = 0u; ui < cnt; ui++) {
-        cmb_event_cancel(tmp[ui]);
+        cmb_event_cancel(match_buf[ui]);
     }
 
-    cmi_free(tmp);
     return cnt;
 }
 
