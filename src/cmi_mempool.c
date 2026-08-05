@@ -204,7 +204,7 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
 }
 
 /*
- * cmi_mempool_cleanup - Function to deallocate any allocated memory in the
+ * cmi_mempool_thread_cleanup - Function to deallocate any allocated memory in the
  * thread local pools. Call when exiting a pthread.
  */
 void cmi_mempool_thread_cleanup(void)
