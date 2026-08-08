@@ -23,6 +23,8 @@
 
 #include <cimba.h>
 
+#include "cmi_mempool.h"
+
 #define NUM_OBJECTS 1000000u
 #define ARRIVAL_RATE 0.9
 #define SERVICE_RATE 1.0
