@@ -11,7 +11,7 @@ inside the coroutines.
 As far as we know, there is no other open source library that can provide these features.
 
 Implementation status:
-* x86-64: Stable for Linux and Windows 10 + 11.
+* x86-64: Public beta (approaching release candidate) for Linux and Windows.
 * Apple Silicon: Planned
 * ARM: Planned
 
@@ -307,7 +307,7 @@ surveillance radar including
 line-of-sight geometry, terrain masking, constant-gamma clutter with CA-CFAR detection, 
 and specular multipath. The model uses radar dwell itervals (time steps) of 0.04 seconds.
 
-The screen shot below shows one frame from a simulation of this simulation. The size of
+The screenshot below shows one frame from this simulation. The size of
 each target is its current radar cross-section, the color is the current detection status.
 The vectors on the sphere representing the AWACS indicate the current direction of the
 platform and the current direction of the radar lobe. The visualization is done in 
