@@ -117,9 +117,9 @@ struct cmb_process {
     struct cmi_coroutine core;              /**< The parent coroutine */
     uint64_t handle;                        /**< Unique identifier */
     int64_t priority;                       /**< The current process priority */
-    struct cmi_slist_head awaits;           /**< What this process is waiting for, if anything */
-    struct cmi_slist_head resources;        /**< Any resources held by this process */
-    struct cmi_slist_head waiters;          /**< Any other processes waiting for this process to finish */
+    struct cmi_slist_node awaits;           /**< What this process is waiting for, if anything */
+    struct cmi_slist_node resources;        /**< Any resources held by this process */
+    struct cmi_slist_node waiters;          /**< Any other processes waiting for this process to finish */
     char name[CMB_PROCESS_NAMEBUF_SZ];      /**< The process name string */
 };
 
