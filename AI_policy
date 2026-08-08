@@ -14,8 +14,8 @@ AI policy in the Cimba project can be summarized as follows:
 
 * Code belonging to the Cimba library as such is not AI generated. In some
   cases, AI (i.e., Anthropic Claude Opus in its latest version) may have been
-  asked to propose code for some specific task. This is then reviewed and
-  modified as needed by me before use.
+  asked to propose code for some specific task. This first draft was then
+  reviewed and modified as needed by me before use.
 
 * Non-critical code, such as test scripts and tutorial examples, may be partly
   AI generated. I am not an expert in, say, CUDA programming or the finer
@@ -26,7 +26,7 @@ AI policy in the Cimba project can be summarized as follows:
   may have taken as much time as if I had started from scratch instead. AI can
   make very strange mistakes.
 
-* Based on that experience, please do not contribute AI generated code.
+* Based on this experience, please do not contribute AI generated code.
   Reviewing and debugging it can easily take more time than it is worth. It
   may also raise copyright issues if it includes snippets from a copyrighted
   training set. This will be very hard to chase down.
