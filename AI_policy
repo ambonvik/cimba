@@ -1,0 +1,51 @@
+Cimba discrete event simulation library
+Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025 - 26.
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Preliminary project policy on use of Large Language Model (LLM) AI
+
+As of mid-2026, LLM-driven tools have become very useful for coding tasks.
+However, the state of the art is still not close to where a LLM model can be
+trusted to independently write critical code. For that reason, the de facto
+AI policy in the Cimba project can be summarized as follows:
+
+* Nothing "agentic" whatsoever. Everything needs to have a human in the loop.
+  No exceptions.
+
+* Code belonging to the Cimba library as such is not AI generated. In some
+  cases, AI (i.e., Anthropic Claude Opus in its latest version) may have been
+  asked to propose code for some specific task. This is then reviewed and
+  modified as needed by me before use.
+
+* Non-critical code, such as test scripts and tutorial examples, may be partly
+  AI generated. I am not an expert in, say, CUDA programming or the finer
+  details of the HDF5 file format, so it was helpful to get initial AI coding
+  assistance for Tutorial 5 boilerplate code instead of starting from scratch
+  with the manuals and a clean sheet of paper. However, it turned out that
+  debugging that code and iterating until the program worked as I had intended
+  may have taken as much time as if I had started from scratch instead. AI can
+  make very strange mistakes.
+
+* Based on that experience, please do not contribute AI generated code.
+  Reviewing and debugging it can easily take more time than it is worth. It
+  may also raise copyright issues if it includes snippets from a copyrighted
+  training set. This will be very hard to chase down.
+
+* The latest generation of AI, e.g., the "Mythos-class" such as Anthropic
+  Claude Fable 5, is ruthlessly effective in pinpointing coding mistakes. This
+  has quickly become a very helpful tool for debugging a complex concurrent
+  program like a Cimba model, although the models' proposed fixes may still be
+  misguided.
+  The workflow is to ask the most powerful model available (currently Fable 5)
+  for a review, work through the issues that were surfaced with support from
+  the next lower-tier model (currently Opus 5), and have this model verify that
+  all issues raised by its big brother eventually were resolved. And repeat.
+  For full transparency, we collect the outputs of these reviews in the repo
+  folder code_reviews, file names starting with the review date in YYYYMMDD
+  format.
+
+AI technology develops fast. The above should be understood as a provisional
+policy at a specific point in time. There may be changes when new technology
+becomes available, but the basic principle will not change: Always a human in
+the loop. Only human creative effort can be copyrighted, and this library is
+copyrighted. "Agentic" AI-generated code cannot be incorporated.
