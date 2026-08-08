@@ -54,7 +54,7 @@ struct event_peek {
     cmb_event_func *action;
     void *subject;
     void *object;
-    struct cmi_slist_head waiters;
+    struct cmi_slist_node waiters;
 };
 
 static_assert(sizeof(struct event_peek) == 4 * sizeof(void *), "Unexpected size");
@@ -307,12 +307,12 @@ static void wakeup_event_cancelled(void *vp, void *arg)
     }
 }
 
-static void wake_event_waiters_occurred(struct cmi_slist_head *waiters, const uint64_t ev_handle)
+static void wake_event_waiters_occurred(struct cmi_slist_node *waiters, const uint64_t ev_handle)
 {
     cmb_assert_debug(waiters != NULL);
 
     while (!cmi_slist_is_empty(waiters)) {
-        struct cmi_slist_head *head = cmi_slist_pop(waiters);
+        struct cmi_slist_node *head = cmi_slist_pop(waiters);
         struct cmi_process_waiter *pw = cmi_container_of(head,
                                                       struct cmi_process_waiter,
                                                       listhead);
@@ -330,12 +330,12 @@ static void wake_event_waiters_occurred(struct cmi_slist_head *waiters, const ui
     cmb_assert_debug(cmi_slist_is_empty(waiters));
 }
 
-static void wake_event_waiters_cancelled(struct cmi_slist_head *waiters, const uint64_t ev_handle)
+static void wake_event_waiters_cancelled(struct cmi_slist_node *waiters, const uint64_t ev_handle)
 {
     cmb_assert_debug(waiters != NULL);
 
     while (!cmi_slist_is_empty(waiters)) {
-        struct cmi_slist_head *head = cmi_slist_pop(waiters);
+        struct cmi_slist_node *head = cmi_slist_pop(waiters);
         struct cmi_process_waiter *pw = cmi_container_of(head,
                                                       struct cmi_process_waiter,
                                                       listhead);
@@ -646,7 +646,7 @@ bool cmi_event_remove_waiter(const uint64_t key, const struct cmb_process *pp)
     }
 
     struct event_peek *tmp = (struct event_peek *)cmi_hashheap_item(event_queue, key);
-    struct cmi_slist_head *whead = &(tmp->waiters);
+    struct cmi_slist_node *whead = &(tmp->waiters);
     while (whead->next != NULL) {
         struct cmi_process_waiter *pw = cmi_container_of(whead->next,
                                                   struct cmi_process_waiter,

@@ -44,7 +44,7 @@ struct cmi_process_awaitable {
     enum cmi_process_awaitable_type type;
     union { void *ptr; uint64_t handle; };
     uint64_t guard_key;
-    struct cmi_slist_head listhead;
+    struct cmi_slist_node listhead;
 };
 
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_process_awaitabletags;
@@ -79,7 +79,7 @@ extern uint64_t cmi_process_guard_key(const struct cmb_process *pp,
  */
 struct cmi_process_holdable {
     struct cmi_holdable *res;
-    struct cmi_slist_head listhead;
+    struct cmi_slist_node listhead;
 };
 
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_process_holdabletags;
@@ -92,7 +92,7 @@ extern bool cmi_process_remove_holdable(struct cmb_process *pp,
  */
 struct cmi_process_waiter {
     struct cmb_process *proc;
-    struct cmi_slist_head listhead;
+    struct cmi_slist_node listhead;
 };
 
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags;

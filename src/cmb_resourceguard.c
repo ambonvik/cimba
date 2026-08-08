@@ -53,7 +53,7 @@ struct entry_peek {
 /* The observer list entries */
 struct observer_tag {
     struct cmb_resourceguard *observer;
-    struct cmi_slist_head listhead;
+    struct cmi_slist_node listhead;
 };
 
 /* Thread local mempool of tags for observer tags */
@@ -288,7 +288,7 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
     }
 
     /* Forward the signal to any observers */
-    const struct cmi_slist_head *ohead = &(rgp->observers);
+    const struct cmi_slist_node *ohead = &(rgp->observers);
     while (ohead->next != NULL) {
         const struct observer_tag *ot = cmi_container_of(ohead->next,
                                                          struct observer_tag,
@@ -390,7 +390,7 @@ bool cmb_resourceguard_unregister(struct cmb_resourceguard *rgp,
     cmb_assert_release(rgp != NULL);
     cmb_assert_release(obs != NULL);
 
-    struct cmi_slist_head *ohead = &(rgp->observers);
+    struct cmi_slist_node *ohead = &(rgp->observers);
     while (ohead->next != NULL) {
         struct observer_tag *op = cmi_container_of(ohead->next,
                                                    struct observer_tag,

@@ -62,7 +62,7 @@ extern bool cmi_event_remove_waiter(uint64_t key, const struct cmb_process *pp);
 
 /* Forward declarations */
 static void cmi_process_drop_resources(struct cmb_process *pp);
-static void wake_process_waiters(struct cmi_slist_head *waiters, int64_t signal);
+static void wake_process_waiters(struct cmi_slist_node *waiters, int64_t signal);
 static void wakeup_event_interrupt(void *vp, void *arg);
 static void wakeup_event_process(void *vp, void *arg);
 static void resume_event(void *vp, void *arg);
@@ -233,7 +233,7 @@ void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
     pp->priority = pri;
 
     /* Any priority queues containing this process? */
-    const struct cmi_slist_head *ahead = &(pp->awaits);
+    const struct cmi_slist_node *ahead = &(pp->awaits);
     while (ahead->next != NULL) {
         const struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
                                                    struct cmi_process_awaitable,
@@ -260,7 +260,7 @@ void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
     }
 
     /* Is this process holding any resources that need to update records? */
-    const struct cmi_slist_head *rhead = &(pp->resources);
+    const struct cmi_slist_node *rhead = &(pp->resources);
     while (rhead->next != NULL) {
         const struct cmi_process_holdable *hrp = cmi_container_of(rhead->next,
                                                     struct cmi_process_holdable,
@@ -326,7 +326,7 @@ struct cmi_process_awaitable *cmi_process_add_awaitable(struct  cmb_process *pp,
     awp->ptr = awaitable;
     awp->guard_key = 0u;
 
-    struct cmi_slist_head *head = &(pp->awaits);
+    struct cmi_slist_node *head = &(pp->awaits);
     cmi_slist_push(head, &(awp->listhead));
 
     return awp;
@@ -341,7 +341,7 @@ uint64_t cmi_process_guard_key(const struct cmb_process *pp, const void *guard)
     cmb_assert_debug(pp != NULL);
     cmb_assert_debug(guard != NULL);
 
-    const struct cmi_slist_head *ahead = &(pp->awaits);
+    const struct cmi_slist_node *ahead = &(pp->awaits);
     while (ahead->next != NULL) {
         const struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
                                                   struct cmi_process_awaitable,
@@ -364,7 +364,7 @@ bool cmi_process_has_awaitable(const struct cmb_process *pp,
 {
     cmb_assert_debug(pp != NULL);
 
-    const struct cmi_slist_head *ahead = &(pp->awaits);
+    const struct cmi_slist_node *ahead = &(pp->awaits);
     while (ahead->next != NULL) {
         const struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
                                                     struct cmi_process_awaitable,
@@ -390,7 +390,7 @@ bool cmi_process_remove_awaitable(struct cmb_process *pp,
 {
     cmb_assert_debug(pp != NULL);
 
-    struct cmi_slist_head *ahead = &(pp->awaits);
+    struct cmi_slist_node *ahead = &(pp->awaits);
     while (ahead->next != NULL) {
         struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
                                                   struct cmi_process_awaitable,
@@ -511,9 +511,9 @@ void cmb_process_timers_clear(struct cmb_process *pp)
 {
     cmb_assert_debug(pp != NULL);
 
-    struct cmi_slist_head *awaits = &(pp->awaits);
+    struct cmi_slist_node *awaits = &(pp->awaits);
     while (!cmi_slist_is_empty(awaits)) {
-        struct cmi_slist_head *head = awaits->next;
+        struct cmi_slist_node *head = awaits->next;
         struct cmi_process_awaitable *pa = cmi_container_of(head,
                                                       struct cmi_process_awaitable,
                                                       listhead);
@@ -571,7 +571,7 @@ static void wakeup_event_process(void *vp, void *arg)
     }
 }
 
-static void add_waiter_tag(struct cmi_slist_head *head, struct cmb_process *waiter)
+static void add_waiter_tag(struct cmi_slist_node *head, struct cmb_process *waiter)
 {
     cmb_assert_debug(head != NULL);
     cmb_assert_debug(waiter != NULL);
@@ -653,13 +653,13 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     return ret;
 }
 
-static void wake_process_waiters(struct cmi_slist_head *waiters,
+static void wake_process_waiters(struct cmi_slist_node *waiters,
                                  const int64_t signal)
 {
     cmb_assert_debug(waiters != NULL);
 
     while (!cmi_slist_is_empty(waiters)) {
-        struct cmi_slist_head *head = cmi_slist_pop(waiters);
+        struct cmi_slist_node *head = cmi_slist_pop(waiters);
         struct cmi_process_waiter *pw = cmi_container_of(head,
                                                       struct cmi_process_waiter,
                                                       listhead);
@@ -679,9 +679,9 @@ static void cmi_process_drop_resources(struct cmb_process *pp)
 {
     cmb_assert_debug(pp != NULL);
 
-    struct cmi_slist_head *held = &(pp->resources);
+    struct cmi_slist_node *held = &(pp->resources);
     while (!cmi_slist_is_empty(held)) {
-        struct cmi_slist_head *head = cmi_slist_pop(held);
+        struct cmi_slist_node *head = cmi_slist_pop(held);
         cmb_assert_debug(head != NULL);
         struct cmi_process_holdable *ph = cmi_container_of(head,
                                                     struct cmi_process_holdable,
@@ -711,7 +711,7 @@ bool cmi_process_remove_waiter(struct cmb_process *pp,
     cmb_assert_debug(pp != NULL);
     cmb_assert_debug(waiter != NULL);
 
-    struct cmi_slist_head *waiters = &(pp->waiters);
+    struct cmi_slist_node *waiters = &(pp->waiters);
     while (waiters->next != NULL) {
         struct cmi_process_waiter *pw = cmi_container_of(waiters->next,
                                                   struct cmi_process_waiter,
@@ -735,7 +735,7 @@ bool cmi_process_remove_holdable(struct cmb_process *pp,
     cmb_assert_debug(pp != NULL);
     cmb_assert_debug(holdable != NULL);
 
-    struct cmi_slist_head *held = &(pp->resources);
+    struct cmi_slist_node *held = &(pp->resources);
 
     bool found = false;
     while (held->next != NULL) {
@@ -762,7 +762,7 @@ bool cmi_process_awaiting_key(const struct cmb_process *pp, const uint64_t key)
         return false;
     }
 
-    const struct cmi_slist_head *ahead = &(pp->awaits);
+    const struct cmi_slist_node *ahead = &(pp->awaits);
     while (ahead->next != NULL) {
         const struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
                                                   struct cmi_process_awaitable,
@@ -827,9 +827,9 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
 {
     cmb_assert_debug(pp != NULL);
 
-    struct cmi_slist_head *awaits = &(pp->awaits);
+    struct cmi_slist_node *awaits = &(pp->awaits);
     while (!cmi_slist_is_empty(awaits)) {
-        struct cmi_slist_head *head = cmi_slist_pop(awaits);
+        struct cmi_slist_node *head = cmi_slist_pop(awaits);
         struct cmi_process_awaitable *pa = cmi_container_of(head,
                                                       struct cmi_process_awaitable,
                                                       listhead);

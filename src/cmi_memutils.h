@@ -1,7 +1,8 @@
 /*
- * cmi_memutils.h - wrappers for malloc() and his friends.
+ * cmi_memutils.h - wrappers for malloc() and his friends plus internal
+ *                  memory utility functions.
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@
 #define CIMBA_CMI_MEMUTILS_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -29,9 +31,6 @@
 #define CMI_UNINITIALIZED 0xBAADF00DBAADF00D
 #define CMI_INITIALIZED   0x00FA151F1AB1E000
 
-/*
- * Convenience functions to encapsulate repetitive error handling
- */
 CMB_MAYBE_UNUSED
 static inline void *cmi_malloc(const size_t sz)
 {
@@ -106,9 +105,11 @@ static inline void *cmi_memset(void* restrict ptr, const int c, const size_t n)
     return rp;
 }
 
-/*
- * cmi_is_power_of_two - Predicate helper function
- */
+#define cmi_offset_of(type, member) offsetof(type, member)
+
+#define cmi_container_of(ptr, type, member) \
+            ((type *)((char *)(ptr) - cmi_offset_of(type, member)))
+
 CMB_MAYBE_UNUSED
 static inline bool cmi_is_power_of_two(const size_t n)
 {
@@ -116,7 +117,7 @@ static inline bool cmi_is_power_of_two(const size_t n)
     return (n == 0u) ? false : ((n & (n - 1)) == 0u);
 }
 
-/* System-dependent utility functions in src/arch/cmi_memutils_*.c */
+/* System-dependent utility functions in src/port/.../cmi_memutils_*.c */
 extern size_t cmi_pagesize(void);
 extern void *cmi_aligned_alloc(size_t align, size_t sz);
 extern void cmi_aligned_free(void *p);

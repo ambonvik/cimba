@@ -49,7 +49,7 @@ struct simulation {
     /* A set of all active ships */
     struct cmi_hashheap *active_ships;
     /* A list of departed ships  */
-    struct cmi_slist_head *departed_ships;
+    struct cmi_slist_node *departed_ships;
 
     /* Data collector for local use in this instance */
     struct cmb_dataset *time_in_system[2];
@@ -101,7 +101,7 @@ struct ship {
     unsigned tugs_needed;
     double max_wind;
     double min_depth;
-    struct cmi_slist_head listhead;
+    struct cmi_slist_node listnode;
 };
 
 /* A process that updates the weather once per hour */
@@ -284,7 +284,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     /* This is a one-pass process, remove ourselves from the active set */
     cmi_hashheap_remove(simp->active_ships, hndl);
     /* List ourselves as departed instead */
-    cmi_slist_push(simp->departed_ships, &(shpp->listhead));
+    cmi_slist_push(simp->departed_ships, &(shpp->listnode));
     /* Inform Davy Jones that we are coming his way */
     cmb_condition_signal(simp->davyjones);
 
@@ -366,15 +366,15 @@ void *departure_proc(struct cmb_process *me, void *vctx)
     const struct context *ctxp = vctx;
     struct simulation *simp = ctxp->sim;
     const struct trial *trlp = ctxp->trl;
-    struct cmi_slist_head *dep_head = simp->departed_ships;
+    struct cmi_slist_node *dep_head = simp->departed_ships;
 
     while (true) {
         /* We do not need to loop here, since this is the only process waiting */
         cmb_condition_wait(simp->davyjones, is_departed, vctx);
 
         /* There is one, collect its exit value */
-        struct cmi_slist_head *shead = cmi_slist_pop(dep_head);
-        struct ship *shp = cmi_container_of(shead, struct ship, listhead);
+        struct cmi_slist_node *snode = cmi_slist_pop(dep_head);
+        struct ship *shp = cmi_slist_entry(snode, struct ship, listnode);
         double *t_sys_p = cmb_process_exit_value((struct cmb_process *)shp);
         cmb_assert_debug(t_sys_p != NULL);
         cmb_logger_user(stdout, USERFLAG1,
