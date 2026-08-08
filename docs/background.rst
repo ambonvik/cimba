@@ -321,7 +321,7 @@ The encapsulation and abstraction is then a matter of disciplined modularity in
 structuring the code, with the code and header files as a main building block. Careful
 use of ``static`` and ``extern`` functions and variables provide the equivalents of
 ``private``, ``public``, and ``friend`` class properties and methods. The header file
-encapsulate and expose what a module or class does, while the corresponding C code file
+encapsulates and exposes what a module or class does, while the corresponding C code file
 contains the implementation details.
 
 Even if this is the most natural way of describing the entities in our simulated world,
