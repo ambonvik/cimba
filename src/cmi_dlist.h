@@ -1,8 +1,21 @@
 /*
- * cmb_slist.h - generic singly linked list, following similar design
- *               principles as the Linux kernel doubly linked list.
+ * cmb_dlist.h - generic intrusive doubly linked list. Used wherever fast
+ *               insertion and deletion of specific objects is a main
+ *               requirement, while sorting, iteration, and search over
+ *               elements is not. Used in the memory object registry,
+ *               see cmi_memregistry.[hc].
  *
- * Copyright (c) Asbjørn M. Bonvik 2025-26.
+ *               Similar usage pattern and design principles as the well-known
+ *               Linux kernel linked list implementation (see, e.g.,
+ *               https://docs.kernel.org/core-api/list.html).
+ *
+ *               Note that our list head is a struct cmi_dlist_node, same as
+ *               the embedded nodes in each list member item, since we find
+ *               this slightly less confusing than having a "list head" in
+ *               every member item (as in the Linux kernel). Still, the list
+ *               head node is purely a sentinel with no associated item.
+ *
+ * Copyright (c) Asbjørn M. Bonvik 2026.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,79 +30,171 @@
  * limitations under the License.
  */
 
-#ifndef CIMBA_CMI_SLIST_H
-#define CIMBA_CMI_SLIST_H
+#ifndef CIMBA_CMI_DLIST_H
+#define CIMBA_CMI_DLIST_H
 
 #include "cmi_memutils.h"
 
-struct cmi_slist_head {
-    struct cmi_slist_head *next;
+struct cmi_dlist_node {
+    struct cmi_dlist_node *next;
+    struct cmi_dlist_node *prev;
 };
 
 CMB_MAYBE_UNUSED
-static inline struct cmi_slist_head *cmi_slist_create(void)
+static inline struct cmi_dlist_node *cmi_dlist_create(void)
 {
-    return cmi_malloc(sizeof(struct cmi_slist_head));
+    struct cmi_dlist_node *tmp = cmi_malloc(sizeof(struct cmi_dlist_node));
+    tmp->next = NULL;
+    tmp->prev = NULL;
+
+    return tmp;
 }
 
 CMB_MAYBE_UNUSED
-static inline void cmi_slist_initialize(struct cmi_slist_head *head)
+static inline void cmi_dlist_initialize(struct cmi_dlist_node *head)
+{
+    cmb_assert_debug(head != NULL);
+
+    head->next = head;
+    head->prev = head;
+}
+
+CMB_MAYBE_UNUSED
+static inline void cmi_dlist_terminate(struct cmi_dlist_node *head)
 {
     cmb_assert_debug(head != NULL);
 
     head->next = NULL;
+    head->prev = NULL;
 }
 
 CMB_MAYBE_UNUSED
-static inline void cmi_slist_terminate(struct cmi_slist_head *head)
+static inline void cmi_dlist_destroy(struct cmi_dlist_node *head)
 {
     cmb_assert_debug(head != NULL);
-}
-
-CMB_MAYBE_UNUSED
-static inline void cmi_slist_destroy(struct cmi_slist_head *head)
-{
-    cmb_assert_release(head != NULL);
 
     cmi_free(head);
 }
 
 CMB_MAYBE_UNUSED
-static inline bool cmi_slist_is_empty(const struct cmi_slist_head *head)
+static inline bool cmi_dlist_is_empty(const struct cmi_dlist_node *head)
 {
-    return (head->next == NULL);
+    cmb_assert_debug(head != NULL);
+    cmb_assert_debug((head->next != NULL) && (head->prev != NULL));;
+
+    return (head->next == head);
 }
 
 CMB_MAYBE_UNUSED
-static inline void cmi_slist_push(struct cmi_slist_head *head,
-                                  struct cmi_slist_head *new)
+static inline void cmi_dlist_insert_after(struct cmi_dlist_node *old_node,
+                                           struct cmi_dlist_node *new_node)
 {
-    cmb_assert_debug(head != NULL);
-    cmb_assert_debug(new != NULL);
+    cmb_assert_debug(old_node != NULL);
+    cmb_assert_debug(new_node != NULL);
 
-    new->next = head->next;
-    head->next = new;
+    new_node->next = old_node->next;
+    new_node->prev = old_node;
+    old_node->next = new_node;
+    new_node->next->prev = new_node;
 }
 
 CMB_MAYBE_UNUSED
-static inline struct cmi_slist_head *cmi_slist_pop(struct cmi_slist_head *head)
+static inline void cmi_dlist_insert_before(struct cmi_dlist_node *old_node,
+                                           struct cmi_dlist_node *new_node)
 {
-    cmb_assert_debug(head != NULL);
+    cmb_assert_debug(old_node != NULL);
+    cmb_assert_debug(new_node != NULL);
 
-    struct cmi_slist_head *ret = head->next;
-    if (ret != NULL) {
-        head->next = ret->next;
+    new_node->prev = old_node->prev;
+    new_node->next = old_node;
+    old_node->prev = new_node;
+    new_node->prev->next = new_node;
+}
+
+CMB_MAYBE_UNUSED
+static inline void cmi_dlist_insert_first(struct cmi_dlist_node *head, struct cmi_dlist_node *new_node) {
+    cmi_dlist_insert_after(head, new_node);
+}
+
+CMB_MAYBE_UNUSED
+static inline void cmi_dlist_insert_last(struct cmi_dlist_node *head,
+                                          struct cmi_dlist_node *new_node)
+{
+    cmi_dlist_insert_before(head, new_node);
+}
+
+CMB_MAYBE_UNUSED
+static inline bool cmi_dlist_unlink(struct cmi_dlist_node *node)
+{
+    cmb_assert_debug(node != NULL);
+    cmb_assert_debug(node->prev != NULL);
+    cmb_assert_debug(node->next != NULL);
+
+    if (node->next == node) {
+        cmb_assert_debug(node->prev == node);
+        return false;
     }
-
-    return ret;
+    else {
+        node->next->prev = node->prev;
+        node->prev->next = node->next;
+        node->prev = node;
+        node->next = node;
+        return true;
+    }
 }
 
 CMB_MAYBE_UNUSED
-static inline struct cmi_slist_head *cmi_slist_peek(const struct cmi_slist_head *head)
+static inline struct cmi_dlist_node *cmi_dlist_remove_first(struct cmi_dlist_node *head)
 {
     cmb_assert_debug(head != NULL);
 
-    return head->next;
+    struct cmi_dlist_node *node = head->next;
+    if (node != head) {
+        const bool ret = cmi_dlist_unlink(node);
+        cmb_assert_debug(ret == true);
+        return node;
+    }
+    else {
+        return NULL;
+    }
 }
 
-#endif /* CIMBA_CMI_SLIST_H */
+CMB_MAYBE_UNUSED
+static inline struct cmi_dlist_node *cmi_dlist_remove_last(struct cmi_dlist_node *head)
+{
+    cmb_assert_debug(head != NULL);
+
+    struct cmi_dlist_node *node = head->prev;
+    if (node != head) {
+        const bool ret = cmi_dlist_unlink(node);
+        cmb_assert_debug(ret == true);
+        return node;
+    }
+    else {
+        return NULL;
+    }
+}
+
+CMB_MAYBE_UNUSED
+static inline struct cmi_dlist_node *cmi_dlist_first(const struct cmi_dlist_node *head)
+{
+    cmb_assert_debug(head != NULL);
+
+    struct cmi_dlist_node *node = head->next;
+
+    return (node != head) ? node : NULL;
+}
+
+CMB_MAYBE_UNUSED
+static inline struct cmi_dlist_node *cmi_dlist_last(const struct cmi_dlist_node *head)
+{
+    cmb_assert_debug(head != NULL);
+
+    struct cmi_dlist_node *node = head->prev;
+
+    return (node != head) ? node : NULL;
+}
+
+#define cmi_dlist_entry(node, type, member) cmi_container_of(node, type, member)
+
+#endif /* CIMBA_CMI_DLIST_H */
