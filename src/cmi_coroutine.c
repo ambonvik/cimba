@@ -432,6 +432,7 @@ void cmi_coroutine_thread_cleanup(void)
     /* Clean up all still existing coroutine objects */
     while (coroutine_registry != NULL) {
         struct cmi_coroutine *cp = coroutine_registry;
+        cmb_assert_debug(cp != cmi_coroutine_current());
         registry_remove(cp);
         cmi_coroutine_stack_free(cp->stack, cp->stack_size);
         cmi_tsan_destroy_fiber(cp->tsan_fiber);

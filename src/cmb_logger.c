@@ -263,7 +263,11 @@ void cmi_logger_error(FILE *fp,
         CMI_RECOVERY_JUMP(cmi_worker_recovery);
     }
     else {
-        /* Not running inside a Cimba worker — fall back to exit with error code */
+        /* Not running inside a Cimba worker thread — fall back to exit with
+         * error code. Any armed cleanup functions from atexit() know to not
+         * delete the stack we are currently running on, so this is safe even
+         * from inside a coroutine without triggering undefined behavior.
+         */
         exit(EXIT_FAILURE);
     }
     /* Not reached */

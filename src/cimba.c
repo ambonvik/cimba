@@ -87,7 +87,7 @@ bool cmi_thread_in_main(void) {
     return pthread_equal(pthread_self(), cmg_main_thread);
 }
 
-/* Call signature as expected by pthread_cleanup_push() */
+/* Call signature as expected by pthread_cleanup_push().*/
 static void thread_pthread_cleanup(void *arg)
 {
     cmb_unused(arg);
@@ -98,12 +98,19 @@ static void thread_pthread_cleanup(void *arg)
     cmi_mempool_thread_cleanup();
 }
 
-/* Call signature as expected by atexit() */
+/* Call signature as expected by atexit(). Make sure it only runs on the main
+ * stack, not on some coroutine stack. If it did, we would be free'ing the
+ * stack we are running on, heading into highly undefined behaviour. We are
+ * exiting anyway, so the OS will reclaim all memory in a moment even with no
+ * cleanup done from our side. No damage done by skipping it.
+ */
 static void thread_main_cleanup(void)
 {
-    cmi_hashheap_thread_cleanup();
-    cmi_coroutine_thread_cleanup();
-    cmi_mempool_thread_cleanup();
+    if (cmi_coroutine_current() == cmi_coroutine_main()) {
+        cmi_hashheap_thread_cleanup();
+        cmi_coroutine_thread_cleanup();
+        cmi_mempool_thread_cleanup();
+    }
 }
 
 void cmi_thread_arm_atexit_cleanup(void)
