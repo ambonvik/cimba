@@ -22,6 +22,7 @@ sources = files('cimba.c',
                 'cmi_hashheap.c',
                 'cmi_holdable.c',
                 'cmi_mempool.c',
+                'cmi_memregistry.c',
                 'cmi_resourcebase.c'
 )
 

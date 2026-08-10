@@ -34,7 +34,7 @@ typedef void (cmi_teardown_func)(void *obj);
 
 /* The registry tag, embedded in the managed objects */
 struct cmi_memregistry_item {
-    cmi_teardown_func *teardown;   /* Destructor function */
+    cmi_teardown_func *teardown;    /* Destructor function */
     void *object;                   /* Start address of the object to be demolished */
     struct cmi_dlist_node node;     /* Registry list links */
 };
@@ -42,10 +42,13 @@ struct cmi_memregistry_item {
 /* The actual registry of memory objects */
 extern CMB_THREAD_LOCAL struct cmi_dlist_node cmi_memregistry;
 
+/* Flag to identify if a teardown is in progress or not. */
+extern CMB_THREAD_LOCAL bool cmi_memregistry_is_demolishing;
+
 /*
  * Add an object to the registry, pushing it from the head of the list.
  */
-extern void cmi_memregistry_add(struct cmi_memregistry_item *item, cmi_teardown_func *fn);
+extern void cmi_memregistry_add(struct cmi_memregistry_item *item);
 
 /*
  * Remove a given object from the registry.
@@ -57,10 +60,5 @@ extern void cmi_memregistry_remove(struct cmi_memregistry_item *item);
  * terminate, destroy sequence.
  */
 extern void cmi_memregistry_teardown(void);
-
-/*
- * Predicate function to identify if a teardown is in progress or not.
- */
-extern bool cmi_memregistry_is_demolishing(void);
 
 #endif /* CIMBA_CMI_MEMREGISTRY_H */
