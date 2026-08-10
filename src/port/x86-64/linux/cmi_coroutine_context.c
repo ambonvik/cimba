@@ -317,7 +317,7 @@ void cmi_coroutine_stack_cleanup(void)
     while (st != NULL) {
         while (st->head != NULL) {
             unsigned char *raw = st->head;
-            unsigned char *next = *(unsigned char **)(raw + pagesz);   /* before free */
+            unsigned char *next = *(unsigned char **)(raw + pagesz);
 
             /* Unprotect guard page to avoid complaints */
             const int r = mprotect(raw, pagesz, PROT_READ | PROT_WRITE);
