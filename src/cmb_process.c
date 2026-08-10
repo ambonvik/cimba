@@ -134,6 +134,7 @@ extern void cmb_process_terminate(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
     cmb_assert_release(cmb_process_status(pp) != CMB_PROCESS_RUNNING);
+    cmb_assert_release(pp != cmb_process_current());
 
     /* Should not have any other processes waiting for this one at this point.
      * This should never happen, since any waiting processes are signaled when
@@ -168,6 +169,8 @@ extern void cmb_process_terminate(struct cmb_process *pp)
 void cmb_process_destroy(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
+    cmb_assert_release(cmb_process_status(pp) != CMB_PROCESS_RUNNING);
+    cmb_assert_release(pp != cmb_process_current());
 
     if (((struct cmi_coroutine *)pp)->stack != NULL) {
         /* Still live, we helpfully clean it up */
