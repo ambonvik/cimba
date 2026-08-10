@@ -3358,6 +3358,10 @@ Cimba and design of experiments
 
 (Work in progress)
 
+https://www.tandfonline.com/doi/full/10.1080/17477778.2025.2527151#abstract
+Amalia Gjerloev & al:
+`Using design of experiments with discrete event simulation in operational research: a review <https://www.tandfonline.com/doi/full/10.1080/17477778.2025.2527151#abstract>`_
+
 
 Adding CUDA GPU power for simulation physics
 --------------------------------------------
