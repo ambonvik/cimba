@@ -6,7 +6,7 @@
 # and links only against the installed library, with no access to the source
 # tree's include directories.
 #
-# It verifies three things:
+# It verifies four things:
 #   1. Every public header (cmb_*.h, cimba.h) compiles standalone, i.e. is
 #      self-contained - including it as the first thing in a translation unit
 #      pulls in everything it needs. This catches the class of bug where a
@@ -16,7 +16,8 @@
 #   2. The installed header set is closed: because the probes see only the
 #      installed include directory, a public header that includes a header
 #      which was not installed fails here.
-#   3. The documented hello.c compiles, links against the installed library,
+#   3. All header declarations are matched by implemented definitions.
+#   4. The documented hello.c compiles, links against the installed library,
 #      and runs - the end-to-end downstream experience from the install guide.
 #
 # Usage:
@@ -93,7 +94,47 @@ echo "verify_install: checking public headers are self-contained (-std=c2x)"
 probe_headers "-std=c2x" "c2x"
 echo "  all public headers compile standalone"
 
-# ---- 3: the documented hello.c builds, links, and runs
+# ---- 3: every declared public function actually exists in the library
+#
+# The header probes above compile only - a declaration with no definition
+# anywhere compiles perfectly. This step forces the linker to resolve every
+# public function declared in the installed headers, by taking its address in a
+# static initializer. It catches the class of bug where a function is declared
+# and documented but never defined (or defined under a different name), which
+# leaves a downstream user with an undefined reference at link time.
+echo "verify_install: checking every declared public function resolves"
+
+grep -hE "^extern[^;]*\(" "$INCDIR"/cmb_*.h "$INCDIR"/cimba.h \
+    | sed -E 's/^extern[[:space:]]+//; s/\(.*//; s/[[:space:]]*$//' \
+    | grep -oE "[A-Za-z_][A-Za-z0-9_]*$" \
+    | sort -u > "$WORK/symbols.txt"
+
+NSYM="$(wc -l < "$WORK/symbols.txt")"
+if [[ "$NSYM" -eq 0 ]]; then
+    echo "verify_install: extracted no public symbols - check the header style" >&2
+    exit 1
+fi
+
+{
+    for h in "$INCDIR"/cmb_*.h "$INCDIR"/cimba.h; do
+        printf '#include <%s>\n' "$(basename "$h")"
+    done
+    echo 'typedef void (*cimba_any_func)(void);'
+    echo 'static cimba_any_func const probes[] = {'
+    sed 's/^/    (cimba_any_func)/; s/$/,/' "$WORK/symbols.txt"
+    echo '};'
+    echo 'int main(void) { return probes[0] == 0; }'
+} > "$WORK/linkprobe.c"
+
+if [[ "$OS" == windows ]]; then
+    "$CC" "$WORK/linkprobe.c" -I"$INCDIR" -L"$LINKDIR" -lcimba -o "$WORK/linkprobe.exe"
+else
+    "$CC" "$WORK/linkprobe.c" -I"$INCDIR" -L"$LINKDIR" -Wl,-rpath,"$RUNDIR" \
+          -lcimba -o "$WORK/linkprobe"
+fi
+echo "  all $NSYM declared public functions resolve against the installed library"
+
+# ---- 4: the documented hello.c builds, links, and runs
 HELLO="$WORK/hello.c"
 cat > "$HELLO" <<'EOF'
 #include <cimba.h>

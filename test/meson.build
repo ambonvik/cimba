@@ -117,6 +117,17 @@ test_hashheap = executable('test_hashheap',
 
 test('hashheap', test_hashheap)
 
+test_lists = executable('test_lists',
+                           files('test_lists.c', 'test.h'),
+                           include_directories : [inc_api, inc_int],
+                           link_with : cimba_lib,
+                           dependencies : [project_deps],
+                           install : false,
+                           native : true
+)
+
+test('lists', test_lists)
+
 test_logger = executable('test_logger',
                          files('test_logger.c', 'test.h'),
                          include_directories : [inc_api, inc_int],

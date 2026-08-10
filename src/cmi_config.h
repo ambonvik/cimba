@@ -131,8 +131,7 @@
 #endif
 
 /*
-
-* Worker-recovery non-local jump (see worker_thread_func in cimba.c and
+ * Worker-recovery non-local jump (see worker_thread_func in cimba.c and
  * cmi_logger_error in cmb_logger.c). A trial that calls cmb_logger_error abandons
  * whatever coroutine it is running in and jumps straight back to the worker
  * loop on the thread's own stack, i.e. the jump crosses from a coroutine stack

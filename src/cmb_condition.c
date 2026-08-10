@@ -5,7 +5,7 @@
  *        fulfilled. The application provides the demand predicate function to
  *        be evaluated.
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,17 +88,17 @@ static void wakeup_event_condition(void *vp, void *arg)
 
     struct cmb_process *pp = (struct cmb_process *)vp;
     cmb_logger_info(stdout, "Wakes %s signal %" PRIi64, pp->name, (int64_t)arg);
-    cmb_assert_debug(!cmi_slist_is_empty(&(pp->awaits)));
 
-    /* Cannot be waiting for more than one at a time */
-    const bool found = cmi_process_remove_awaitable(pp,
-                                                 CMI_PROCESS_AWAITABLE_RESOURCE,
-                                                 NULL);
-    cmb_assert_debug(found == true);
+    /* Check if the process still is waiting for this event */
+    const uint64_t key = (uint64_t)arg;
+    if (!cmi_process_awaiting_key(pp, key)) {
+        /* Stale, just discard */
+        return;
+    }
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
-        (void)cmi_coroutine_resume(cp, arg);
+        (void)cmi_coroutine_resume(cp, (void *)CMB_PROCESS_SUCCESS);
     }
 }
 
@@ -152,8 +152,7 @@ uint64_t cmb_condition_signal(struct cmb_condition *cvp)
             const double time = cmb_time();
             const int64_t priority = cmb_process_priority(pp);
             (void)cmb_event_schedule(wakeup_event_condition, pp,
-                                     (void *)CMB_PROCESS_SUCCESS,
-                                     time, priority);
+                                     (void *)htp->hash_key, time, priority);
         }
     }
 
@@ -166,26 +165,26 @@ uint64_t cmb_condition_signal(struct cmb_condition *cvp)
     return cnt;
 }
 
-bool cmi_condition_cancel(struct cmb_condition *cvp,
+bool cmb_condition_cancel(struct cmb_condition *cvp,
                           struct cmb_process *pp)
 {
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(pp != NULL);
 
     cmb_logger_info(stdout, "Cancelling condition %s for process %s",
-                    ((struct cmi_resourcebase *)cvp)->name, pp->name);
+                    cvp->base.name, pp->name);
 
-    return cmb_resourceguard_cancel((struct cmb_resourceguard *)cvp, pp);
+    return cmb_resourceguard_cancel(&(cvp->guard), pp);
 }
 
-bool cmi_condition_remove(struct cmb_condition *cvp,
+bool cmb_condition_remove(struct cmb_condition *cvp,
                           const struct cmb_process *pp)
 {
     cmb_assert_release(cvp != NULL);
     cmb_assert_release(pp != NULL);
 
     cmb_logger_info(stdout, "Removing process %s from condition %s",
-                    pp->name, ((struct cmi_resourcebase *)cvp)->name);
+                    pp->name, cvp->base.name);
 
-    return cmb_resourceguard_remove((struct cmb_resourceguard *)cvp, pp);
+    return cmb_resourceguard_remove(&(cvp->guard), pp);
 }

@@ -33,7 +33,12 @@
 /* Assembly function, see src/arc/cmi_coroutine_context_*.asm */
 extern void cmi_coroutine_trampoline(void);
 
-/* Intrusive singly linked list of recycled stacks */
+/*
+ * Intrusive singly linked list of recycled stacks. Note that stacks are only
+ * recycled within the current thread (thread local to avoid race conditions or
+ * potentially serializing synchronizations) and that stacks are never freed
+ * until thread exit (remains at high-water mark, to keep the logic simple).
+ */
 struct stack_tag {
     size_t size;                /* Size of stacks in this list */
     unsigned char *head;        /* The intrusive list */
@@ -312,7 +317,7 @@ void cmi_coroutine_stack_cleanup(void)
     while (st != NULL) {
         while (st->head != NULL) {
             unsigned char *raw = st->head;
-            unsigned char *next = *(unsigned char **)(raw + pagesz);   /* before free */
+            unsigned char *next = *(unsigned char **)(raw + pagesz);
 
             /* Unprotect guard page to avoid complaints */
             const int r = mprotect(raw, pagesz, PROT_READ | PROT_WRITE);

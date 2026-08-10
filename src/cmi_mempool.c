@@ -35,11 +35,11 @@
 /* List entry for keeping track of all thread local pools */
 struct static_pools_tag {
     struct cmi_mempool *pool;
-    struct cmi_slist_head head;
+    struct cmi_slist_node head;
 };
 
 /* The list of all thread local pools */
-CMB_THREAD_LOCAL struct cmi_slist_head static_pools = { NULL };
+static CMB_THREAD_LOCAL struct cmi_slist_node static_pools = { NULL };
 
 /*
  * cmi_mempool_create - Allocate memory for a (zeroed) memory pool object.
@@ -204,13 +204,13 @@ void cmi_mempool_expand(struct cmi_mempool *mp)
 }
 
 /*
- * cmi_mempool_cleanup - Function to deallocate any allocated memory in the
+ * cmi_mempool_thread_cleanup - Function to deallocate any allocated memory in the
  * thread local pools. Call when exiting a pthread.
  */
 void cmi_mempool_thread_cleanup(void)
 {
     while (!cmi_slist_is_empty(&static_pools)) {
-        struct cmi_slist_head *phead = cmi_slist_pop(&static_pools);
+        struct cmi_slist_node *phead = cmi_slist_pop(&static_pools);
         struct static_pools_tag *stp = cmi_container_of(phead,
                                                         struct static_pools_tag,
                                                         head);

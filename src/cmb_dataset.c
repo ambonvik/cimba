@@ -260,21 +260,85 @@ uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
     cmb_assert_release(src->cookie == CMI_INITIALIZED);
     cmb_assert_release(tgt != NULL);
 
+    if (tgt->xa != NULL) {
+        cmb_assert_release(tgt->cookie == CMI_INITIALIZED);
+        cmi_free(tgt->xa);
+        tgt->xa = NULL;
+    }
+
     tgt->cookie = CMI_INITIALIZED;
     tgt->count = src->count;
     tgt->cursize = src->cursize;
     tgt->min = src->min;
     tgt->max = src->max;
 
-    if (tgt->xa != NULL) {
-        cmi_free(tgt->xa);
-        tgt->xa = NULL;
-    }
-
     if (src->xa != NULL) {
         tgt->xa = cmi_calloc(tgt->cursize, sizeof *(tgt->xa));
         cmi_memcpy(tgt->xa, src->xa, tgt->cursize * sizeof *(tgt->xa));
     }
+
+    return tgt->count;
+}
+
+/*
+ * cmb_dataset_merge - Merge the samples of `s1` and `s2` into `tgt`, keeping
+ * s1's samples first and s2's after them.
+ *
+ * The target is allowed to alias either source, or both. Rather than special
+ * casing that, the result is built in a local dataset and swapped into `tgt`
+ * at the end: both sources are fully read before anything belonging to `tgt`
+ * is released, so every aliasing combination takes the identical path. It also
+ * keeps `cmi_memcpy`'s `restrict` contract, which an in-place append could not
+ * do for the tgt == s1 == s2 case.
+ */
+uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
+                           const struct cmb_dataset *s1,
+                           const struct cmb_dataset *s2)
+{
+    cmb_assert_release(tgt != NULL);
+    cmb_assert_release(s1 != NULL);
+    cmb_assert_release(s1->cookie == CMI_INITIALIZED);
+    cmb_assert_release(s2 != NULL);
+    cmb_assert_release(s2->cookie == CMI_INITIALIZED);
+    cmb_assert_release(s1->count <= (UINT64_MAX - s2->count));
+
+    const uint64_t total = s1->count + s2->count;
+    cmb_assert_release(total < (UINT64_MAX - CMI_DATASET_INIT_SZ));
+    const uint64_t mult = total / CMI_DATASET_INIT_SZ;
+    const uint64_t newsize = (mult + 1u) * CMI_DATASET_INIT_SZ;
+
+    struct cmb_dataset merged;
+    cmb_dataset_initialize(&merged);
+
+    if (total > 0u) {
+        merged.cursize = newsize;
+        merged.xa = cmi_malloc((size_t)(merged.cursize * sizeof *(merged.xa)));
+
+        if (s1->count > 0u) {
+            cmb_assert_debug(s1->xa != NULL);
+            cmi_memcpy(merged.xa, s1->xa,
+                       (size_t)(s1->count * sizeof *(merged.xa)));
+        }
+        if (s2->count > 0u) {
+            cmb_assert_debug(s2->xa != NULL);
+            cmi_memcpy(&(merged.xa[s1->count]), s2->xa,
+                       (size_t)(s2->count * sizeof *(merged.xa)));
+        }
+        merged.count = total;
+
+        /* An empty dataset carries min = DBL_MAX and max = -DBL_MAX, which are
+         * the identities for these reductions, so empty sources need no case. */
+        merged.min = (s1->min < s2->min) ? s1->min : s2->min;
+        merged.max = (s1->max > s2->max) ? s1->max : s2->max;
+    }
+
+    /* Safe only now: both sources have been read out. */
+    if (tgt->xa != NULL) {
+        cmb_assert_release(tgt->cookie == CMI_INITIALIZED);
+        cmi_free(tgt->xa);
+    }
+
+    *tgt = merged;
 
     return tgt->count;
 }
@@ -656,8 +720,8 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
     }
 
     /* Create an intermediary un * un matrix */
-    double **phi = cmi_malloc((n + 1u) * sizeof(double *));
-    phi[0] = cmi_calloc((n + 1) * (n + 1), sizeof(double));
+    double **phi = cmi_malloc(((size_t)n + 1u) * sizeof(double *));
+    phi[0] = cmi_calloc(((size_t)n + 1u) * ((size_t)n + 1u), sizeof(double));
     for (unsigned ui = 1u; ui <= n; ui++) {
         phi[ui] = phi[0] + ui * n;
     }

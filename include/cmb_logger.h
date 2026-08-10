@@ -148,7 +148,10 @@ extern int cmb_logger_vfprintf(FILE *fp,
     cmi_logger_fatal(fp, __func__, __LINE__, __VA_ARGS__)
 
 /**
- * @brief Wrapper for an error message. Terminates the thread when called.
+ * @brief Wrapper for an error message. Terminates the current trial if called
+ *        from within a worker thread, continuing execution from the next trial.
+ *        Exits the program with exit code `EXIT_FAILURE` if called from outside
+ *        a worker thread.
  *        Written as a macro to provide the calling function name and line
  *        number automatically.
  * @param fp File pointer, possibly `stderr`
@@ -159,8 +162,9 @@ extern int cmb_logger_vfprintf(FILE *fp,
     cmi_logger_error(fp, __func__, __LINE__, __VA_ARGS__)
 
 /**
- * @brief Wrapper for a warning message. Written as a macro to provide the
- *        calling function name and line number automatically.
+ * @brief Wrapper for a warning message. Does not stop program execution.
+ *        Written as a macro to provide the calling function name and line
+ *        number automatically.
  * @param fp File pointer, possibly `stdout` or `stderr`
  * @param ... A printf-like format string, followed by the arguments to the
  *            format string.

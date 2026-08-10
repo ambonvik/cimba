@@ -54,7 +54,9 @@ static pthread_t cmg_main_thread;
  * declaring cmg_next_trial_idx as plain static uint64_t instead of _Atomic */
 static uint64_t cmg_next_trial_idx;
 
-/* Control variable to ensure that atexit() gets armed only once */
+/*
+ * Control variable to ensure that atexit() gets armed only once. External scope.
+ */
 pthread_once_t cmg_atexit_armed = PTHREAD_ONCE_INIT;
 
 /* User-defined context per thread */
@@ -85,26 +87,35 @@ bool cmi_thread_in_main(void) {
     return pthread_equal(pthread_self(), cmg_main_thread);
 }
 
-/* Call signature as expected by pthread_cleanup_push() */
-void cmi_thread_pthread_cleanup(void *arg)
+/* Call signature as expected by pthread_cleanup_push().*/
+static void thread_pthread_cleanup(void *arg)
 {
     cmb_unused(arg);
 
     /* The sequence is important here, mempools last */
+    cmi_hashheap_thread_cleanup();
     cmi_coroutine_thread_cleanup();
     cmi_mempool_thread_cleanup();
 }
 
-/* Call signature as expected by atexit() */
-void cmi_thread_main_cleanup(void)
+/* Call signature as expected by atexit(). Make sure it only runs on the main
+ * stack, not on some coroutine stack. If it did, we would be free'ing the
+ * stack we are running on, heading into highly undefined behaviour. We are
+ * exiting anyway, so the OS will reclaim all memory in a moment even with no
+ * cleanup done from our side. No damage done by skipping it.
+ */
+static void thread_main_cleanup(void)
 {
-    cmi_coroutine_thread_cleanup();
-    cmi_mempool_thread_cleanup();
+    if (cmi_coroutine_current() == cmi_coroutine_main()) {
+        cmi_hashheap_thread_cleanup();
+        cmi_coroutine_thread_cleanup();
+        cmi_mempool_thread_cleanup();
+    }
 }
 
 void cmi_thread_arm_atexit_cleanup(void)
 {
-    const int rc = atexit(cmi_thread_main_cleanup);
+    const int rc = atexit(thread_main_cleanup);
     cmb_assert_always(rc == 0);
 }
 
@@ -147,7 +158,7 @@ uint32_t cimba_threads_num(void)
 
 uint32_t cimba_threads_use(uint32_t n_threads)
 {
-    cmg_worker_threads = n_threads;
+    __atomic_store_n(&cmg_worker_threads, n_threads, __ATOMIC_RELAXED);
 
     const uint32_t r = (cmg_worker_threads == 0u) ? cmi_cpu_cores()
                                                   : cmg_worker_threads;
@@ -209,7 +220,7 @@ static void *worker_thread_func(void *arg)
     }
 
     /* Make sure we free any thread local allocations before we exit */
-    pthread_cleanup_push(cmi_thread_pthread_cleanup, NULL);
+    pthread_cleanup_push(thread_pthread_cleanup, NULL);
 
     /* Any user-defined cleanup needed? */
     pthread_cleanup_push(thread_exit_wrapper, cmi_thread_context);

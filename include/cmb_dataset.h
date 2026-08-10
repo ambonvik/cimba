@@ -99,6 +99,11 @@ extern uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
 /**
  * @brief  Merge datasets `s1` and `s2` into dataset `tgt`.
  *         The target may or may not be one of the two sources, but not `NULL`.
+ *         Merging a dataset with itself will double up all dataset entries.
+ *         Dataset sorting is not preserved. If needed, that needs to be done
+ *         separately on the target after the merge.
+ *         If the target previously was terminated it will be re-initialized
+ *         as an effect of this call.
  *
  * @memberof cmb_dataset
  * @param tgt Pointer to the target dataset object.

@@ -1,6 +1,8 @@
 /*
- * cmb_slist.h - generic singly linked list, following similar principles as
- *               the Linux kernel doubly linked list.
+ * cmb_slist.h - a generic singly linked list with no `last` pointer.
+ *               Only useful for implementing the stack abstract data type with
+ *               its LIFO ordering, implemented as push, pop, and peek ops
+ *               here. If more is needed, see cmi_dlist.h.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
@@ -20,28 +22,20 @@
 #ifndef CIMBA_CMI_SLIST_H
 #define CIMBA_CMI_SLIST_H
 
-#include <stdbool.h>
-#include <stddef.h>
+#include "cmi_memutils.h"
 
-#include "cmi_mempool.h"
-
-#define cmi_offset_of(type, member) offsetof(type, member)
-
-#define cmi_container_of(ptr, type, member) \
-((type *)((char *)(ptr) - cmi_offset_of(type, member)))
-
-struct cmi_slist_head {
-    struct cmi_slist_head *next;
+struct cmi_slist_node {
+    struct cmi_slist_node *next;
 };
 
 CMB_MAYBE_UNUSED
-static inline struct cmi_slist_head *cmi_slist_create(void)
+static inline struct cmi_slist_node *cmi_slist_create(void)
 {
-    return cmi_malloc(sizeof(struct cmi_slist_head));
+    return cmi_malloc(sizeof(struct cmi_slist_node));
 }
 
 CMB_MAYBE_UNUSED
-static inline void cmi_slist_initialize(struct cmi_slist_head *head)
+static inline void cmi_slist_initialize(struct cmi_slist_node *head)
 {
     cmb_assert_debug(head != NULL);
 
@@ -49,13 +43,15 @@ static inline void cmi_slist_initialize(struct cmi_slist_head *head)
 }
 
 CMB_MAYBE_UNUSED
-static inline void cmi_slist_terminate(struct cmi_slist_head *head)
+static inline void cmi_slist_terminate(struct cmi_slist_node *head)
 {
     cmb_assert_debug(head != NULL);
+
+    head->next = NULL;
 }
 
 CMB_MAYBE_UNUSED
-static inline void cmi_slist_destroy(struct cmi_slist_head *head)
+static inline void cmi_slist_destroy(struct cmi_slist_node *head)
 {
     cmb_assert_release(head != NULL);
 
@@ -63,14 +59,16 @@ static inline void cmi_slist_destroy(struct cmi_slist_head *head)
 }
 
 CMB_MAYBE_UNUSED
-static inline bool cmi_slist_is_empty(const struct cmi_slist_head *head)
+static inline bool cmi_slist_is_empty(const struct cmi_slist_node *head)
 {
+    cmb_assert_debug(head != NULL);
+
     return (head->next == NULL);
 }
 
 CMB_MAYBE_UNUSED
-static inline void cmi_slist_push(struct cmi_slist_head *head,
-                                  struct cmi_slist_head *new)
+static inline void cmi_slist_push(struct cmi_slist_node *head,
+                                  struct cmi_slist_node *new)
 {
     cmb_assert_debug(head != NULL);
     cmb_assert_debug(new != NULL);
@@ -80,11 +78,11 @@ static inline void cmi_slist_push(struct cmi_slist_head *head,
 }
 
 CMB_MAYBE_UNUSED
-static inline struct cmi_slist_head *cmi_slist_pop(struct cmi_slist_head *head)
+static inline struct cmi_slist_node *cmi_slist_pop(struct cmi_slist_node *head)
 {
     cmb_assert_debug(head != NULL);
 
-    struct cmi_slist_head *ret = head->next;
+    struct cmi_slist_node *ret = head->next;
     if (ret != NULL) {
         head->next = ret->next;
     }
@@ -93,11 +91,13 @@ static inline struct cmi_slist_head *cmi_slist_pop(struct cmi_slist_head *head)
 }
 
 CMB_MAYBE_UNUSED
-static inline struct cmi_slist_head *cmi_slist_peek(const struct cmi_slist_head *head)
+static inline struct cmi_slist_node *cmi_slist_peek(const struct cmi_slist_node *head)
 {
     cmb_assert_debug(head != NULL);
 
     return head->next;
 }
+
+#define cmi_slist_entry(node, type, member) cmi_container_of(node, type, member)
 
 #endif /* CIMBA_CMI_SLIST_H */

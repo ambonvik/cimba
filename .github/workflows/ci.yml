@@ -58,12 +58,11 @@ jobs:
       - name: Verify installed headers are self-contained and complete
         run: bash test/tools/verify_install.sh /usr/local
 
-  # Linux: debug build under AddressSanitizer + UndefinedBehaviorSanitizer
+  # Linux: debug build under AddressSanitizer + LeakSanitizer
   linux-asan:
     runs-on: ubuntu-latest
     env:
       ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
-      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
@@ -86,7 +85,6 @@ jobs:
   linux-ubsan:
     runs-on: ubuntu-latest
     env:
-      ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
       UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
     steps:
       - uses: actions/checkout@v4

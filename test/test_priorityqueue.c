@@ -30,7 +30,9 @@
 #include "cmb_process.h"
 #include "cmb_random.h"
 
+#include "cmi_mempool.h"
 #include "cmi_memutils.h"
+
 #include "test.h"
 
 #define USERFLAG1 0x00000001

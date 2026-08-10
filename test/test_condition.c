@@ -53,7 +53,7 @@ struct simulation {
     struct cmb_condition *harbormaster;
     struct cmb_condition *davyjones;
     struct cmi_hashheap *active_ships;
-    struct cmi_slist_head *departed_ships;
+    struct cmi_slist_node *departed_ships;
  };
 
 /* The current sea and weather state */
@@ -89,7 +89,7 @@ struct ship {
     double min_depth;
     unsigned tugs;
     enum ship_size size;
-    struct cmi_slist_head listhead;
+    struct cmi_slist_node listnode;
 };
 
 /* The entire context for our simulation run */
@@ -298,7 +298,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     const bool found = cmi_hashheap_remove(sim->active_ships, shp->id);
     cmb_assert_always(found);
     /* List ourselves as departed instead */
-    cmi_slist_push(sim->departed_ships, &(shp->listhead));
+    cmi_slist_push(sim->departed_ships, &(shp->listnode));
     /* Inform Davy Jones that we are coming his way */
     uint64_t r = cmb_condition_signal(sim->davyjones);
     cmb_assert_always(r == 1u);
@@ -405,7 +405,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
     cmb_assert_always(sim != NULL);
     const struct trial *trl = ctx->trial;
     cmb_assert_always(trl != NULL);
-    struct cmi_slist_head *dep_head = sim->departed_ships;
+    struct cmi_slist_node *dep_head = sim->departed_ships;
 
     while (true) {
         /* We do not need to loop here, since this is the only process waiting */
@@ -413,9 +413,9 @@ void *departure_proc(struct cmb_process *me, void *vctx)
         cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
 
         /* Got one, collect its exit value */
-        struct cmi_slist_head *shead = cmi_slist_pop(dep_head);
+        struct cmi_slist_node *shead = cmi_slist_pop(dep_head);
         cmb_assert_always(shead != NULL);
-        struct ship *shp = cmi_container_of(shead, struct ship, listhead);
+        struct ship *shp = cmi_container_of(shead, struct ship, listnode);
         cmb_assert_always(shp != NULL);
         double *t_sys_p = cmb_process_exit_value((struct cmb_process *)shp);
         cmb_assert_always(t_sys_p != NULL);
@@ -614,10 +614,21 @@ void test_condition(uint64_t seed, double dur)
     cmb_condition_destroy(sim.harbormaster);
     cmb_condition_destroy(sim.davyjones);
     cmb_resourcepool_destroy(sim.tugs);
+
     cmb_process_terminate(sim.weather);
     cmb_process_destroy(sim.weather);
     cmb_process_terminate(sim.tide);
     cmb_process_destroy(sim.tide);
+
+    cmb_process_terminate(sim.arrivals);
+    cmb_process_destroy(sim.arrivals);
+    cmb_process_terminate(sim.departures);
+    cmb_process_destroy(sim.departures);
+
+    cmi_hashheap_terminate(sim.active_ships);
+    cmi_hashheap_destroy(sim.active_ships);
+    cmi_slist_terminate(sim.departed_ships);
+    cmi_slist_destroy(sim.departed_ships);
 
     cmb_event_queue_terminate();
     cmb_random_terminate();

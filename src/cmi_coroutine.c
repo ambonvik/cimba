@@ -29,11 +29,11 @@
 #include "cmi_thread.h"
 
 /* The main and current coroutine pointers */
-CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_main = NULL;
-CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_current = NULL;
+static CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_main = NULL;
+static CMB_THREAD_LOCAL struct cmi_coroutine *coroutine_current = NULL;
 
 /* Thread local mempool of recycled coroutine objects */
-CMB_THREAD_LOCAL struct cmi_mempool coroutine_pool
+static CMB_THREAD_LOCAL struct cmi_mempool coroutine_pool
     = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_coroutine), 16u);
 
 /* Backing storage for the per-thread main coroutine. In TLS so it is
@@ -211,10 +211,11 @@ void cmi_coroutine_terminate(struct cmi_coroutine *cp)
     cmi_tsan_destroy_fiber(cp->tsan_fiber);
     cmi_coroutine_stack_free(cp->stack, cp->stack_size);
 
-    /* Preserve the heap allocation status for possible thread cleanup handling */
-    const bool heap_allocated = cp->pool_allocated;
+    /* Preserve the pool allocation status for any thread cleanup handling */
+    const bool pool_allocated = cp->pool_allocated;
     cmi_memset(cp, 0, sizeof(*cp));
-    cp->pool_allocated = heap_allocated;
+    cp->pool_allocated = pool_allocated;
+    cmb_assert_debug(cp->stack == NULL);
 }
 
 /*
@@ -432,6 +433,7 @@ void cmi_coroutine_thread_cleanup(void)
     /* Clean up all still existing coroutine objects */
     while (coroutine_registry != NULL) {
         struct cmi_coroutine *cp = coroutine_registry;
+        cmb_assert_debug(cp != cmi_coroutine_current());
         registry_remove(cp);
         cmi_coroutine_stack_free(cp->stack, cp->stack_size);
         cmi_tsan_destroy_fiber(cp->tsan_fiber);

@@ -3598,7 +3598,7 @@ store the results.
 
 The only complication is handling the terrain map between trials. Since generating it
 is so fast on CUDA, we could just generate a new one for each trial at very little cost.
-However, for the purposes of this simulation, we will not do that. Instead, we will
+However, for the purposes of this tutorial, we will not do that. Instead, we will
 count up how many GPUs we have available, generate one terrain map per GPU, and let
 the terrain map become a parameter for the simulation. We can do this from ``main()``
 like this:
