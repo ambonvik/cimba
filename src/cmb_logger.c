@@ -30,6 +30,7 @@
 #include "cmb_random.h"
 
 #include "cmi_config.h"
+#include "cmi_memregistry.h"
 
 /* Maximum length of a formatted time string before it gets truncated */
 #define TSTRBUF_SZ 32
@@ -62,6 +63,8 @@
   #define logger_assert_release(x)  do { (void)sizeof(x); } while (0)
   #define logger_assert_debug(x)  do { (void)sizeof(x); } while (0)
 #endif
+
+#define logger_assert_always(x) do_assert(x)
 
 /* The current logging level. A single mask shared by all threads, so changing
  * it affects logging from every thread. Accessed atomically. Initially all on. */
@@ -250,6 +253,9 @@ void cmi_logger_error(FILE *fp,
                       const char *fmtstr,
                       ...)
 {
+    /* We should never end back here during an ongoing teardown */
+    logger_assert_always(!cmi_memregistry_is_demolishing);
+
     if ((CMB_LOGGER_ERROR & logger_mask()) != 0) {
         fflush(NULL);
         va_list args;
