@@ -211,10 +211,11 @@ void cmi_coroutine_terminate(struct cmi_coroutine *cp)
     cmi_tsan_destroy_fiber(cp->tsan_fiber);
     cmi_coroutine_stack_free(cp->stack, cp->stack_size);
 
-    /* Preserve the heap allocation status for possible thread cleanup handling */
-    const bool heap_allocated = cp->pool_allocated;
+    /* Preserve the pool allocation status for any thread cleanup handling */
+    const bool pool_allocated = cp->pool_allocated;
     cmi_memset(cp, 0, sizeof(*cp));
-    cp->pool_allocated = heap_allocated;
+    cp->pool_allocated = pool_allocated;
+    cmb_assert_debug(cp->stack == NULL);
 }
 
 /*
