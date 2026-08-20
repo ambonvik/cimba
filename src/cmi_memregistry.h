@@ -1,8 +1,16 @@
 /*
  * cmi_memregistry.h - registry for ensuring deallocation of Cimba internal
- *  objects on abandoning a trial to avoid uncontrolled memory leaks. The user
- *  code is still responsible for deallocating its own objects before calling
- *  cmb_logger_error to abandon a trial without exiting the program.
+ * objects on abandoning a trial to avoid uncontrolled memory leaks. The user
+ * code is still responsible for deallocating its own objects before calling
+ * cmb_logger_error to abandon a trial without exiting the program.
+ *
+ * Note that this is not a general garbage collection, but more like a partial
+ * RAII for the specific case where objects in a trial are abandoned due to
+ * error handling. So we run their _terminate and _destroy functions from here
+ * as part of the error unwind.
+ *
+ * See also functions thread_pthread_cleanup, thread_main_cleanup, and
+ * worker_thread_func in cimba.c
  *
  * Copyright (c) Asbjørn M. Bonvik 2026.
  *
@@ -25,17 +33,20 @@
 #include "cmi_config.h"
 #include "cmi_dlist.h"
 
-/* Teardown function for a particular object class. In the Cimba object
+/*
+ * Teardown function for a particular object class. In the Cimba object
  * lifecycle (create, initialize, terminate, destroy) for some struct cmb_X,
- * these are the destructor cmb_X_terminate(struct cmb_X *ptr) and
- * the deallocator cmb_X_destroy(struct cmb_X *ptr), both with the same call
- * signature. We state the argument as `void *` here as a generic function. */
+ * these are cmb_X_terminate(struct cmb_X *ptr) and
+ * cmb_X_destroy(struct cmb_X *ptr), both with the same call signature.
+ * We state the argument as `void *` here as a generic function and typecast
+ * the actual functions when registering.
+ */
 typedef void (cmi_teardown_func)(void *obj);
 
 /* The registry tag, embedded in the managed objects */
 struct cmi_memregistry_item {
-    cmi_teardown_func *teardown;    /* Destructor function */
-    void *object;                   /* Start address of the object to be demolished */
+    cmi_teardown_func *teardown;    /* Teardown function */
+    void *object;                   /* Address of the object to be torn down */
     struct cmi_dlist_node node;     /* Registry list links */
 };
 
@@ -59,6 +70,6 @@ extern void cmi_memregistry_remove(struct cmi_memregistry_item *item);
  * Execute the teardown in LIFO order for proper create, initialize,
  * terminate, destroy sequence.
  */
-extern void cmi_memregistry_teardown(void);
+extern void cmi_memregistry_cleanup(void);
 
 #endif /* CIMBA_CMI_MEMREGISTRY_H */
