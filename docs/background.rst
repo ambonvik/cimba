@@ -160,7 +160,7 @@ Cimba processes are asymmetric coroutines
 Our basic coroutines are a bit *too* general and powerful for simulation modeling. We use
 these as internal building blocks for the Cimba *processes*. These are essentially named
 asymmetric coroutines, inheriting all properties and methods from the coroutine class,
-adding a name, a priority for scheduling processes, and pointers to things it may be
+adding a name, a priority for scheduling processes, pointers to things it may be
 waiting for, to resources it may be holding, and to other processes that may be waiting
 for it. As asymmetric coroutines, the Cimba processes always transfer control to a single
 dispatcher process running on the main program stack, and are always re-activated from
@@ -595,243 +595,6 @@ pre-packaged for the common resource types and exposed for the
 There may also be a weak pun here somewhere on the C++ ``promise`` keyword: Cimba
 processes do not promise. They *demand*.
 
-.. _background_error:
-
-Error handling: The loud crashing noise
----------------------------------------
-
-Cimba error handling is intentionally draconian. It will not try to "handle" errors
-gently, but will make a loud crashing noise instead.
-
-To understand why, think about the worst case scenario for a discrete
-event simulation model: Producing incorrect results. The model can not handle
-errors in "helpful" ways that risks introducing biases. The consequences of
-that could range from embarrassing (e.g., during your Ph.D. thesis defense) to
-catastrophic (e.g., military decision making). Also, the model will run unattended in a
-multithreaded environment with no direct user interface. Requesting user clarification is
-not an option. It is far better that the simulation stops at any sign of trouble and
-requires you to fix the model code or its input before trying again, than to do something
-that could turn out to be subtly wrong.
-
-As a contrasting opposite, consider a music player application. If some sample is missing,
-the app should interpolate rather than make an audible dropout. If the network is slow,
-it should reduce the bit rate and degrade sound quality rather than stopping and
-restarting as the buffer empties and refills. This is not the kind of business Cimba is
-in. Like the proverbial samurai, it needs to return victorious or not at all.
-
-Our approach is known as
-"`offensive programming <https://en.wikipedia.org/wiki/Offensive_programming>`_".
-This is closely related to the
-`Design by Contract <https://en.wikipedia.org/wiki/Design_by_contract>`_
-paradigm, where code expresses clear assertions about the expected preconditions,
-invariants, and postconditions during function execution. If one of those assertions is
-proven invalid, execution stops right there with a diagnostic message. The assertions
-then become self-enforcing
-code documentation, since whatever condition it asserts to be true *must* be true for
-execution to proceed past that point.
-
-The second important observation is that tracing the flow of execution in a large
-discrete event simulation model can become mind-bogglingly complex. We have two levels
-of concurrency within the same memory space: Multithreading and stackful coroutines.
-Your debugger will probably be very confused. Finding out what happened if the error
-has had time to propagate elsewhere in your code before something crashes will be near
-impossible. We need to catch it as close to the source as possible. Error messages need
-to give additional useful information, not just about what went wrong and where in the
-code it went wrong, but also what process, thread, random number seed, and so on, to
-replicate, locate, and fix the issue.
-
-Cimba provides its own ``assert()`` macros. Tripping a Cimba assert will give a crash
-report like this:
-
-.. code-block:: none
-
-    9359.5	Service	cmb_process_hold (272):  Fatal: Assert "dur >= 0.0" failed, source file cmb_process.c, seed 0x9bec8a16f0aa802a
-
-    Process finished with exit code 134 (interrupted by signal 6:SIGABRT)
-
-It shows the simulation time, process, function, line number, the actual condition that
-failed, the program code file, and finally the random number seed used to initialize the
-trial. If running multi-threaded, it will also include the trial number.
-You now know both where to look and how to reproduce the issue if you want a closer look.
-
-If you are using a debugger, we encourage you to put a permanent breakpoint in
-`cmi_assert_failed() <https://github.com/ambonvik/cimba/blob/main/src/cmb_assert.c>`_.
-Assuming that you are compiling in debug mode, you will then be able to page up the stack
-and identify the circumstances that caused the error, see
-:ref:`the example in our first tutorial <tut_1_assert>`.
-
-Our asserts come in two flavors: the :c:macro:`cmb_assert_debug()` and
-:c:macro:`cmb_assert_release()`.
-There is also a :c:macro:`cmb_assert()` macro, but it is just a shorthand for
-:c:macro:`cmb_assert_debug()`.
-
-*Debug* asserts are used at the development stage to ensure that everything is working as
-expected, even if the code to check it is time-consuming.
-Inside Cimba, you will find asserts that call dedicated predicate functions to validate
-whether the coroutine stacks are valid, if the event queue heap condition is satisfied,
-and so forth. Like the standard C ``assert()`` macro, the debug asserts vanish from the
-code if the preprocessor symbol ``NDEBUG`` is defined. Disabling the debug asserts
-will approximately double the execution speed of your model.
-
-*Release* asserts enforce preconditions, the things that need to be true for some
-function to work correctly. These remain in the code even with ``-DNDEBUG``, since they
-express the contracts towards surrounding code such as valid ranges for input values.
-These are typically simple and fast statements. If you are absolutely certain that your
-model is working correctly and that all your inputs are valid, you can squeeze out another
-slight speed improvement (about 10 %) by defining the preprocessor symbol ``NASSERT`` and
-making these vanish as well.
-
-As an illustration, consider the function :c:func:`cmb_random_uniform()`:
-
-.. code-block:: C
-
-    static inline double cmb_random_uniform(const double min, const double max)
-    {
-        cmb_assert_release(min < max);
-
-        const double r = min + (max - min) * cmb_random();
-        cmb_assert_debug((r >= min) && (r <= max));
-
-        return r;
-    }
-
-The function generates a pseudo-random uniform variate on the interval ``[min, max)``. We
-use those argument names instead of, say, ``[a, b)`` to make the expectation clear. We
-then enforce it with a release assert. If ``min`` is not strictly less than ``max``, we
-stop right there. Alternatively, we could be "helpful" and generate samples for intervals
-with reversed limits, but it is more likely than not that both a zero-width interval and an
-interval where ``min > max`` indicates an input or model code error. Cimba's way of being
-helpful is to make its loud crashing noise to draw your attention to fixing the error.
-
-The debug assert validates that the result is within the advertised range. It tests for
-internal problems in Cimba and can be turned off after sufficient unit testing. After
-that, it mainly serves as trustworthy documentation: This statement is true, has been
-tested millions of times in unit testing, and you can easily verify it for yourself.
-
-It is clear what valid inputs and outputs are for the function above, even
-without a single comment in the code. We are not about to prove total correctness in the
-strict C.A.R. Hoare sense, but the function shown above does constitute a logical
-`Hoare triple <https://en.wikipedia.org/wiki/Hoare_logic#Hoare_triple>`_.
-
-There is also an `cmb_assert_always()` that remains also if `NASSERT` is defined. This
-is for use in test programs that need to demonstrate correctness independent of the
-compilation options. Internally in Cimba, this is only used in the cmi_memutils.h
-wrappers for `malloc()` and his friends to thest for out-of-memory conditions. These
-function calls are slow anyway, and the consequences of an invalid pointer could be
-hard to trace down, so they will be stopped immediately with very little performance cost.
-
-For empirical data on the relationship between assertions and code quality, see,
-e.g., https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2006-54.pdf
-or https://www.cs.ucdavis.edu/~filkov/papers/assert-main.pdf
-
-.. _background_logging:
-
-Logging flags and bit masks
----------------------------
-
-As explained in :ref:`the first tutorial <tut_1_logging>`, the key concept for the
-logger is the *logger flags*; a bit
-mask given as an argument to a logger call, and a current bit field. Both are 32-bit
-unsigned integers, type ``uint32_t``. If a simple bitwise and (``&``) between the logger's bit
-field and the caller's bit mask gives a non-zero result, that line is printed, otherwise
-it is not. Initially, all bits in the logger bit field are on, ``0xFFFFFFFF``. You can
-turn selected bits on and off with :c:func:`cmb_logger_flags_on()` and
-:c:func:`cmb_logger_flags_off()`. The bit field is thread local, so any bit twiddles will only
-affect the current thread.
-
-The top four bits are reserved for Cimba use, defined as :c:macro:`CMB_LOGGER_FATAL`,
-:c:macro:`CMB_LOGGER_ERROR`, :c:macro:`CMB_LOGGER_WARNING`, and :c:macro:`CMB_LOGGER_INFO`,
-respectively.
-These correspond to logger functions (actually macro wrappers) :c:macro:`cmb_logger_fatal()`,
-:c:macro:`cmb_logger_error()`, :c:macro:`cmb_logger_warning()`, and
-:c:macro:`cmb_logger_info()`. These are ``fprintf()``-style functions.
-
-The difference between :c:macro:`cmb_logger_fatal()` and :c:macro:`cmb_logger_error()` is that
-``_fatal()`` will call ``abort()`` to terminate your entire program, while ``_error()``
-calls ``pthread_exit(NULL)`` to stop the current thread. :c:macro:`cmb_logger_fatal()` should
-be used whenever there is a chance of memory corruption that could affect other
-threads, while :c:macro:`cmb_logger_error()` can be used if a single trial for some reason is
-unsuccessful and needs to bail out without providing a result. To make this work, you
-will need to initialize the trial result fields in your experiment array to some
-out-of-band value, and ensure that any remaining out-of-band values at the end of the
-experiment are not included in the result calculation.
-
-The :c:macro:`cmb_logger_info()` level is used internally in Cimba to give a basic view of
-what is going on. It can look like this:
-
-.. code-block:: none
-
-    [ambonvik@Threadripper cimba]$ build/benchmark/MM1_single | more
-        0.0000	dispatcher	cmb_event_queue_execute (294):  Starting simulation run
-        0.0000	Arrival	cmb_process_hold (278):  Holding for 0.786458 time units
-        0.0000	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 0.786458
-        0.0000	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 0
-        0.0000	Service	cmb_objectqueue_get (246):  Waiting for an object
-        0.0000	Service	cmb_resourceguard_wait (149):  Waits for Queue
-       0.78646	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
-       0.78646	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c000 into Queue, length 0
-       0.78646	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c000
-       0.78646	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
-       0.78646	Arrival	cmb_process_hold (278):  Holding for 0.237395 time units
-       0.78646	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 1.023854
-       0.78646	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
-       0.78646	Service	cmb_objectqueue_get (251):  Trying again
-       0.78646	Service	cmb_objectqueue_get (234):  Success, got 0x555ae5e1c000
-       0.78646	Service	cmb_process_hold (278):  Holding for 1.321970 time units
-       0.78646	Service	cmb_process_timer_add (343):  Scheduled timeout event at 2.108428
-        1.0239	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
-        1.0239	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c008 into Queue, length 0
-        1.0239	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c008
-        1.0239	Arrival	cmb_process_hold (278):  Holding for 3.063936 time units
-        1.0239	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 4.087789
-        2.1084	dispatcher	wakeup_event_time (310):  Wakes Service signal 0
-        2.1084	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 1
-        2.1084	Service	cmb_objectqueue_get (234):  Success, got 0x555ae5e1c008
-        2.1084	Service	cmb_process_hold (278):  Holding for 0.576082 time units
-        2.1084	Service	cmb_process_timer_add (343):  Scheduled timeout event at 2.684510
-        2.6845	dispatcher	wakeup_event_time (310):  Wakes Service signal 0
-        2.6845	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 0
-        2.6845	Service	cmb_objectqueue_get (246):  Waiting for an object
-        2.6845	Service	cmb_resourceguard_wait (149):  Waits for Queue
-        4.0878	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
-        4.0878	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c008 into Queue, length 0
-        4.0878	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c008
-        4.0878	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
-        4.0878	Arrival	cmb_process_hold (278):  Holding for 1.313836 time units
-        4.0878	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 5.401625
-        4.0878	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
-        4.0878	Service	cmb_objectqueue_get (251):  Trying again
-        4.0878	Service	cmb_objectqueue_get (234):  Success, got 0x555ae5e1c008
-        4.0878	Service	cmb_process_hold (278):  Holding for 2.084093 time units
-        4.0878	Service	cmb_process_timer_add (343):  Scheduled timeout event at 6.171883
-        5.4016	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
-        5.4016	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c000 into Queue, length 0
-        5.4016	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c000
-        5.4016	Arrival	cmb_process_hold (278):  Holding for 1.702620 time units
-        5.4016	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 7.104245
-
-If you compare this to the stack illustrations in the preceding section on Cimba
-processes as coroutines, this gives a pretty good view of what is happening on the
-stacks. However, it will not be needed very often and can be turned off with
-
-.. code-block:: C
-
-    cmb_logger_flags_off(CMB_LOGGER_INFO);
-
-It will still be in the code if turned off, requiring one 32-bit comparison per call, but
-you can make it vanish completely (like the asserts) by defining the preprocessor symbol
-``NLOGINFO``. That will turn the :c:macro:`cmb_logger_info()` wrapper macro into a no-op
-statement, eliminating it from the code. For fast production code, already well tested,
-you may want to compile Cimba with compiler flags ``-DNDEBUG -DNASSERT -DNLOGINFO``. See
-the top level `meson.build <https://github.com/ambonvik/cimba/blob/main/meson.build>`_ and
-uncomment those options before compiling and (re)installing Cimba.
-
-As shown in the tutorial, the user application can define up to 28 different logger
-flags for fine-grained control of what logging messages to print. Remember that these
-are bit masks, so your logging flags should be ``0x00000001``, ``0x00000002``,
-``0x00000004``, ``0x00000008``, ``0x00000010``, and so on for single bits turned off
-and on.
-
 .. _background_random:
 
 Pseudo-random number generators and distributions
@@ -1108,10 +871,21 @@ do anything. The worker threads keep themselves busy. The alternative approach w
 to launch each trial in its own thread and close it again before launching the next
 trial from the main scheduler. This would also work, but with some more overhead.
 
+It also strongly encourages the user to think through the experiment design: What 
+parameters to vary, what ranges, how many steps? Structuring a full factorial 
+experiment in the Cimba experiment array is just a matter of nested loops in the code 
+to populate the experiment array, and later to unpack the result. 
+
 The downside to our approach is that new trials will be launched into a thread memory
 space where an earlier trial used the event queue and the random generators. If the
 user application is not scrupulous in initializing and terminating objects, it may
-encounter garbage values with somewhat unpredictable results.
+encounter garbage values with somewhat unpredictable results. Hence, the code for each
+trial should try to leave the environment in the same state as it found it.
+
+Cimba will clear the event queue, reset the simulation time to zero, and issue warnings
+if there are obvious memory leaks between trials. It will also be somewhat rigorous in
+enforcing the object lifecycle of (create) - initialize - terminate - (destroy) to prevent
+corrupting internal state.
 
 We define the *trial function* as a function that takes a ``void *`` as argument and
 does not return any value, ``typedef void (cimba_trial_func)(void *trial_struct)``.
@@ -1164,11 +938,11 @@ The user application allocates the experiment array, e.g.:
 
 and initializes it with the various trial parameters, with the necessary variations and
 replications. Once it has loaded parameters into each trial of the experiment array, it
-calls :c:func:`cimba_run_experiment()` and waits for the results.
+calls :c:func:`cimba_run()` and waits for the results.
 
 .. code-block:: c
 
-    cimba_run_experiment(experiment, n_trials, sizeof(*experiment), run_MM1_trial);
+    cimba_run(experiment, n_trials, sizeof(*experiment), run_MM1_trial);
 
 Once this function returns, each trial in the experiment array will have its results
 fields populated. The application can then parse the outcome and present the results in
@@ -1177,14 +951,14 @@ any way it wants.
 Two less obvious features to be aware of, perhaps also less useful, but still:
 
 * You can use different trial functions per trial. If the trial function argument to
-  :c:func:`cimba_run_experiment` is ``NULL``, it will instead take the first 64 bits of
+  :c:func:`cimba_run` is ``NULL``, it will instead take the first 64 bits of
   your   trial struct as a pointer to the trial function to be used for this particular
   trial. You could have different trial functions for every trial if you
-  want. Of course, if the trial function argument to :c:func:`cimba_run_experiment()` is
+  want. Of course, if the trial function argument to :c:func:`cimba_run()` is
   ``NULL`` and the first 64 bits of your trial structure do *not* contain a valid function
   address, your program will promptly crash with a segmentation fault.
 
-* :c:func:`cimba_run_experiment()` does not even care if the trial functions it executes
+* :c:func:`cimba_run()` does not even care if the trial functions it executes
   is a simulation or something else. You could feed it some array of parameter values and
   a pointer to some function that does something with whatever those parameter values
   indicate. It is just a wrapper to a worker pool of pthreads and will happily
@@ -1192,14 +966,333 @@ Two less obvious features to be aware of, perhaps also less useful, but still:
   construct a discrete event simulation engine that *can* be run in the multithreaded
   wrapper, not constructing the wrapper as such.
 
+
+.. _background_error:
+
+Handling the unexpected
+-----------------------
+
+The loud crashing noise
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Cimba internal error handling is intentionally draconian. It will not try to "handle"
+errors gently, but will make a loud crashing noise instead.
+
+To understand why, think about the worst case scenario for a discrete event simulation
+model: Producing incorrect results. The model can not handle errors in "helpful" ways
+that risks introducing biases. The consequences of that could range from embarrassing
+(e.g., during your Ph.D. thesis defense) to catastrophic (e.g., military decision making).
+Also, the model will run unattended in a multithreaded environment with no direct user
+interface. Requesting user clarification is not an option. It is far better that the
+simulation stops at any sign of trouble and requires you to fix the model code or its
+input before trying again, than to do something that could turn out to be subtly wrong.
+
+As a contrasting opposite, consider a music player application. If some sample is missing,
+the app should interpolate rather than make an audible dropout. If the network is slow,
+it should reduce the bit rate and degrade sound quality rather than stopping and
+restarting as the buffer empties and refills. This is not the kind of business Cimba is
+in. Like the proverbial samurai, it needs to return victorious or not at all.
+
+Our approach is known as
+"`offensive programming <https://en.wikipedia.org/wiki/Offensive_programming>`_".
+This is closely related to the
+`Design by Contract <https://en.wikipedia.org/wiki/Design_by_contract>`_
+paradigm, where code expresses clear assertions about the expected preconditions,
+invariants, and postconditions during function execution. If one of those assertions is
+proven invalid, execution stops right there with a diagnostic message. The assertions
+then become self-enforcing code documentation, since whatever condition it asserts to be
+true *must* be true for execution to proceed past that point.
+
+The second important observation is that tracing the flow of execution in a large
+discrete event simulation model can become mind-bogglingly complex. Finding out what
+happened if the error has had time to propagate elsewhere in your code before something
+crashes will be near impossible. We need to catch it as close to the source as possible.
+Error messages need to give additional useful information, not just about what went wrong
+and where in the code it went wrong, but also what process, thread, random number seed,
+and so on, to replicate, locate, and fix the issue.
+
+Cimba provides its own ``assert()`` macros, used to express "this should never happen"
+conditions. Tripping a Cimba assert will give a crash report like this:
+
+.. code-block:: none
+
+    9359.5	Service	cmb_process_hold (272):  Fatal: Assert "dur >= 0.0" failed, source file cmb_process.c, seed 0x9bec8a16f0aa802a
+
+    Process finished with exit code 134 (interrupted by signal 6:SIGABRT)
+
+It shows the simulation time, process name, function, line number, the actual condition
+that failed, the program code file, and finally the random number seed used to initialize the
+trial. If running multi-threaded, it will also include the trial number.
+You now know both where to look and how to reproduce the issue if you want a closer look.
+
+If you are using a debugger, we encourage you to put a permanent breakpoint in
+`cmi_assert_failed() <https://github.com/ambonvik/cimba/blob/main/src/cmb_assert.c>`_.
+Assuming that you are compiling in debug mode, you will then be able to page up the stack
+and identify the circumstances that caused the error, see
+:ref:`the example in our first tutorial <tut_1_assert>`.
+
+Our asserts come in two flavors: the :c:macro:`cmb_assert_debug()` and
+:c:macro:`cmb_assert_release()`.
+There is also a :c:macro:`cmb_assert()` macro, but it is just a shorthand for
+:c:macro:`cmb_assert_debug()`.
+
+*Debug* asserts are used at the development stage to ensure that everything is working as
+expected, even if the code to check it is time-consuming. Inside Cimba, you will find asserts
+that call dedicated predicate functions to validate whether the coroutine stacks are valid,
+if the event queue heap condition is satisfied, and so forth. Like the standard C ``assert()``
+macro, the debug asserts vanish from the code if the preprocessor symbol ``NDEBUG`` is
+defined. Disabling the debug asserts will approximately double the execution speed of your
+model.
+
+*Release* asserts enforce preconditions, the things that need to be true for some
+function to work correctly. These remain in the code even with ``-DNDEBUG``, since they
+express the contracts towards surrounding code such as valid ranges for input values.
+These are typically simple and fast statements. If you are absolutely certain that your
+model is working correctly and that all your inputs are valid, you can squeeze out another
+slight speed improvement (about 10 %) by defining the preprocessor symbol ``NASSERT`` and
+making these vanish as well.
+
+As an illustration, consider the function :c:func:`cmb_random_uniform()`:
+
+.. code-block:: C
+
+    static inline double cmb_random_uniform(const double min, const double max)
+    {
+        cmb_assert_release(min < max);
+
+        const double r = min + (max - min) * cmb_random();
+        cmb_assert_debug((r >= min) && (r <= max));
+
+        return r;
+    }
+
+The function generates a pseudo-random uniform variate on the interval ``[min, max)``. We
+use those argument names instead of, say, ``[a, b)`` to make the expectation clear. We
+then enforce it with a release assert. If ``min`` is not strictly less than ``max``, we
+stop right there. Alternatively, we could be "helpful" and generate samples for intervals
+with reversed limits, but it is more likely than not that both a zero-width interval and an
+interval where ``min > max`` indicates an input or model code error. Cimba's way of being
+helpful is to make its loud crashing noise to draw your attention to fixing the error.
+
+The debug assert validates that the result is within the advertised range. It tests for
+internal problems in Cimba and can be turned off after sufficient unit testing. After
+that, it mainly serves as trustworthy documentation: This statement is true, has been
+tested millions of times in unit testing, and you can easily verify it for yourself.
+
+It is clear what valid inputs and outputs are for the function above, even
+without a single comment in the code. We are not about to prove total correctness in the
+strict C.A.R. Hoare sense, but the function shown above does constitute a logical
+`Hoare triple <https://en.wikipedia.org/wiki/Hoare_logic#Hoare_triple>`_.
+
+There is also an ``cmb_assert_always()`` that remains even if ``NASSERT`` is defined. This
+is for use in test programs that need to demonstrate correctness independent of the
+compilation options. Internally in Cimba, this is only used in the ``cmi_memutils.h``
+wrappers for ``malloc()`` and his friends to test for out-of-memory conditions. These
+function calls are slow anyway, and the consequences of an invalid pointer could be
+hard to trace down, so they will be stopped immediately with very little performance cost.
+
+For empirical data on the relationship between assertions and code quality, see,
+e.g., https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2006-54.pdf
+or https://www.cs.ucdavis.edu/~filkov/papers/assert-main.pdf
+
+The graceful recovery
+^^^^^^^^^^^^^^^^^^^^^
+
+The ``assert`` use cases described above will abort execution of the entire
+program whenever some logical assumption turns out to be incorrect. Something that
+"could not happen" just did, and now all bets are off. However, in many cases,
+exceptional conditions can be expected and need a more nuanced approach.
+
+Cimba provides the functions :c:macro:`cmb_logger_fatal()`,:c:macro:`cmb_logger_error()`,
+:c:macro:`cmb_logger_warning()`, and :c:macro:`cmb_logger_info()`. These are
+``fprintf()``-style functions, where user code can provide a detailed message and have
+it printed to the designated file pointer (often ``stdout`` or ``stderr``).
+
+The difference between :c:macro:`cmb_logger_fatal()` and :c:macro:`cmb_logger_error()` is that
+``_fatal()`` will call ``abort()`` to terminate your entire program, with similar
+effect as tripping an ``assert``, while ``_error()`` only will stop the current trial.
+In fact, a tripped ``assert`` is just a wrapper to ``cmb_logger_fatal()``.
+
+:c:macro:`cmb_logger_fatal()` should be used whenever there is a chance of memory corruption
+that could affect other trials, while :c:macro:`cmb_logger_error()` can be used if a
+single trial for some reason is unsuccessful and needs to bail out without providing a result.
+It can also be used for what is effectively rejection sampling from some distribution,
+just discarding the trial once it is clear that it does not belong in the data set. For
+this purpose, you can also use :c:func:`cimba_trial_abandon()`, which does just that
+without providing a logger message. (:c:macro:`cmb_logger_error()` calls
+:c:func:`cimba_trial_abandon()` internally after printing its logger message.) For more
+information about using this, see `the tutorial <tutorial_abandon>`_. Here, we will
+focus on what is happening in the background when this occurs.
+
+Suppose some ``cmb_process`` calls ``cmb_logger_error`` from deep inside some nested
+call, abandoning the trial. Other processes may be running, they may have allocated
+memory for their own purposes, and there may be overarching data structures allocated
+for the trial. The calling process does not and should not need to know about all
+these, and can not be responsible for calling any necessary destructors.
+
+Nevertheless, we need to start the next trial from a consistent state in the same memory
+space and in the same worker thread, and we cannot afford to leak memory that could add up
+to cause an out-of-memory crash at some pointover a long simulation campaign.
+
+Cimba provides for this in two ways: It maintains a *memory registry* of created and
+initialized objects to enable calling the matching ``_terminate`` and ``_destroy``
+functions in case of an abandoned trial. And it provides a callback hook where the user
+code can register a *trial cleanup function* to be called if (and only if) a trial is
+abandoned.
+
+The *memory registry* is a doubly linked list of destructor functions. Every
+``cmb_something_create()`` will create an entry with a pointer to the corresponding
+``cmb_something_destroy()`` function and a pointer to the ``something`` object. This
+entry is added to the head of the list. Similarly, every ``cmb_something_initialize()``
+creates an entry for the matching ``cmb_something_terminate()``. If the trial is
+abandoned, these functions will be called in LIFO sequence, i.e., that the
+``_terminate()`` is called before ``_ destroy()`` for every object that was created and
+initialized.
+
+Whenever a ``cmb_something_terminate()`` or ``cmb_something_destroy()`` is called
+during normal execution, the corresponding entry is removed from the memory registry.
+This operation needs to be very fast, so the registry is implemented as an intrusive
+doubly linked list with nodes embedded in the objects themselves. See
+`src/cmi_dlist.h <https://github.com/ambonvik/cimba/blob/main/src/cmi_dlist.h>`_,
+`src/cmi_memregistry.h <https://github.com/ambonvik/cimba/blob/main/src/cmi_memregistry.h>`_,
+and `src/cmi_memregistry.c <https://github.com/ambonvik/cimba/blob/main/src/cmi_memregistry.c>`_
+for the implementation details.
+
+As a cost of providing this automatic cleanup, the user code *must* follow the
+object lifecycle. Any ``cmb_`` object needs to be initialized before use, even if the
+object is just declared as a local variable. It needs to be terminated after use, also
+if it is a local variable. Any object that is created by a ``cmb_something_create``
+call must also be destroyed by a matching ``cmb_something_destroy()`` call, and it has
+to be terminated by ``cmb_something_terminate()`` before being destroyed.
+
+The user code is still responsible for cleaning up any directly allocated objects,
+including any Cimba ``cmi_``objects it may have been using. These are *not* managed by
+the memory registry. The mechanism provided for this is the hook for registering a *trial
+cleanup function*. This is a user-provided function taking a ``void *`` argument and returning
+``void``. By calling :c:func:`cmb_trial_cleanup_set()`, the user code can pre-register
+what it wants to happen when a trial is abandoned.
+
+The provided cleanup function is called by Cimba *only* when abandoning a trial, not
+when a trial returns normally. The memory registry cleanup happens *after* the user-provided
+cleanup function is executed. Cimba executes the memory registry cleanup *only* when
+abandoning a trial. If the memory registry is not empty at the normal end of a trial,
+Cimba will print a warning and forget the registered objects without recycling them.
+Memory cleanup on normal trial completion is the user code's responsibility.
+
+.. _background_logging:
+
+Logging flags and bit masks
+---------------------------
+
+As explained in :ref:`the first tutorial <tut_1_logging>`, the key concept for the
+logger is the *logger flags*; a bit
+mask given as an argument to a logger call, and a current bit field. Both are 32-bit
+unsigned integers, type ``uint32_t``. If a simple bitwise and (``&``) between the logger's bit
+field and the caller's bit mask gives a non-zero result, that line is printed, otherwise
+it is not. Initially, all bits in the logger bit field are on, ``0xFFFFFFFF``. You can
+turn selected bits on and off with :c:func:`cmb_logger_flags_on()` and
+:c:func:`cmb_logger_flags_off()`. The bit field is thread local, so any bit twiddles will only
+affect the current thread.
+
+The top four bits are reserved for Cimba use, defined as :c:macro:`CMB_LOGGER_FATAL`,
+:c:macro:`CMB_LOGGER_ERROR`, :c:macro:`CMB_LOGGER_WARNING`, and :c:macro:`CMB_LOGGER_INFO`,
+respectively.
+These correspond to logger functions (actually macro wrappers) :c:macro:`cmb_logger_fatal()`,
+:c:macro:`cmb_logger_error()`, :c:macro:`cmb_logger_warning()`, and
+:c:macro:`cmb_logger_info()`.
+
+The :c:macro:`cmb_logger_info()` level is used internally in Cimba to give a basic view of
+what is going on. It can look like this:
+
+.. code-block:: none
+
+    [ambonvik@Threadripper cimba]$ build/benchmark/MM1_single | more
+        0.0000	dispatcher	cmb_event_queue_execute (294):  Starting simulation run
+        0.0000	Arrival	cmb_process_hold (278):  Holding for 0.786458 time units
+        0.0000	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 0.786458
+        0.0000	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 0
+        0.0000	Service	cmb_objectqueue_get (246):  Waiting for an object
+        0.0000	Service	cmb_resourceguard_wait (149):  Waits for Queue
+       0.78646	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+       0.78646	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c000 into Queue, length 0
+       0.78646	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c000
+       0.78646	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+       0.78646	Arrival	cmb_process_hold (278):  Holding for 0.237395 time units
+       0.78646	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 1.023854
+       0.78646	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
+       0.78646	Service	cmb_objectqueue_get (251):  Trying again
+       0.78646	Service	cmb_objectqueue_get (234):  Success, got 0x555ae5e1c000
+       0.78646	Service	cmb_process_hold (278):  Holding for 1.321970 time units
+       0.78646	Service	cmb_process_timer_add (343):  Scheduled timeout event at 2.108428
+        1.0239	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        1.0239	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c008 into Queue, length 0
+        1.0239	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c008
+        1.0239	Arrival	cmb_process_hold (278):  Holding for 3.063936 time units
+        1.0239	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 4.087789
+        2.1084	dispatcher	wakeup_event_time (310):  Wakes Service signal 0
+        2.1084	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 1
+        2.1084	Service	cmb_objectqueue_get (234):  Success, got 0x555ae5e1c008
+        2.1084	Service	cmb_process_hold (278):  Holding for 0.576082 time units
+        2.1084	Service	cmb_process_timer_add (343):  Scheduled timeout event at 2.684510
+        2.6845	dispatcher	wakeup_event_time (310):  Wakes Service signal 0
+        2.6845	Service	cmb_objectqueue_get (214):  Gets an object from Queue, length now 0
+        2.6845	Service	cmb_objectqueue_get (246):  Waiting for an object
+        2.6845	Service	cmb_resourceguard_wait (149):  Waits for Queue
+        4.0878	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        4.0878	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c008 into Queue, length 0
+        4.0878	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c008
+        4.0878	Arrival	cmb_resourceguard_signal (219):  Scheduling wakeup event for Service
+        4.0878	Arrival	cmb_process_hold (278):  Holding for 1.313836 time units
+        4.0878	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 5.401625
+        4.0878	dispatcher	wakeup_event_resource (173):  Wakes Service signal 0
+        4.0878	Service	cmb_objectqueue_get (251):  Trying again
+        4.0878	Service	cmb_objectqueue_get (234):  Success, got 0x555ae5e1c008
+        4.0878	Service	cmb_process_hold (278):  Holding for 2.084093 time units
+        4.0878	Service	cmb_process_timer_add (343):  Scheduled timeout event at 6.171883
+        5.4016	dispatcher	wakeup_event_time (310):  Wakes Arrival signal 0
+        5.4016	Arrival	cmb_objectqueue_put (271):  Puts object 0x555ae5e1c000 into Queue, length 0
+        5.4016	Arrival	cmb_objectqueue_put (293):  Success, put 0x555ae5e1c000
+        5.4016	Arrival	cmb_process_hold (278):  Holding for 1.702620 time units
+        5.4016	Arrival	cmb_process_timer_add (343):  Scheduled timeout event at 7.104245
+
+If you compare this to the stack illustrations in the preceding section on Cimba
+processes as coroutines, this gives a pretty good view of what is happening on the
+stacks. However, it will not be needed very often and can be turned off with
+
+.. code-block:: C
+
+    cmb_logger_flags_off(CMB_LOGGER_INFO);
+
+It will still be in the code if turned off, requiring one 32-bit comparison per call, but
+you can make it vanish completely (like the asserts) by defining the preprocessor symbol
+``NLOGINFO``. That will turn the :c:macro:`cmb_logger_info()` wrapper macro into a no-op
+statement, eliminating it from the code. For fast production code, already well tested,
+you may want to compile Cimba with compiler flags ``-DNDEBUG -DNASSERT -DNLOGINFO``. See
+the top level `meson.build <https://github.com/ambonvik/cimba/blob/main/meson.build>`_ and
+uncomment those options before compiling and (re)installing Cimba.
+
+As shown in the tutorial, the user application can define up to 28 different logger
+flags for fine-grained control of what logging messages to print. Remember that these
+are bit masks, so your logging flags should be ``0x00000001``, ``0x00000002``,
+``0x00000004``, ``0x00000008``, ``0x00000010``, and so on for single bits turned off
+and on.
+
+
 .. _background_benchmark:
 
-Benchmarking Cimba against SimPy
---------------------------------
+Benchmarking Cimba performance
+------------------------------
 
-The most relevant comparison for Cimba is probably the Python package SimPy
-(https://pypi.org/project/simpy/),
-since it provides similar functionality to Cimba, only with Python as its base language
+Performance-wise, we believe Cimba is a strong contender at the workstation level,
+between a data analyst's notebook and the supercomputer Beowulf cluster. We will try to
+support this by two performance comparisons, one to either side.
+
+Cimba vs SimPy
+^^^^^^^^^^^^^^
+
+The most direct comparison for Cimba is probably
+`the Python package SimPy <https://pypi.org/project/simpy/>`_.
+It provides similar functionality to Cimba, only with Python as its base language
 instead of C. SimPy emphasizes ease of use as a main design objective, following the
 overall Python philosophy, while Cimba (being a C library) has a natural emphasis on
 speed. SimPy processes are based on stackless generators, whereas Cimba has its
@@ -1440,16 +1533,73 @@ version takes 25.5 seconds to do the same thing with all available cores in use.
 runs this scenario about *45 times faster* than SimPy. Equivalently, the Cimba running
 time is *97.8 % less* than SimPy's for this simple model.
 
-Cimba even processes twice as many simulated events per second *on a single core*
+Cimba processes twice as many simulated events per second *on a single core*
 (approx 32 million events / second) than what SimPy can do if it has all 64 logical cores
 to itself (approx 16 million events / second).
 
 .. image:: ../images/Speed_test_AMD_3970x.png
 
-Our (admittedly biased) view is that SimPy is good for simple one-off simulations where
-learning curve and development time are the critical constraints, while Cimba is better
-for larger, more complex, and more long-lived models where software engineering,
-maintainability, and efficiency become important. This aligns with our project goals.
+This speed difference is mostly due to the difference between Cimba's compiled C
+and assembly code vs SimPy's interpreted Python code, where a difference of around this
+magnitude should be expected. There exist other and more powerful Python simulation
+tools, such as `Salabim <https://www.salabim.org/manual/index.html>`_. We have not
+benchmarked Cimba vs Salabim yet, but expect to see similar speed diffences there for the
+same reason.
+
+Cimba vs Time Warp PDES
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Another interesting reference point is found in the literature on large-scale
+parallel discrete event simulation (PDES). This has been an active research area since
+around 1980, originally spurred by the limited memory capacity of the computers of the
+day and the resulting need to divide a large simulation between several devices. In these
+frameworks, each simulation run (trial) is distributed across many physical cores, each
+representing some logical subsystem of the overall simulation. Events are executed by
+passing messages between the cores. The critical design question is how to ensure a strict
+time-ordering of events in simulated time and guarantee the same result as from a
+sequential simulation.
+
+One approach is *optimistic synchronization*, where CPUs are allowed to run ahead, but
+anti-events are sent to initiate rollback if a violation of time sequence is detected.
+This may initiate sequences of cascading rollbacks until causality is re-established.
+The best know algorithm for this is Time Warp, e.g., used in
+`ROSS <https://ross-org.github.io/about.html>`_. Other approaches use *conservative
+synchronization*, not allowing any core to proceed unless the event timestamp is
+guaranteed valid.
+
+`In a 2015 review paper <https://informs-sim.org/wsc15papers/004.pdf>`_, Richard
+Fujimoto, one of the pioneers in the PDES field, states that PDES performance has leveled
+out at around 250 K events/second/core on massively parallel supercomputers since ach
+CPU has reached a clock rate limit. Further performance improvement comes from increasing
+the number of cores.
+
+Unfortunately, we do not have a massively parallel supercomputer available for direct
+benhmarking against Cimba, but to the nearest order of magnitude: The PC we used for
+the SimPy benchmark above has 32 _physical_ cores, running two threads per physical core.
+Cimba runs about 1 M events/second on a single core and about 25 M events/second/core
+on 32 physical cores for a scaling efficiency of 76 %.
+
+If those numbers are anywhere near comparable to Fujimoto's, it means that *Cimba runs
+two orders of magnitude faster than Time Warp PDES measured in events/second/core*. The
+reason is that keeping our entire event queue in "hot" CPU cache memory is orders of
+magnitude faster than communicating the events across a link between separate devices,
+no matter how fast that link is.
+
+The original reason for PDES, limited memory capacity per device, is no longer valid.
+The PC referred to above has 128 GB of memory and can easily fit 64 complete trials in
+parallel, two per physical core, even with thousands of active processes in each trial.
+The remaining use case for Time Warp and similar PDES seems to be for extremely large
+simulations distributed across the nodes of
+`Beowulf clusters <https://en.wikipedia.org/wiki/Beowulf_cluster>`_, and then mostly
+for cases where the problem can be structured as nearly independent sub-systems
+limiting the amount of message passing between the nodes.
+
+Still, it would be interesting to run an apples-to-apples benchmark between a PDES like
+`ROSS <https://ross-org.github.io/about.html>`_ or
+`Devastator <https://dl.acm.org/doi/abs/10.1145/3615979.3656061>`_
+(with a single trial distributed across many cores) and a distributed version of Cimba
+(many trials on each core, experiments on each cluster node, a simple Python script to
+parse out parameter combinations to the various nodes and collect the results).
 
 .. _background_name:
 

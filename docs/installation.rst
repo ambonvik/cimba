@@ -5,8 +5,8 @@ Installation guide
 
 You will need a C compiler like gcc or clang, the NASM assembler, and a development
 toolchain of git, meson, and ninja. For some of the examples in the tutorial, you
-will need the free plotting program gnuplot, but this is not strictly necessary for
-using Cimba.
+will need the free plotting programs gnuplot and ParaView, but this is not strictly
+necessary for using Cimba.
 
 We also recommend using a modern integrated development environment (IDE) like CLion,
 which has the advantage of being available both on Linux and Windows, integrated
@@ -108,14 +108,14 @@ If all goes well, this program should produce output similar to::
 
 You now have a working Cimba installation.
 
-For a more comprehensive test, type:
+For a more comprehensive smoke test, type:
 
 .. code-block:: bash
 
     meson test -C build
 
-This will run the full suite of unit tests from the ``test`` directory. It will
-take a while. The output will look similar to this:
+This will run the full suite of unit tests from the ``test`` directory. The output will
+look similar to this:
 
 .. image:: ../images/test_suite.png
 
