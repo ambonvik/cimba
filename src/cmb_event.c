@@ -663,3 +663,10 @@ bool cmi_event_remove_waiter(const uint64_t key, const struct cmb_process *pp)
 
     return false;
 }
+
+void cmi_event_thread_cleanup(void)
+{
+    if (match_buf != NULL) {
+        cmi_free(match_buf);
+    }
+}
