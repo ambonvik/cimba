@@ -385,9 +385,4 @@ static inline void cmi_hashheap_print(const struct cmi_hashheap *hp, FILE *fp,
     cmi_hashheap_hash_print(hp, fp);
 }
 
-/*
- * cmi_hashheap_thread_cleanup - deallocate any thread local memory
- */
-void cmi_hashheap_thread_cleanup(void);
-
 #endif /* CIMBA_CMI_HASHHEAP_H */
