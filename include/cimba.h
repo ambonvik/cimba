@@ -30,7 +30,7 @@
 #define CIMBA_VERSION_MAJOR 3
 #define CIMBA_VERSION_MINOR 0
 #define CIMBA_VERSION_PATCH 0
-#define CIMBA_VERSION_PRE_RELEASE beta
+#define CIMBA_VERSION_PRE_RELEASE RC1
 
 #define CMI_STRINGIFY(x) #x
 
@@ -176,17 +176,16 @@ extern uint64_t cimba_run(void *your_experiment_array,
                           size_t trial_struct_size,
                           cimba_trial_func *your_trial_func);
 
-/** @cond */
-/* Wrapper for deprecated long form */
+/** @cond Deprecated long form cimba_run_experiment **/
 CMB_MAYBE_UNUSED
-static inline void cimba_run_experiment(void *your_experiment_array,
-                                        uint64_t num_trials,
-                                        size_t trial_struct_size,
-                                        cimba_trial_func *your_trial_func)
+static inline uint64_t cimba_run_experiment(void *your_experiment_array,
+                          uint64_t num_trials,
+                          size_t trial_struct_size,
+                          cimba_trial_func *your_trial_func)
 {
-    cimba_run(your_experiment_array,num_trials,trial_struct_size, your_trial_func);
+    return cimba_run(your_experiment_array, num_trials, trial_struct_size, your_trial_func);
 }
-/** @endcond */
+/** @endcond **/
 
 /**
 * @brief Defines a prototype for an optional user-provided function to execute
@@ -199,7 +198,7 @@ typedef void *(cimba_thread_init_func)(uint64_t tid, void *usrarg);
 /**
 * @brief Defines a prototype for an optional user-provided function to execute
 * when terminating a pthread. The argument is a thread context created by a
-* previous thread init function. THis context can also be obtained in user code
+* previous thread init function. This context can also be obtained in user code
 * by calling cimba_thread_context()
 */
 typedef void (cimba_thread_exit_func)(void *thrctx);
@@ -253,7 +252,7 @@ extern uint32_t cimba_threads_num(void);
 /**
 * @brief Set the maximal number of worker threads to be used by Cimba. Can only
 *        be set before or between Cimba runs.
-*
+
 * @param n_threads The number of threads to use. Zero means default number,
 *                  i.e., equal to the number of CPU cores reported by the
 *                  operating system. Returns the actual number used, same value
@@ -283,5 +282,39 @@ extern uint64_t cimba_trials_remaining(void);
 * @return Cimba trial index, zero if called outside a trial
 */
 extern uint64_t cimba_trial_index(void);
+
+/**
+* @brief Defines a prototype for an optional user-provided function to execute
+*        when abandoning a trial, typically to free any memory that was
+*        allocated directly by the trial user code. Cimba cmb_ objects (e.g.,
+*        cmb_process, cmb_resource, ...) will be freed automatically.
+*/
+typedef void (cimba_trial_cleanup_func)(void *arg);
+
+/**
+ * @brief Set the user-defined trial cleanup function. It will only be called
+ *        when abandoning a trial after calling cmb_logger_error inside a multi-
+ *        threaded simulation run. It is thread local, needs to be set in each
+ *        user-provided trial function.
+ *
+ * @param clufunc A function to be called when exiting a trial, possibly NULL to
+ *                clear the cleanup function callback.
+ * @param usrarg An argument to be passed to the clufunc, possibly NULL.
+ */
+extern void cimba_trial_cleanup_set(cimba_trial_cleanup_func *clufunc,
+                                    void *usrarg);
+
+/**
+* @brief Abandon the current trial. Will call `exit(EXIT_FAILURE)` if running
+*        single-threaded, otherwise jump out of the trial, execute the trial
+*        cleanup callback (if set), and then run registered destructors on all
+*        `cmb_` namespace objects in the trial. Execution will then continue
+*        with the next trial in the experiment array. Any objects allocated
+*        directly from the user code, e.g., with `malloc()`, must be freed from
+*        there as well. Cimba only recovers objects created and/or initialized
+*        with the `cmb_*_create()` and `cmb_*_initialize()` functions.
+*/
+CMB_NORETURN
+extern void cimba_trial_abandon(void);
 
 #endif // CIMBA_CIMBA_H
