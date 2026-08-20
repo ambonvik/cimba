@@ -25,9 +25,9 @@ Another reference point is found in the literature on large-scale
 parallel discrete event simulation (PDES). In these models, each simulation run is 
 distributed across many physical cores.
 [Fujimoto (2015)](https://informs-sim.org/wsc15papers/004.pdf) states that performance 
-for the PDES algorithms has leveled out at around 250 K events/second/core 
-on massively parallel supercomputers. Further performance improvement comes from 
-increasing the number of cores. 
+for the PDES algorithms now has leveled out at around 250 K events/second/core 
+on massively parallel supercomputers. Further performance improvement in recent 
+years comes from increasing the number of cores. 
 
 Cimba runs two orders of magnitude faster than this on a per-core basis. The reason is, 
 of course, that keeping our entire event queue in "hot" CPU cache memory is orders of 
