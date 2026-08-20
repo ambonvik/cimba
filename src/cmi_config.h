@@ -130,31 +130,4 @@
     #define CMB_THREAD_LOCAL _Thread_local
 #endif
 
-/*
- * Worker-recovery non-local jump (see worker_thread_func in cimba.c and
- * cmi_logger_error in cmb_logger.c). A trial that calls cmb_logger_error abandons
- * whatever coroutine it is running in and jumps straight back to the worker
- * loop on the thread's own stack, i.e. the jump crosses from a coroutine stack
- * to the thread stack. cmi_coroutine_reset_to_main() then restores the OS and
- * sanitizer stack bookkeeping once we have landed.
- *
- * Two standard library mechanisms reject such a cross-stack jump, so we avoid
- * libc setjmp/longjmp on the normal path and use the GCC builtins, which do a
- * plain register (SP/FP/PC) restore with no validation:
- *   - On Win64, the C library longjmp performs SEH stack unwinding (RtlUnwindEx),
- *     which validates each frame against the TEB stack bounds and faults with
- *     STATUS_BAD_STACK when the target frame is on a different stack.
- *   - On Linux/glibc with _FORTIFY_SOURCE (which the toolchain enables by
- *     default at -O1+ on many distros, including the release CI build), longjmp
- *     becomes __longjmp_chk, which aborts with "longjmp causes uninitialized
- *     stack frame" whenever the target SP is below the current SP. This is the
- *     case when a coroutine stack happens to be allocated above the worker
- *     thread stack. Whether it fires is layout/ASLR-dependent, so the failure is
- *     intermittent and may only show up on some machines as a Heisenbug.
- * => Same solution, to two slightly different problems.
- */
-
-#define CMI_RECOVERY_SET(buf)   __builtin_setjmp((void **)(buf))
-#define CMI_RECOVERY_JUMP(buf)  __builtin_longjmp((void **)(buf), 1)
-
 #endif /* CIMBA_CMI_CONFIG_H */
