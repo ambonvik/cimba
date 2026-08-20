@@ -127,11 +127,9 @@ CMB_MAYBE_UNUSED
 static inline bool cmi_dlist_unlink(struct cmi_dlist_node *node)
 {
     cmb_assert_debug(node != NULL);
-    cmb_assert_debug(node->prev != NULL);
-    cmb_assert_debug(node->next != NULL);
 
-    if (node->next == node) {
-        cmb_assert_debug(node->prev == node);
+    if ((node->next == NULL) || (node->next == node)) {
+        cmb_assert_debug(node->prev == node->next);
         return false;
     }
     else {
