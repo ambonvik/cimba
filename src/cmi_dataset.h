@@ -40,7 +40,7 @@ extern bool cmi_dataset_is_max_heap(uint64_t un,
  * work both with traditional histograms for cmb_dataset and for time-weighted
  * ones for cmb_timeseries where each value is counted proportional to the time
  * interval between it and the next value. Internal use only, hence declared
- * here and not in the header file.
+ * here and not in the external header file.
  */
 struct cmi_dataset_histogram {
     unsigned num_bins;
