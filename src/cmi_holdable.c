@@ -5,7 +5,7 @@
  * is no way the process can "hold" a buffer in the same way as holding an
  * acquired resource.
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,5 +32,8 @@ void cmi_holdable_initialize(struct cmi_holdable *hrp, const char *name)
 
 void cmi_holdable_terminate(struct cmi_holdable *hrp)
 {
+    hrp->drop = NULL;
+    hrp->reprio = NULL;
+
     cmi_resourcebase_terminate((struct cmi_resourcebase *)hrp);
 }
