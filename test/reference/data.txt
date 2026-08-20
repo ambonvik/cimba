@@ -408,7 +408,7 @@ Copying src into tgt: cmb_timeseries_copy ... returned 10001
 Tgt: N    10000  Mean    1.505  StdDev   0.2911  Variance  0.08476  Skewness -0.03781  Kurtosis   -1.213
 Src: N    10000  Mean    1.505  StdDev   0.2911  Variance  0.08476  Skewness -0.03781  Kurtosis   -1.213
 
-Cleaning up: cmb_timeseries_reset, cmb_timeseries_destroy
+Cleaning up: cmb_timeseries_terminate, cmb_timeseries_destroy
 --------------------------------------------------------------------------------
 
 Testing sorting functions
