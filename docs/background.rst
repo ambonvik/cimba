@@ -1103,13 +1103,13 @@ program whenever some logical assumption turns out to be incorrect. Something th
 "could not happen" just did, and now all bets are off. However, in many cases,
 exceptional conditions can be expected and need a more nuanced approach.
 
-Cimba provides the functions :c:macro:`cmb_logger_fatal()`,:c:macro:`cmb_logger_error()`,
+Cimba provides the functions :c:macro:`cmb_logger_fatal()`, :c:macro:`cmb_logger_error()`,
 :c:macro:`cmb_logger_warning()`, and :c:macro:`cmb_logger_info()`. These are
 ``fprintf()``-style functions, where user code can provide a detailed message and have
 it printed to the designated file pointer (often ``stdout`` or ``stderr``).
 
 The difference between :c:macro:`cmb_logger_fatal()` and :c:macro:`cmb_logger_error()` is that
-``_fatal()`` will call ``abort()`` to terminate your entire program, with similar
+``_fatal()`` will call :c:func:`abort()` to terminate your entire program, with similar
 effect as tripping an ``assert``, while ``_error()`` only will stop the current trial.
 In fact, a tripped ``assert`` is just a wrapper to ``cmb_logger_fatal()``.
 
