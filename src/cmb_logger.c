@@ -32,6 +32,9 @@
 #include "cmi_config.h"
 #include "cmi_memregistry.h"
 
+/* Just declare this one function as extern to avoid including all headers */
+extern void cimba_trial_abandon(void);
+
 /* Maximum length of a formatted time string before it gets truncated */
 #define TSTRBUF_SZ 32
 
@@ -84,7 +87,7 @@ CMB_THREAD_LOCAL uint64_t cmi_logger_trial_idx = CMI_NO_TRIAL_IDX;
  * defined in cimba.c. Effectively throwing an exception.
  */
 extern CMB_THREAD_LOCAL jmp_buf cmi_worker_recovery;
-extern CMB_THREAD_LOCAL bool cmi_worker_recovery_armed;
+extern CMB_THREAD_LOCAL bool cmi_recovery_armed;
 extern void cmi_event_queue_cleanup(void);
 
 /*
@@ -264,19 +267,10 @@ void cmi_logger_error(FILE *fp,
         va_end(args);
     }
 
-    cmi_event_queue_cleanup();
-    if (cmi_worker_recovery_armed) {
-        CMI_RECOVERY_JUMP(cmi_worker_recovery);
-    }
-    else {
-        /* Not running inside a Cimba worker thread — fall back to exit with
-         * error code. Any armed cleanup functions from atexit() know to not
-         * delete the stack we are currently running on, so this is safe even
-         * from inside a coroutine without triggering undefined behavior.
-         */
-        exit(EXIT_FAILURE);
-    }
+    cimba_trial_abandon();
+
     /* Not reached */
+    logger_assert_always(false);
 }
 
 void cmi_logger_warning(FILE *fp,
