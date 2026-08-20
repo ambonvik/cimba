@@ -7,6 +7,7 @@ project('cimba', ['c'],
             'warning_level=3',
             'buildtype=release',
             'c_std=c2x',
+            'cuda_std=c++17',
         ]
 )
 
@@ -18,10 +19,9 @@ add_languages('cuda', required : false, native : true)
 cuda_dep = dependency('cuda', required : false, modules : ['cudart'])
 if cuda_dep.found()
     # We will also be calling CUDA on the GPU for tutorial 5 */
-    add_project_arguments(['-arch=sm_86', '-ccbin=/usr/bin/g++', '-cuda_std=c++17'],
-                            language : 'cuda')
+    add_project_arguments(['-arch=sm_86', '-ccbin=/usr/bin/g++'],
+                          language : 'cuda', native : true)
 endif
-
 
 # Check for compiler flags availability
 # DNDEBUG removes debug asserts
