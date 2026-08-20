@@ -69,13 +69,14 @@
  *       consumers wait.
  */
 struct cmb_buffer {
-    struct cmi_resourcebase core;           /**< The virtual base class */
-    struct cmb_resourceguard front_guard;   /**< Front waiting room for getters */
-    struct cmb_resourceguard rear_guard;    /**< Rear waiting room for putters */
-    uint64_t capacity;                      /**< The buffer size, possibly UINT64_MAX for unlimited */
-    uint64_t level;                         /**< The current level in the buffer */
-    bool is_recording;                      /**< Is the buffer recording its history? */
-    struct cmb_timeseries history;         /**< The buffer level history */
+    struct cmi_resourcebase base;            /**< The virtual base class */
+    struct cmb_resourceguard front_guard;    /**< Front waiting room for getters */
+    struct cmb_resourceguard rear_guard;     /**< Rear waiting room for putters */
+    uint64_t capacity;                       /**< The buffer size, possibly UINT64_MAX for unlimited */
+    uint64_t level;                          /**< The current level in the buffer */
+    bool is_recording;                       /**< Is the buffer recording its history? */
+    struct cmb_timeseries history;           /**< The buffer level history */
+    struct cmi_memregistry_item destroy;     /**< Internal use */
 };
 
 /**

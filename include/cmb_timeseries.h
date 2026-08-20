@@ -38,6 +38,8 @@
 #include "cmb_dataset.h"
 #include "cmb_wtdsummary.h"
 
+#include "cmi_memregistry.h"
+
 /**
  * @brief A time series with a conveniently resizing sample array. The parent
  *        class `cmb_dataset` provides the `xa` array.
@@ -50,9 +52,6 @@ struct cmb_timeseries {
 
 /**
  * @brief Allocate memory for a time series.
- *
- * Remember to call a matching `cmb_timeseries_destroy` when done to avoid
- * memory leakage.
  *
  * @memberof cmb_timeseries
  * @return A freshly allocated time series object.
@@ -163,12 +162,12 @@ extern void cmb_timeseries_sort_t(struct cmb_timeseries *tsp);
  * @brief  Calculate summary statistics of the time series.
  *
  * @memberof cmb_timeseries
- * @param tsp Pointer to a time series object.
- * @param wsp Pointer to a weighted data summary object.
+ * @param tsrc Pointer to a time series object.
+ * @param wtgt Pointer to a weighted data summary object.
  * @return The number of data points in the summary.
  */
-extern uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsp,
-                                         struct cmb_wtdsummary *wsp);
+extern uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsrc,
+                                         struct cmb_wtdsummary *wtgt);
 
 /**
  * @brief  Count the number of samples in the time series.

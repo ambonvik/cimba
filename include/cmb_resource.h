@@ -44,6 +44,7 @@ struct cmb_resource {
     struct cmb_process *holder;         /**< The current holder, if any */
     bool is_recording;                  /**< Is it currently recording history? */
     struct cmb_timeseries history;      /**< The usage history, 1 for held, 0 for idle */
+    struct cmi_memregistry_item destroy;     /**< Internal use */
 };
 
 /**
@@ -174,14 +175,40 @@ static inline uint64_t cmb_resource_available(const struct cmb_resource *rp)
  * @return One if the process holds the resource, zero otherwise.
  */
 CMB_MAYBE_UNUSED
-static inline uint64_t cmb_resource_held_by_process(const struct cmb_resource *rp,
-                                                    const struct cmb_process *pp) {
+static inline uint64_t cmb_resource_held(const struct cmb_resource *rp,
+                                         const struct cmb_process *pp) {
     cmb_assert_debug(rp != NULL);
     cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
 
     return (rp->holder == pp) ? 1u : 0u;
 }
 
+/** @cond Deprecated long form cmb_resource_held_by_process **/
+CMB_MAYBE_UNUSED
+static inline uint64_t cmb_resource_held_by_process(struct cmb_resource *rpp,
+                                      const struct cmb_process *pp)
+{
+    return cmb_resource_held(rpp, pp);
+}
+/** @endcond **/
+
+/**
+ * @brief Return a pointer to the resource's guard, e.g., for registering
+ *        observers.
+ *
+ * @memberof cmb_resource
+ * @param rp Pointer to a resource.
+ *
+ * @return Pointer to the resource guard.
+ */
+CMB_MAYBE_UNUSED
+static inline struct cmb_resourceguard *cmb_resource_guard(struct cmb_resource *rp)
+{
+    cmb_assert_debug(rp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+
+    return &(rp->guard);
+}
 
 /**
  * @brief Turn on data recording.

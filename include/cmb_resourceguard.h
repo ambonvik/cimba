@@ -8,6 +8,8 @@
  * Note that there is no `cmb_resourceguard_create()` or
  * `cmb_resourceguard_destroy()`. Always embedded in some other object, such as
  * a resource or condition, never on its own.
+ *
+ * Hence not tracked by the memregistry either, since the
  */
 
 /*

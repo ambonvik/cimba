@@ -30,6 +30,8 @@
 #include "cmb_assert.h"
 #include "cmb_datasummary.h"
 
+#include "cmi_memregistry.h"
+
 /** @cond */
 /* May not always get defined from math.h, but we need it here */
 #ifndef M_PI
@@ -48,13 +50,12 @@ struct cmb_dataset {
     double min;         /**< Smallest sample, initially `DBL_MAX` */
     double max;         /**< Largest sample, initially `-DBL_MAX` */
     double *xa;         /**< Pointer to the actual data array, initially `NULL` */
+    struct cmi_memregistry_item terminate;   /**< Internal use */
+    struct cmi_memregistry_item destroy;     /**< Internal use */
 };
 
 /**
  * @brief Allocate memory for a dataset.
- *
- * Remember to call a matching `cmb_dataset_destroy` when done to avoid memory
- * leakage.
  *
  * @memberof cmb_dataset
  * @return A freshly allocated dataset object.
@@ -150,12 +151,12 @@ extern uint64_t cmb_dataset_add(struct cmb_dataset *dsp, double x);
  * @brief  Calculate summary statistics of the data series
  *
  * @memberof cmb_dataset
- * @param dsp Pointer to a dataset object.
- * @param dsump Pointer to a data summary object to store the results.
+ * @param dsrc Pointer to a dataset object.
+ * @param dstgt Pointer to a data summary object to store the results.
  * @return The number of data values included in the summary.
  */
-extern uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
-                                      struct cmb_datasummary *dsump);
+extern uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsrc,
+                                      struct cmb_datasummary *dstgt);
 
 /**
  * @brief Count the number of data values.

@@ -68,6 +68,8 @@
 
 #include "cmb_assert.h"
 
+#include "cmi_memregistry.h"
+
 /**
  * @brief Initiate pseudo-random number distribution using a 64-bit seed. Call
  *        this function before drawing samples from any random number
@@ -921,6 +923,7 @@ struct cmb_random_alias {
     uint64_t n;         /**< The number of entries */
     uint64_t *uprob;    /**< Probabilities encoded as uint64_t 64-bit integers */
     uint64_t *alias;    /**< Alias indexes */
+    struct cmi_memregistry_item destroy;     /**< Internal use */
 };
 
 /**

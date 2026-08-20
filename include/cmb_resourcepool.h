@@ -68,6 +68,7 @@ struct cmb_resourcepool {
     uint64_t in_use;                    /**< The amount currently in use, less than or equal to the capacity */
     bool is_recording;                  /**< Is it currently recording history? */
     struct cmb_timeseries history;      /**< The usage history */
+    struct cmi_memregistry_item destroy;     /**< Internal use */
 };
 
 /**
@@ -115,8 +116,17 @@ extern void cmb_resourcepool_destroy(struct cmb_resourcepool *rpp);
  * @param pp Pointer to a `cmb_process`
  * @return The amount from this resource pool that is held by the process.
  */
-extern uint64_t cmb_resourcepool_held_by_process(struct cmb_resourcepool *rpp,
-                                                 const struct cmb_process *pp);
+extern uint64_t cmb_resourcepool_held(struct cmb_resourcepool *rpp,
+                                      const struct cmb_process *pp);
+
+/** @cond Deprecated long form cmb_resourcepool_held_by_process **/
+CMB_MAYBE_UNUSED
+static inline uint64_t cmb_resourcepool_held_by_process(struct cmb_resourcepool *rpp,
+                                      const struct cmb_process *pp)
+{
+    return cmb_resourcepool_held(rpp, pp);
+}
+/** @endcond **/
 
 /**
  * @brief Request and, if necessary, wait for an amount of the resource pool.
@@ -156,11 +166,12 @@ extern int64_t cmb_resourcepool_acquire(struct cmb_resourcepool *rpp,
 
 /**
  * @brief Preempt the current holders and grab the amount, starting from the
- *        lowest priority holder. If there is not enough to cover the amount
- *        before it runs into holders with equal or higher priority than the
- *        caller, it will politely wait in line for the remainder. It only
- *        preempts processes with strictly lower priority than itself, otherwise
- *        acts like `cmb_resourcepool_acquire()`.
+ *        lowest priority holder, LIFO if several with equal priority. If there
+ *        is not enough to cover the requested amount  before it runs into
+ *        holders with equal or higher priority than the caller, it will
+ *        politely wait in line for the remainder. It only preempts processes
+ *        with strictly lower priority than itself, otherwise acts like
+ *        `cmb_resourcepool_acquire()`.
  *
  * As for `cmb_resourcepool_acquire()`, it can either return with the requested
  * req_amount, an unchanged req_amount (interrupted), or nothing at all (preempted). This
@@ -240,28 +251,46 @@ static inline uint64_t cmb_resourcepool_available(struct cmb_resourcepool *rsp)
 }
 
 /**
+ * @brief Return a pointer to the resourcepool's guard, e.g., for registering
+ *        observers.
+ *
+ * @memberof cmb_resourcepool
+ * @param rpp Pointer to a resourcepool.
+ *
+ * @return Pointer to the resource guard.
+ */
+CMB_MAYBE_UNUSED
+static inline struct cmb_resourceguard *cmb_resourcepool_guard(struct cmb_resourcepool *rpp)
+{
+    cmb_assert_debug(rpp != NULL);
+    cmb_assert_release(((struct cmi_resourcebase *)rpp)->cookie == CMI_INITIALIZED);
+
+    return &(rpp->guard);
+}
+
+/**
  * @brief Turn on data recording.
  *
- * @param rsp Pointer to a resource pool.
+ * @param rpp Pointer to a resource pool.
  */
-extern void cmb_resourcepool_start_recording(struct cmb_resourcepool *rsp);
+extern void cmb_resourcepool_start_recording(struct cmb_resourcepool *rpp);
 
 /**
  * @brief Turn off data recording.
  *
  * @memberof cmb_resourcepool
- * @param rsp Pointer to a resource pool.
+ * @param rpp Pointer to a resource pool.
  */
-extern void cmb_resourcepool_stop_recording(struct cmb_resourcepool *rsp);
+extern void cmb_resourcepool_stop_recording(struct cmb_resourcepool *rpp);
 
 /**
  * @brief Get the recorded timeseries of resource usage.
  *
  * @memberof cmb_resourcepool
- * @param rsp Pointer to a resource pool.
+ * @param rpp Pointer to a resource pool.
  * @return Pointer to a `cmb_timeseries` containing the usage history.
  */
-extern struct cmb_timeseries *cmb_resourcepool_get_history(struct cmb_resourcepool *rsp);
+extern struct cmb_timeseries *cmb_resourcepool_get_history(struct cmb_resourcepool *rpp);
 
 /**
  * @brief Print a simple text mode report of the resource usage, including key
@@ -269,10 +298,10 @@ extern struct cmb_timeseries *cmb_resourcepool_get_history(struct cmb_resourcepo
  *        purposes, not presentation graphics.
  *
  * @memberof cmb_resourcepool
- * @param rsp Pointer to a resource pool.
+ * @param rpp Pointer to a resource pool.
  * @param fp File pointer, possibly `stdout`.
  */
-extern void cmb_resourcepool_print_report(struct cmb_resourcepool *rsp, FILE *fp);
+extern void cmb_resourcepool_print_report(const struct cmb_resourcepool *rpp, FILE *fp);
 
 
 #endif /* CIMBA_CMB_RESOURCEPOOL_H */

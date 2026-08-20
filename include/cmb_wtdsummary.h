@@ -35,6 +35,8 @@
 #include "cmb_assert.h"
 #include "cmb_datasummary.h"
 
+#include "cmi_memregistry.h"
+
 /**
  * @brief A weighted data summary maintaining running tally statistics, derived
  *        from the `cmb_datasummary` parent class.
@@ -46,9 +48,6 @@ struct cmb_wtdsummary {
 
 /**
  * @brief Allocate a weighted data summary object on the heap.
- *
- * Note that this does not allocate from a thread local memory pool,
- * since it may be passed back outside the current replication.
  *
  * @memberof cmb_wtdsummary
  * @return A pointer to a newly allocated weighted data summary object.

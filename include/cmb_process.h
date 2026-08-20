@@ -43,6 +43,7 @@
 #include "cmb_event.h"
 
 #include "cmi_coroutine.h"
+#include "cmi_memregistry.h"
 #include "cmi_slist.h"
 
 /**
@@ -103,7 +104,8 @@
  * @relates cmb_process
  */
 enum cmb_process_state {
-    CMB_PROCESS_CREATED = 0,
+    CMB_PROCESS_UNINITIALIZED,
+    CMB_PROCESS_INITIALIZED,
     CMB_PROCESS_RUNNING,
     CMB_PROCESS_FINISHED
 };
@@ -121,6 +123,8 @@ struct cmb_process {
     struct cmi_slist_node resources;        /**< Any resources held by this process */
     struct cmi_slist_node waiters;          /**< Any other processes waiting for this process to finish */
     char name[CMB_PROCESS_NAMEBUF_SZ];      /**< The process name string */
+    struct cmi_memregistry_item terminate;   /**< Internal use */
+    struct cmi_memregistry_item destroy;     /**< Internal use */
 };
 
 /**

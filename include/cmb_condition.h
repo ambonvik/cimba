@@ -60,8 +60,9 @@
  *        be evaluated.
  */
 struct cmb_condition {
-    struct cmi_resourcebase base;           /**< The parent class, providing name and initialization */
-    struct cmb_resourceguard guard;         /**< Providing the queueing mechanics */
+    struct cmi_resourcebase base;            /**< The parent class, providing name and initialization */
+    struct cmb_resourceguard guard;          /**< Providing the queueing mechanics */
+    struct cmi_memregistry_item destroy;     /**< Internal use */
 };
 
 /**
@@ -95,26 +96,26 @@ extern struct cmb_condition *cmb_condition_create(void);
  * @brief  Make an allocated condition variable ready for use.
  *
  * @memberof cmb_condition
- * @param cvp Pointer to an allocated condition variable.
+ * @param cp Pointer to an allocated condition variable.
  * @param name A null-terminated string naming the condition variable.
  */
-extern void cmb_condition_initialize(struct cmb_condition *cvp,
+extern void cmb_condition_initialize(struct cmb_condition *cp,
                                      const char *name);
 
 /**
  * @brief  Un-initializes a condition variable.
  *
- * @param cvp Pointer to an allocated condition variable.
+ * @param cp Pointer to an allocated condition variable.
  */
-extern void cmb_condition_terminate(struct cmb_condition *cvp);
+extern void cmb_condition_terminate(struct cmb_condition *cp);
 
 /**
  * @brief Deallocates memory for a condition variable.
  *
  * @memberof cmb_condition
- * @param cvp Pointer to an allocated condition variable.
+ * @param cp Pointer to an allocated condition variable.
  */
-extern void cmb_condition_destroy(struct cmb_condition *cvp);
+extern void cmb_condition_destroy(struct cmb_condition *cp);
 
 /**
  * @brief Make the current process wait for the given demand to be satisfied,
@@ -122,14 +123,14 @@ extern void cmb_condition_destroy(struct cmb_condition *cvp);
  *        on whatever state.
  *
  * @memberof cmb_condition
- * @param cvp Pointer to a condition variable.
+ * @param cp Pointer to a condition variable.
  * @param dmnd The demand predicate function.
  * @param ctx The context argument to the demand predicate function.
  *
  * @return `CMB_PROCESS_SUCCESS` if successful, otherwise the signal received
  *         when interrupted.
  */
-extern int64_t cmb_condition_wait(struct cmb_condition *cvp,
+extern int64_t cmb_condition_wait(struct cmb_condition *cp,
                                   cmb_condition_demand_func *dmnd,
                                   const void *ctx);
 
@@ -138,22 +139,22 @@ extern int64_t cmb_condition_wait(struct cmb_condition *cvp,
  *        reactivate those that evaluate as `true`.
  *
  * @memberof cmb_condition
- * @param cvp Pointer to a condition variable.
+ * @param cp Pointer to a condition variable.
  * @return Number of waiting processes reactivated
  */
-extern uint64_t cmb_condition_signal(struct cmb_condition *cvp);
+extern uint64_t cmb_condition_signal(struct cmb_condition *cp);
 
 /**
  * @brief Remove the process from the priority queue and resume it with a
  *        `CMB_PROCESS_CANCELLED` signal.
  *
  * @memberof cmb_condition
- * @param cvp Pointer to a condition variable.
+ * @param cp Pointer to a condition variable.
  * @param pp Pointer to a process, presumably waiting for the condition
  *
  * @return `true` if the found, `false` if not.
  */
-extern bool cmb_condition_cancel(struct cmb_condition *cvp,
+extern bool cmb_condition_cancel(struct cmb_condition *cp,
                                  struct cmb_process *pp);
 
 /**
@@ -161,12 +162,12 @@ extern bool cmb_condition_cancel(struct cmb_condition *cvp,
  *        e.g., when stopping a process and cancelling its appointments.
  *
  * @memberof cmb_condition
- * @param cvp Pointer to a condition variable.
+ * @param cp Pointer to a condition variable.
  * @param pp Pointer to a process, presumably waiting for the condition
  *
  * @return `true` if the found, `false` if not.
  */
-extern bool cmb_condition_remove(struct cmb_condition *cvp,
+extern bool cmb_condition_remove(struct cmb_condition *cp,
                                  const struct cmb_process *pp);
 
 /**

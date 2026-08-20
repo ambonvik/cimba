@@ -2,7 +2,7 @@
  * @file cmb_datasummary.h
  * @brief  A running tally of basic statistics. The `cmb_datasummary` does not
  * keep individual data values, just the summary statistics. Use `cmb_dataset`
- * instead if youneed individual values, and use `cmb_dataset_summarize` to
+ * instead if you need individual values, and use `cmb_dataset_summarize` to
  * extract the summary statistics from a collected data set.
  *
  * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
@@ -31,6 +31,7 @@
 
 #include "cmb_assert.h"
 
+#include "cmi_memregistry.h"
 #include "cmi_memutils.h"
 
 /**
@@ -48,13 +49,12 @@ struct cmb_datasummary {
     double m2;          /**< Second raw moment */
     double m3;          /**< Third raw moment */
     double m4;          /**< Fourth raw moment */
+    struct cmi_memregistry_item terminate;   /**< Internal use */
+    struct cmi_memregistry_item destroy;     /**< Internal use */
 };
 
 /**
  * @brief Allocate a data summary on the heap.
- *
- * Note that this does not allocate from a thread local memory pool,
- * since it may be passed back outside the current replication.
  *
  * @memberof cmb_datasummary
  * @return A pointer to a newly allocated data summary.
@@ -114,13 +114,13 @@ extern uint64_t cmb_datasummary_add(struct cmb_datasummary *dsp, double y);
  * @memberof cmb_datasummary
  * @param tgt Pointer to data summary to receive the
  *            merge. Any previous content will be overwritten.
- * @param dsp1 Pointer to a data summary.
- * @param dsp2 Pointer to a data summary.
+ * @param dsrc1 Pointer to a data summary.
+ * @param dsrc2 Pointer to a data summary.
  * @return The combined sample count.
  */
 extern uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
-                                      const struct cmb_datasummary *dsp1,
-                                      const struct cmb_datasummary *dsp2);
+                                      const struct cmb_datasummary *dsrc1,
+                                      const struct cmb_datasummary *dsrc2);
 
 /**
  * @brief The number of samples in the data summary.
