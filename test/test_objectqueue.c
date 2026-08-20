@@ -206,7 +206,7 @@ void test_queue(const uint64_t seed, const double dur)
                                quetst->queue,
                                pri);
         cmb_assert_always(cmb_process_priority(quetst->putters[ui]) == pri);;
-        cmb_assert_always(cmb_process_status(quetst->putters[ui]) == CMB_PROCESS_CREATED);
+        cmb_assert_always(cmb_process_status(quetst->putters[ui]) == CMB_PROCESS_INITIALIZED);
         cmb_assert_always(cmb_process_context(quetst->putters[ui]) == quetst->queue);
         cmb_process_start(quetst->putters[ui]);
     }
@@ -225,7 +225,7 @@ void test_queue(const uint64_t seed, const double dur)
                                quetst->queue,
                                pri);
         cmb_assert_always(cmb_process_priority(quetst->getters[ui]) == pri);
-        cmb_assert_always(cmb_process_status(quetst->getters[ui]) == CMB_PROCESS_CREATED);
+        cmb_assert_always(cmb_process_status(quetst->getters[ui]) == CMB_PROCESS_INITIALIZED);
         cmb_assert_always(cmb_process_context(quetst->getters[ui]) == quetst->queue);
         cmb_process_start(quetst->getters[ui]);
     }
@@ -234,7 +234,7 @@ void test_queue(const uint64_t seed, const double dur)
     quetst->nuisance = cmb_process_create();
     cmb_assert_always(quetst->nuisance != NULL);
     cmb_process_initialize(quetst->nuisance, "Nuisance", nuisancefunc, quetst, 0);
-    cmb_assert_always(cmb_process_status(quetst->nuisance) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(quetst->nuisance) == CMB_PROCESS_INITIALIZED);
     cmb_assert_always(cmb_process_context(quetst->nuisance) == quetst);
     cmb_assert_always(cmb_process_priority(quetst->nuisance) == 0);
     cmb_process_start(quetst->nuisance);
@@ -263,6 +263,7 @@ void test_queue(const uint64_t seed, const double dur)
 
     cmb_process_terminate(quetst->nuisance);
     cmb_process_destroy(quetst->nuisance);
+    cmb_objectqueue_terminate(quetst->queue);
     cmb_objectqueue_destroy(quetst->queue);
     cmi_free(quetst);
 

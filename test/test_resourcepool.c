@@ -82,8 +82,8 @@ void *mousefunc(struct cmb_process *me, void *ctx)
     while (true) {
         cmb_logger_user(stdout, USERFLAG,
                          "Own calc amount %" PRIu64 ", library calc %" PRIu64,
-                         amount_held, cmb_resourcepool_held_by_process(sp, me));
-        cmb_assert_debug(cmb_resourcepool_held_by_process(sp, me) == amount_held);
+                         amount_held, cmb_resourcepool_held(sp, me));
+        cmb_assert_debug(cmb_resourcepool_held(sp, me) == amount_held);
         const uint64_t amount_req = cmb_random_dice(1, 10);
         cmb_assert_always((amount_req >= 1) && (amount_req <= 10));
         const int64_t pri = cmb_random_dice(-10, 10);
@@ -95,7 +95,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
         if (sig == CMB_PROCESS_SUCCESS) {
             /* Acquire succeeded, got all we wanted */
             amount_held += amount_req;
-            cmb_assert_always(cmb_resourcepool_held_by_process(sp, me) == amount_held);
+            cmb_assert_always(cmb_resourcepool_held(sp, me) == amount_held);
             cmb_logger_user(stdout,
                             USERFLAG,
                             "Success, new amount held: %" PRIu64,
@@ -116,7 +116,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
                                 amount_rel);
                 cmb_resourcepool_release(sp, amount_rel);
                 amount_held -= amount_rel;
-                cmb_assert_always(cmb_resourcepool_held_by_process(sp, me) == amount_held);
+                cmb_assert_always(cmb_resourcepool_held(sp, me) == amount_held);
             }
             else if (sig == CMB_PROCESS_PREEMPTED) {
                 cmb_logger_user(stdout,
@@ -124,7 +124,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
                                 "Someone stole all my %s from me!",
                                 cmb_resourcepool_get_name(sp));
                 amount_held = 0u;
-                cmb_assert_always(cmb_resourcepool_held_by_process(sp, me) == amount_held);
+                cmb_assert_always(cmb_resourcepool_held(sp, me) == amount_held);
             }
             else {
                 cmb_logger_user(stdout,
@@ -140,7 +140,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
                             "Preempted during acquire, all my %s is gone",
                             cmb_resourcepool_get_name(sp));
             amount_held = 0u;
-            cmb_assert_always(cmb_resourcepool_held_by_process(sp, me) == amount_held);
+            cmb_assert_always(cmb_resourcepool_held(sp, me) == amount_held);
         }
         else {
             /* Acquire interrupted */
@@ -154,7 +154,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
                         USERFLAG,
                         "Holding, amount held: %" PRIu64,
                         amount_held);
-        cmb_assert_always(cmb_resourcepool_held_by_process(sp, me) == amount_held);
+        cmb_assert_always(cmb_resourcepool_held(sp, me) == amount_held);
 
         const double dt = cmb_random_exponential(1.0);
         cmb_assert_always(dt >= 0.0);
@@ -167,7 +167,7 @@ void *mousefunc(struct cmb_process *me, void *ctx)
                             cmb_resourcepool_get_name(sp), sig);
 
             amount_held = 0u;
-            cmb_assert_always(cmb_resourcepool_held_by_process(sp, me) == amount_held);
+            cmb_assert_always(cmb_resourcepool_held(sp, me) == amount_held);
         }
     }
 }
@@ -184,8 +184,8 @@ void *ratfunc(struct cmb_process *me, void *ctx)
     while (true) {
         cmb_logger_user(stdout, USERFLAG,
                         "Own calc amount %" PRIu64 ", library calc %" PRIu64,
-                        amount_held, cmb_resourcepool_held_by_process(sp, me));
-        uint64_t calc_held = cmb_resourcepool_held_by_process(sp, me);
+                        amount_held, cmb_resourcepool_held(sp, me));
+        uint64_t calc_held = cmb_resourcepool_held(sp, me);
         cmb_logger_user(stdout, USERFLAG, "Reported %" PRIu64 " own calc %" PRIu64,
                         calc_held, amount_held);
         cmb_assert_always(calc_held == amount_held);
@@ -198,7 +198,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
 
         if (sig == CMB_PROCESS_SUCCESS) {
             amount_held += amount_req;
-            calc_held = cmb_resourcepool_held_by_process(sp, me);
+            calc_held = cmb_resourcepool_held(sp, me);
             cmb_logger_user(stdout, USERFLAG, "Own calc amount %" PRIu64 " library calc %" PRIu64,
                             amount_held, calc_held);
             cmb_assert_always(calc_held == amount_held);
@@ -224,14 +224,14 @@ void *ratfunc(struct cmb_process *me, void *ctx)
                                 amount_rel);
                 cmb_resourcepool_release(sp, amount_rel);
                 amount_held -= amount_rel;
-                cmb_assert_always(cmb_resourcepool_held_by_process(sp, me) == amount_held);
+                cmb_assert_always(cmb_resourcepool_held(sp, me) == amount_held);
             }
             else if (sig == CMB_PROCESS_PREEMPTED) {
                 cmb_logger_user(stdout, USERFLAG,
                                 "Someone stole my %s from me, signal %" PRIi64,
                                 cmb_resourcepool_get_name(sp), sig);
                 amount_held = 0u;
-                cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+                cmb_assert_debug(amount_held == cmb_resourcepool_held(sp, me));
             }
             else {
                 cmb_logger_user(stdout, USERFLAG,
@@ -243,7 +243,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
                             "Preempted during own preempt, all my %s is gone",
                             cmb_resourcepool_get_name(sp));
             amount_held = 0u;
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+            cmb_assert_debug(amount_held == cmb_resourcepool_held(sp, me));
         }
         else {
             cmb_logger_user(stdout, USERFLAG,
@@ -266,7 +266,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
                             cmb_resourcepool_get_name(sp),
                             sig);
             amount_held = 0u;
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+            cmb_assert_debug(amount_held == cmb_resourcepool_held(sp, me));
         }
     }
 }
@@ -305,7 +305,7 @@ void *catfunc(struct cmb_process *me, void *ctx)
 void test_pool(const uint64_t seed, const double dur)
 {
     cmi_test_print_line("*");
-    printf("****************************   Testing pools   *****************************\n");
+    printf("**************************   Testing resourcepools   ***************************\n");
     cmi_test_print_line("*");
     printf("Using seed: 0x%" PRIx64 "\n", seed);
     struct simulation *pooltest = cmi_malloc(sizeof(*pooltest));
@@ -385,6 +385,7 @@ void test_pool(const uint64_t seed, const double dur)
         cmb_process_destroy(cpp[ui]);
     }
 
+    cmb_resourcepool_terminate(pooltest->cheese);
     cmb_resourcepool_destroy(pooltest->cheese);
     cmb_event_queue_terminate();
     cmb_random_terminate();
@@ -392,7 +393,6 @@ void test_pool(const uint64_t seed, const double dur)
 
     cmi_test_print_line("*");
 }
-
 
 int main(const int argc, char *argv[])
 {

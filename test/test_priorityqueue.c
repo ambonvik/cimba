@@ -249,14 +249,16 @@ void test_priorityqueue(const uint64_t seed, const double duration)
     printf("Clean up\n");
     for (unsigned ui = 0; ui < 3; ui++) {
         cmb_process_terminate(quetst->putters[ui]);
-        cmb_process_terminate(quetst->getters[ui]);
         cmb_process_destroy(quetst->putters[ui]);
+        cmb_process_terminate(quetst->getters[ui]);
         cmb_process_destroy(quetst->getters[ui]);
     }
 
     cmb_process_terminate(quetst->nuisance);
     cmb_process_destroy(quetst->nuisance);
+    cmb_priorityqueue_terminate(quetst->queue);
     cmb_priorityqueue_destroy(quetst->queue);
+
     cmb_event_queue_terminate();
     cmi_free(quetst);
     cmb_random_terminate();

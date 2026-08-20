@@ -300,7 +300,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     /* List ourselves as departed instead */
     cmi_slist_push(sim->departed_ships, &(shp->listnode));
     /* Inform Davy Jones that we are coming his way */
-    uint64_t r = cmb_condition_signal(sim->davyjones);
+    const uint64_t r = cmb_condition_signal(sim->davyjones);
     cmb_assert_always(r == 1u);
 
     /* Store the time we spent working as an exit value in a separate heap object.
@@ -368,11 +368,11 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
                          cnt, ((shp->size == SMALL) ? "_small" : "_large"));
         cmb_assert_always((r >= 0) && (r < (int)sizeof(namebuf)) && (namebuf[r] == '\0'));
         cmb_process_initialize((struct cmb_process *)shp, namebuf, ship_proc, vctx, 0);
-        cmb_assert_always(cmb_process_status((struct cmb_process *)shp) == CMB_PROCESS_CREATED);
+        cmb_assert_always(cmb_process_status((struct cmb_process *)shp) == CMB_PROCESS_INITIALIZED);
 
         /* Start our new ship heading into the harbor */
         cmb_process_start((struct cmb_process *)shp);
-        cmb_assert_always(cmb_process_status((struct cmb_process *)shp) == CMB_PROCESS_CREATED);
+        cmb_assert_always(cmb_process_status((struct cmb_process *)shp) == CMB_PROCESS_INITIALIZED);
         cmb_logger_user(stdout, USERFLAG1, "Ship %s started", namebuf);
     }
 }
@@ -483,7 +483,6 @@ void test_condition(uint64_t seed, double dur)
     printf("***********************   Testing condition variables  *************************\n");
     cmi_test_print_line("*");
 
-    printf("Cimba version %s\n", cimba_version());
     printf("Using seed: 0x%" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
     cmb_event_queue_initialize(0.0);
@@ -510,17 +509,17 @@ void test_condition(uint64_t seed, double dur)
 
     /* Create weather and tide processes */
     sim.weather = cmb_process_create();
-    cmb_assert_always(cmb_process_status(sim.weather) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(sim.weather) == CMB_PROCESS_UNINITIALIZED);
     cmb_assert_always(sim.weather != NULL);
-    cmb_assert_always(cmb_process_status(sim.weather) == CMB_PROCESS_CREATED);
     cmb_process_initialize(sim.weather, "Wind", weather_proc, &ctx, 0);
+    cmb_assert_always(cmb_process_status(sim.weather) == CMB_PROCESS_INITIALIZED);
     cmb_process_start(sim.weather);
 
     sim.tide = cmb_process_create();
     cmb_assert_always(sim.tide != NULL);
-    cmb_assert_always(cmb_process_status(sim.weather) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(sim.tide) == CMB_PROCESS_UNINITIALIZED);
     cmb_process_initialize(sim.tide, "Depth", tide_proc, &ctx, 0);
-    cmb_assert_always(cmb_process_status(sim.tide) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(sim.tide) == CMB_PROCESS_INITIALIZED);
     cmb_process_start(sim.tide);
 
     /* Create the resources, turn on history recording with no warmup period */
@@ -548,12 +547,12 @@ void test_condition(uint64_t seed, double dur)
     /* Create the arrival and departure processes */
     sim.arrivals = cmb_process_create();
     cmb_assert_always(sim.arrivals != NULL);
-    cmb_assert_always(cmb_process_status(sim.arrivals) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(sim.arrivals) == CMB_PROCESS_UNINITIALIZED);
     cmb_process_initialize(sim.arrivals, "Arrivals", arrival_proc, &ctx, 0);
     cmb_process_start(sim.arrivals);
     sim.departures = cmb_process_create();
     cmb_assert_always(sim.departures != NULL);
-    cmb_assert_always(cmb_process_status(sim.departures) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(sim.departures) == CMB_PROCESS_UNINITIALIZED);
     cmb_process_initialize(sim.departures, "Departures", departure_proc, &ctx, 0);
     cmb_process_start(sim.departures);
 
@@ -577,9 +576,11 @@ void test_condition(uint64_t seed, double dur)
         const unsigned n = cmb_dataset_count(trl.system_time[i]);
         if (n > 0) {
             struct cmb_datasummary dsumm;
+            cmb_datasummary_initialize(&dsumm);
             cmb_dataset_summarize(trl.system_time[i], &dsumm);
             cmb_datasummary_print(&dsumm, stdout, true);
             cmb_dataset_histogram_print(trl.system_time[i], stdout, 20, 0.0, 0.0);
+            cmb_datasummary_terminate(&dsumm);
         }
     }
 
@@ -589,9 +590,11 @@ void test_condition(uint64_t seed, double dur)
         const unsigned n = cmb_timeseries_count(hist);
         if (n > 0) {
             struct cmb_wtdsummary wsumm;
+            cmb_wtdsummary_initialize(&wsumm);
             cmb_timeseries_summarize(hist, &wsumm);
             cmb_wtdsummary_print(&wsumm, stdout, true);
             cmb_timeseries_histogram_print(hist, stdout, 20, 0.0, 0.0);
+            cmb_wtdsummary_terminate(&wsumm);
         }
     }
 
@@ -600,19 +603,26 @@ void test_condition(uint64_t seed, double dur)
     const unsigned n = cmb_timeseries_count(hist);
     if (n > 0) {
         struct cmb_wtdsummary wsumm;
+        cmb_wtdsummary_initialize(&wsumm);
         cmb_timeseries_summarize(hist, &wsumm);
         cmb_wtdsummary_print(&wsumm, stdout, true);
         cmb_timeseries_histogram_print(hist, stdout, 20, 0.0, 0.0);
+        cmb_wtdsummary_terminate(&wsumm);
     }
 
     /* Clean up */
     for (int i = 0; i < 2; i++) {
+        cmb_dataset_terminate(trl.system_time[i]);
         cmb_dataset_destroy(trl.system_time[i]);
+        cmb_resourcepool_terminate(sim.berths[i]);
         cmb_resourcepool_destroy(sim.berths[i]);
      }
 
+    cmb_condition_terminate(sim.harbormaster);
     cmb_condition_destroy(sim.harbormaster);
+    cmb_condition_terminate(sim.davyjones);
     cmb_condition_destroy(sim.davyjones);
+    cmb_resourcepool_terminate(sim.tugs);
     cmb_resourcepool_destroy(sim.tugs);
 
     cmb_process_terminate(sim.weather);

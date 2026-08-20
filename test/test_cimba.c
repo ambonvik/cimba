@@ -200,8 +200,7 @@ void *service_proc(struct cmb_process *me, void *vctx)
         /* Test occasional trial failures from process coroutine level */
         const double pfail = 1e-7;
         if (cmb_random_bernoulli(pfail)) {
-            /* Pretend that this trial failed for some reason, bail out.
-             * Note that memory will leak here, abandoning the coroutine.    */
+            /* Pretend that this trial failed for some reason, bail out.  */
             const uint64_t tid = cimba_thread_id();
             const uint64_t tix = cimba_trial_index();
             cmb_logger_error(stdout,
@@ -216,6 +215,19 @@ void *service_proc(struct cmb_process *me, void *vctx)
         cmb_assert_always(r == CMB_PROCESS_SUCCESS);
         cmb_assert_always(n == 1u);
    }
+}
+
+/*
+ * Our very own cleanup for abandoned trials
+ */
+void trial_cleanup(void *vctx)
+{
+    cmb_assert_always(vctx != NULL);
+
+    struct context *ctx = (struct context *)vctx;
+    struct simulation *sim = ctx->sim;
+    free(sim);
+    free(ctx);
 }
 
 /*
@@ -241,7 +253,8 @@ void run_mg1_trial(void *vtrl)
      * again not initialized before this call. So we do that too. */
     cmb_random_initialize(trl->seed);
 
-    struct context *ctx = malloc(sizeof(*ctx));
+    struct context *ctx = malloc(sizeof(*ctx));;
+    cimba_trial_cleanup_set(trial_cleanup, ctx);
     cmb_assert_always(ctx != NULL);
     ctx->trl = trl;
 
@@ -254,11 +267,7 @@ void run_mg1_trial(void *vtrl)
     /* Test occasional trial failures from trial function level */
     const double pfail = 0.05;
     if (cmb_random_bernoulli(pfail)) {
-        /* Pretend that this trial failed for some reason, bail out.
-         * Note that it is the caller's responsibility to free any allocated
-         * memory before calling cmb_logger_error()    */
-        free(sim);
-        free(ctx);
+        /* Pretend that this trial failed for some reason, bail out.*/
         const uint64_t tid = cimba_thread_id();
         const uint64_t tix = cimba_trial_index();
         cmb_logger_error(stdout,
@@ -286,20 +295,20 @@ void run_mg1_trial(void *vtrl)
 
     sim->arrival = cmb_process_create();
     cmb_assert_always(sim->arrival != NULL);
-    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_UNINITIALIZED);
     cmb_process_initialize(sim->arrival, "Arrivals", arrival_proc, ctx, 0);
-    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_INITIALIZED);
     /* Non-blocking, just schedules the start event to run when we yield from here */
     cmb_process_start(sim->arrival);
-    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(sim->arrival) == CMB_PROCESS_INITIALIZED);
 
     sim->service = cmb_process_create();
     cmb_assert_always(sim->service != NULL);
-    cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_UNINITIALIZED);
     cmb_process_initialize(sim->service, "Service", service_proc, ctx, 0);
-    cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_INITIALIZED);
     cmb_process_start(sim->service);
-    cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_INITIALIZED);
 
     /* Execute the trial */
     cmb_event_queue_execute();
@@ -311,6 +320,7 @@ void run_mg1_trial(void *vtrl)
     cmb_wtdsummary_initialize(&ws);
     cmb_timeseries_summarize(tsp, &ws);
     trl->avg_queue_length = cmb_wtdsummary_mean(&ws);
+    cmb_wtdsummary_terminate(&ws);
 
     /* Clean up */
 
@@ -321,6 +331,7 @@ void run_mg1_trial(void *vtrl)
     cmb_assert_always(cmb_process_status(sim->service) == CMB_PROCESS_FINISHED);
     cmb_process_terminate(sim->service);
     cmb_process_destroy(sim->service);
+    cmb_buffer_terminate(sim->queue);
     cmb_buffer_destroy(sim->queue);
     free(sim);
     free(ctx);
@@ -435,7 +446,6 @@ int main(const int argc, char **argv)
     cmi_test_print_line("*");
     printf("*************************   Testing trial execution   **************************\n");
     cmi_test_print_line("*");
-    printf("Cimba version %s\n", cimba_version());
     printf("Using seed: 0x%" PRIx64 "\n", seed);
     struct timespec start_time;
     if (timing_enabled) {

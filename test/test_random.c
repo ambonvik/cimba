@@ -55,10 +55,12 @@
 
 #define QTEST_REPORT() \
     struct cmb_datasummary dsu = { 0 }; \
+    cmb_datasummary_initialize(&dsu); \
     cmb_dataset_summarize(&ds, &dsu); \
     printf("Actual:   "); \
     cmb_datasummary_print(&dsu, stdout, LEADINS); \
-    cmb_dataset_histogram_print(&ds, stdout, 20, 0.0, 0.0)
+    cmb_dataset_histogram_print(&ds, stdout, 20, 0.0, 0.0); \
+    cmb_datasummary_terminate(&dsu)
 
 #define QTEST_REPORT_ACFS() \
     printf("\nAutocorrelation factors (expected 0.0):\n"); \

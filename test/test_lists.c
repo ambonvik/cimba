@@ -131,7 +131,7 @@ void test_dlist_inner(struct cmi_dlist_node *listptr)
     printf("Last item %d\n", last_item->payload);
     cmb_assert_always(last_item->payload == 0);
 
-    printf("Adding entries from the head\n");
+    printf("Adding entries from the tail\n");
     struct cmi_dlist_node *middle = last;
     for (int i = 5; i < 10; i++) {
         item = cmi_malloc(sizeof(struct dlist_item));
@@ -170,6 +170,10 @@ void test_dlist_inner(struct cmi_dlist_node *listptr)
 
     printf("Deleting the middle\n");
     cmb_assert_always(cmi_dlist_unlink(middle) == true);
+    item = cmi_dlist_entry(middle, struct dlist_item, node);
+    cmb_assert_always(item != NULL);
+    cmb_assert_always(item->payload == 0);
+    cmi_free(item);
     printf("List now: ");
     dlist_print(listptr);
 

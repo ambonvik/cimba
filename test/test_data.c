@@ -203,7 +203,7 @@ static void test_wsummary(const uint64_t nsamples)
     cmb_assert_always(cmb_wtdsummary_variance(&dws) == 0.0);
     cmb_assert_always(cmb_wtdsummary_skewness(&dws) == 0.0);
     cmb_assert_always(cmb_wtdsummary_kurtosis(&dws) == 0.0);
-    cmb_wtdsummary_reset(&dws);
+    cmb_wtdsummary_terminate(&dws);
 
     /* ---- 3. Fixed dataset with UNEQUAL weights, pinned to constants ------ */
     /* Reference computed independently (NumPy, 17 digits). The old count-based
@@ -220,7 +220,10 @@ static void test_wsummary(const uint64_t nsamples)
     const double EXP_KURT = -1.2193888806914575;
 
     struct cmb_wtdsummary *a = cmb_wtdsummary_create();
-    for (uint64_t i = 0; i < fn; i++) { cmb_wtdsummary_add(a, fx[i], fw[i]); }
+    cmb_wtdsummary_initialize(a);
+    for (uint64_t i = 0; i < fn; i++) {
+        cmb_wtdsummary_add(a, fx[i], fw[i]);
+    }
     cmb_assert_always(stat_close(a->wsum, 7.5));
     check_against(a, EXP_MEAN, EXP_VAR, EXP_SKEW, EXP_KURT);
 
@@ -235,6 +238,7 @@ static void test_wsummary(const uint64_t nsamples)
               exactly the failure mode of the count-based bug. -------------- */
     printf("Segmentation invariance (weights split 3 ways)\n");
     struct cmb_wtdsummary *b = cmb_wtdsummary_create();
+    cmb_wtdsummary_initialize(b);
     for (uint64_t i = 0; i < fn; i++) {
         cmb_wtdsummary_add(b, fx[i], fw[i] * 0.2);
         cmb_wtdsummary_add(b, fx[i], fw[i] * 0.3);
@@ -247,7 +251,10 @@ static void test_wsummary(const uint64_t nsamples)
     /* ---- 5. Weight-scale invariance: multiply all weights by 1000 -------- */
     printf("Weight-scale invariance (all weights x1000)\n");
     struct cmb_wtdsummary *c = cmb_wtdsummary_create();
-    for (uint64_t i = 0; i < fn; i++) { cmb_wtdsummary_add(c, fx[i], fw[i] * 1000.0); }
+    cmb_wtdsummary_initialize(c);
+    for (uint64_t i = 0; i < fn; i++) {
+        cmb_wtdsummary_add(c, fx[i], fw[i] * 1000.0);
+    }
     check_against(c, EXP_MEAN, EXP_VAR, EXP_SKEW, EXP_KURT);
 
     /* ---- 6. Zero-weight samples are ignored entirely --------------------- */
@@ -262,19 +269,32 @@ static void test_wsummary(const uint64_t nsamples)
     /* ---- 7. Merge matches a single summary of the combined data ---------- */
     printf("Merge of two partial summaries matches the whole\n");
     struct cmb_wtdsummary *p1 = cmb_wtdsummary_create();
+    cmb_wtdsummary_initialize(p1);
     struct cmb_wtdsummary *p2 = cmb_wtdsummary_create();
-    for (uint64_t i = 0; i < 3;  i++) { cmb_wtdsummary_add(p1, fx[i], fw[i]); }
-    for (uint64_t i = 3; i < fn; i++) { cmb_wtdsummary_add(p2, fx[i], fw[i]); }
+    cmb_wtdsummary_initialize(p2);
+    for (uint64_t i = 0; i < 3;  i++) {
+        cmb_wtdsummary_add(p1, fx[i], fw[i]);
+    }
+    for (uint64_t i = 3; i < fn; i++) {
+        cmb_wtdsummary_add(p2, fx[i], fw[i]);
+    }
     struct cmb_wtdsummary *m = cmb_wtdsummary_create();
+    cmb_wtdsummary_initialize(m);
     cmb_wtdsummary_merge(m, p1, p2);
     cmb_assert_always(cmb_wtdsummary_count(m) == fn);
     cmb_assert_always(stat_close(m->wsum, a->wsum));
     check_against(m, EXP_MEAN, EXP_VAR, EXP_SKEW, EXP_KURT);
     /* merge target aliasing one source must also work */
     struct cmb_wtdsummary *q1 = cmb_wtdsummary_create();
+    cmb_wtdsummary_initialize(q1);
     struct cmb_wtdsummary *q2 = cmb_wtdsummary_create();
-    for (uint64_t i = 0; i < 3;  i++) { cmb_wtdsummary_add(q1, fx[i], fw[i]); }
-    for (uint64_t i = 3; i < fn; i++) { cmb_wtdsummary_add(q2, fx[i], fw[i]); }
+    cmb_wtdsummary_initialize(q2);
+    for (uint64_t i = 0; i < 3;  i++) {
+        cmb_wtdsummary_add(q1, fx[i], fw[i]);
+    }
+    for (uint64_t i = 3; i < fn; i++) {
+        cmb_wtdsummary_add(q2, fx[i], fw[i]);
+    }
     cmb_wtdsummary_merge(q1, q1, q2);
     check_against(q1, EXP_MEAN, EXP_VAR, EXP_SKEW, EXP_KURT);
 
@@ -288,11 +308,13 @@ static void test_wsummary(const uint64_t nsamples)
         double *ws = malloc(nsamples * sizeof *ws);
         cmb_assert_always(xs != NULL && ws != NULL);
         struct cmb_wtdsummary *r = cmb_wtdsummary_create();
+        cmb_wtdsummary_initialize(r);
         for (uint64_t i = 0; i < nsamples; i++) {
             xs[i] = cmb_random_normal(10.0, 3.0);
             ws[i] = cmb_random_uniform(0.25, 4.0);
             cmb_wtdsummary_add(r, xs[i], ws[i]);
         }
+
         double em, ev, es, ek;
         wtd_reference(xs, ws, nsamples, &em, &ev, &es, &ek);
         cmb_assert_always(fabs(cmb_wtdsummary_mean(r)     - em) <= 1e-7 * fmax(1.0, fabs(em)));
@@ -302,6 +324,7 @@ static void test_wsummary(const uint64_t nsamples)
 
         free(xs);
         free(ws);
+        cmb_wtdsummary_terminate(r);
         cmb_wtdsummary_destroy(r);
     }
 
@@ -334,13 +357,21 @@ static void test_wsummary(const uint64_t nsamples)
     printf("\nReport (Variance must be ~%.4g, not the count-based ~9.916):\n", EXP_VAR);
     cmb_wtdsummary_print(a, stdout, true);
 
+    cmb_wtdsummary_terminate(a);
     cmb_wtdsummary_destroy(a);
+    cmb_wtdsummary_terminate(b);
     cmb_wtdsummary_destroy(b);
+    cmb_wtdsummary_terminate(c);
     cmb_wtdsummary_destroy(c);
+    cmb_wtdsummary_terminate(p1);
     cmb_wtdsummary_destroy(p1);
+    cmb_wtdsummary_terminate(p2);
     cmb_wtdsummary_destroy(p2);
+    cmb_wtdsummary_terminate(m);
     cmb_wtdsummary_destroy(m);
+    cmb_wtdsummary_terminate(q1);
     cmb_wtdsummary_destroy(q1);
+    cmb_wtdsummary_terminate(q2);
     cmb_wtdsummary_destroy(q2);
 
     printf("\nAll weighted-summary assertions passed.\n");
@@ -397,22 +428,29 @@ void test_dataset(const uint64_t nsamples)
 
     printf("Content of dataset: cmb_dataset_print:\n");
     cmb_dataset_print(&ds, stdout);
+
     printf("\nMaking a copy: cmb_dataset_copy ... ");
     struct cmb_dataset dsc = { 0 };
+    cmb_dataset_initialize(&dsc);
     cmb_assert_always(cmb_dataset_count(&dsc) == 0);
     uint64_t un = cmb_dataset_copy(&dsc, &ds);
     cmb_assert_always(cmb_dataset_count(&dsc) == cmb_dataset_count(&ds));
     printf("Returned %" PRIu64 "\n", un);
+
     printf("\nContent of copy: cmb_dataset_print:\n");
     cmb_dataset_print(&dsc, stdout);
+
     printf("\nSorting the copy: cmb_dataset_sort ...\n");
     cmb_dataset_sort(&dsc);
     cmb_assert_always(is_sorted(&dsc));
+
     printf("Content of copy: cmb_dataset_print:\n");
     cmb_dataset_print(&dsc, stdout);
+
     printf("\nClearing the copy: cmb_dataset_reset\n");
     cmb_dataset_reset(&dsc);
     cmb_assert_always(cmb_dataset_count(&dsc) == 0);
+    cmb_dataset_terminate(&dsc);
 
     printf("\nBasic dataset reporting functions:\n");
     cmi_test_print_line("-");
@@ -442,6 +480,7 @@ void test_dataset(const uint64_t nsamples)
     }
 
     struct cmb_datasummary dsum = { 0 };
+    cmb_datasummary_initialize(&dsum);
     printf("\nSummarizing the dataset: cmb_dataset_summarize ...");
     un = cmb_dataset_summarize(&ds, &dsum);
     cmb_assert_always(un == cmb_datasummary_count(&dsum));
@@ -473,6 +512,7 @@ void test_dataset(const uint64_t nsamples)
     cmb_assert_always(dsp != NULL);
     cmb_dataset_initialize(dsp);
     cmb_assert_always(cmb_dataset_count(dsp) == 0);
+
     printf("Filling it with noisy sine curves ...\n");
     for (uint32_t ui = 0; ui < nsamples; ui++) {
         const double period = 10.0;
@@ -512,6 +552,7 @@ void test_dataset(const uint64_t nsamples)
     cmb_dataset_initialize(&ds);
     dsp = cmb_dataset_create();
     cmb_dataset_initialize(dsp);
+
     printf("Generating new samples\n");
     for (uint32_t ui = 0; ui < nsamples; ui++) {
         (void)cmb_dataset_add(&ds, cmb_random());
@@ -521,22 +562,27 @@ void test_dataset(const uint64_t nsamples)
     struct cmb_dataset *dst = cmb_dataset_create();
     cmb_dataset_initialize(dst);
     cmb_assert_always(cmb_dataset_count(dst) == 0);
+
     printf("Merging into heap dataset, cmb_dataset_merge\n");
     un = cmb_dataset_merge(dst, &ds, dsp);
     cmb_assert_always(un == cmb_dataset_count(dst));
     cmb_assert_always(un == 2u * nsamples);
+
     printf("Merging into stack dataset, cmb_dataset_merge\n");
     un = cmb_dataset_merge(&ds, dsp, dst);
     cmb_assert_always(un == cmb_dataset_count(&ds));
     cmb_assert_always(un == 3u * nsamples);
+
     printf("Merging with itself, cmb_dataset_merge\n");
     un = cmb_dataset_merge(dst, dsp, dsp);
     cmb_assert_always(un == cmb_dataset_count(dst));
     cmb_assert_always(un == 2u * nsamples);
+
     printf("Merging itself into itself, cmb_dataset_merge\n");
     un = cmb_dataset_merge(dst, dst, dst);
     cmb_assert_always(un == cmb_dataset_count(dst));
     cmb_assert_always(un == 4u * nsamples);
+
     printf("\nCleaning up: cmb_datasummary_terminate, cmb_dataset_destroy\n");
     cmb_dataset_terminate(&ds);
     cmb_dataset_terminate(dst);
@@ -642,6 +688,7 @@ void test_timeseries(const uint64_t nsamples)
 
     printf("\nSummarizing: cmb_timeseries_summarize, cmb_wtdsummary_print, cmb_timeseries_fivenum_print ...\n");
     struct cmb_wtdsummary ws = { 0 };
+    cmb_wtdsummary_initialize(&ws);
     un = cmb_timeseries_summarize(tsp, &ws);
     cmb_assert_always(un == cmb_wtdsummary_count(&ws));
     cmb_assert_always(un == cmb_timeseries_count(tsp) - 1u);
@@ -703,9 +750,10 @@ void test_timeseries(const uint64_t nsamples)
     cmb_assert_always(un == cmb_timeseries_count(&ts) - 1u);
     cmb_wtdsummary_print(&ws, stdout, true);
 
-    printf("\nCleaning up: cmb_timeseries_reset, cmb_timeseries_destroy\n");
-    cmb_timeseries_reset(&ts);
-    cmb_assert_always(cmb_timeseries_count(&ts) == 0);
+    printf("\nCleaning up: cmb_timeseries_terminate, cmb_timeseries_destroy\n");
+    cmb_timeseries_terminate(&ts);
+    cmb_wtdsummary_terminate(&ws);
+    cmb_timeseries_terminate(tsp);
     cmb_timeseries_destroy(tsp);
     cmi_test_print_line("-");
 
@@ -730,6 +778,7 @@ void test_timeseries(const uint64_t nsamples)
     uo = cmb_timeseries_count(&ts);
     un = cmb_timeseries_finalize(&ts, t);
     cmb_assert_always(un == uo + 1u);
+
     printf("Content of timeseries: cmb_timeseries_print\n");
     cmi_test_print_line(".");
     cmb_timeseries_print(&ts, stdout);
@@ -739,14 +788,17 @@ void test_timeseries(const uint64_t nsamples)
     cmb_assert_always(is_sorted_t(&ts));
     cmb_timeseries_sort_x(&ts);
     cmb_assert_always(is_sorted_x(&ts));
+
     printf("Content of timeseries: cmb_timeseries_print\n");
     cmi_test_print_line(".");
     cmb_timeseries_print(&ts, stdout);
     cmi_test_print_line(".");
+
     printf("\nUnsorting: cmb_timeseries_sort_t\n");
     cmb_assert_always(is_sorted_x(&ts));
     cmb_timeseries_sort_t(&ts);
     cmb_assert_always(is_sorted_t(&ts));
+
     printf("Content of timeseries: cmb_timeseries_print\n");
     cmi_test_print_line(".");
     cmb_timeseries_print(&ts, stdout);

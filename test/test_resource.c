@@ -1,7 +1,7 @@
 /*
  * Test script for resources.
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,13 +34,6 @@
 
 #define USERFLAG 0x00000001
 
-/* ───────────────────────────────────────────────────────────────────────────
- * A binary resource must never be held by two processes at once, even when a
- * waiter is woken at the very timestamp another process independently tries to
- * acquire. This reproduces that tied-timestamp race and asserts the invariant
- * directly, so it catches a regression regardless of the random seed.
- * ───────────────────────────────────────────────────────────────────────── */
-
 static unsigned excl_inside = 0u;       /* processes currently holding */
 static unsigned excl_max_inside = 0u;   /* high-water mark observed */
 
@@ -64,7 +57,9 @@ static void *excl_worker(struct cmb_process *me, void *vctx)
     if (excl_inside > excl_max_inside) {
         excl_max_inside = excl_inside;
     }
-    cmb_assert_always(excl_inside == 1u);   /* the invariant under test */
+
+    /* Can never be held by more than one process */
+    cmb_assert_always(excl_inside == 1u);
     cmb_logger_user(stdout, USERFLAG, "%s holds the resource at t=%.1f",
                     me->name, cmb_time());
 
@@ -107,7 +102,8 @@ static void scenario_exclusion(void)
 
     cmb_event_queue_execute();
 
-    cmb_assert_always(excl_max_inside == 1u);   /* never two holders at once */
+    /* Can never be held by more than one process */
+    cmb_assert_always(excl_max_inside == 1u);
     cmb_assert_always(excl_inside == 0u);
 
     cmb_process_terminate(holder);
@@ -116,6 +112,7 @@ static void scenario_exclusion(void)
     cmb_process_destroy(holder);
     cmb_process_destroy(waiter);
     cmb_process_destroy(sniper);
+    cmb_resource_terminate(rp);
     cmb_resource_destroy(rp);
     cmb_event_queue_terminate();
 }
@@ -150,13 +147,13 @@ void *preemptable(struct cmb_process *me, void *ctx)
             sig = cmb_process_hold(cmb_random_exponential(1.0));
             cmb_assert_always((sig == CMB_PROCESS_SUCCESS) || (sig == CMB_PROCESS_PREEMPTED));
             if (sig == CMB_PROCESS_SUCCESS) {
-                cmb_assert_always(cmb_resource_held_by_process(rp, me) == 1u);
+                cmb_assert_always(cmb_resource_held(rp, me) == 1u);
                 cmb_logger_user(stdout, USERFLAG, "Releasing %s", cmb_resource_name(rp));
                 cmb_resource_release(rp);
-                cmb_assert_always(cmb_resource_held_by_process(rp, me) == 0u);
+                cmb_assert_always(cmb_resource_held(rp, me) == 0u);
             }
             else {
-                cmb_assert_always(cmb_resource_held_by_process(rp, me) == 0u);
+                cmb_assert_always(cmb_resource_held(rp, me) == 0u);
                 cmb_logger_user(stdout, USERFLAG, "%s preempted, signal %" PRIi64,
                                 cmb_resource_name(rp),  sig);
             }
@@ -177,16 +174,16 @@ void *preempter(struct cmb_process *me, void *ctx)
     struct cmb_resource *rp = ctx;
 
     for (;;) {
-        cmb_assert_always(cmb_resource_held_by_process(rp, me) == 0u);
+        cmb_assert_always(cmb_resource_held(rp, me) == 0u);
         int64_t sig = cmb_resource_preempt(rp);
-        cmb_assert_always(cmb_resource_held_by_process(rp, me) == 1u);
+        cmb_assert_always(cmb_resource_held(rp, me) == 1u);
         cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
         double dt = cmb_random_exponential(1.0);
         cmb_assert_always(dt >= 0.0);
         sig = cmb_process_hold(dt);
         cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
         cmb_resource_release(rp);
-        cmb_assert_always(cmb_resource_held_by_process(rp, me) == 0u);
+        cmb_assert_always(cmb_resource_held(rp, me) == 0u);
         dt = cmb_random_exponential(1.0);
         cmb_assert_always(dt >= 0.0);
         sig = cmb_process_hold(dt);
@@ -229,9 +226,9 @@ void test_resource(const uint64_t seed, const double dur)
         const int64_t pri = cmb_random_dice(-5, 5);
         cmb_assert_always((pri >= -5) && (pri <= 5));
         cmb_process_initialize(cpp[ui], buf, preemptable, rp, pri);
-        cmb_assert_always(cmb_process_status(cpp[ui]) == CMB_PROCESS_CREATED);
+        cmb_assert_always(cmb_process_status(cpp[ui]) == CMB_PROCESS_INITIALIZED);
         cmb_process_start(cpp[ui]);
-        const uint64_t hld = cmb_resource_held_by_process(rp, cpp[ui]);
+        const uint64_t hld = cmb_resource_held(rp, cpp[ui]);
         cmb_assert_always(hld == 0u);
     }
 
@@ -258,6 +255,7 @@ void test_resource(const uint64_t seed, const double dur)
         cmb_process_destroy(cpp[ui]);
     }
 
+    cmb_resource_terminate(rp);
     cmb_resource_destroy(rp);
     cmb_event_queue_terminate();
     cmb_random_terminate();

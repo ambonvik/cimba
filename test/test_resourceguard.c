@@ -56,12 +56,12 @@
 
 #define USERFLAG 0x00000001
 
-/* ───────────────────────────────────────────────────────────────────────────
+/*
  * A minimal counting resource built directly on cmb_resourceguard.
  *
  * The cmi_resourcebase must be the first member so the guard can recover the
  * concrete type from the base pointer it passes to the demand function.
- * ───────────────────────────────────────────────────────────────────────── */
+ */
 
 struct token_pool {
     struct cmi_resourcebase base;       /* must be first: guard casts to this */
@@ -146,9 +146,9 @@ static void token_release(struct token_pool *tp, const uint64_t n)
     cmb_resourceguard_signal(&(tp->guard));
 }
 
-/* ───────────────────────────────────────────────────────────────────────────
+/*
  * Shared process bodies and timed control events.
- * ───────────────────────────────────────────────────────────────────────── */
+ */
 
 /* Per-waiter scenario state, passed as the process context. */
 struct waiter_ctx {
@@ -239,7 +239,7 @@ static struct cmb_process *spawn(const char *name,
     struct cmb_process *p = cmb_process_create();
     cmb_assert_always(p != NULL);
     cmb_process_initialize(p, name, fn, ctx, pri);
-    cmb_assert_always(cmb_process_status(p) == CMB_PROCESS_CREATED);
+    cmb_assert_always(cmb_process_status(p) == CMB_PROCESS_INITIALIZED);
     cmb_process_start(p);
     return p;
 }
@@ -252,11 +252,11 @@ static void reap(struct cmb_process *p)
     cmb_process_destroy(p);
 }
 
-/* ───────────────────────────────────────────────────────────────────────────
+/*
  * Deterministic scenarios. Each runs in its own freshly initialized event
  * queue so it is fully isolated, and asserts the guard's behaviour directly.
  * None of them draw from the RNG, so their output is seed independent.
- * ───────────────────────────────────────────────────────────────────────── */
+ */
 
 /* A holder that grabs the whole pool, holds for `dur`, then releases. */
 static void *sole_holder(struct cmb_process *me, void *vctx)
@@ -497,12 +497,12 @@ static void scenario_observers(void)
     cmb_event_queue_terminate();
 }
 
-/* ───────────────────────────────────────────────────────────────────────────
+/*
  * Randomized soak: many processes contend for a small pool under mixed
  * priorities, with periodic reprioritizations, then every process is stopped.
  * This drives the same enqueue / reprioritize / remove paths repeatedly with
  * RNG-chosen timing, locking seed-dependent behavior into the reference file.
- * ───────────────────────────────────────────────────────────────────────── */
+ */
 
 #define SOAK_PROCS 6u
 
