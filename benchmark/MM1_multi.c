@@ -114,12 +114,12 @@ void run_trial(void *vtrl)
 
     cmb_event_queue_execute();
 
-    cmb_process_stop(sim->service, NULL);
     cmb_process_terminate(sim->arrival);
-    cmb_process_terminate(sim->service);
     cmb_process_destroy(sim->arrival);
+    cmb_process_stop(sim->service, NULL);
+    cmb_process_terminate(sim->service);
     cmb_process_destroy(sim->service);
-
+    cmb_objectqueue_terminate(sim->queue);
     cmb_objectqueue_destroy(sim->queue);
     cmb_event_queue_terminate();
     free(sim);
@@ -148,6 +148,8 @@ int main(void)
         const double avg_tsys = experiment[ui].sum_wait / (double)(experiment[ui].obj_cnt);
         cmb_datasummary_add(&summary, avg_tsys);
     }
+
+    free(experiment);
 
     const unsigned un = cmb_datasummary_count(&summary);
     if (un > 1) {
