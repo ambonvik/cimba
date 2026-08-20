@@ -32,6 +32,9 @@
 extern void cmi_coroutine_trampoline(void);
 extern void cmi_coroutine_set_stack_teb(void *base, void *limit, void *dealloc);
 
+/* First-entry hook, defined in cmi_coroutine.c */
+extern void *cmi_coroutine_launch(struct cmi_coroutine *cp, void *arg);
+
 /*
  * Windows-specific code to allocate and initialize stack for a new coroutine.
  *
