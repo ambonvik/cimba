@@ -413,12 +413,9 @@ struct cmi_coroutine *cmi_coroutine_main(void)
 }
 
 /*
- * cmi_coroutine_launch - first-entry shim. The assembly trampoline calls this
+ * cmi_coroutine_launch - first-entry hook. The assembly trampoline calls this
  * as the new coroutine's R12 target. It finalizes the sanitizer fiber switch on
- * the fresh stack (the matching half of the start-switch done by whoever
- * transferred in) and then runs the real coroutine function. A fresh fiber has
- * no prior fake stack to restore, hence NULL. Routed through unconditionally;
- * the call vanishes in non-instrumented builds.
+ * the fresh stack and then runs the real coroutine function.
  */
 void *cmi_coroutine_launch(struct cmi_coroutine *cp, void *arg)
 {
@@ -447,6 +444,7 @@ void cmi_coroutine_thread_cleanup(void)
     /* Perform any system-dependent cleanup of stack allocations */
     cmi_coroutine_stack_cleanup();
 
+    /* Nowhere else to go */
     coroutine_current = coroutine_main;
 }
 
