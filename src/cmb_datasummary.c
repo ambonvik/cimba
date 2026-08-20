@@ -29,17 +29,23 @@
 struct cmb_datasummary *cmb_datasummary_create(void)
 {
     struct cmb_datasummary *dsp = cmi_malloc(sizeof *dsp);
+    cmi_memset(dsp, 0, sizeof *dsp);
     dsp->cookie = CMI_UNINITIALIZED;
 
-    /* For convenience, although not entirely consistent with our create-initialize-terminate-destroy cycle */
-    cmb_datasummary_initialize(dsp);
+    /* Add teardown function to the memregistry in case we need to bail out */
+    cmi_dlist_initialize(&(dsp->destroy.node));
+    dsp->destroy.teardown = (cmi_teardown_func *)cmb_datasummary_destroy;
+    dsp->destroy.object = dsp;
+    cmi_memregistry_add(&(dsp->destroy));
 
+    cmb_assert_debug(dsp->cookie == CMI_UNINITIALIZED);
     return dsp;
 }
 
 void cmb_datasummary_initialize(struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    /* Might get raw memory with random content, cannot assert _UNINITIALIZED */
 
     dsp->cookie = CMI_INITIALIZED;
     dsp->count = 0u;
@@ -49,28 +55,56 @@ void cmb_datasummary_initialize(struct cmb_datasummary *dsp)
     dsp->m2 = 0.0;
     dsp->m3 = 0.0;
     dsp->m4 = 0.0;
+
+    /* Add teardown function to the memregistry in case we need to bail out */
+    cmi_dlist_initialize(&(dsp->terminate.node));
+    dsp->terminate.teardown = (cmi_teardown_func *)cmb_datasummary_terminate;
+    dsp->terminate.object = dsp;
+    cmi_memregistry_add(&(dsp->terminate));
+
+    cmb_assert_debug(dsp->cookie == CMI_INITIALIZED);
 }
 
 void cmb_datasummary_reset(struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     cmb_datasummary_terminate(dsp);
     cmb_datasummary_initialize(dsp);
+
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 }
 
 void cmb_datasummary_terminate(struct cmb_datasummary *dsp)
 {
-    cmb_unused(dsp);
+    cmb_assert_release(dsp != NULL);
+    cmb_assert_release((dsp->cookie == CMI_INITIALIZED)
+                    || cmi_memregistry_is_demolishing);
 
-    dsp->cookie = CMI_UNINITIALIZED;
+    if (dsp->cookie == CMI_INITIALIZED) {
+        dsp->cookie = CMI_UNINITIALIZED;
+        dsp->count = 0u;
+    }
+
+    if (!cmi_memregistry_is_demolishing) {
+        cmi_memregistry_remove(&(dsp->terminate));
+    }
+
+    cmb_assert_debug(dsp->cookie == CMI_UNINITIALIZED);
 }
 
 void cmb_datasummary_destroy(struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    /* Call cmb_datasummary_terminate first, please */
+    cmb_assert_debug(dsp->cookie == CMI_UNINITIALIZED);
 
-    cmb_datasummary_terminate(dsp);
+    if (!cmi_memregistry_is_demolishing) {
+        /* Destroying normally, remove from register */
+        cmi_memregistry_remove(&(dsp->destroy));
+    }
+
     cmi_free(dsp);
 }
 
@@ -91,41 +125,54 @@ void cmb_datasummary_destroy(struct cmb_datasummary *dsp)
  * Returns tgt->count, the number of data points in the combined summary.
  */
 uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
-                               const struct cmb_datasummary *dsp1,
-                               const struct cmb_datasummary *dsp2)
+                               const struct cmb_datasummary *dsrc1,
+                               const struct cmb_datasummary *dsrc2)
 {
     cmb_assert_release(tgt != NULL);
-    cmb_assert_release(dsp1 != NULL);
-    cmb_assert_release(dsp1->cookie == CMI_INITIALIZED);
-    cmb_assert_release(dsp2 != NULL);
-    cmb_assert_release(dsp2->cookie == CMI_INITIALIZED);
+    cmb_assert_release(dsrc1 != NULL);
+    cmb_assert_release(dsrc1->cookie == CMI_INITIALIZED);
+    cmb_assert_release(dsrc2 != NULL);
+    cmb_assert_release(dsrc2->cookie == CMI_INITIALIZED);
 
-    struct cmb_datasummary cs = { 0 };
-    cmb_datasummary_initialize(&cs);
-    cs.count = dsp1->count + dsp2->count;
-    cs.min = (dsp1->min < dsp2->min) ? dsp1->min : dsp2->min;
-    cs.max = (dsp1->max > dsp2->max) ? dsp1->max : dsp2->max;
+    struct cmb_datasummary dstmp = { 0 };
+    cmb_datasummary_initialize(&dstmp);
 
-    const double n1 = (double)dsp1->count;
-    const double n2 = (double)dsp2->count;
-    const double n = (double)cs.count;
-    const double d21 = dsp2->m1 - dsp1->m1;
+    dstmp.count = dsrc1->count + dsrc2->count;
+    dstmp.min = (dsrc1->min < dsrc2->min) ? dsrc1->min : dsrc2->min;
+    dstmp.max = (dsrc1->max > dsrc2->max) ? dsrc1->max : dsrc2->max;
+
+    const double n1 = (double)dsrc1->count;
+    const double n2 = (double)dsrc2->count;
+    const double n = (double)dstmp.count;
+    const double d21 = dsrc2->m1 - dsrc1->m1;
     const double d21_n = d21 / n;
     const double d21_n_2 = d21_n * d21_n;
     const double d21_n_3 = d21_n * d21_n_2;
 
-    cs.m1 = dsp1->m1 + n2 * d21_n;
-    cs.m2 = dsp1->m2 + dsp2->m2
+    dstmp.m1 = dsrc1->m1 + n2 * d21_n;
+    dstmp.m2 = dsrc1->m2 + dsrc2->m2
                      + n1 * n2 * d21 * d21_n;
-    cs.m3 = dsp1->m3 + dsp2->m3
+    dstmp.m3 = dsrc1->m3 + dsrc2->m3
                      + n1 * n2 * (n1 - n2) * d21 * d21_n_2
-                     + 3.0 * (n1 * dsp2->m2 - n2 * dsp1->m2) * d21_n;
-    cs.m4 = dsp1->m4 + dsp2->m4
+                     + 3.0 * (n1 * dsrc2->m2 - n2 * dsrc1->m2) * d21_n;
+    dstmp.m4 = dsrc1->m4 + dsrc2->m4
                      + n1 * n2 * (n1 * n1 - n1 * n2 + n2 * n2) * d21 * d21_n_3
-                     + 6.0 * (n1 * n1 * dsp2->m2 + n2 * n2 * dsp1->m2) * d21_n_2
-                     + 4.0 * (n1 * dsp2->m3 - n2 * dsp1->m3) * d21_n;
+                     + 6.0 * (n1 * n1 * dsrc2->m2 + n2 * n2 * dsrc1->m2) * d21_n_2
+                     + 4.0 * (n1 * dsrc2->m3 - n2 * dsrc1->m3) * d21_n;
 
-    *tgt = cs;
+    if (tgt->cookie == CMI_INITIALIZED) {
+        cmb_datasummary_terminate(tgt);
+    }
+
+    cmb_datasummary_initialize(tgt);
+    tgt->count = dstmp.count;
+    tgt->max = dstmp.max;
+    tgt->min = dstmp.min;
+    tgt->m1 = dstmp.m1;
+    tgt->m2 = dstmp.m2;
+    tgt->m3 = dstmp.m3;
+    tgt->m4 = dstmp.m4;
+    cmb_datasummary_terminate(&dstmp);
 
     return tgt->count;
 }

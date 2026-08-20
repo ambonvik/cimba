@@ -34,8 +34,16 @@ struct cmb_resource *cmb_resource_create(void)
 {
     struct cmb_resource *rp = cmi_malloc(sizeof(*rp));
     cmi_memset(rp, 0, sizeof(*rp));
-    ((struct cmi_resourcebase *)rp)->cookie = CMI_UNINITIALIZED;
+    struct cmi_resourcebase *rbp = &(rp->core.base);
+    rbp->cookie = CMI_UNINITIALIZED;
 
+    /* Add teardown function to the memregistry in case we need to bail out */
+    cmi_dlist_initialize(&(rp->destroy.node));
+    rp->destroy.teardown = (cmi_teardown_func *)cmb_resource_destroy;
+    rp->destroy.object = rp;
+    cmi_memregistry_add(&(rp->destroy));
+
+    cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
     return rp;
 }
 
@@ -48,7 +56,8 @@ static void resource_drop_holder(struct cmi_holdable *hrp,
                                  const struct cmb_process *pp)
 {
     cmb_assert_release(hrp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)hrp)->cookie == CMI_INITIALIZED);
+    const struct cmi_resourcebase *rbp = &(hrp->base);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     cmb_assert_release(pp != NULL);
 
     struct cmb_resource *rp = (struct cmb_resource *)hrp;
@@ -67,16 +76,31 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
 {
     cmb_assert_release(rp != NULL);
     cmb_assert_release(name != NULL);
+    /* Might get raw memory with random content, cannot assert _UNINITIALIZED */
 
+    /* Initializing base class creates a memregistry item. */
     cmi_holdable_initialize(&(rp->core), name);
-    cmb_resourceguard_initialize(&(rp->guard), &(rp->core.base));
 
+    /* The memregistry item is now pointing to cmi_resourcebase_terminate.
+     * Redirect it to ours (do not call cmb_logger_error in the meantime!) */
+    struct cmi_resourcebase *rbp = &(rp->core.base);
+    cmb_assert_debug(rbp->terminate.object == rp);
+    rbp->terminate.teardown = (cmi_teardown_func *)cmb_resource_terminate;
+    /* OK, consistent now, continue own initialization */
+
+    /* Connect the resource guard to the actual resource */
+    cmb_resourceguard_initialize(&(rp->guard), rbp);
+
+    /* Set polymorphic function for how to drop this kind of holdable */
     rp->core.drop = resource_drop_holder;
     rp->core.reprio = NULL;
     rp->holder = NULL;
 
+    /* Initialize data collector */
     rp->is_recording = false;
     cmb_timeseries_initialize(&(rp->history));
+
+    cmb_assert_debug(rbp->cookie == CMI_INITIALIZED);
 }
 
 /*
@@ -85,15 +109,24 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
 void cmb_resource_terminate(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
-    cmb_assert_release(cmi_hashheap_count((struct cmi_hashheap *)&(rp->guard)) == 0u);
+    cmb_assert_release(cmi_hashheap_count(&(rp->guard.priority_queue)) == 0u);
+    const struct cmi_resourcebase *rbp = &(rp->core.base);
+    cmb_assert_release((rbp->cookie == CMI_INITIALIZED)
+                    || cmi_memregistry_is_demolishing);
 
-    if (rp->holder != NULL) {
-        resource_drop_holder(&(rp->core), rp->holder);
+    if (rbp->cookie == CMI_INITIALIZED) {
+        if (rp->holder != NULL) {
+            resource_drop_holder(&(rp->core), rp->holder);
+        }
+
+        cmb_timeseries_terminate(&(rp->history));
+        cmb_resourceguard_terminate(&(rp->guard));
+
+        /* Terminating the parent class will also clear the memregistry item */
+        cmi_holdable_terminate(&(rp->core));
     }
 
-    cmb_timeseries_terminate(&(rp->history));
-    cmb_resourceguard_terminate(&(rp->guard));
-    cmi_holdable_terminate(&(rp->core));
+    cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
 }
 
 /*
@@ -101,7 +134,16 @@ void cmb_resource_terminate(struct cmb_resource *rp)
  */
 void cmb_resource_destroy(struct cmb_resource *rp)
 {
-    cmb_resource_terminate(rp);
+    cmb_assert_release(rp != NULL);
+    const struct cmi_resourcebase *rbp = &(rp->core.base);
+    /* Call cmb_resource_terminate first, please */
+    cmb_assert_release(rbp->cookie == CMI_UNINITIALIZED);
+
+    if (!cmi_memregistry_is_demolishing) {
+        /* Destroying normally, remove from register */
+        cmi_memregistry_remove(&(rp->destroy));
+    }
+
     cmi_free(rp);
 }
 
@@ -132,7 +174,7 @@ void cmb_resource_stop_recording(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    const struct cmi_resourcebase *rbp = &(rp->core.base);
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     record_sample(rp);
     rp->is_recording = false;
@@ -142,7 +184,7 @@ struct cmb_timeseries *cmb_resource_history(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    const struct cmi_resourcebase *rbp = &(rp->core.base);
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     return &(rp->history);
@@ -151,16 +193,18 @@ struct cmb_timeseries *cmb_resource_history(struct cmb_resource *rp)
 void cmb_resource_print_report(struct cmb_resource *rp, FILE *fp) {
     cmb_assert_release(rp != NULL);
 
-    const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)rp;
+    const struct cmi_resourcebase *rbp = &(rp->core.base);
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     fprintf(fp, "Resource utilization for %s:\n", rbp->name);
     const struct cmb_timeseries *ts = &(rp->history);
-    struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
-    (void)cmb_timeseries_summarize(ts, ws);
-    cmb_wtdsummary_print(ws, fp, true);
-    cmb_wtdsummary_destroy(ws);
 
-    cmb_timeseries_histogram_print(ts, fp, 2u, 0.0, 1.0);
+    struct cmb_wtdsummary ws = { 0 };
+    cmb_wtdsummary_initialize(&ws);
+    (void)cmb_timeseries_summarize(ts, &ws);
+    cmb_wtdsummary_print(&ws, fp, true);
+    cmb_wtdsummary_terminate(&ws);
+
+    cmb_timeseries_histogram_print(ts, fp, 2u, 0.0, 2.0);
 }
 
 /*
@@ -183,7 +227,7 @@ static bool is_available(const struct cmi_resourcebase *rbp,
 static void resource_grab(struct cmb_resource *rp, struct cmb_process *pp)
 {
     rp->holder = pp;
-    struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
+    struct cmi_holdable *hrp = &(rp->core);
     struct cmi_process_holdable *php = cmi_mempool_alloc(&cmi_process_holdabletags);
     php->res = hrp;
     cmi_slist_push(&(pp->resources), &(php->listhead));
@@ -192,10 +236,10 @@ static void resource_grab(struct cmb_resource *rp, struct cmb_process *pp)
 int64_t cmb_resource_acquire(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
+    const struct cmi_resourcebase *rbp = &(rp->core.base);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
-    cmb_logger_info(stdout, "Acquiring resource %s",
-                    ((struct cmi_resourcebase *)rp)->name);
-
+    cmb_logger_info(stdout, "Acquiring resource %s", rbp->name);
     struct cmb_process *pp = cmb_process_current();
 
     /* On the first attempt we may grab only if no one is already queued, so a
@@ -209,8 +253,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
             /* Free and it is our turn, grab it */
             resource_grab(rp, pp);
             record_sample(rp);
-            cmb_logger_info(stdout, "Acquired %s",
-                ((struct cmi_resourcebase *)rp)->name);
+            cmb_logger_info(stdout, "Acquired %s", rbp->name);
             return CMB_PROCESS_SUCCESS;
         }
 
@@ -222,8 +265,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
             /* Thrown out by the guard (cancelled, interrupted, timed out) */
             cmb_logger_info(stdout,
                             "Did not acquire %s, code %" PRId64,
-                            ((struct cmi_resourcebase *)rp)->name,
-                            ret);
+                            rbp->name, ret);
             return ret;
         }
 
@@ -239,17 +281,18 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
  */
 void cmb_resource_release(struct cmb_resource *rp) {
     cmb_assert_release(rp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+    const struct cmi_resourcebase *rbp = &(rp->core.base);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
-    struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
     struct cmb_process *pp = cmb_process_current();
     cmb_assert_release(pp != NULL);
     cmb_assert_release(rp->holder == pp);
+    const struct cmi_holdable *hrp = &(rp->core);
     cmi_process_remove_holdable(pp, hrp);
     rp->holder = NULL;
     record_sample(rp);
 
-    cmb_logger_info(stdout, "Released %s", hrp->base.name);
+    cmb_logger_info(stdout, "Released %s", rbp->name);
     struct cmb_resourceguard *rgp = &(rp->guard);
     cmb_resourceguard_signal(rgp);
 }
@@ -275,12 +318,13 @@ static void wakeup_event_preempt(void *vp, void *arg)
 int64_t cmb_resource_preempt(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)rp)->cookie == CMI_INITIALIZED);
+    const struct cmi_resourcebase *rbp = &(rp->core.base);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     int64_t ret;
     struct cmb_process *pp = cmb_process_current();
     const int64_t myprio = pp->priority;
-    struct cmi_holdable *hrp = (struct cmi_holdable *)rp;
+    struct cmi_holdable *hrp = &(rp->core);
     cmb_logger_info(stdout, "Preempting resource %s", hrp->base.name);
 
     struct cmb_process *victim = rp->holder;
@@ -307,7 +351,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
         resource_grab(rp, pp);
         cmb_logger_info(stdout,
                        "Preempted %s from process %s",
-                        hrp->base.name,
+                        rbp->name,
                         victim->name);
         ret = CMB_PROCESS_SUCCESS;
     }
@@ -315,7 +359,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
         /* Wait politely at the front door until resource becomes available */
         cmb_logger_info(stdout,
                         "%s not preempted, holder %s priority %" PRId64 " > my priority %" PRId64,
-                         hrp->base.name,
+                         rbp->name,
                          victim->name,
                          victim->priority,
                          myprio);

@@ -55,8 +55,16 @@ struct cmb_objectqueue *cmb_objectqueue_create(void)
 {
     struct cmb_objectqueue *oqp = cmi_malloc(sizeof *oqp);
     cmi_memset(oqp, 0, sizeof *oqp);
-    ((struct cmi_resourcebase *)oqp)->cookie = CMI_UNINITIALIZED;
+    struct cmi_resourcebase *rbp = &(oqp->base);
+    rbp->cookie = CMI_UNINITIALIZED;
 
+    /* Add teardown function to the memregistry in case we need to bail out */
+    cmi_dlist_initialize(&(oqp->destroy.node));
+    oqp->destroy.teardown = (cmi_teardown_func *)cmb_objectqueue_destroy;
+    oqp->destroy.object = oqp;
+    cmi_memregistry_add(&(oqp->destroy));
+
+    cmb_assert_debug(oqp->base.cookie == CMI_UNINITIALIZED);
     return oqp;
 }
 
@@ -67,48 +75,75 @@ void cmb_objectqueue_initialize(struct cmb_objectqueue *oqp,
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(name != NULL);
     cmb_assert_release(capacity > 0u);
+    /* Might get raw memory with random content, cannot assert _UNINITIALIZED */
 
-    cmi_resourcebase_initialize(&(oqp->core), name);
+    /* Initializing base class creates a memregistry item. */
+    struct cmi_resourcebase *rbp = &(oqp->base);
+    cmi_resourcebase_initialize(rbp, name);
 
-    cmb_resourceguard_initialize(&(oqp->front_guard), &(oqp->core));
-    cmb_resourceguard_initialize(&(oqp->rear_guard), &(oqp->core));
+    /* The memregistry item is now pointing to cmi_resourcebase_terminate.
+     * Redirect it to ours (do not call cmb_logger_error in the meantime!) */
+    cmb_assert_debug(rbp->terminate.object == oqp);
+    rbp->terminate.teardown = (cmi_teardown_func *)cmb_objectqueue_terminate;
+    /* OK, consistent now, continue own initialization */
+
+    /* Connect the resource guards to the actual resource */
+    cmb_resourceguard_initialize(&(oqp->front_guard), rbp);
+    cmb_resourceguard_initialize(&(oqp->rear_guard), rbp);
 
     oqp->capacity = capacity;
     oqp->length = 0u;
-
     oqp->queue_head = NULL;
     oqp->queue_end = NULL;
 
+    /* Initialize data collector */
     oqp->is_recording = false;
     cmb_timeseries_initialize(&(oqp->history));
+
+    cmb_assert_debug(rbp->cookie == CMI_INITIALIZED);
 }
 
 void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
+    struct cmi_resourcebase *rbp = &(oqp->base);
+    cmb_assert_release((rbp->cookie == CMI_INITIALIZED)
+                    || cmi_memregistry_is_demolishing);
 
-    while (oqp->queue_head != NULL) {
-        struct queue_tag *tag = oqp->queue_head;
-        oqp->queue_head = tag->next;
-        cmi_mempool_free(&objectqueue_tags, tag);
+    if (rbp->cookie == CMI_INITIALIZED) {
+        while (oqp->queue_head != NULL) {
+            struct queue_tag *tag = oqp->queue_head;
+            oqp->queue_head = tag->next;
+            cmi_mempool_free(&objectqueue_tags, tag);
+        }
+
+        oqp->length = 0u;
+        oqp->queue_head = NULL;
+        oqp->queue_end = NULL;
+
+        cmb_timeseries_terminate(&(oqp->history));
+        cmb_resourceguard_terminate(&(oqp->rear_guard));
+        cmb_resourceguard_terminate(&(oqp->front_guard));
+
+        /* Terminating the parent class will also clear the memregistry item */
+        cmi_resourcebase_terminate(&(oqp->base));
     }
 
-    oqp->length = 0u;
-    oqp->queue_head = NULL;
-    oqp->queue_end = NULL;
-
-    cmb_timeseries_terminate(&(oqp->history));
-
-    cmb_resourceguard_terminate(&(oqp->rear_guard));
-    cmb_resourceguard_terminate(&(oqp->front_guard));
-    cmi_resourcebase_terminate(&(oqp->core));
+    cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
 }
 
 void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
+    struct cmi_resourcebase *rbp = &(oqp->base);
+    /* Call cmb_objectqueue_terminate first, please */
+    cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
 
-    cmb_objectqueue_terminate(oqp);
+    if (!cmi_memregistry_is_demolishing) {
+        /* Destroying normally, remove from register */
+        cmi_memregistry_remove(&(oqp->destroy));
+    }
+
     cmi_free(oqp);
 }
 
@@ -150,7 +185,7 @@ static bool has_space(const struct cmi_resourcebase *rbp,
 
 static void record_sample(struct cmb_objectqueue *oqp) {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(oqp->base.cookie == CMI_INITIALIZED);
 
     if (oqp->is_recording) {
         struct cmb_timeseries *ts = &(oqp->history);
@@ -161,7 +196,7 @@ static void record_sample(struct cmb_objectqueue *oqp) {
 void cmb_objectqueue_recording_start(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(oqp->base.cookie == CMI_INITIALIZED);
 
     oqp->is_recording = true;
     record_sample(oqp);
@@ -170,7 +205,7 @@ void cmb_objectqueue_recording_start(struct cmb_objectqueue *oqp)
 void cmb_objectqueue_recording_stop(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(oqp->base.cookie == CMI_INITIALIZED);
 
     record_sample(oqp);
     oqp->is_recording = false;
@@ -179,21 +214,22 @@ void cmb_objectqueue_recording_stop(struct cmb_objectqueue *oqp)
 struct cmb_timeseries *cmb_objectqueue_history(struct cmb_objectqueue *oqp)
 {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(oqp->base.cookie == CMI_INITIALIZED);
 
     return &(oqp->history);
 }
 
 void cmb_objectqueue_report_print(struct cmb_objectqueue *oqp, FILE *fp) {
     cmb_assert_release(oqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)oqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(oqp->base.cookie == CMI_INITIALIZED);
 
-    fprintf(fp, "Queue lengths for %s:\n", oqp->core.name);
+    fprintf(fp, "Queue lengths for %s:\n", oqp->base.name);
     const struct cmb_timeseries *ts = &(oqp->history);
-
     struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
+    cmb_wtdsummary_initialize(ws);
     (void)cmb_timeseries_summarize(ts, ws);
     cmb_wtdsummary_print(ws, fp, true);
+    cmb_wtdsummary_terminate(ws);
     cmb_wtdsummary_destroy(ws);
 
     const unsigned nbin = (oqp->capacity > 20) ? 20 : oqp->capacity + 1;
@@ -334,4 +370,3 @@ uint64_t cmb_objectqueue_position(struct cmb_objectqueue *oqp, void *object)
 
     return 0u;
 }
-

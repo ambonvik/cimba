@@ -67,6 +67,11 @@ static void wakeup_event_interrupt(void *vp, void *arg);
 static void wakeup_event_process(void *vp, void *arg);
 static void resume_event(void *vp, void *arg);
 
+static_assert((int)CMB_PROCESS_UNINITIALIZED == (int)CMI_COROUTINE_UNINITIALIZED);
+static_assert((int)CMB_PROCESS_INITIALIZED == (int)CMI_COROUTINE_INITIALIZED);
+static_assert((int)CMB_PROCESS_RUNNING == (int)CMI_COROUTINE_RUNNING);
+static_assert((int)CMB_PROCESS_FINISHED == (int)CMI_COROUTINE_FINISHED);
+
 /*
  * cmb_process_create - Allocate memory for the process.
  */
@@ -74,7 +79,16 @@ struct cmb_process *cmb_process_create(void)
 {
     struct cmb_process *pp = cmi_malloc(sizeof(*pp));
     cmi_memset(pp, 0, sizeof(*pp));
+    pp->core.status = CMI_COROUTINE_UNINITIALIZED;
 
+    /* Add teardown function to the memregistry in case we need to bail out */
+    cmi_dlist_initialize(&(pp->destroy.node));
+    pp->destroy.teardown = (cmi_teardown_func *)cmb_process_destroy;
+    pp->destroy.object = pp;
+    cmi_memregistry_add(&(pp->destroy));
+
+    cmb_assert_debug(pp->core.status == CMI_COROUTINE_UNINITIALIZED);
+    cmb_assert_debug(cmb_process_status(pp) == CMB_PROCESS_UNINITIALIZED);
     return pp;
 }
 
@@ -88,9 +102,10 @@ void cmb_process_initialize_wssz(struct cmb_process *pp,
                             cmb_process_func procfunc,
                             void *context,
                             const int64_t priority,
-                            size_t stacksize)
+                            const size_t stacksize)
 {
     cmb_assert_release(pp != NULL);
+    /* Might get raw memory with random content, cannot assert _UNINITIALIZED */
 
     cmi_coroutine_initialize((struct cmi_coroutine *)pp,
                        (cmi_coroutine_func *)procfunc,
@@ -105,6 +120,15 @@ void cmb_process_initialize_wssz(struct cmb_process *pp,
     cmi_slist_initialize(&pp->awaits);
     cmi_slist_initialize(&pp->waiters);
     cmi_slist_initialize(&pp->resources);
+
+    /* Add teardown function to the memregistry in case we need to bail out */
+    cmi_dlist_initialize(&(pp->terminate.node));
+    pp->terminate.teardown = (cmi_teardown_func *)cmb_process_terminate;
+    pp->terminate.object = pp;
+    cmi_memregistry_add(&(pp->terminate));
+
+    cmb_assert_debug(pp->core.status == CMI_COROUTINE_INITIALIZED);
+    cmb_assert_debug(cmb_process_status(pp) == CMB_PROCESS_INITIALIZED);
 }
 
 /*
@@ -119,6 +143,7 @@ void cmb_process_initialize(struct cmb_process *pp,
 {
     const size_t stack_size = __atomic_load_n(&default_stacksize, __ATOMIC_RELAXED);
     cmb_process_initialize_wssz(pp, name, procfunc, context, priority, stack_size);
+    cmb_assert_debug(cmb_process_status(pp) == CMB_PROCESS_INITIALIZED);
 }
 
 /*
@@ -133,33 +158,45 @@ void cmb_process_initialize(struct cmb_process *pp,
 extern void cmb_process_terminate(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
-    cmb_assert_release(cmb_process_status(pp) != CMB_PROCESS_RUNNING);
+    cmb_assert_release(((cmb_process_status(pp) == CMB_PROCESS_INITIALIZED)
+                       || (cmb_process_status(pp) == CMB_PROCESS_FINISHED))
+                       || cmi_memregistry_is_demolishing);
     cmb_assert_release(pp != cmb_process_current());
 
-    /* Should not have any other processes waiting for this one at this point.
-     * This should never happen, since any waiting processes are signaled when
-     * the process finishes - which according to the assert above already must
-     * have happened before this.     */
-    cmb_assert_debug(cmi_slist_is_empty(&pp->waiters));
-    cmi_slist_terminate(&pp->waiters);
+    if (!cmi_memregistry_is_demolishing) {
+        /* Should not have any other processes waiting for this one at this point.
+         * This should never happen, since any waiting processes are signaled when
+         * the process finishes - which according to the assert above already must
+         * have happened before this.     */
+        cmb_assert_debug(cmi_slist_is_empty(&pp->waiters));
+        cmi_slist_terminate(&pp->waiters);
 
-    /* Should not have any waiters or hold any resources either, but check. */
-    if (!cmi_slist_is_empty(&pp->awaits)) {
-        cmb_logger_warning(stdout,
-            "Terminating %s while still awaiting something", pp->name);
-        cmi_process_cancel_awaiteds(pp);
+        /* Should not have any waiters or hold any resources either, but check. */
+        if (!cmi_slist_is_empty(&pp->awaits)) {
+            cmb_logger_warning(stdout,
+                "Terminating %s while still awaiting something", pp->name);
+            cmi_process_cancel_awaiteds(pp);
+        }
+        cmi_slist_terminate(&pp->awaits);
+
+        if (!cmi_slist_is_empty(&pp->resources)) {
+            cmb_logger_warning(stdout,
+                "Terminating %s while still holding resources", pp->name);
+            cmi_process_drop_resources(pp);
+        }
+        cmi_slist_terminate(&pp->resources);
+
+       /* Terminating normally, remove from register */
+        cmi_memregistry_remove(&(pp->terminate));
     }
-    cmi_slist_terminate(&pp->awaits);
 
-    if (!cmi_slist_is_empty(&pp->resources)) {
-        cmb_logger_warning(stdout,
-            "Terminating %s while still holding resources", pp->name);
-        cmi_process_drop_resources(pp);
+    if (cmb_process_status(pp) != CMB_PROCESS_UNINITIALIZED) {
+        pp->handle = 0u;
+        /* Will set status CMI_COROUTINE_UNINITIALIZED */
+        cmi_coroutine_terminate((struct cmi_coroutine *)pp);
     }
-    cmi_slist_terminate(&pp->resources);
 
-    pp->handle = 0u;
-    cmi_coroutine_terminate((struct cmi_coroutine *)pp);
+    cmb_assert_debug(cmb_process_status(pp) == CMB_PROCESS_UNINITIALIZED);
 }
 
 /*
@@ -169,22 +206,24 @@ extern void cmb_process_terminate(struct cmb_process *pp)
 void cmb_process_destroy(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
-    cmb_assert_release(cmb_process_status(pp) != CMB_PROCESS_RUNNING);
+    cmb_assert_release((cmb_process_status(pp) != CMB_PROCESS_RUNNING)
+                        || cmi_memregistry_is_demolishing);
     cmb_assert_release(pp != cmb_process_current());
+    cmb_assert_release(((struct cmi_coroutine *)pp)->stack == NULL);
 
-    if (((struct cmi_coroutine *)pp)->stack != NULL) {
-        /* Still live, we helpfully clean it up */
-        cmb_process_terminate(pp);
+    if (!cmi_memregistry_is_demolishing) {
+        /* pp is about to become un-dereferenceable, and the
+         * staleness checks in the wakeup handlers dereference it. */
+        cmi_resource_cancel_wakeups(pp);
+        cmi_resourceguard_cancel_wakeups(pp);
+        cmi_event_cancel_wakeups(pp);
+        cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
+        cmb_event_pattern_cancel(wakeup_event_process, pp, CMB_ANY_OBJECT);
+        cmb_event_pattern_cancel(resume_event, pp, CMB_ANY_OBJECT);
+
+        /* Destroying normally, remove from register */
+        cmi_memregistry_remove(&(pp->destroy));
     }
-
-    /* Unconditional: pp is about to become un-dereferenceable, and the
-     * staleness checks in the wakeup handlers dereference it. */
-    cmi_resource_cancel_wakeups(pp);
-    cmi_resourceguard_cancel_wakeups(pp);
-    cmi_event_cancel_wakeups(pp);
-    cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
-    cmb_event_pattern_cancel(wakeup_event_process, pp, CMB_ANY_OBJECT);
-    cmb_event_pattern_cancel(resume_event, pp, CMB_ANY_OBJECT);
 
     cmi_free(pp);
 }

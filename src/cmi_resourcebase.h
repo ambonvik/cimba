@@ -2,7 +2,7 @@
  * @file cmi_resourcebase.h
  * @brief The virtual base class for all resources a process can wait for.
  *
- * This class provides polymorphic functions to be called for members of any
+ * This class enables polymorphic functions to be called for members of any
  * derived class and allows lists of miscellaneous resource types together.
  *
  * Most importantly, a `cmi_resourceguard` will need a pointer to a
@@ -34,6 +34,8 @@
 
 #include <stdint.h>
 
+#include "cmi_memregistry.h"
+
 /**
  * @brief Unlimited buffer and queue sizes, defined here for convenience
  */
@@ -48,8 +50,9 @@
  * @brief Virtual base class for various resources and condition variables.
  */
 struct cmi_resourcebase {
-    uint64_t cookie;                        /**< Initialization trap */
-    char name[CMI_RESOURCEBASE_NAMEBUF_SZ]; /**< Resource name */
+    uint64_t cookie;                         /**< Initialization trap */
+    char name[CMI_RESOURCEBASE_NAMEBUF_SZ];  /**< Resource name */
+    struct cmi_memregistry_item terminate;   /**< Internal use */
 };
 
 /**

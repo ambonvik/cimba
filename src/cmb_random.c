@@ -27,6 +27,7 @@
 
 #include "cmb_logger.h"
 #include "cmb_random.h"
+
 #include "cmi_config.h"
 #include "cmi_memutils.h"
 
@@ -735,7 +736,7 @@ struct cmb_random_alias *cmb_random_alias_create(const uint64_t n,
     cmb_assert_release(n > 0u);
     cmb_assert_release(sums_to_one(n, pa));
 
-    struct cmb_random_alias *alp = NULL;
+    struct cmb_random_alias *ap = NULL;
     double *work = cmi_calloc(n, sizeof(double));
     double psum = 0.0;
     for (uint64_t ai = 0; ai < n; ai++) {
@@ -757,16 +758,16 @@ struct cmb_random_alias *cmb_random_alias_create(const uint64_t n,
         }
     }
 
-    alp = cmi_malloc(sizeof *alp);
-    alp->n = n;
-    alp->uprob = cmi_calloc(n, sizeof(uint64_t));
-    alp->alias = cmi_calloc(n, sizeof(uint64_t));
+    ap = cmi_malloc(sizeof *ap);
+    ap->n = n;
+    ap->uprob = cmi_calloc(n, sizeof(uint64_t));
+    ap->alias = cmi_calloc(n, sizeof(uint64_t));
 
     while ((idxs > 0) && (idxl > 0)) {
         const uint64_t l = small[--idxs];
         const uint64_t g = large[--idxl];
-        alp->uprob[l] = alias_secure(work[l]);
-        alp->alias[l] = g;
+        ap->uprob[l] = alias_secure(work[l]);
+        ap->alias[l] = g;
         work[g] = (work[g] + work[l]) - 1.0;
         if (work[g] < 1.0) {
             small[idxs++] = g;
@@ -778,19 +779,24 @@ struct cmb_random_alias *cmb_random_alias_create(const uint64_t n,
 
     while (idxl > 0) {
         const uint64_t g = large[--idxl];
-        alp->uprob[g] = UINT64_MAX;
+        ap->uprob[g] = UINT64_MAX;
     }
 
     while (idxs > 0) {
         const uint64_t l = small[--idxs];
-        alp->uprob[l] = UINT64_MAX;
+        ap->uprob[l] = UINT64_MAX;
     }
 
     cmi_free(large);
     cmi_free(small);
     cmi_free(work);
 
-    return alp;
+    cmi_dlist_initialize(&(ap->destroy.node));
+    ap->destroy.teardown = (cmi_teardown_func *)cmb_random_alias_destroy;
+    ap->destroy.object = ap;
+    cmi_memregistry_add(&(ap->destroy));
+
+    return ap;
 }
 
 uint64_t cmb_random_alias_sample(const struct cmb_random_alias *ap)
@@ -812,6 +818,10 @@ void cmb_random_alias_destroy(struct cmb_random_alias *ap)
     cmb_assert_release(ap != NULL);
     cmb_assert_release(ap->uprob != NULL);
     cmb_assert_release(ap->alias != NULL);
+
+    if (!cmi_memregistry_is_demolishing) {
+        cmi_memregistry_remove(&(ap->destroy));
+    }
 
     cmi_free(ap->uprob);
     cmi_free(ap->alias);

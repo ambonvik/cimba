@@ -28,53 +28,91 @@
 
 struct cmb_condition *cmb_condition_create(void)
 {
-    struct cmb_condition *r = cmi_malloc(sizeof *r);
-    cmi_memset(r, 0, sizeof *r);
+    struct cmb_condition *cp = cmi_malloc(sizeof *cp);
+    cmi_memset(cp, 0, sizeof *cp);
+    struct cmi_resourcebase *rbp = &(cp->base);
+    rbp->cookie = CMI_UNINITIALIZED;
 
-    return r;
+    /* Add teardown function to the memregistry in case we need to bail out */
+    cmi_dlist_initialize(&(cp->destroy.node));
+    cp->destroy.teardown = (cmi_teardown_func *)cmb_condition_destroy;
+    cp->destroy.object = cp;
+    cmi_memregistry_add(&(cp->destroy));
+
+    cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
+    return cp;
 }
 
-void cmb_condition_initialize(struct cmb_condition *cvp,
+void cmb_condition_initialize(struct cmb_condition *cp,
                               const char *name)
 {
-    cmb_assert_release(cvp != NULL);
+    cmb_assert_release(cp != NULL);
     cmb_assert_release(name != NULL);
+    /* Might get raw memory with random content, cannot assert _UNINITIALIZED */
 
-    cmi_resourcebase_initialize((struct cmi_resourcebase *)cvp, name);
-    cmb_resourceguard_initialize(&(cvp->guard), (struct cmi_resourcebase *)cvp);
+    /* Initializing base class creates a memregistry item. */
+    struct cmi_resourcebase *rbp = &(cp->base);
+    cmi_resourcebase_initialize(rbp, name);
+
+    /* The memregistry item is now pointing to cmi_resourcebase_terminate.
+     * Redirect it to ours (do not call cmb_logger_error in the meantime!) */
+    cmb_assert_debug(rbp->terminate.object == cp);
+    rbp->terminate.teardown = (cmi_teardown_func *)cmb_condition_terminate;
+    /* OK, consistent now, continue own initialization */
+
+    /* Connect the resource guard to the actual resource */
+    cmb_resourceguard_initialize(&(cp->guard), rbp);
+
+    cmb_assert_debug(rbp->cookie == CMI_INITIALIZED);
 }
 
-void cmb_condition_terminate(struct cmb_condition *cvp)
+void cmb_condition_terminate(struct cmb_condition *cp)
 {
-    cmb_assert_release(cvp != NULL);
+    cmb_assert_release(cp != NULL);
+    struct cmi_resourcebase *rbp = &(cp->base);
+    cmb_assert_release((rbp->cookie == CMI_INITIALIZED)
+                    || cmi_memregistry_is_demolishing);
 
-    cmb_resourceguard_terminate(&(cvp->guard));
-    cmi_resourcebase_terminate((struct cmi_resourcebase *)cvp);
+    if (rbp->cookie == CMI_INITIALIZED) {
+        cmb_resourceguard_terminate(&(cp->guard));
+
+        /* Terminating the parent class will also clear the memregistry item */
+        cmi_resourcebase_terminate(rbp);
+    }
+
+    cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
 }
 
-void cmb_condition_destroy(struct cmb_condition *cvp)
+void cmb_condition_destroy(struct cmb_condition *cp)
 {
-    cmb_assert_release(cvp != NULL);
+    cmb_assert_release(cp != NULL);
+    const struct cmi_resourcebase *rbp = &(cp->base);
+    /* Call cmb_condition_terminate first, please */
+    cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
 
-    cmb_condition_terminate(cvp);
-    cmi_free(cvp);
+    if (!cmi_memregistry_is_demolishing) {
+        /* Destroying normally, remove from register */
+        cmi_memregistry_remove(&(cp->destroy));
+    }
+
+    cmi_free(cp);
 }
 
-int64_t cmb_condition_wait(struct cmb_condition *cvp,
+int64_t cmb_condition_wait(struct cmb_condition *cp,
                            cmb_condition_demand_func *dmnd,
                            const void *ctx)
 {
-    cmb_assert_release(cvp != NULL);
+    cmb_assert_release(cp != NULL);
     cmb_assert_release(dmnd != NULL);
 
     cmb_logger_info(stdout, "Waiting for condition %s",
-                    ((struct cmi_resourcebase *)cvp)->name);
-    const int64_t sig =  cmb_resourceguard_wait(&(cvp->guard),
+                    ((struct cmi_resourcebase *)cp)->name);
+    const int64_t sig =  cmb_resourceguard_wait(&(cp->guard),
                                           (cmb_resourceguard_demand_func *)dmnd,
                                           ctx);
 
     cmb_logger_info(stdout, "Condition %s returning signal %" PRIi64,
-                    ((struct cmi_resourcebase *)cvp)->name, sig);
+                    ((struct cmi_resourcebase *)cp)->name, sig);
 
     return sig;
 }
@@ -117,18 +155,18 @@ static void wakeup_event_condition(void *vp, void *arg)
  * chooses to yield it. Hence, safe to schedule the wakeup events in the first
  * iteration where the process pointers are easily available.
  */
-uint64_t cmb_condition_signal(struct cmb_condition *cvp)
+uint64_t cmb_condition_signal(struct cmb_condition *cp)
 {
-    cmb_assert_release(cvp != NULL);
+    cmb_assert_release(cp != NULL);
 
     cmb_logger_info(stdout, "Signalling condition %s",
-        ((struct cmi_resourcebase *)cvp)->name);
+        ((struct cmi_resourcebase *)cp)->name);
 
     uint64_t cnt = 0u;
-    struct cmi_hashheap *hp = (struct cmi_hashheap *)&(cvp->guard);
+    struct cmi_hashheap *hp = (struct cmi_hashheap *)&(cp->guard);
     if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
         cmb_logger_info(stdout, "None waiting for %s",
-            ((struct cmi_resourcebase *)cvp)->name);
+            ((struct cmi_resourcebase *)cp)->name);
         return 0u;
     }
 
@@ -144,10 +182,10 @@ uint64_t cmb_condition_signal(struct cmb_condition *cvp)
         cmb_condition_demand_func *demand = item[1];
         const void *ctx = item[2];
 
-        if ((*demand)(cvp, pp, ctx)) {
+        if ((*demand)(cp, pp, ctx)) {
             /* Satisfied, note it on the list, schedule wakeup event */
             cmb_logger_info(stdout, "Condition %s satisfied for process %s",
-                            ((struct cmi_resourcebase *)cvp)->name, pp->name);
+                            ((struct cmi_resourcebase *)cp)->name, pp->name);
             tmp[cnt++] = htp->hash_key;
             const double time = cmb_time();
             const int64_t priority = cmb_process_priority(pp);
@@ -165,26 +203,26 @@ uint64_t cmb_condition_signal(struct cmb_condition *cvp)
     return cnt;
 }
 
-bool cmb_condition_cancel(struct cmb_condition *cvp,
+bool cmb_condition_cancel(struct cmb_condition *cp,
                           struct cmb_process *pp)
 {
-    cmb_assert_release(cvp != NULL);
+    cmb_assert_release(cp != NULL);
     cmb_assert_release(pp != NULL);
 
     cmb_logger_info(stdout, "Cancelling condition %s for process %s",
-                    cvp->base.name, pp->name);
+                    cp->base.name, pp->name);
 
-    return cmb_resourceguard_cancel(&(cvp->guard), pp);
+    return cmb_resourceguard_cancel(&(cp->guard), pp);
 }
 
-bool cmb_condition_remove(struct cmb_condition *cvp,
+bool cmb_condition_remove(struct cmb_condition *cp,
                           const struct cmb_process *pp)
 {
-    cmb_assert_release(cvp != NULL);
+    cmb_assert_release(cp != NULL);
     cmb_assert_release(pp != NULL);
 
     cmb_logger_info(stdout, "Removing process %s from condition %s",
-                    pp->name, cvp->base.name);
+                    pp->name, cp->base.name);
 
-    return cmb_resourceguard_remove(&(cvp->guard), pp);
+    return cmb_resourceguard_remove(&(cp->guard), pp);
 }

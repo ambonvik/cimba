@@ -57,8 +57,16 @@ struct cmb_priorityqueue *cmb_priorityqueue_create(void)
 {
     struct cmb_priorityqueue *pqp = cmi_malloc(sizeof *pqp);
     cmi_memset(pqp, 0, sizeof *pqp);
-    ((struct cmi_resourcebase *)pqp)->cookie = CMI_UNINITIALIZED;
+    struct cmi_resourcebase *rbp = &(pqp->base);
+    rbp->cookie = CMI_UNINITIALIZED;
 
+    /* Add teardown function to the memregistry in case we need to bail out */
+    cmi_dlist_initialize(&(pqp->destroy.node));
+    pqp->destroy.teardown = (cmi_teardown_func *)cmb_priorityqueue_destroy;
+    pqp->destroy.object = pqp;
+    cmi_memregistry_add(&(pqp->destroy));
+
+    cmb_assert_debug(pqp->base.cookie == CMI_UNINITIALIZED);
     return pqp;
 }
 
@@ -69,32 +77,65 @@ void cmb_priorityqueue_initialize(struct cmb_priorityqueue *pqp,
     cmb_assert_release(pqp != NULL);
     cmb_assert_release(name != NULL);
     cmb_assert_release(capacity > 0u);
+    /* Might get raw memory with random content, cannot assert _UNINITIALIZED */
 
-    cmi_resourcebase_initialize(&(pqp->core), name);
-    cmb_resourceguard_initialize(&(pqp->front_guard), &(pqp->core));
-    cmb_resourceguard_initialize(&(pqp->rear_guard), &(pqp->core));
+    /* Initializing base class creates a memregistry item. */
+    struct cmi_resourcebase *rbp = &(pqp->base);
+    cmi_resourcebase_initialize(rbp, name);
+
+    /* The memregistry item is now pointing to cmi_resourcebase_terminate.
+     * Redirect it to ours (do not call cmb_logger_error in the meantime!) */
+    cmb_assert_debug(rbp->terminate.object == pqp);
+    rbp->terminate.teardown = (cmi_teardown_func *)cmb_priorityqueue_terminate;
+    /* OK, consistent now, continue own initialization */
+
+    /* Connect the resource guards to the actual resource */
+    cmb_resourceguard_initialize(&(pqp->front_guard), &(pqp->base));
+    cmb_resourceguard_initialize(&(pqp->rear_guard), &(pqp->base));
+
+    /* Initialize the queue itself */
     cmi_hashheap_initialize(&(pqp->queue), INITIAL_QUEUE_SIZE, compare_func);
     pqp->capacity = capacity;
+
+    /* Initialize data collector */
     pqp->is_recording = false;
     cmb_timeseries_initialize(&(pqp->history));
+
+    cmb_assert_debug(pqp->base.cookie == CMI_INITIALIZED);
 }
 
 void cmb_priorityqueue_terminate(struct cmb_priorityqueue *pqp)
 {
     cmb_assert_release(pqp != NULL);
+    const struct cmi_resourcebase *rbp = &(pqp->base);
+    cmb_assert_release((rbp->cookie == CMI_INITIALIZED)
+                    || cmi_memregistry_is_demolishing);
 
-    cmb_timeseries_terminate(&(pqp->history));
-    cmi_hashheap_terminate(&(pqp->queue));
-    cmb_resourceguard_terminate(&(pqp->rear_guard));
-    cmb_resourceguard_terminate(&(pqp->front_guard));
-    cmi_resourcebase_terminate(&(pqp->core));
+    if (rbp->cookie == CMI_INITIALIZED) {
+        pqp->is_recording = false;
+        cmb_timeseries_terminate(&(pqp->history));
+        cmi_hashheap_terminate(&(pqp->queue));
+        cmb_resourceguard_terminate(&(pqp->rear_guard));
+        cmb_resourceguard_terminate(&(pqp->front_guard));
+
+        /* Terminating the parent class will also clear the memregistry item */
+        cmi_resourcebase_terminate(&(pqp->base));
+    }
+
+    cmb_assert_debug(pqp->base.cookie == CMI_UNINITIALIZED);
 }
 
 void cmb_priorityqueue_destroy(struct cmb_priorityqueue *pqp)
 {
     cmb_assert_release(pqp != NULL);
+    /* Call cmb_buffer_terminate first, please */
+    cmb_assert_release(pqp->base.cookie == CMI_UNINITIALIZED);
 
-    cmb_priorityqueue_terminate(pqp);
+    if (!cmi_memregistry_is_demolishing) {
+       /* Destroying normally, remove from register */
+        cmi_memregistry_remove(&(pqp->destroy));
+    }
+
     cmi_free(pqp);
 }
 
@@ -136,7 +177,7 @@ static bool has_space(const struct cmi_resourcebase *rbp,
 
 static void record_sample(struct cmb_priorityqueue *pqp) {
     cmb_assert_release(pqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
 
     if (pqp->is_recording) {
         struct cmb_timeseries *ts = &(pqp->history);
@@ -147,7 +188,7 @@ static void record_sample(struct cmb_priorityqueue *pqp) {
 void cmb_priorityqueue_recording_start(struct cmb_priorityqueue *pqp)
 {
     cmb_assert_release(pqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
 
     pqp->is_recording = true;
     record_sample(pqp);
@@ -156,7 +197,7 @@ void cmb_priorityqueue_recording_start(struct cmb_priorityqueue *pqp)
 void cmb_priorityqueue_recording_stop(struct cmb_priorityqueue *pqp)
 {
     cmb_assert_release(pqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
 
     record_sample(pqp);
     pqp->is_recording = false;
@@ -165,23 +206,24 @@ void cmb_priorityqueue_recording_stop(struct cmb_priorityqueue *pqp)
 struct cmb_timeseries *cmb_priorityqueue_history(struct cmb_priorityqueue *pqp)
 {
     cmb_assert_release(pqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
 
     return &(pqp->history);
 }
 
 void cmb_priorityqueue_report_print(struct cmb_priorityqueue *pqp, FILE *fp) {
     cmb_assert_release(pqp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
 
-    fprintf(fp, "Queue lengths for %s:\n", pqp->core.name);
+    fprintf(fp, "Queue lengths for %s:\n", pqp->base.name);
     const struct cmb_timeseries *ts = &(pqp->history);
 
-    struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
-    (void)cmb_timeseries_summarize(ts, ws);
-    cmb_wtdsummary_print(ws, fp, true);
-    const double qmax = cmb_wtdsummary_max(ws);
-    cmb_wtdsummary_destroy(ws);
+    struct cmb_wtdsummary ws = { 0 };
+    cmb_wtdsummary_initialize(&ws);
+    (void)cmb_timeseries_summarize(ts, &ws);
+    cmb_wtdsummary_print(&ws, fp, true);
+    const double qmax = cmb_wtdsummary_max(&ws);
+    cmb_wtdsummary_terminate(&ws);
 
     const uint32_t nbins = (qmax > 10.0) ? 10 : (uint32_t)(qmax + 1.0);
     cmb_timeseries_histogram_print(ts, fp, nbins, 0.0, qmax + 1.0);
@@ -191,7 +233,7 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
 {
     cmb_assert_release(pqp != NULL);
     cmb_assert_release(objectloc != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
 
     cmb_logger_info(stdout, "Gets an object from %s, length now %" PRIu64,
                     ((struct cmi_resourcebase *)pqp)->name, pqp->queue.heap_count);
@@ -242,7 +284,7 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
 {
     cmb_assert_release(pqp != NULL);
 
-    cmb_assert_release(((struct cmi_resourcebase *)pqp)->cookie == CMI_INITIALIZED);
+    cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
     cmb_logger_info(stdout, "Puts object %p priority %" PRIi64 " into %s, length %" PRIu64,
                     object, priority, ((struct cmi_resourcebase *)pqp)->name, pqp->queue.heap_count);
     while (true) {

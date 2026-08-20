@@ -35,8 +35,16 @@ struct cmb_buffer *cmb_buffer_create(void)
 {
     struct cmb_buffer *bp = cmi_malloc(sizeof *bp);
     cmi_memset(bp, 0, sizeof *bp);
-    ((struct cmi_resourcebase *)bp)->cookie = CMI_UNINITIALIZED;
+    struct cmi_resourcebase *rbp = &(bp->base);
+    rbp->cookie = CMI_UNINITIALIZED;
 
+    /* Add teardown function to the memregistry in case we need to bail out */
+    cmi_dlist_initialize(&(bp->destroy.node));
+    bp->destroy.teardown = (cmi_teardown_func *)cmb_buffer_destroy;
+    bp->destroy.object = bp;
+    cmi_memregistry_add(&(bp->destroy));
+
+    cmb_assert_debug(bp->base.cookie == CMI_UNINITIALIZED);
     return bp;
 }
 
@@ -50,17 +58,30 @@ void cmb_buffer_initialize(struct cmb_buffer *bp,
     cmb_assert_release(bp != NULL);
     cmb_assert_release(name != NULL);
     cmb_assert_release(capacity > 0u);
+    /* Might get raw memory with random content, cannot assert _UNINITIALIZED */
 
-    cmi_resourcebase_initialize(&(bp->core), name);
+    /* Initializing base class creates a memregistry item. */
+    struct cmi_resourcebase *rbp = &(bp->base);
+    cmi_resourcebase_initialize(rbp, name);
 
-    cmb_resourceguard_initialize(&(bp->front_guard), &(bp->core));
-    cmb_resourceguard_initialize(&(bp->rear_guard), &(bp->core));
+    /* The memregistry item is now pointing to cmi_resourcebase_terminate.
+     * Redirect it to ours (do not call cmb_logger_error in the meantime!) */
+    cmb_assert_debug(rbp->terminate.object == bp);
+    rbp->terminate.teardown = (cmi_teardown_func *)cmb_buffer_terminate;
+    /* OK, consistent now, continue own initialization */
+
+    /* Connect the resource guards to the actual resource */
+    cmb_resourceguard_initialize(&(bp->front_guard), rbp);
+    cmb_resourceguard_initialize(&(bp->rear_guard), rbp);
 
     bp->capacity = capacity;
     bp->level = 0u;
 
+    /* Initialize data collector */
     bp->is_recording = false;
     cmb_timeseries_initialize(&(bp->history));
+
+    cmb_assert_debug(rbp->cookie == CMI_INITIALIZED);
 }
 
 /*
@@ -69,14 +90,21 @@ void cmb_buffer_initialize(struct cmb_buffer *bp,
 void cmb_buffer_terminate(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
+    const struct cmi_resourcebase *rbp = &(bp->base);
+    cmb_assert_release(rbp->cookie == CMI_INITIALIZED
+                    || cmi_memregistry_is_demolishing);
 
-    cmb_resourceguard_terminate(&(bp->rear_guard));
-    cmb_resourceguard_terminate(&(bp->front_guard));
+    if (rbp->cookie == CMI_INITIALIZED) {
+        bp->is_recording = false;
+        cmb_timeseries_terminate(&(bp->history));
+        cmb_resourceguard_terminate(&(bp->rear_guard));
+        cmb_resourceguard_terminate(&(bp->front_guard));
 
-    bp->is_recording = false;
-    cmb_timeseries_terminate(&(bp->history));
+        /* Terminating the parent class will also clear the memregistry item */
+        cmi_resourcebase_terminate(&(bp->base));
+    }
 
-    cmi_resourcebase_terminate(&(bp->core));
+    cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
 }
 
 /*
@@ -85,8 +113,15 @@ void cmb_buffer_terminate(struct cmb_buffer *bp)
 void cmb_buffer_destroy(struct cmb_buffer *bp)
 {
     cmb_assert_release(bp != NULL);
+    const struct cmi_resourcebase *rbp = &(bp->base);
+    /* Call cmb_buffer_terminate first, please */
+    cmb_assert_release(rbp->cookie == CMI_UNINITIALIZED);
 
-    cmb_buffer_terminate(bp);
+    if (!cmi_memregistry_is_demolishing) {
+        /* Destroying normally, remove from register */
+        cmi_memregistry_remove(&(bp->destroy));
+    }
+
     cmi_free(bp);
 }
 
@@ -98,8 +133,8 @@ static bool buffer_has_content(const struct cmi_resourcebase *rbp,
                                const struct cmb_process *pp,
                                const void *ctx)
 {
-    cmb_assert_release(rbp != NULL);
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_assert_debug(rbp != NULL);
+    cmb_assert_debug(rbp->cookie == CMI_INITIALIZED);
     cmb_unused(pp);
     cmb_unused(ctx);
 
@@ -116,8 +151,8 @@ static bool buffer_has_space(const struct cmi_resourcebase *rbp,
                              const struct cmb_process *pp,
                              const void *ctx)
 {
-    cmb_assert_release(rbp != NULL);
-    cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    cmb_assert_debug(rbp != NULL);
+    cmb_assert_debug(rbp->cookie == CMI_INITIALIZED);
     cmb_unused(pp);
     cmb_unused(ctx);
 
@@ -127,8 +162,9 @@ static bool buffer_has_space(const struct cmi_resourcebase *rbp,
 }
 
 static void record_sample(struct cmb_buffer *bp) {
-    cmb_assert_release(bp != NULL);
-    cmb_assert_release(((struct cmi_resourcebase *)bp)->cookie == CMI_INITIALIZED);
+    cmb_assert_debug(bp != NULL);
+    const struct cmi_resourcebase *rbp = &(bp->base);
+    cmb_assert_debug(rbp->cookie == CMI_INITIALIZED);
 
     if (bp->is_recording) {
         struct cmb_timeseries *ts = &(bp->history);
@@ -168,11 +204,12 @@ void cmb_buffer_print_report(struct cmb_buffer *bp, FILE *fp) {
 
     const struct cmb_timeseries *ts = &(bp->history);
 
-    fprintf(fp, "Buffer levels for %s\n", bp->core.name);
-    struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
-    (void)cmb_timeseries_summarize(ts, ws);
-    cmb_wtdsummary_print(ws, fp, true);
-    cmb_wtdsummary_destroy(ws);
+    fprintf(fp, "Buffer levels for %s\n", bp->base.name);
+    struct cmb_wtdsummary ws = { 0 };
+    cmb_wtdsummary_initialize(&ws);
+    (void)cmb_timeseries_summarize(ts, &ws);
+    cmb_wtdsummary_print(&ws, fp, true);
+    cmb_wtdsummary_terminate(&ws);
 
     const unsigned nbin = (bp->capacity > 20) ? 20 : bp->capacity + 1;
     cmb_timeseries_histogram_print(ts, fp, nbin, 0.0, (double)(bp->capacity + 1u));

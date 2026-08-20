@@ -1,9 +1,9 @@
 /*
  * cmi_resourcebase.c - the virtual base class for resources a process can wait
- * for, providing polymorphic functions to be called for members of any derived
+ * for, enabling polymorphic functions to be called for members of any derived
  * class and allowing lists of miscellaneous resource types together.
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,15 +25,24 @@
 
 /*
  * cmi_resourcebase_initialize - Make an already allocated resource core
- * object ready for use with a given capacity.
+ * object ready for use. Do nothing if already initialized.
  */
 void cmi_resourcebase_initialize(struct cmi_resourcebase *rbp,
                                  const char *name)
 {
     cmb_assert_release(rbp != NULL);
+    cmb_assert_release(name != NULL);
+    /* Might get raw memory with random content, cannot assert _UNINITIALIZED */
 
     rbp->cookie = CMI_INITIALIZED;
     cmi_resourcebase_set_name(rbp, name);
+
+    cmi_dlist_initialize(&(rbp->terminate.node));
+    rbp->terminate.teardown = (cmi_teardown_func *)cmi_resourcebase_terminate;
+    rbp->terminate.object = rbp;
+    cmi_memregistry_add(&(rbp->terminate));
+
+    cmb_assert_debug(rbp->cookie == CMI_INITIALIZED);
 }
 
 /*
@@ -42,8 +51,18 @@ void cmi_resourcebase_initialize(struct cmi_resourcebase *rbp,
 void cmi_resourcebase_terminate(struct cmi_resourcebase *rbp)
 {
     cmb_assert_release(rbp != NULL);
+    cmb_assert_release((rbp->cookie == CMI_INITIALIZED)
+                    || cmi_memregistry_is_demolishing);
 
-    rbp->cookie = CMI_UNINITIALIZED;
+    if (rbp->cookie == CMI_INITIALIZED) {
+        rbp->cookie = CMI_UNINITIALIZED;
+        if (!cmi_memregistry_is_demolishing) {
+            /* Terminating normally, remove from register */
+            cmi_memregistry_remove(&(rbp->terminate));
+        }
+    }
+
+    cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
 }
 
 /*

@@ -31,14 +31,23 @@
 struct cmb_dataset *cmb_dataset_create(void)
 {
     struct cmb_dataset *dsp = cmi_malloc(sizeof *dsp);
-    cmb_dataset_initialize(dsp);
+    cmi_memset(dsp, 0, sizeof *dsp);
+    dsp->cookie = CMI_UNINITIALIZED;
 
+    /* Add teardown function to the memregistry in case we need to bail out */
+    cmi_dlist_initialize(&(dsp->destroy.node));
+    dsp->destroy.teardown = (cmi_teardown_func *)cmb_dataset_destroy;
+    dsp->destroy.object = dsp;
+    cmi_memregistry_add(&(dsp->destroy));
+
+    cmb_assert_debug(dsp->cookie == CMI_UNINITIALIZED);
     return dsp;
 }
 
 void cmb_dataset_initialize(struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    /* Might get raw memory with random content, cannot assert _UNINITIALIZED */
 
     dsp->cookie = CMI_INITIALIZED;
     dsp->cursize = 0u;
@@ -46,34 +55,61 @@ void cmb_dataset_initialize(struct cmb_dataset *dsp)
     dsp->min = DBL_MAX;
     dsp->max = -DBL_MAX;
     dsp->xa = NULL;
+
+    /* Add teardown function to the memregistry in case we need to bail out */
+    cmi_dlist_initialize(&(dsp->terminate.node));
+    dsp->terminate.teardown = (cmi_teardown_func *)cmb_dataset_terminate;
+    dsp->terminate.object = dsp;
+    cmi_memregistry_add(&(dsp->terminate));
+
+    cmb_assert_debug(dsp->cookie == CMI_INITIALIZED);
 }
 
 void cmb_dataset_reset(struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     cmb_dataset_terminate(dsp);
     cmb_dataset_initialize(dsp);
+
+    cmb_assert_debug(dsp->cookie == CMI_INITIALIZED);
 }
 
 void cmb_dataset_terminate(struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    cmb_assert_release((dsp->cookie == CMI_INITIALIZED)
+                    || cmi_memregistry_is_demolishing);
 
-    dsp->cookie = CMI_UNINITIALIZED;
-    if (dsp->cursize > 0u) {
-        cmb_assert_debug(dsp->xa != NULL);
-        cmi_free(dsp->xa);
-        dsp->xa = NULL;
-        dsp->cursize = 0u;
+    if (dsp->cookie == CMI_INITIALIZED) {
+        dsp->cookie = CMI_UNINITIALIZED;
+        if (dsp->cursize > 0u) {
+            cmb_assert_debug(dsp->xa != NULL);
+            cmi_free(dsp->xa);
+            dsp->xa = NULL;
+            dsp->cursize = 0u;
+            dsp->count = 0u;
+        }
     }
+
+    if (!cmi_memregistry_is_demolishing) {
+       cmi_memregistry_remove(&(dsp->terminate));
+    }
+
+    cmb_assert_debug(dsp->cookie == CMI_UNINITIALIZED);
 }
 
 void cmb_dataset_destroy(struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
+    /* Call cmb_dataset_terminate first, please */
+    cmb_assert_debug(dsp->cookie == CMI_UNINITIALIZED);
 
-    cmb_dataset_terminate(dsp);
+    if (!cmi_memregistry_is_demolishing) {
+        cmi_memregistry_remove(&(dsp->destroy));
+    }
+
     cmi_free(dsp);
 }
 
@@ -266,7 +302,11 @@ uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
         tgt->xa = NULL;
     }
 
-    tgt->cookie = CMI_INITIALIZED;
+    if (tgt->cookie != CMI_INITIALIZED) {
+        /* Will also add it to the memregistry */
+        cmb_dataset_initialize(tgt);
+    }
+
     tgt->count = src->count;
     tgt->cursize = src->cursize;
     tgt->min = src->min;
@@ -307,7 +347,7 @@ uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
     const uint64_t mult = total / CMI_DATASET_INIT_SZ;
     const uint64_t newsize = (mult + 1u) * CMI_DATASET_INIT_SZ;
 
-    struct cmb_dataset merged;
+    struct cmb_dataset merged = { 0 };
     cmb_dataset_initialize(&merged);
 
     if (total > 0u) {
@@ -336,28 +376,35 @@ uint64_t cmb_dataset_merge(struct cmb_dataset *tgt,
     if (tgt->xa != NULL) {
         cmb_assert_release(tgt->cookie == CMI_INITIALIZED);
         cmi_free(tgt->xa);
+        tgt->xa = NULL;
     }
 
-    *tgt = merged;
+    cmb_dataset_copy(tgt, &merged);
+    cmb_dataset_terminate(&merged);
 
     return tgt->count;
 }
 
 /* Overwrites any existing content of data summary */
-uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsp,
-                               struct cmb_datasummary *dsump)
+uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsrc,
+                               struct cmb_datasummary *dstgt)
 {
-    cmb_assert_release(dsp != NULL);
-    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
-    cmb_assert_release(dsump != NULL);
+    cmb_assert_release(dsrc != NULL);
+    cmb_assert_release(dsrc->cookie == CMI_INITIALIZED);
+    cmb_assert_release(dstgt != NULL);
 
-    cmb_datasummary_initialize(dsump);
+    if (dstgt->cookie == CMI_INITIALIZED) {
+        cmb_datasummary_terminate(dstgt);
+        cmb_assert_debug(dstgt->cookie != CMI_INITIALIZED);
+    }
+    cmb_datasummary_initialize(dstgt);
+    cmb_assert_debug(dstgt->cookie == CMI_INITIALIZED);
 
-    for (uint64_t ui = 0; ui < dsp->count; ui++) {
-        cmb_datasummary_add(dsump, dsp->xa[ui]);
+    for (uint64_t ui = 0; ui < dsrc->count; ui++) {
+        cmb_datasummary_add(dstgt, dsrc->xa[ui]);
     }
 
-    return dsump->count;
+    return dstgt->count;
 }
 
 /* Assumes that v is already sorted */
@@ -384,11 +431,12 @@ double cmb_dataset_median(const struct cmb_dataset *dsp)
 
     double r = 0.0;
     if (dsp->xa != NULL) {
-        struct cmb_dataset dup = { 0 };
-        cmb_dataset_copy(&dup, dsp);
-        cmb_dataset_sort(&dup);
-        r = data_array_median(dup.count, dup.xa);
-        cmb_dataset_reset(&dup);
+        struct cmb_dataset dtmp = { 0 };
+        cmb_dataset_initialize(&dtmp);
+        cmb_dataset_copy(&dtmp, dsp);
+        cmb_dataset_sort(&dtmp);
+        r = data_array_median(dtmp.count, dtmp.xa);
+        cmb_dataset_terminate(&dtmp);
     }
     else {
         cmb_logger_warning(stderr, "Cannot take median without any data.");
@@ -416,24 +464,25 @@ void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
             dsp->count);
     }
     else {
-        struct cmb_dataset dsc = { 0 };
-        cmb_dataset_copy(&dsc, dsp);
-        cmb_dataset_sort(&dsc);
+        struct cmb_dataset dtmp = { 0 };
+        cmb_dataset_initialize(&dtmp);
+        cmb_dataset_copy(&dtmp, dsp);
+        cmb_dataset_sort(&dtmp);
 
-        const double min = dsc.min;
-        const double max = dsc.max;
-        const double med = data_array_median(dsc.count, dsc.xa);
+        const double min = dtmp.min;
+        const double max = dtmp.max;
+        const double med = data_array_median(dtmp.count, dtmp.xa);
 
-        const unsigned lhsz = dsc.count / 2;
-        const double q1 = data_array_median(lhsz, dsc.xa);
+        const unsigned lhsz = dtmp.count / 2;
+        const double q1 = data_array_median(lhsz, dtmp.xa);
         double q3;
-        const unsigned uhsz = dsc.count - lhsz;
-        if ((dsc.count % 2) == 0) {
+        const unsigned uhsz = dtmp.count - lhsz;
+        if ((dtmp.count % 2) == 0) {
             /* Even number of entries */
-            q3 = data_array_median(uhsz, &(dsc.xa[lhsz]));
+            q3 = data_array_median(uhsz, &(dtmp.xa[lhsz]));
         } else {
             /* Odd number of entries, exclude the median entry */
-            q3 = data_array_median(uhsz - 1, &(dsc.xa[lhsz + 1]));
+            q3 = data_array_median(uhsz - 1, &(dtmp.xa[lhsz + 1]));
         }
 
         const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
@@ -443,7 +492,7 @@ void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
                 ((lead_ins) ? "  Third_Q " : "\t"), q3,
                 ((lead_ins) ? "  Max " : "\t"), max);
         cmb_assert_release(r > 0);
-        cmb_dataset_reset(&dsc);
+        cmb_dataset_terminate(&dtmp);
     }
 }
 
