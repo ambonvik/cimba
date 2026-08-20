@@ -154,10 +154,4 @@ static inline void cmi_mempool_free(struct cmi_mempool *mp, void *op)
     mp->next_obj = op;
 }
 
-/*
- * Deallocate any allocated memory in the thread local pools.
- * Call when exiting a pthread.
- */
-extern void cmi_mempool_thread_cleanup(void);
-
 #endif /* CIMBA_CMI_MEMPOOL_H */
