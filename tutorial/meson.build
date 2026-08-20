@@ -108,6 +108,15 @@ tut_4_2 = executable('tut_4_2',
                      native : true
 )
 
+tut_4_3 = executable('tut_4_3',
+                     files('tut_4_3.c'),
+                     include_directories : [inc_api, inc_int],
+                     link_with : cimba_lib,
+                     dependencies : [project_deps],
+                     install : false,
+                     native : true
+)
+
 # Try to find HDF5, but don't fail if it's missing
 hdf5_dep = dependency('hdf5', required : false)
 
@@ -125,7 +134,7 @@ else
 endif
 
 if get_option('enable_cuda_tutorials') and hdf5_dep.found() and cuda_dep.found()
-    cuda_inc = include_directories('/opt/cuda/include')
+    cuda_inc = include_directories('/opt/cuda/include', is_system : true)
 
     executable('tut_5_2',
                sources : ['tut_5_2.c', 'tut_5_2.cu'],
@@ -133,6 +142,8 @@ if get_option('enable_cuda_tutorials') and hdf5_dep.found() and cuda_dep.found()
                link_with : cimba_lib,
                dependencies : [project_deps, hdf5_dep, cuda_dep],
                c_args : ['-fno-lto'],
+               cuda_args : ['-gencode=arch=compute_86,code=sm_86',
+                            '-gencode=arch=compute_86,code=compute_86'],
                link_args : ['-lhdf5', '-lcudart', '-lcurand'],
                install : false,
                native : true)
@@ -147,7 +158,7 @@ endif
 
 
 if get_option('enable_cuda_tutorials') and cuda_dep.found()
-    cuda_inc = include_directories('/opt/cuda/include')
+    cuda_inc = include_directories('/opt/cuda/include', is_system : true)
 
     executable('tut_5_3',
                sources : ['tut_5_3.c', 'tut_5_3.cu'],
@@ -155,6 +166,8 @@ if get_option('enable_cuda_tutorials') and cuda_dep.found()
                link_with : cimba_lib,
                dependencies : [project_deps, hdf5_dep, cuda_dep],
                c_args : ['-fno-lto'],
+               cuda_args : ['-gencode=arch=compute_86,code=sm_86',
+                            '-gencode=arch=compute_86,code=compute_86'],
                link_args : ['-lhdf5', '-lcudart', '-lcurand'],
                install : false,
                native : true)
