@@ -56,6 +56,28 @@ static void end_sim_evt(void *subject, void *object)
     }
 }
 
+#define CHECK_OUTCOME(sig, me, rpoolp, amnt)                                    \
+{                                                                               \
+    if (sig == CMB_PROCESS_SUCCESS) {                                           \
+        /* Acquire returned successfully */                                     \
+        cmb_logger_user(stdout, USERFLAG1,                                      \
+                        "Success, has %" PRIu64,                                \
+                        amnt);                                                  \
+    }                                                                           \
+    else if (sig == CMB_PROCESS_PREEMPTED) {                                    \
+        /* The acquire() call did not end well */                               \
+        cmb_logger_user(stdout, USERFLAG1,                                      \
+                        "Preempted, all is gone, has %" PRIu64,                 \
+                        amnt);                                                  \
+    }                                                                           \
+    else {                                                                      \
+        /* Interrupted, but we still have the same amount as before */          \
+        cmb_logger_user(stdout, USERFLAG1,                                      \
+                        "Interrupted by signal %" PRIi64 ", still has %" PRIu64,\
+                        sig, amnt);                                             \
+    }                                                                           \
+}
+
 /* The busy life of a mouse */
 void *mousefunc(struct cmb_process *me, void *ctx)
 {
@@ -63,162 +85,94 @@ void *mousefunc(struct cmb_process *me, void *ctx)
     cmb_assert_release(ctx != NULL);
 
     const struct simulation *simp = ctx;
-    struct cmb_resourcepool *sp = simp->cheese;
-    uint64_t amount_held = 0u;
+    struct cmb_resourcepool *rpoolp = simp->cheese;
 
     while (true) {
-        /* Verify that the amount matches our own calculation */
-        cmb_logger_user(stdout, USERFLAG1, "Amount held: %" PRIu64, amount_held);
-        cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        cmb_logger_user(stdout, USERFLAG1,
+                        "Top of loop, has %" PRIu64,
+                        cmb_resourcepool_held(rpoolp, me));
 
         /* Decide on a random amount to get next time and set a random priority */
         const uint64_t amount_req = cmb_random_dice(1, 5);
         const int64_t pri = cmb_random_dice(-10, 10);
         cmb_process_priority_set(me, pri);
+
         cmb_logger_user(stdout, USERFLAG1, "Acquiring %" PRIu64, amount_req);
-        int64_t sig = cmb_resourcepool_acquire(sp, amount_req);
-        if (sig == CMB_PROCESS_SUCCESS) {
-            /* Acquire returned successfully */
-            amount_held += amount_req;
-            cmb_logger_user(stdout, USERFLAG1, "Success, new amount held: %" PRIu64, amount_held);
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-        }
-        else if (sig == CMB_PROCESS_PREEMPTED) {
-            /* The acquire() call did not end well */
-            amount_held = 0u;
-            cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
-                            cmb_resourcepool_get_name(sp));
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-        }
-        else {
-            /* Interrupted, but we still have the same amount as before */
-            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-        }
+        int64_t sig = cmb_resourcepool_acquire(rpoolp, amount_req);
+        CHECK_OUTCOME(sig, me, rpoolp, cmb_resourcepool_held(rpoolp, me));
 
         /* Hold on to it for a while */
+        cmb_logger_user(stdout, USERFLAG1,
+                        "Holding %" PRIu64,
+                        cmb_resourcepool_held(rpoolp, me));
         sig = cmb_process_hold(cmb_random_exponential(1.0));
-        if (sig == CMB_PROCESS_SUCCESS) {
-            /* We still have it */
-            cmb_logger_user(stdout, USERFLAG1, "Hold returned normally");
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-       }
-        else if (sig == CMB_PROCESS_PREEMPTED) {
-            /* Somebody snatched it all away from us */
-            amount_held = 0u;
-            cmb_logger_user(stdout, USERFLAG1, "Someone stole all my %s from me!",
-                            cmb_resourcepool_get_name(sp));
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-        }
-        else {
-            /* Interrupted while holding. Still have the cheese, though */
-            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-       }
+        CHECK_OUTCOME(sig, me, rpoolp, cmb_resourcepool_held(rpoolp, me));
 
         /* Drop some amount */
-        if (amount_held > 1u) {
-            const uint64_t amount_rel = cmb_random_dice(1, amount_held);
-            cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
-                            amount_held, amount_rel);
-            cmb_resourcepool_release(sp, amount_rel);
-            amount_held -= amount_rel;
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        uint64_t amnt = cmb_resourcepool_held(rpoolp, me);
+        if (amnt > 1u) {
+            const uint64_t amount_rel = cmb_random_dice(1, amnt);
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Has %" PRIu64 ", releasing %" PRIu64,
+                            amnt, amount_rel);
+            cmb_resourcepool_release(rpoolp, amount_rel);
        }
 
         /* Hang on a moment before trying again */
-        cmb_logger_user(stdout, USERFLAG1, "Holding, amount held: %" PRIu64, amount_held);
+        cmb_logger_user(stdout, USERFLAG1,
+                        "Holding %" PRIu64,
+                        cmb_resourcepool_held(rpoolp, me));
         sig = cmb_process_hold(cmb_random_exponential(1.0));
-        if (sig == CMB_PROCESS_PREEMPTED) {
-            cmb_logger_user(stdout, USERFLAG1,
-                            "Someone stole the rest of my %s, signal %" PRIi64,
-                            cmb_resourcepool_get_name(sp), sig);
-            amount_held = 0u;
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-       }
+        CHECK_OUTCOME(sig, me, rpoolp, cmb_resourcepool_held(rpoolp, me));
     }
 }
 
 /* The rat is very similar to the mouse, but preempts instead of acquiring */
 void *ratfunc(struct cmb_process *me, void *ctx)
 {
-    cmb_unused(me);
+    cmb_assert_release(me != NULL);
     cmb_assert_release(ctx != NULL);
 
     const struct simulation *simp = ctx;
-    struct cmb_resourcepool *sp = simp->cheese;
-    uint64_t amount_held = 0u;
+    struct cmb_resourcepool *rpoolp = simp->cheese;
 
     while (true) {
-        /* Verify that the amount matches our own calculation */
-        cmb_logger_user(stdout, USERFLAG1, "Amount held: %" PRIu64, amount_held);
-        cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
+        cmb_logger_user(stdout, USERFLAG1,
+                        "Top of loop, has: %" PRIu64,
+                        cmb_resourcepool_held(rpoolp, me));
 
         /* Decide on a random amount to get next time and set a random priority */
         const uint64_t amount_req = cmb_random_dice(3, 10);
         const int64_t pri = cmb_random_dice(-5, 15);
         cmb_process_priority_set(me, pri);
+
         cmb_logger_user(stdout, USERFLAG1, "Preempting %" PRIu64, amount_req);
-        int64_t sig = cmb_resourcepool_preempt(sp, amount_req);
-        if (sig == CMB_PROCESS_SUCCESS) {
-            /* Acquire returned successfully */
-            amount_held += amount_req;
-            cmb_logger_user(stdout, USERFLAG1, "Success, new amount held: %" PRIu64, amount_held);
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-        }
-        else if (sig == CMB_PROCESS_PREEMPTED) {
-            /* The acquire() call did not end well */
-            amount_held = 0u;
-            cmb_logger_user(stdout, USERFLAG1, "Preempted during acquire, all my %s is gone",
-                            cmb_resourcepool_get_name(sp));
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-        }
-        else {
-            /* Interrupted, but we still have the same amount as before */
-            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-       }
+        int64_t sig = cmb_resourcepool_preempt(rpoolp, amount_req);
+        CHECK_OUTCOME(sig, me, rpoolp, cmb_resourcepool_held(rpoolp, me));
 
         /* Hold on to it for a while */
+        cmb_logger_user(stdout, USERFLAG1,
+                        "Holding %" PRIu64,
+                        cmb_resourcepool_held(rpoolp, me));
         sig = cmb_process_hold(cmb_random_exponential(1.0));
-        if (sig == CMB_PROCESS_SUCCESS) {
-            /* We still have it */
-            cmb_logger_user(stdout, USERFLAG1, "Hold returned normally");
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-        }
-        else if (sig == CMB_PROCESS_PREEMPTED) {
-            /* Somebody snatched it all away from us */
-            amount_held = 0u;
-            cmb_logger_user(stdout, USERFLAG1, "Someone stole all my %s from me!",
-                            cmb_resourcepool_get_name(sp));
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-        }
-        else {
-            /* Interrupted while holding. Still have the cheese, though */
-            cmb_logger_user(stdout, USERFLAG1, "Interrupted by signal %" PRIi64, sig);
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-        }
+        CHECK_OUTCOME(sig, me, rpoolp, cmb_resourcepool_held(rpoolp, me));
 
         /* Drop some amount */
+        uint64_t amount_held = cmb_resourcepool_held(rpoolp, me);
         if (amount_held > 1u) {
             const uint64_t amount_rel = cmb_random_dice(1, amount_held);
-            cmb_logger_user(stdout, USERFLAG1, "Holds %" PRIu64 ", releasing %" PRIu64,
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Has %" PRIu64 ", releasing %" PRIu64,
                             amount_held, amount_rel);
-            cmb_resourcepool_release(sp, amount_rel);
-            amount_held -= amount_rel;
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-        }
+            cmb_resourcepool_release(rpoolp, amount_rel);
+       }
 
         /* Hang on a moment before trying again */
-        cmb_logger_user(stdout, USERFLAG1, "Holding, amount held: %" PRIu64, amount_held);
+        cmb_logger_user(stdout, USERFLAG1,
+                        "Holding %" PRIu64,
+                        cmb_resourcepool_held(rpoolp, me));
         sig = cmb_process_hold(cmb_random_exponential(1.0));
-        if (sig == CMB_PROCESS_PREEMPTED) {
-            cmb_logger_user(stdout, USERFLAG1,
-                            "Someone stole the rest of my %s, signal %" PRIi64,
-                            cmb_resourcepool_get_name(sp), sig);
-            amount_held = 0u;
-            cmb_assert_debug(amount_held == cmb_resourcepool_held_by_process(sp, me));
-       }
+        CHECK_OUTCOME(sig, me, rpoolp, cmb_resourcepool_held(rpoolp, me));
     }
 }
 
@@ -236,16 +190,20 @@ void *catfunc(struct cmb_process *me, void *ctx)
         cmb_logger_user(stdout, USERFLAG1, "Zzzzz...");
         (void)cmb_process_hold(cmb_random_exponential(5.0));
         do {
-            cmb_logger_user(stdout, USERFLAG1, "Awake, looking for rodents");
-            (void)cmb_process_hold(cmb_random_exponential(1.0));
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Awake, looking for rodents");
             struct cmb_process *tgt = cpp[cmb_random_dice(0, num - 1)];
-            cmb_logger_user(stdout, USERFLAG1, "Chasing %s", cmb_process_name(tgt));
+            cmb_logger_user(stdout, USERFLAG1,
+                            "Chasing %s", cmb_process_name(tgt));
 
             /* Send it a random interrupt signal */
             const int64_t sig = (cmb_random_flip()) ?
                                  CMB_PROCESS_INTERRUPTED :
                                  cmb_random_dice(10, 100);
             cmb_process_interrupt(tgt, sig, 0);
+
+            cmb_logger_user(stdout, USERFLAG1, "Pondering");
+            (void)cmb_process_hold(cmb_random_exponential(1.0));
 
             /* Flip a coin to decide whether to go back to sleep */
         } while (cmb_random_flip());

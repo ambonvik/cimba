@@ -1,7 +1,7 @@
 /*
- * tutorial/tut_4_2.c
+ * tutorial/tut_4_3.c
  *
- * Multithreaded version of the harbor simulation.
+ * Multithreaded version of the harbor simulation, with abandoned trials
  *
  * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
@@ -67,7 +67,7 @@ struct simulation {
     /* The fleet of tugboats */
     struct cmb_resourcepool *tugs;
     /* Small and large berths */
-    struct cmb_resourcepool *berths[2];
+    struct cmb_resourcepool *berths[N_SIZES];
     /* The radio channel */
     struct cmb_resource *comms;
 
@@ -82,8 +82,7 @@ struct simulation {
     struct cmi_slist_node departed_ships;
 
     /* Data collector for local use in this instance */
-    struct cmb_dataset *time_in_system[2];
-
+    struct cmb_dataset *time_in_system[N_SIZES];
 };
 
 /* Variables describing the state of the environment around our entities */
@@ -101,8 +100,8 @@ struct trial {
     double arrival_rate;
     double percent_large;
     unsigned num_tugs;
-    unsigned num_berths[2];
-    double unloading_time_avg[2];
+    unsigned num_berths[N_SIZES];
+    double unloading_time_avg[N_SIZES];
 
     /* Control parameters */
     double warmup_s;
@@ -110,7 +109,7 @@ struct trial {
 
     /* Results */
     uint64_t seed_used;
-    double avg_time_in_system[2];
+    double avg_time_in_system[N_SIZES];
 };
 
 struct context {
@@ -133,6 +132,7 @@ struct ship {
 struct ship *ship_create(void)
 {
     struct ship *shpp = malloc(sizeof(struct ship));
+    memset(shpp, 0, sizeof(*shpp));
     cmb_assert_release(shpp != NULL);
 
     return shpp;
@@ -320,6 +320,11 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     const double docking_time = cmb_random_PERT(0.4, 0.5, 0.8);
     cmb_process_hold(docking_time);
 
+    /* Simulate a trial-abandoning error condition */
+    if (cmb_random_bernoulli(1e-5)) {
+        cmb_logger_error(stdout, "Randomly abandoning trial");
+    }
+
     /* Safely at the quay to unload cargo, dismiss the tugs for now */
     cmb_logger_user(stdout, USERFLAG1, "%s docked, releases tugs, unloading", me->name);
     cmb_resourcepool_release(simp->tugs, shpp->tugs_needed);
@@ -402,7 +407,7 @@ bool is_departed(const struct cmb_condition *cvp,
     const struct simulation *simp = ctxp->sim;
 
     /* Simple: One or more ships in the list of departed ships */
-    return cmi_slist_is_empty(&(simp->departed_ships)) ? false : true;
+    return !(cmi_slist_is_empty(&(simp->departed_ships)));
 }
 
 /* The departure process */
@@ -462,11 +467,9 @@ void end_sim(void *subject, void *object)
         void **item = cmi_hashheap_dequeue(&(simp->active_ships));
         struct ship *shpp = item[0];
         cmb_process_stop((struct cmb_process *)shpp, NULL);
-        cmb_process_terminate((struct cmb_process *)shpp);
-        free(shpp);
+        ship_terminate(shpp);
+        ship_destroy(shpp);
     }
-
-    cmb_event_queue_clear();
 }
 
 static void start_rec(void *subject, void *object)
@@ -495,18 +498,66 @@ static void stop_rec(void *subject, void *object)
     }
 }
 
+/* Our very own cleanup for abandoned trials */
+void trial_cleanup(void *vctx)
+{
+    cmb_assert_always(vctx != NULL);
+
+    struct context *ctxp = (struct context *)vctx;
+    struct simulation *simp = ctxp->sim;
+    struct environment *envp = ctxp->env;
+
+    /* Stop and recycle any still active ships */
+    while (cmi_hashheap_count(&(simp->active_ships)) > 0u) {
+        void **item = cmi_hashheap_dequeue(&(simp->active_ships));
+        struct ship *shpp = item[0];
+        cmb_process_stop((struct cmb_process *)shpp, NULL);
+        ship_terminate(shpp);
+        ship_destroy(shpp);
+    }
+
+    /* Any departed ships waiting? */
+    struct cmi_slist_node *dep_head = &(simp->departed_ships);
+    while (!cmi_slist_is_empty(dep_head)) {
+        struct cmi_slist_node *snode = cmi_slist_pop(dep_head);
+        struct ship *shp = cmi_slist_entry(snode, struct ship, listnode);
+        double *t_sys_p = cmb_process_exit_value((struct cmb_process *)shp);
+        ship_terminate(shp);
+        ship_destroy(shp);
+        free(t_sys_p);
+    }
+
+    cmi_hashheap_terminate(&(simp->active_ships));
+    cmi_slist_terminate(&(simp->departed_ships));
+
+    free(envp);
+    free(simp);
+    free(ctxp);
+}
+
+
 /* The simulation driver function to execute one trial */
 void run_trial(void *vtrl)
 {
     cmb_assert_release(vtrl != NULL);
     struct trial *trlp = vtrl;
 
-    /* Using local variables, since it will only be used before this function exits */
-    struct environment env = { 0 };
-    struct simulation sim = { 0 };
-    struct context ctx = { .sim = &sim, .env = &env, .trl = trlp };
+    /* Heap allocated for this tutorial */
+    struct environment *envp = malloc(sizeof(*envp));
+    cmb_assert_always(envp != NULL);
+    memset(envp, 0, sizeof(*envp));
+    struct simulation *simp = malloc(sizeof(*simp));
+    cmb_assert_always(simp != NULL);
+    memset(simp, 0, sizeof(*simp));
+    struct context *ctxp = malloc(sizeof(*ctxp));
+    cmb_assert_always(ctxp != NULL);
+    memset(ctxp, 0, sizeof(*ctxp));
+    ctxp->env = envp;
+    ctxp->sim = simp;
+    ctxp->trl = trlp;
 
     /* Set up our trial housekeeping */
+    cimba_trial_cleanup_set(trial_cleanup, ctxp);
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
@@ -517,61 +568,61 @@ void run_trial(void *vtrl)
 
     /* Create and initialize the statistics collectors */
     for (unsigned i = 0; i < N_SIZES; i++) {
-        sim.time_in_system[i] = cmb_dataset_create();
-        cmb_dataset_initialize(sim.time_in_system[i]);
+        simp->time_in_system[i] = cmb_dataset_create();
+        cmb_dataset_initialize(simp->time_in_system[i]);
         trlp->avg_time_in_system[i] = 0.0;
     }
 
     /* Create weather and tide processes, ensuring that weather goes first */
-    sim.weather = cmb_process_create();
-    cmb_process_initialize(sim.weather, "Wind", weather_proc, &ctx, 1);
-    cmb_process_start(sim.weather);
-    sim.tide = cmb_process_create();
-    cmb_process_initialize(sim.tide, "Depth", tide_proc, &ctx, 0);
-    cmb_process_start(sim.tide);
+    simp->weather = cmb_process_create();
+    cmb_process_initialize(simp->weather, "Wind", weather_proc, ctxp, 1);
+    cmb_process_start(simp->weather);
+    simp->tide = cmb_process_create();
+    cmb_process_initialize(simp->tide, "Depth", tide_proc, ctxp, 0);
+    cmb_process_start(simp->tide);
 
     /* Create the resources */
-    sim.comms = cmb_resource_create();
-    cmb_resource_initialize(sim.comms, "Comms");
-    sim.tugs = cmb_resourcepool_create();
-    cmb_resourcepool_initialize(sim.tugs, "Tugs", trlp->num_tugs);
+    simp->comms = cmb_resource_create();
+    cmb_resource_initialize(simp->comms, "Comms");
+    simp->tugs = cmb_resourcepool_create();
+    cmb_resourcepool_initialize(simp->tugs, "Tugs", trlp->num_tugs);
     for (unsigned i = 0; i < N_SIZES; i++) {
-        sim.berths[i] = cmb_resourcepool_create();
-        cmb_resourcepool_initialize(sim.berths[i],
+        simp->berths[i] = cmb_resourcepool_create();
+        cmb_resourcepool_initialize(simp->berths[i],
             ((i == 0)? "Small berth" : "Large berth"),
             trlp->num_berths[i]);
     }
 
     /* Create the harbormaster and Davy Jones himself */
-    sim.harbormaster = cmb_condition_create();
-    cmb_condition_initialize(sim.harbormaster, "Harbormaster");
-    cmb_resourceguard_register(&(sim.tugs->guard), &(sim.harbormaster->guard));
+    simp->harbormaster = cmb_condition_create();
+    cmb_condition_initialize(simp->harbormaster, "Harbormaster");
+    cmb_resourceguard_register(&(simp->tugs->guard), &(simp->harbormaster->guard));
     for (unsigned i = 0; i < N_SIZES; i++) {
-        cmb_resourceguard_register(&(sim.berths[i]->guard), &(sim.harbormaster->guard));
+        cmb_resourceguard_register(&(simp->berths[i]->guard), &(simp->harbormaster->guard));
     }
 
-    sim.davyjones = cmb_condition_create();
-    cmb_condition_initialize(sim.davyjones, "Davy Jones");
+    simp->davyjones = cmb_condition_create();
+    cmb_condition_initialize(simp->davyjones, "Davy Jones");
 
     /* Create the arrival and departure processes */
-    sim.arrivals = cmb_process_create();
-    cmb_process_initialize(sim.arrivals, "Arrivals", arrival_proc, &ctx, 0);
-    cmb_process_start(sim.arrivals);
-    sim.departures = cmb_process_create();
-    cmb_process_initialize(sim.departures, "Departures", departure_proc, &ctx, 0);
-    cmb_process_start(sim.departures);
+    simp->arrivals = cmb_process_create();
+    cmb_process_initialize(simp->arrivals, "Arrivals", arrival_proc, ctxp, 0);
+    cmb_process_start(simp->arrivals);
+    simp->departures = cmb_process_create();
+    cmb_process_initialize(simp->departures, "Departures", departure_proc, ctxp, 0);
+    cmb_process_start(simp->departures);
 
     /* Create the collections of active and departed ships */
-    cmi_hashheap_initialize(&(sim.active_ships), 3u, NULL);
-    cmi_slist_initialize(&(sim.departed_ships));
+    cmi_hashheap_initialize(&(simp->active_ships), 3u, NULL);
+    cmi_slist_initialize(&(simp->departed_ships));
 
     /* Schedule the simulation control events */
     double t = trlp->warmup_s;
-    cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
+    cmb_event_schedule(start_rec, NULL, ctxp, t, 0);
     t += trlp->duration_h;
-    cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
+    cmb_event_schedule(stop_rec, NULL, ctxp, t, 0);
     /* Set a large negative priority for the stop event to ensure normal events go first */
-    cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
+    cmb_event_schedule(end_sim, NULL, ctxp, t, -100);
 
     /* Run this trial */
     cmb_event_queue_execute();
@@ -580,46 +631,55 @@ void run_trial(void *vtrl)
     for (unsigned i = 0; i < N_SIZES; i++) {
         struct cmb_datasummary dstmp;
         cmb_datasummary_initialize(&dstmp);
-        cmb_dataset_summarize(sim.time_in_system[i], &dstmp);
+        cmb_dataset_summarize(simp->time_in_system[i], &dstmp);
         trlp->avg_time_in_system[i] = cmb_datasummary_mean(&dstmp);
         cmb_datasummary_terminate(&dstmp);
     }
 
     /* Clean up */
-    cmb_process_terminate(sim.weather);
-    cmb_process_destroy(sim.weather);
-    cmb_process_terminate(sim.tide);
-    cmb_process_destroy(sim.tide);
-    cmb_process_terminate(sim.arrivals);
-    cmb_process_destroy(sim.arrivals);
-    cmb_process_terminate(sim.departures);
-    cmb_process_destroy(sim.departures);
+    cmb_process_terminate(simp->weather);
+    cmb_process_destroy(simp->weather);
+    cmb_process_terminate(simp->tide);
+    cmb_process_destroy(simp->tide);
+    cmb_process_terminate(simp->arrivals);
+    cmb_process_destroy(simp->arrivals);
+    cmb_process_terminate(simp->departures);
+    cmb_process_destroy(simp->departures);
 
     for (unsigned i = 0; i < N_SIZES; i++) {
-        cmb_dataset_terminate(sim.time_in_system[i]);
-        cmb_dataset_destroy(sim.time_in_system[i]);
-        cmb_resourcepool_terminate(sim.berths[i]);
-        cmb_resourcepool_destroy(sim.berths[i]);
+        cmb_dataset_terminate(simp->time_in_system[i]);
+        cmb_dataset_destroy(simp->time_in_system[i]);
+        cmb_resourcepool_terminate(simp->berths[i]);
+        cmb_resourcepool_destroy(simp->berths[i]);
     }
 
-    cmb_condition_terminate(sim.harbormaster);
-    cmb_condition_destroy(sim.harbormaster);
-    cmb_condition_terminate(sim.davyjones);
-    cmb_condition_destroy(sim.davyjones);
-    cmb_resourcepool_terminate(sim.tugs);
-    cmb_resourcepool_destroy(sim.tugs);
-    cmb_resource_terminate(sim.comms);
-    cmb_resource_destroy(sim.comms);
+    cmb_condition_terminate(simp->harbormaster);
+    cmb_condition_destroy(simp->harbormaster);
+    cmb_condition_terminate(simp->davyjones);
+    cmb_condition_destroy(simp->davyjones);
+    cmb_resourcepool_terminate(simp->tugs);
+    cmb_resourcepool_destroy(simp->tugs);
+    cmb_resource_terminate(simp->comms);
+    cmb_resource_destroy(simp->comms);
 
-    cmi_hashheap_terminate(&(sim.active_ships));
-    cmi_slist_terminate(&(sim.departed_ships));
+    cmi_hashheap_terminate(&(simp->active_ships));
+    cmi_slist_terminate(&(simp->departed_ships));
+
+    free(ctxp->env);
+    free(ctxp->sim);
+    free(ctxp);
 
     /* Final housekeeping to leave everything as we found it */
     cmb_event_queue_terminate();
     cmb_random_terminate();
+
+    cmb_logger_user(stdout, USERFLAG2,
+                    "Finished normally, seed 0x%016" PRIx64,
+                    trlp->seed_used);
 }
 
 void write_gnuplot_commands(void);
+double t_crit_95(uint32_t n);
 
 int main(void)
 {
@@ -654,6 +714,9 @@ int main(void)
                 experiment[ui_trl].warmup_s = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
+                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
+                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
+
                 ui_trl++;
             }
         }
@@ -672,6 +735,9 @@ int main(void)
                 experiment[ui_trl].num_berths[LARGE] = num_berths[LARGE][0];
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
+
+                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
+                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
 
                 experiment[ui_trl].warmup_s = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
@@ -695,6 +761,9 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
+                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
+                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
+
                 experiment[ui_trl].warmup_s = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
@@ -717,6 +786,9 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
+                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
+                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
+
                 experiment[ui_trl].warmup_s = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
@@ -727,9 +799,10 @@ int main(void)
 
     printf("Configured %u trials\n", ui_trl);
     printf("Executing experiment\n");
-    cimba_run(experiment, n_trials, sizeof(*experiment), run_trial);
+    const uint64_t nfailed = cimba_run(experiment, n_trials, sizeof(*experiment), run_trial);
+    printf("Experiment finished, %" PRIu64 " failed trials, %" PRIu64 " successful\n",
+            nfailed, ui_trl - nfailed);
 
-    printf("Finished experiment, writing results to file\n");
     ui_trl = 0u;
     FILE *datafp = fopen("tut_4_2.dat", "w");
     fprintf(datafp, "# arr_rate\tref_depth\tn_tg\tn_bts\tn_btl\tavg_t_small\tci_t_small\tavg_t_large\tci_t_small\n");
@@ -747,21 +820,28 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-                cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
+                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
+                    cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                }
                 ui_trl++;
             }
 
+            const double smpl_cnt_small = cmb_datasummary_count(&ds_small);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
-            const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
+            const double t_crit_small = t_crit_95(smpl_cnt_small);
+
+            const double smpl_cnt_large = cmb_datasummary_count(&ds_large);
+            const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
-            const double t_crit = 2.228;
+            const double t_crit_large = t_crit_95(smpl_cnt_large);
+
             fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit * smpl_sd_small,
-                    smpl_avg_large, t_crit * smpl_sd_large);
+                    smpl_avg_small, t_crit_small * smpl_sd_small,
+                    smpl_avg_large, t_crit_large * smpl_sd_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
@@ -781,21 +861,28 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-                cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
+                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
+                    cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                }
                 ui_trl++;
             }
 
+            const double smpl_cnt_small = cmb_datasummary_count(&ds_small);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
-            const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
+            const double t_crit_small = t_crit_95(smpl_cnt_small);
+
+            const double smpl_cnt_large = cmb_datasummary_count(&ds_large);
+            const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
-            const double t_crit = 2.228;
+            const double t_crit_large = t_crit_95(smpl_cnt_large);
+
             fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit * smpl_sd_small,
-                    smpl_avg_large, t_crit * smpl_sd_large);
+                    smpl_avg_small, t_crit_small * smpl_sd_small,
+                    smpl_avg_large, t_crit_large * smpl_sd_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
@@ -815,21 +902,28 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-                cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
+                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
+                    cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                }
                 ui_trl++;
             }
 
+            const double smpl_cnt_small = cmb_datasummary_count(&ds_small);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
-            const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
+            const double t_crit_small = t_crit_95(smpl_cnt_small);
+
+            const double smpl_cnt_large = cmb_datasummary_count(&ds_large);
+            const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
-            const double t_crit = 2.228;
+            const double t_crit_large = t_crit_95(smpl_cnt_large);
+
             fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit * smpl_sd_small,
-                    smpl_avg_large, t_crit * smpl_sd_large);
+                    smpl_avg_small, t_crit_small * smpl_sd_small,
+                    smpl_avg_large, t_crit_large * smpl_sd_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
@@ -849,21 +943,28 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-                cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
+                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
+                    cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                }
                 ui_trl++;
             }
 
+            const double smpl_cnt_small = cmb_datasummary_count(&ds_small);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
-            const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
+            const double t_crit_small = t_crit_95(smpl_cnt_small);
+
+            const double smpl_cnt_large = cmb_datasummary_count(&ds_large);
+            const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
-            const double t_crit = 2.228;
+            const double t_crit_large = t_crit_95(smpl_cnt_large);
+
             fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit * smpl_sd_small,
-                    smpl_avg_large, t_crit * smpl_sd_large);
+                    smpl_avg_small, t_crit_small * smpl_sd_small,
+                    smpl_avg_large, t_crit_large * smpl_sd_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
@@ -969,3 +1070,56 @@ void write_gnuplot_commands(void)
 
     fclose(cmdfp);
 }
+
+/*
+ * Table lookup for the critical values for two-sided 95 % confidence intervals,
+ * see https://www.stat.purdue.edu/~lfindsen/stat503/t-Dist.pdf
+ */
+double t_crit_95(const uint32_t n)
+{
+    cmb_assert_debug(n > 0u);
+
+#define NUM_TVALS 62u
+    static uint32_t n_vals[NUM_TVALS] = {
+        1,  2,  3,  4,  5,  6,  7,  8,  9, 10,
+       11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+       21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+       31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+       41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+       60, 70, 80, 90,100,120,140,180,200,500,
+       1000, UINT32_MAX
+   };
+
+    static double t_vals[NUM_TVALS] = {
+        12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228,
+         2.201, 2.179, 2.160, 2.145, 2.131, 2.120, 2.110, 2.101, 2.093, 2.086,
+         2.080, 2.074, 2.069, 2.064, 2.060, 2.056, 2.052, 2.048, 2.045, 2.042,
+         2.040, 2.037, 2.035, 2.032, 2.030, 2.028, 2.026, 2.024, 2.023, 2.021,
+         2.020, 2.018, 2.017, 2.015, 2.014, 2.013, 2.012, 2.011, 2.010, 2.009,
+         2.000, 1.994, 1.990, 1.987, 1.984, 1.980, 1.977, 1.973, 1.972, 1.965,
+         1.962, 1.960
+    };
+
+    for (uint32_t ui = 0u; ui < NUM_TVALS; ui++) {
+        if (n_vals[ui] == n) {
+            return t_vals[ui];
+        }
+
+        if (n_vals[ui] > n) {
+            /* Interpolate between values */
+            const uint32_t n_range = n_vals[ui] - n_vals[ui - 1];
+            const double t_range = t_vals[ui] - t_vals[ui - 1];
+            const double frac = (double)(n - n_vals[ui - 1]) / (double)n_range;
+            cmb_assert_debug(frac >= 0.0 && frac <= 1.0);
+            const double t_ret = t_vals[ui] - frac * t_range;
+
+            cmb_assert_debug((t_ret >= t_vals[ui -1]) && (t_ret <= t_vals[ui]));
+            return t_ret;
+        }
+    }
+
+    /* Should never get this far */
+    cmb_logger_error(stderr, "Critical value lookup failed");
+#undef NUM_TVALS
+}
+

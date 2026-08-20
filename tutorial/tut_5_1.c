@@ -10,41 +10,11 @@
  * link budget is calibrated through a reference range at a reference RCS
  * rather than detailed transmit power, antenna gain, and system losses.
  *
- * Modelled:
- *  - 3D sensor-target geometry on a local tangent plane (WGS84 radii of
- *    curvature at the reference point); platform on a racetrack orbit with
- *    coordinated-turn bank angle.
- *  - Tropospheric refraction via an effective-Earth-radius k(h) derived from
- *    an exponential refractivity profile (N0, scale height), not a fixed 4/3.
- *  - Line-of-sight terrain masking by ray-marching the refracted ray against
- *    the DEM, plus radar-horizon, elevation-limit, and nadir-cone gating.
- *  - Detection scaling from the radar equation (range^4, RCS), referenced to
- *    a calibrated range and RCS, with per-target-state RCS.
- *  - Surface clutter from a constant-gamma (Barton/Morchin) model,
- *    sigma0 = gamma * sin(grazing), gamma chosen per terrain biome and
- *    integrated over the resolution cell.
- *  - Doppler processing where a target state-dependent Doppler factor represents
- *    the sensor's ability to separate a target in that state from surrounding
- *    clutter.
- *  - Cell-averaging CA-CFAR detection (reference/guard cells, threshold alpha
- *    for a target Pfa) over non-coherently integrated pulses, above a thermal
- *    noise floor.
- *  - Specular multipath (Lloyd's-mirror lobing) at S-band, with a per-biome
- *    reflection coefficient attenuated by Rayleigh surface roughness.
- *  - Probabilistic detection drawn independently per dwell across each 1 s scan.
- *
- * Deliberately omitted:
- *  - Antenna detail: a hard azimuth beam-gate replaces the main-beam pattern;
- *    no sidelobes, sidelobe clutter, elevation pattern, or monopulse.
- *  - Waveform detail: no pulse-compression range sidelobes, range/Doppler
- *    ambiguities, or eclipsing; range resolution is a parameter.
- *  - Target fluctuation: fixed per-state RCS with a detection draw, not a
- *    Swerling case.
- *  - Knife-edge diffraction (masking is hard geometric LOS), diffuse multipath,
- *    polarization, gaseous/rain attenuation, ducting, and ECM/ECCM.
- *  - Tracking: detections are per-dwell only -- no association, M-of-N, or
- *    track formation.
- *
+ * The model includes 3D geometry, line-of-sight terrain masking, tropospheric
+ * diffraction, specular reflection, surface clutter, Doppler processing,
+ * target RCS, and probabilistic per-dwell CA-CFAR detection.
+ * It does not include detailed antenna beam pattern, waveform detail, target
+ * RCS fluctuations (i.e., a 3D model of the moving target), tracking, etc etc.
  * Adding these would improve the realism of the model, but not add anything
  * significant to this tutorial example.
  *
@@ -620,6 +590,7 @@ void *target_proc(struct cmb_process *me, void *vctx)
 struct target *target_create(void)
 {
     struct target *tgt = cmi_malloc(sizeof(struct target));
+    cmi_memset(tgt, 0, sizeof(*tgt));
 
     return tgt;
 }
@@ -1251,6 +1222,7 @@ struct racetrack {
 struct racetrack *racetrack_create(void)
 {
     struct racetrack *rt = cmi_malloc(sizeof(struct racetrack));
+    cmi_memset(rt, 0, sizeof(*rt));
 
     return rt;
 }
@@ -1422,6 +1394,7 @@ struct platform {
 struct platform *platform_create(void)
 {
     struct platform *pfp = cmi_malloc(sizeof(struct platform));
+    cmi_memset(pfp, 0, sizeof(*pfp));
 
     return pfp;
 }
@@ -1593,6 +1566,7 @@ void *sensor_proc(struct cmb_process *me, void *vctx)
 struct sensor *sensor_create(void)
 {
     struct sensor *senp = cmi_malloc(sizeof(struct sensor));
+    cmi_memset(senp, 0, sizeof(*senp));
 
     return senp;
 }
@@ -1947,6 +1921,7 @@ int main(int argc, char **argv)
 
     terrain_terminate(tp);
     terrain_destroy(tp);
+    cmb_random_terminate();
 
     return 0;
 }
@@ -2144,8 +2119,8 @@ void terrain_vtkhdf_write(const char *const h5_filename,
 
     write_attr_int64_array(root, "WholeExtent", extent, 6);
 
-    const double total_x = (cols - 1) * (double)x_scale;
-    const double total_y = (rows - 1) * (double)y_scale;
+    const double total_x = (vis_cols - 1) * vis_x_scale;
+    const double total_y = (vis_rows - 1) * vis_y_scale;
     const double origin[3] = { -(total_x / 2.0), -(total_y / 2.0), 0.0 };
     const double spacing[3] = { vis_x_scale, vis_y_scale, 1.0 };
     const double direction[9] = { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0 };
@@ -2159,13 +2134,14 @@ void terrain_vtkhdf_write(const char *const h5_filename,
     write_attr_string(pd_group, "Scalars", "Elevation");
 
     float *vis_map = malloc((size_t)vis_cols * (size_t)vis_rows * sizeof(float));
-    for (uint32_t r = 0; r < vis_rows; r++) {
-        for (uint32_t c = 0; c < vis_cols; c++) {
-            const uint32_t src_idx = (r * stride_step * cols) + (c * stride_step);
+    for (uint64_t r = 0; r < vis_rows; r++) {
+        for (uint64_t c = 0; c < vis_cols; c++) {
+            const uint64_t src_idx = (r * stride_step * cols) + (c * stride_step);
             vis_map[r * vis_cols + c] = map[src_idx];
         }
     }
-    const hsize_t map_dims[2] = { (hsize_t)rows, (hsize_t)cols };
+
+    const hsize_t map_dims[2] = { (hsize_t)vis_rows, (hsize_t)vis_cols };
     const hid_t map_space = H5Screate_simple(2, map_dims, NULL);
     H5_CHECK(map_space);
     const hid_t map_dset = H5Dcreate2(pd_group, "Elevation", H5T_NATIVE_FLOAT,

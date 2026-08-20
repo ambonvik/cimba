@@ -245,6 +245,11 @@ void server_start(struct server *sp)
     cmb_process_start(&sp->core);
 }
 
+void server_stop(struct server *sp)
+{
+    cmb_process_stop(&sp->core, NULL);
+}
+
 void server_terminate(struct server *sp)
 {
     cmb_process_terminate(&sp->core);
@@ -300,12 +305,15 @@ void attraction_initialize(struct attraction *ap, const unsigned ui)
 
 void attraction_terminate(struct attraction *ap)
 {
-    for (unsigned qi = 0; qi < ap->num_queues; qi++) {
-        cmb_priorityqueue_terminate(ap->queues[qi]);
+    for (unsigned si = 0; si < ap->num_servers; si++) {
+        struct server *sp = ap->servers[si];
+        server_stop(sp);
+        server_terminate(sp);
+        server_destroy(sp);
     }
 
-    for (unsigned si = 0; si < ap->num_servers; si++) {
-        server_terminate(ap->servers[si]);
+    for (unsigned qi = 0; qi < ap->num_queues; qi++) {
+        cmb_priorityqueue_terminate(ap->queues[qi]);
     }
 
     free(ap->queues);
@@ -486,16 +494,16 @@ void visitor_start(struct visitor *vip)
     cmb_process_start((struct cmb_process *)vip);
 }
 
-const char *visitor_name(struct visitor *vip)
+void visitor_stop(struct visitor *vip)
 {
     cmb_assert_release(vip != NULL);
-
-    return ((struct cmb_process *)vip)->name;
+    cmb_process_stop(&vip->core, NULL);
 }
 
 void visitor_terminate(struct visitor *vip)
 {
     /* Nothing needed for the visitor itself, pass it on to parent class */
+    cmb_process_stop((struct cmb_process *)vip, NULL);
     cmb_process_terminate((struct cmb_process *)vip);
 }
 
@@ -503,6 +511,14 @@ void visitor_destroy(struct visitor *vip)
 {
     free(vip);
 }
+
+const char *visitor_name(struct visitor *vip)
+{
+    cmb_assert_release(vip != NULL);
+
+    return ((struct cmb_process *)vip)->name;
+}
+
 
 /* Arrival process - generate new visitors */
 void *arrival_proc(struct cmb_process *me, void *vctx)
@@ -527,7 +543,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
     }
 }
 
-/* Departure process, wait for leaving visitors, then recycle it */
+/* Departure process, wait for leaving visitors, then recycle them */
 void *departure_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);

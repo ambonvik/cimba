@@ -47,9 +47,9 @@ struct simulation {
     struct cmb_condition *davyjones;
 
     /* A set of all active ships */
-    struct cmi_hashheap *active_ships;
+    struct cmi_hashheap active_ships;
     /* A list of departed ships  */
-    struct cmi_slist_node *departed_ships;
+    struct cmi_slist_node departed_ships;
 
     /* Data collector for local use in this instance */
     struct cmb_dataset *time_in_system[2];
@@ -230,7 +230,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     /* Note ourselves as active */
     cmb_logger_user(stdout, USERFLAG1, "%s arrives", me->name);
     const double t_arr = cmb_time();
-    const uint64_t hndl = cmi_hashheap_enqueue(simp->active_ships, shpp,
+    const uint64_t hndl = cmi_hashheap_enqueue(&(simp->active_ships), shpp,
                                                NULL, NULL, NULL, 0u, t_arr, 0u);
 
     /* Wait for suitable conditions to dock */
@@ -282,9 +282,9 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     cmb_resourcepool_release(simp->tugs, shpp->tugs_needed);
 
     /* This is a one-pass process, remove ourselves from the active set */
-    cmi_hashheap_remove(simp->active_ships, hndl);
+    cmi_hashheap_remove(&(simp->active_ships), hndl);
     /* List ourselves as departed instead */
-    cmi_slist_push(simp->departed_ships, &(shpp->listnode));
+    cmi_slist_push(&(simp->departed_ships), &(shpp->listnode));
     /* Inform Davy Jones that we are coming his way */
     cmb_condition_signal(simp->davyjones);
 
@@ -354,7 +354,7 @@ bool is_departed(const struct cmb_condition *cvp,
     const struct simulation *simp = ctxp->sim;
 
     /* Simple: One or more ships in the list of departed ships */
-    return (simp->departed_ships != NULL);
+    return cmi_slist_is_empty(&(simp->departed_ships)) ? false : true;
 }
 
 /* The departure process */
@@ -366,7 +366,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
     const struct context *ctxp = vctx;
     struct simulation *simp = ctxp->sim;
     const struct trial *trlp = ctxp->trl;
-    struct cmi_slist_node *dep_head = simp->departed_ships;
+    struct cmi_slist_node *dep_head = &(simp->departed_ships);
 
     while (true) {
         /* We do not need to loop here, since this is the only process waiting */
@@ -401,8 +401,8 @@ void end_sim(void *subject, void *object)
 {
     cmb_unused(subject);
 
-    const struct context *ctxp = object;
-    const struct simulation *simp = ctxp->sim;
+    struct context *ctxp = object;
+    struct simulation *simp = ctxp->sim;
     cmb_logger_user(stdout, USERFLAG1, "Simulation ended");
 
     cmb_process_stop(simp->weather, NULL);
@@ -411,8 +411,8 @@ void end_sim(void *subject, void *object)
     cmb_process_stop(simp->departures, NULL);
 
     /* Also stop and recycle any still active ships */
-    while (cmi_hashheap_count(simp->active_ships) > 0u) {
-        void **item = cmi_hashheap_dequeue(simp->active_ships);
+    while (cmi_hashheap_count(&(simp->active_ships)) > 0u) {
+        void **item = cmi_hashheap_dequeue(&(simp->active_ships));
         struct ship *shpp = item[0];
         cmb_process_stop((struct cmb_process *)shpp, NULL);
         cmb_process_terminate((struct cmb_process *)shpp);
@@ -455,9 +455,9 @@ void run_trial(void *vtrl)
     struct trial *trlp = vtrl;
 
     /* Using local variables, since it will only be used before this function exits */
-    struct environment env = {0};
-    struct simulation sim = {0};
-    struct context ctx = { &sim, &env, trlp };
+    struct environment env = { 0 };
+    struct simulation sim = { 0 };
+    struct context ctx = { .sim = &sim, .env = &env, .trl = trlp };
 
     /* Set up our trial housekeeping */
     cmb_logger_flags_off(CMB_LOGGER_INFO);
@@ -504,19 +504,9 @@ void run_trial(void *vtrl)
     sim.davyjones = cmb_condition_create();
     cmb_condition_initialize(sim.davyjones, "Davy Jones");
 
-    /* Create the arrival and departure processes */
-    sim.arrivals = cmb_process_create();
-    cmb_process_initialize(sim.arrivals, "Arrivals", arrival_proc, &ctx, 0);
-    cmb_process_start(sim.arrivals);
-    sim.departures = cmb_process_create();
-    cmb_process_initialize(sim.departures, "Departures", departure_proc, &ctx, 0);
-    cmb_process_start(sim.departures);
-
-    /* Create the collections of active and departed ships */
-    sim.active_ships = cmi_hashheap_create();
-    cmi_hashheap_initialize(sim.active_ships, 3u, NULL);
-    sim.departed_ships = cmi_slist_create();
-    cmi_slist_initialize(sim.departed_ships);
+    /* Initialize the collections of active and departed ships */
+    cmi_hashheap_initialize(&(sim.active_ships), 3u, NULL);
+    cmi_slist_initialize(&(sim.departed_ships));
 
     /* Schedule the simulation control events */
     double t = trlp->warmup_s;
@@ -525,6 +515,14 @@ void run_trial(void *vtrl)
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
     /* Set a large negative priority for the stop event to ensure normal events go first */
     cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
+
+    /* Create the arrival and departure processes */
+    sim.arrivals = cmb_process_create();
+    cmb_process_initialize(sim.arrivals, "Arrivals", arrival_proc, &ctx, 0);
+    cmb_process_start(sim.arrivals);
+    sim.departures = cmb_process_create();
+    cmb_process_initialize(sim.departures, "Departures", departure_proc, &ctx, 0);
+    cmb_process_start(sim.departures);
 
     /* Run this trial */
     cmb_event_queue_execute();
@@ -536,11 +534,13 @@ void run_trial(void *vtrl)
         if (n > 0) {
             cmb_dataset_fivenum_print(sim.time_in_system[i], stdout, true);
 
-            struct cmb_datasummary dsumm;
-            cmb_dataset_summarize(sim.time_in_system[i], &dsumm);
-            cmb_datasummary_print(&dsumm, stdout, true);
+            struct cmb_datasummary dstmp;
+            cmb_datasummary_initialize(&dstmp);
+            cmb_dataset_summarize(sim.time_in_system[i], &dstmp);
+            cmb_datasummary_print(&dstmp, stdout, true);
             cmb_dataset_histogram_print(sim.time_in_system[i], stdout, 20, 0.0, 0.0);
-            trlp->avg_time_in_system[i] = cmb_datasummary_mean(&dsumm);
+            trlp->avg_time_in_system[i] = cmb_datasummary_mean(&dstmp);
+            cmb_datasummary_terminate(&dstmp);
         }
     }
 
@@ -551,11 +551,13 @@ void run_trial(void *vtrl)
         if (n > 0) {
             cmb_timeseries_fivenum_print(hist, stdout, true);
 
-            struct cmb_wtdsummary wsumm;
-            cmb_timeseries_summarize(hist, &wsumm);
-            cmb_wtdsummary_print(&wsumm, stdout, true);
-            const unsigned nvals = (unsigned)cmb_wtdsummary_max(&wsumm) + 1u;
+            struct cmb_wtdsummary wstmp;
+            cmb_wtdsummary_initialize(&wstmp);
+            cmb_timeseries_summarize(hist, &wstmp);
+            cmb_wtdsummary_print(&wstmp, stdout, true);
+            const unsigned nvals = (unsigned)cmb_wtdsummary_max(&wstmp) + 1u;
             cmb_timeseries_histogram_print(hist, stdout, nvals, 0.0, (double)nvals);
+            cmb_wtdsummary_terminate(&wstmp);
         }
     }
 
@@ -565,11 +567,13 @@ void run_trial(void *vtrl)
     if (n > 0) {
         cmb_timeseries_fivenum_print(hist, stdout, true);
 
-        struct cmb_wtdsummary wsumm;
-        cmb_timeseries_summarize(hist, &wsumm);
-        cmb_wtdsummary_print(&wsumm, stdout, true);
-        const unsigned nvals = (unsigned)cmb_wtdsummary_max(&wsumm) + 1u;
+        struct cmb_wtdsummary wstmp;
+        cmb_wtdsummary_initialize(&wstmp);
+        cmb_timeseries_summarize(hist, &wstmp);
+        cmb_wtdsummary_print(&wstmp, stdout, true);
+        const unsigned nvals = (unsigned)cmb_wtdsummary_max(&wstmp) + 1u;
         cmb_timeseries_histogram_print(hist, stdout, nvals, 0.0, (double)nvals);
+        cmb_wtdsummary_terminate(&wstmp);
     }
 
     /* Clean up */
@@ -577,15 +581,28 @@ void run_trial(void *vtrl)
     cmb_process_destroy(sim.weather);
     cmb_process_terminate(sim.tide);
     cmb_process_destroy(sim.tide);
+    cmb_process_terminate(sim.arrivals);
+    cmb_process_destroy(sim.arrivals);
+    cmb_process_terminate(sim.departures);
+    cmb_process_destroy(sim.departures);
+
 
     for (int i = 0; i < 2; i++) {
+        cmb_dataset_terminate(sim.time_in_system[i]);
         cmb_dataset_destroy(sim.time_in_system[i]);
+        cmb_resourcepool_terminate(sim.berths[i]);
         cmb_resourcepool_destroy(sim.berths[i]);
     }
 
+    cmb_condition_terminate(sim.harbormaster);
     cmb_condition_destroy(sim.harbormaster);
+    cmb_condition_terminate(sim.davyjones);
     cmb_condition_destroy(sim.davyjones);
+    cmb_resourcepool_terminate(sim.tugs);
     cmb_resourcepool_destroy(sim.tugs);
+
+    cmi_hashheap_terminate(&(sim.active_ships));
+    cmi_slist_terminate(&(sim.departed_ships));
 
     /* Final housekeeping to leave everything as we found it */
     cmb_event_queue_terminate();

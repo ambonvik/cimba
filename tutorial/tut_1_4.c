@@ -61,7 +61,7 @@ int main(void)
     const uint64_t seed = cmb_random_hwseed();
     cmb_random_initialize(seed);
 
-    cmb_logger_flags_off(CMB_LOGGER_INFO | USERFLAG1);
+    cmb_logger_flags_off(USERFLAG1 | CMB_LOGGER_INFO);
 
     cmb_event_queue_initialize(0.0);
 

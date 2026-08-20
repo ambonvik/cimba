@@ -201,9 +201,11 @@ void run_MM1_trial(void *vtrl)
 
     /* Done, collect statistics and store in the results field */
     struct cmb_wtdsummary wtdsum;
+    cmb_wtdsummary_initialize(&wtdsum);
     const struct cmb_timeseries *ts = cmb_buffer_history(ctx.sim->que);
     cmb_timeseries_summarize(ts, &wtdsum);
     ctx.trl->avg_queue_length = cmb_wtdsummary_mean(&wtdsum);
+    cmb_wtdsummary_terminate(&wtdsum);
 
     /* Clean up, one _terminate for each _initialize, one _destroy for each _create */
     cmb_process_terminate(ctx.sim->srv);
@@ -220,7 +222,7 @@ void run_MM1_trial(void *vtrl)
 }
 
 void write_gnuplot_commands(void);
-double t_crit_95(const uint32_t n);
+double t_crit_95(uint32_t n);
 
 int main(const int argc, char *argv[])
 {

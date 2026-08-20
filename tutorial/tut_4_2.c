@@ -3,7 +3,7 @@
  *
  * Multithreaded version of the harbor simulation.
  *
- * Copyright (c) Asbjørn M. Bonvik 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ struct simulation {
     /* The fleet of tugboats */
     struct cmb_resourcepool *tugs;
     /* Small and large berths */
-    struct cmb_resourcepool *berths[2];
+    struct cmb_resourcepool *berths[N_SIZES];
     /* The radio channel */
     struct cmb_resource *comms;
 
@@ -82,7 +82,7 @@ struct simulation {
     struct cmi_slist_node departed_ships;
 
     /* Data collector for local use in this instance */
-    struct cmb_dataset *time_in_system[2];
+    struct cmb_dataset *time_in_system[N_SIZES];
 
 };
 
@@ -101,8 +101,8 @@ struct trial {
     double arrival_rate;
     double percent_large;
     unsigned num_tugs;
-    unsigned num_berths[2];
-    double unloading_time_avg[2];
+    unsigned num_berths[N_SIZES];
+    double unloading_time_avg[N_SIZES];
 
     /* Control parameters */
     double warmup_s;
@@ -110,7 +110,7 @@ struct trial {
 
     /* Results */
     uint64_t seed_used;
-    double avg_time_in_system[2];
+    double avg_time_in_system[N_SIZES];
 };
 
 struct context {
@@ -133,6 +133,7 @@ struct ship {
 struct ship *ship_create(void)
 {
     struct ship *shpp = malloc(sizeof(struct ship));
+    memset(shpp, 0, sizeof(*shpp));
     cmb_assert_release(shpp != NULL);
 
     return shpp;
@@ -402,7 +403,7 @@ bool is_departed(const struct cmb_condition *cvp,
     const struct simulation *simp = ctxp->sim;
 
     /* Simple: One or more ships in the list of departed ships */
-    return cmi_slist_is_empty(&(simp->departed_ships)) ? false : true;
+    return !(cmi_slist_is_empty(&(simp->departed_ships)));
 }
 
 /* The departure process */
@@ -462,8 +463,8 @@ void end_sim(void *subject, void *object)
         void **item = cmi_hashheap_dequeue(&(simp->active_ships));
         struct ship *shpp = item[0];
         cmb_process_stop((struct cmb_process *)shpp, NULL);
-        cmb_process_terminate((struct cmb_process *)shpp);
-        free(shpp);
+        ship_terminate(shpp);
+        ship_destroy(shpp);
     }
 
     cmb_event_queue_clear();
@@ -502,9 +503,9 @@ void run_trial(void *vtrl)
     struct trial *trlp = vtrl;
 
     /* Using local variables, since it will only be used before this function exits */
-    struct environment env = {0};
-    struct simulation sim = {0};
-    struct context ctx = { &sim, &env, trlp };
+    struct environment env = { 0 };
+    struct simulation sim = { 0 };
+    struct context ctx = { .sim = &sim, .env = &env, .trl = trlp };
 
     /* Set up our trial housekeeping */
     cmb_logger_flags_off(CMB_LOGGER_INFO);
@@ -578,9 +579,11 @@ void run_trial(void *vtrl)
 
     /* Report statistics, using built-in history statistics for the resources */
     for (unsigned i = 0; i < N_SIZES; i++) {
-        struct cmb_datasummary dsumm;
-        cmb_dataset_summarize(sim.time_in_system[i], &dsumm);
-        trlp->avg_time_in_system[i] = cmb_datasummary_mean(&dsumm);
+        struct cmb_datasummary dstmp;
+        cmb_datasummary_initialize(&dstmp);
+        cmb_dataset_summarize(sim.time_in_system[i], &dstmp);
+        trlp->avg_time_in_system[i] = cmb_datasummary_mean(&dstmp);
+        cmb_datasummary_terminate(&dstmp);
     }
 
     /* Clean up */
@@ -588,20 +591,37 @@ void run_trial(void *vtrl)
     cmb_process_destroy(sim.weather);
     cmb_process_terminate(sim.tide);
     cmb_process_destroy(sim.tide);
+    cmb_process_terminate(sim.arrivals);
+    cmb_process_destroy(sim.arrivals);
+    cmb_process_terminate(sim.departures);
+    cmb_process_destroy(sim.departures);
 
     for (unsigned i = 0; i < N_SIZES; i++) {
+        cmb_dataset_terminate(sim.time_in_system[i]);
         cmb_dataset_destroy(sim.time_in_system[i]);
+        cmb_resourcepool_terminate(sim.berths[i]);
         cmb_resourcepool_destroy(sim.berths[i]);
     }
 
+    cmb_condition_terminate(sim.harbormaster);
     cmb_condition_destroy(sim.harbormaster);
+    cmb_condition_terminate(sim.davyjones);
     cmb_condition_destroy(sim.davyjones);
+    cmb_resourcepool_terminate(sim.tugs);
     cmb_resourcepool_destroy(sim.tugs);
+    cmb_resource_terminate(sim.comms);
+    cmb_resource_destroy(sim.comms);
 
+    cmi_hashheap_terminate(&(sim.active_ships));
+    cmi_slist_terminate(&(sim.departed_ships));
 
     /* Final housekeeping to leave everything as we found it */
     cmb_event_queue_terminate();
     cmb_random_terminate();
+
+    cmb_logger_user(stdout, USERFLAG2,
+                    "Finished normally, seed 0x%016" PRIx64,
+                    trlp->seed_used);
 }
 
 void write_gnuplot_commands(void);

@@ -144,10 +144,13 @@ void run_MM1_trial(void *vtrl)
 
     cmb_event_queue_execute();
 
-    struct cmb_wtdsummary wtdsum;
+    /* Make sure to initialize and terminate the wtdsummary */
+    struct cmb_wtdsummary wtdsum = { 0 };
+    cmb_wtdsummary_initialize(&wtdsum);
     const struct cmb_timeseries *ts = cmb_buffer_history(ctx.sim->que);
     cmb_timeseries_summarize(ts, &wtdsum);
     ctx.trl->avg_queue_length = cmb_wtdsummary_mean(&wtdsum);
+    cmb_wtdsummary_terminate(&wtdsum);
 
     cmb_process_terminate(ctx.sim->srv);
     cmb_process_destroy(ctx.sim->srv);
@@ -167,8 +170,6 @@ void write_gnuplot_commands(void);
 int main(void)
 {
     printf("Cimba version %s\n", cimba_version());
-    struct timespec start_time;
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
 
     const unsigned n_rhos = 39;
     const double rho_start = 0.025;
@@ -181,7 +182,8 @@ int main(void)
 
     printf("Setting up experiment\n");
     const unsigned n_trials = n_rhos * n_reps;
-    struct trial *experiment = cmi_calloc(n_trials, sizeof(*experiment));
+    struct trial *experiment = calloc(n_trials, sizeof(*experiment));
+    cmb_assert_always(experiment != NULL);
 
     uint64_t ui_exp = 0u;
     double rho = rho_start;
@@ -228,13 +230,7 @@ int main(void)
     }
 
     fclose(datafp);
-    cmi_free(experiment);
-
-    struct timespec end_time;
-    clock_gettime(CLOCK_MONOTONIC, &end_time);
-    double elapsed = (double)(end_time.tv_sec - start_time.tv_sec);
-    elapsed += (double)(end_time.tv_nsec - start_time.tv_nsec) / 1000000000.0;
-    printf("It took %g sec\n", elapsed);
+    free(experiment);
 
     write_gnuplot_commands();
     if (system("gnuplot -persistent tut_1_6.gp") != 0) {

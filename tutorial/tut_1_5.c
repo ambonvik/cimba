@@ -138,10 +138,13 @@ void run_MM1_trial(void *vtrl)
 
     cmb_event_queue_execute();
 
+    /* Make sure to initialize and terminate the wtdsummary */
     struct cmb_wtdsummary wtdsum;
+    cmb_wtdsummary_initialize(&wtdsum);
     const struct cmb_timeseries *ts = cmb_buffer_history(ctx.sim->que);
     cmb_timeseries_summarize(ts, &wtdsum);
     ctx.trl->avg_queue_length = cmb_wtdsummary_mean(&wtdsum);
+    cmb_wtdsummary_terminate(&wtdsum);
 
     cmb_process_terminate(ctx.sim->srv);
     cmb_process_destroy(ctx.sim->srv);

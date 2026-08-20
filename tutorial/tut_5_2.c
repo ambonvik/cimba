@@ -265,6 +265,7 @@ void *target_proc(struct cmb_process *me, void *vctx)
 struct target *target_create(void)
 {
     struct target *tgt = cmi_malloc(sizeof(struct target));
+    cmi_memset(tgt, 0, sizeof(*tgt));
 
     return tgt;
 }
@@ -349,6 +350,7 @@ struct racetrack {
 struct racetrack *racetrack_create(void)
 {
     struct racetrack *rt = cmi_malloc(sizeof(struct racetrack));
+    cmi_memset(rt, 0, sizeof(*rt));
 
     return rt;
 }
@@ -519,6 +521,7 @@ struct platform {
 struct platform *platform_create(void)
 {
     struct platform *pfp = cmi_malloc(sizeof(struct platform));
+    cmi_memset(pfp, 0, sizeof(*pfp));
 
     return pfp;
 }
@@ -671,6 +674,7 @@ void *sensor_proc(struct cmb_process *me, void *vctx)
 struct sensor *sensor_create(void)
 {
     struct sensor *senp = cmi_malloc(sizeof(struct sensor));
+    cmi_memset(senp, 0, sizeof(*senp));
 
     return senp;
 }
