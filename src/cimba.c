@@ -22,7 +22,6 @@
  */
 
 #include <pthread.h>
-#include <setjmp.h>
 #include <stdint.h>
 
 #include "cimba.h"
@@ -31,6 +30,7 @@
 #include "cmi_mempool.h"
 #include "cmi_memutils.h"
 #include "cmi_thread.h"
+#include "cmi_sanitizer.h"
 
 /* Only used from here, no header file needed */
 extern uint32_t cmi_cpu_cores(void);
@@ -54,9 +54,8 @@ static pthread_t cmg_main_thread;
  * declaring cmg_next_trial_idx as plain static uint64_t instead of _Atomic */
 static uint64_t cmg_next_trial_idx;
 
-/*
- * Control variable to ensure that atexit() gets armed only once. External scope.
- */
+/* Global control variable to ensure that atexit() gets armed only once.
+ * Intentionally external scope, hence `cmg_` namespace. */
 pthread_once_t cmg_atexit_armed = PTHREAD_ONCE_INIT;
 
 /* User-defined context per thread */
@@ -66,9 +65,24 @@ CMB_THREAD_LOCAL void *cmi_thread_context = NULL;
 CMB_THREAD_LOCAL uint64_t cmi_thread_id = UINT64_C(0);
 
 /* For recovering from trial-ending cmb_logger_error calls */
-CMB_THREAD_LOCAL jmp_buf cmi_worker_recovery;
-CMB_THREAD_LOCAL bool cmi_worker_recovery_armed = false;
+CMB_THREAD_LOCAL bool cmi_recovery_armed = false;
 static uint64_t cmi_failed_trials;
+
+static CMB_THREAD_LOCAL cimba_trial_cleanup_func *trial_cleanup_func = NULL;
+static CMB_THREAD_LOCAL void *trial_cleanup_arg = NULL;
+
+static CMB_THREAD_LOCAL intptr_t recovery_buf[5];
+#define recovery_set()   __builtin_setjmp((void **)recovery_buf)
+#define recovery_jump()  __builtin_longjmp((void **)recovery_buf, 1)
+
+extern void cmi_coroutine_recovery_prepare(void *stack_marker);
+extern void cmi_coroutine_recovery_finalize(void *stack_marker);
+
+extern void cmi_event_thread_cleanup(void);
+extern void cmi_hashheap_thread_cleanup(void);
+extern void cmi_event_thread_cleanup(void);
+extern void cmi_coroutine_thread_cleanup(void);
+extern void cmi_mempool_thread_cleanup(void);
 
 /*
  * This function will run _before_ the start of main(), guaranteed before any
@@ -87,27 +101,32 @@ bool cmi_thread_in_main(void) {
     return pthread_equal(pthread_self(), cmg_main_thread);
 }
 
-/* Call signature as expected by pthread_cleanup_push().*/
+/* Call signature as expected by pthread_cleanup_push().
+ * Will run on normal exit from a pthread.
+ */
 static void thread_pthread_cleanup(void *arg)
 {
     cmb_unused(arg);
 
     /* The sequence is important here, mempools last */
     cmi_hashheap_thread_cleanup();
+    cmi_event_thread_cleanup();
     cmi_coroutine_thread_cleanup();
     cmi_mempool_thread_cleanup();
 }
 
-/* Call signature as expected by atexit(). Make sure it only runs on the main
- * stack, not on some coroutine stack. If it did, we would be free'ing the
- * stack we are running on, heading into highly undefined behaviour. We are
- * exiting anyway, so the OS will reclaim all memory in a moment even with no
- * cleanup done from our side. No damage done by skipping it.
+/* Call signature as expected by atexit(). Will run on program exit.
+ * Makes sure it only runs on the main stack, not on some coroutine stack.
+ * If it did, we would be free'ing the stack we are running on, heading into
+ * highly undefined behaviour. We are exiting anyway, so the OS will reclaim
+ * all memory in a moment even with no cleanup done from our side. No damage
+ * done by skipping it.
  */
 static void thread_main_cleanup(void)
 {
     if (cmi_coroutine_current() == cmi_coroutine_main()) {
         cmi_hashheap_thread_cleanup();
+        cmi_event_thread_cleanup();
         cmi_coroutine_thread_cleanup();
         cmi_mempool_thread_cleanup();
     }
@@ -188,6 +207,36 @@ uint64_t cimba_trials_remaining(void)
 }
 
 /*
+ * Set cleanup function. Note that both arguments can be NULL.
+ */
+void cimba_trial_cleanup_set(cimba_trial_cleanup_func *clufunc, void *usrarg)
+{
+    trial_cleanup_func = clufunc;
+    trial_cleanup_arg = usrarg;
+}
+
+/*
+ * Abandon the current trial via `longjmp` for `worker_thread_func` to recover.
+ */
+CMB_NORETURN
+void cimba_trial_abandon(void)
+{
+    if (cmi_recovery_armed) {
+        cmi_coroutine_recovery_prepare(NULL);
+        recovery_jump();
+    }
+    else {
+        /* Not running inside a Cimba worker thread — fall back to exit with
+         * error code. Any armed cleanup functions from atexit() know to not
+         * delete the stack we are currently running on, so this is safe even
+         * from inside a coroutine without triggering undefined behavior.   */
+        exit(EXIT_FAILURE);
+    }
+
+    /* Not reached */
+}
+
+/*
  * thread_exit_wrapper - Internal function to simplify conditional pthread_cleanup_push
  * with its strange unbalanced braces and other weirdness. It is cleaner like this.
  */
@@ -204,12 +253,12 @@ static void thread_exit_wrapper(void *context)
 extern void cmi_event_queue_reset(void);
 
 /*
- * worker_thread_func - The function passed to pthread_create. It finds the next
+ * thread_worker_func - The function passed to pthread_create. It finds the next
  * available trial from the experiment array, executes it, and repeats. If no
  * more trials are waiting, it exits. An atomic uint64_t is used to track the
  * number of remaining trials.
  */
-static void *worker_thread_func(void *arg)
+static void *thread_worker_func(void *arg)
 {
     const uint64_t tid = (uint64_t)arg;
     cmi_thread_id = tid;
@@ -222,7 +271,7 @@ static void *worker_thread_func(void *arg)
     /* Make sure we free any thread local allocations before we exit */
     pthread_cleanup_push(thread_pthread_cleanup, NULL);
 
-    /* Any user-defined cleanup needed? */
+    /* Any user-defined thread cleanup needed? */
     pthread_cleanup_push(thread_exit_wrapper, cmi_thread_context);
 
     while (true) {
@@ -236,8 +285,8 @@ static void *worker_thread_func(void *arg)
         void *trial = ((char *)cmg_experiment_arr) + (idx * cmg_trial_struct_sz);
         cmi_logger_trial_idx = idx;
 
-        cmi_worker_recovery_armed = true;
-        if (CMI_RECOVERY_SET(cmi_worker_recovery) == 0) {
+        cmi_recovery_armed = true;
+        if (recovery_set() == 0) {
             if (cmg_trial_func != NULL) {
                 /* Normal usage, a common function, multiple data */
                 (*cmg_trial_func)(trial);
@@ -247,27 +296,48 @@ static void *worker_thread_func(void *arg)
                 cimba_trial_func *trial_func = *(cimba_trial_func **)trial;
                 (*trial_func)(trial);
             }
+
+            /* Continuing after a normal exit from the trial function */
+            if (!cmi_dlist_is_empty(&cmi_memregistry)) {
+                /* Some cmb_ object was not properly terminated and/or
+                 * destroyed during the trial, just flush registry without
+                 * calling registered teardown functions - may be intentional
+                 * from the user, do not override.    */
+                cmb_logger_warning(stdout, "Memory leak detected, memregistry not empty at end of trial");;
+                while (!cmi_dlist_is_empty(&cmi_memregistry)) {
+                    (void)cmi_dlist_remove_first(&cmi_memregistry);
+                }
+            }
         }
         else {
-            /* The trial called cmb_logger_error() and bailed out via longjmp.
-             * That jump returned us to the thread stack from inside whatever
-             * coroutine was running, so restore this thread's per-trial state
-             * before starting the next trial: the coroutine and sanitizer fiber
-             * bookkeeping, then the simulation clock and event queue. */
-            cmi_coroutine_reset_to_main();
-            cmi_event_queue_reset();
-            (void)__atomic_fetch_add(&cmi_failed_trials, 1, __ATOMIC_RELAXED);
+            /* The trial abandoned via longjmp. That returned us to the main
+             * thread stack from whatever coroutine was running. Restore this
+             * thread's per-trial stack state bookkeeping, with the address of
+             * a local variable in this stack frame as a high-water marker. */
+            cmi_coroutine_recovery_finalize(&trial);
 
-            /* Note that no attempt at memory cleanup is done here. Anything allocated
-             * by the trial is now leaked memory if it did not free it before
-             * calling cmb_logger_error()
-             */
+            /* Execute the user-defined trial cleanup function, if any */
+            if (trial_cleanup_func != NULL) {
+                (*trial_cleanup_func)(trial_cleanup_arg);
+            }
+
+            /* Execute all registered `cmb_` destructors in LIFO sequence */
+            cmi_memregistry_cleanup();
+
+            /* Increment the failure counter across all worker threads */
+            (void)__atomic_fetch_add(&cmi_failed_trials, 1, __ATOMIC_RELAXED);
         }
 
-        cmi_worker_recovery_armed = false;
+        /* Reset the simulation clock and event queue. */
+        cmi_event_queue_reset();
+
+        /* Safely out of the trial, disarm the recovery trap */
+        cmi_recovery_armed = false;
+        trial_cleanup_func = NULL;
+        trial_cleanup_arg = NULL;
      }
 
-    /* Made it this far, execute the cleanup functions before exiting */
+    /* No more trials, execute the thread cleanup functions before exiting */
     pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
 
@@ -275,7 +345,7 @@ static void *worker_thread_func(void *arg)
 }
 
 /*
- * cimba_experiment_run - The main simulation executive function. Initiates the
+ * cimba_run - The main simulation executive function. Initiates the
  * worker threads and waits for them to finish. That's all.
  *
  * The intended use case is to have only one instance of this function running
@@ -308,7 +378,7 @@ uint64_t cimba_run(void *your_experiment_array,
     pthread_t *threads = cmi_calloc(nthreads, sizeof(*threads));
     for (uint64_t ui = 0u; ui < nthreads; ui++) {
         /* A failure here will be fatal, so check */
-        const int rc = pthread_create(&threads[ui], NULL, worker_thread_func, (void *)ui);
+        const int rc = pthread_create(&threads[ui], NULL, thread_worker_func, (void *)ui);
         cmb_assert_always(rc == 0);
     }
 
