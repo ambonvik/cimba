@@ -13,6 +13,8 @@
 
 #include <stddef.h>
 
+#include "cmi_config.h"
+
 /* Detect AddressSanitizer (GCC: __SANITIZE_ADDRESS__, Clang: __has_feature) */
 #if defined(__SANITIZE_ADDRESS__)
 #  define CMI_ASAN 1
@@ -32,6 +34,7 @@
 #endif
 
 #if defined(CMI_ASAN)
+#  include <sanitizer/asan_interface.h>
 #  include <sanitizer/common_interface_defs.h>
 #endif
 #if defined(CMI_TSAN)
@@ -59,6 +62,36 @@ static inline void cmi_asan_finish_switch(void *saved)
     __sanitizer_finish_switch_fiber(saved, NULL, NULL);
 #else
     (void)saved;
+#endif
+}
+
+CMB_MAYBE_UNUSED
+static inline void cmi_asan_unpoison(const void *addr, size_t size)
+{
+#if defined(CMI_ASAN)
+    __asan_unpoison_memory_region(addr, size);
+#else
+    (void)addr;
+    (void)size;
+#endif
+}
+
+CMB_MAYBE_UNUSED
+static inline bool cmi_asan_region_poisoned(const void *addr, size_t size)
+{
+#if defined(CMI_ASAN)
+    return (__asan_region_is_poisoned((void *)addr, size) != NULL);
+#else
+    (void)addr; (void)size;
+    return false;
+#endif
+}
+
+CMB_MAYBE_UNUSED
+static inline void cmi_asan_handle_no_return(void)
+{
+#if defined(CMI_ASAN)
+    __asan_handle_no_return();
 #endif
 }
 
