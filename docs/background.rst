@@ -1124,15 +1124,15 @@ without providing a logger message. (:c:macro:`cmb_logger_error()` calls
 information about using this, see `the tutorial <tutorial_abandon>`_. Here, we will
 focus on what is happening in the background when this occurs.
 
-Suppose some ``cmb_process`` calls ``cmb_logger_error`` from deep inside some nested
-call, abandoning the trial. Other processes may be running, they may have allocated
+Suppose some ``cmb_process`` calls :c:macro:`cmb_logger_error()` from deep inside some
+nested call, abandoning the trial. Other processes may be running, they may have allocated
 memory for their own purposes, and there may be overarching data structures allocated
 for the trial. The calling process does not and should not need to know about all
 these, and can not be responsible for calling any necessary destructors.
 
 Nevertheless, we need to start the next trial from a consistent state in the same memory
 space and in the same worker thread, and we cannot afford to leak memory that could add up
-to cause an out-of-memory crash at some pointover a long simulation campaign.
+to cause an out-of-memory crash at some point during a long simulation campaign.
 
 Cimba provides for this in two ways: It maintains a *memory registry* of created and
 initialized objects to enable calling the matching ``_terminate`` and ``_destroy``
@@ -1141,8 +1141,8 @@ code can register a *trial cleanup function* to be called if (and only if) a tri
 abandoned.
 
 The *memory registry* is a doubly linked list of destructor functions. Every
-``cmb_something_create()`` will create an entry with a pointer to the corresponding
-``cmb_something_destroy()`` function and a pointer to the ``something`` object. This
+:c:func:`cmb_something_create()` will create an entry with a pointer to the corresponding
+:c:func:`cmb_something_destroy()` function and a pointer to the ``something`` object. This
 entry is added to the head of the list. Similarly, every ``cmb_something_initialize()``
 creates an entry for the matching ``cmb_something_terminate()``. If the trial is
 abandoned, these functions will be called in LIFO sequence, i.e., that the
