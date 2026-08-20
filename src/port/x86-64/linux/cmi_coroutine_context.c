@@ -29,9 +29,13 @@
 #include "cmb_assert.h"
 #include "cmi_coroutine.h"
 #include "cmi_memutils.h"
+#include "cmi_sanitizer.h"
 
 /* Assembly function, see src/arc/cmi_coroutine_context_*.asm */
 extern void cmi_coroutine_trampoline(void);
+
+/* First-entry hook, defined in cmi_coroutine.c */
+extern void *cmi_coroutine_launch(struct cmi_coroutine *cp, void *arg);
 
 /*
  * Intrusive singly linked list of recycled stacks. Note that stacks are only
@@ -252,6 +256,7 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size_req, unsigned char **
         if (st->size == size_rnd) {
             if (st->head != NULL) {
                 stack_raw = st->head;
+                cmi_asan_unpoison(stack_raw + pagesz, size_rnd);
                 unsigned char **nextloc = (unsigned char **)(stack_raw + pagesz);
                 st->head = *nextloc;
             }
@@ -274,6 +279,7 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size_req, unsigned char **
     /* The usable stack space ends here, growing beyond will trigger segfault */
     *limit_p = stack_raw + pagesz;
     cmb_assert_debug(((uintptr_t)*base_p - (uintptr_t)*limit_p) == size_rnd);
+    cmb_assert_debug(!cmi_asan_region_poisoned(stack_raw + pagesz, size_rnd));
 
     return stack_raw;
 }
@@ -286,11 +292,14 @@ void cmi_coroutine_stack_free(unsigned char *stack_raw, size_t size_req)
     const size_t pagesz = cmi_pagesize();
     cmb_assert_debug(size_req <= SIZE_MAX - pagesz);
     const size_t size_rnd = (size_req + pagesz - 1u) & ~(pagesz - 1u);
+    /* The pool will keep this block instead of freeing it, so we clear ASan
+     * poison for the usable region first, the guard page stays PROT_NONE. */
+    cmi_asan_unpoison(stack_raw + pagesz, size_rnd);
 
     struct stack_tag *st = stack_list;
     while (st != NULL) {
         if (st->size == size_rnd) {
-            /* Found its slot, push it */
+            /* Found its slot, push it. */
             unsigned char **nextloc = (unsigned char **)(stack_raw + pagesz);
             *nextloc = st->head;
             st->head = stack_raw;
