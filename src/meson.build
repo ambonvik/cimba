@@ -35,10 +35,12 @@ inc_int = include_directories('.')
 install_headers(
     'cmi_config.h',
     'cmi_coroutine.h',
+    'cmi_dlist.h',
     'cmi_hashheap.h',
     'cmi_holdable.h',
     'cmi_slist.h',
     'cmi_mempool.h',
+    'cmi_memregistry.h',
     'cmi_memutils.h',
     'cmi_resourcebase.h'
 )
