@@ -70,8 +70,8 @@ extern void cmi_coroutine_stack_free(unsigned char *stack_raw, size_t size);
 extern void cmi_coroutine_stack_cleanup(void);
 
 
-/* Helper functions for maintaining the stack registry */
-static void registry_add(struct cmi_coroutine *cp)
+/* Helper functions for maintaining the coroutine registry */
+static void coroutine_registry_add(struct cmi_coroutine *cp)
 {
     cp->reg_prev = NULL;
     cp->reg_next = coroutine_registry;
@@ -88,7 +88,7 @@ static void registry_add(struct cmi_coroutine *cp)
     coroutine_registry = cp;
 }
 
-static void registry_remove(struct cmi_coroutine *cp)
+static void coroutine_registry_remove(struct cmi_coroutine *cp)
 {
     if (cp->reg_prev != NULL) {
         cp->reg_prev->reg_next = cp->reg_next;
@@ -136,6 +136,7 @@ struct cmi_coroutine *cmi_coroutine_create(void)
 {
     struct cmi_coroutine *cp = cmi_mempool_alloc(&coroutine_pool);
     cmi_memset(cp, 0, sizeof(*cp));
+    cp->status = CMI_COROUTINE_UNINITIALIZED;
     /* In case we ever need to run a thread cleanup handler on this */
     cp->pool_allocated = true;
 
@@ -151,6 +152,10 @@ void cmi_coroutine_initialize(struct cmi_coroutine *cp,
                               cmi_coroutine_exit_func *crexit,
                               size_t stack_size)
 {
+    cmb_assert_debug(cp != NULL);
+    cmb_assert_debug(crfunction != NULL);
+    /* Might get raw memory with random content, cannot assert _UNINITIALIZED */
+
     /* Create a dummy main coroutine if not already existing */
     if (coroutine_main == NULL) {
         create_main();
@@ -169,14 +174,14 @@ void cmi_coroutine_initialize(struct cmi_coroutine *cp,
     /* Will be set on first transfer */
     cp->stack_pointer = NULL;
 
-    cp->status = CMI_COROUTINE_CREATED;
+    cp->status = CMI_COROUTINE_INITIALIZED;
     cp->cr_function = crfunction;
     cp->context = context;
     cp->cr_exit = crexit;
     cp->exit_value = NULL;
     cp->tsan_fiber = cmi_tsan_create_fiber();
 
-    registry_add(cp);
+    coroutine_registry_add(cp);
 }
 
 /*
@@ -188,12 +193,13 @@ void cmi_coroutine_reset(struct cmi_coroutine *cp)
     cmb_assert_release(cp != NULL);
     cmb_assert_debug(cp != coroutine_main);
     cmb_assert_debug(cp != coroutine_current);
+    cmb_assert_debug(cp->status != CMI_COROUTINE_UNINITIALIZED);
 
     /* Force TSan to reset its shadow stack, if used */
     cmi_tsan_destroy_fiber(cp->tsan_fiber);
     cp->tsan_fiber = cmi_tsan_create_fiber();
 
-    cp->status = CMI_COROUTINE_CREATED;
+    cp->status = CMI_COROUTINE_INITIALIZED;
     cp->exit_value = NULL;
 }
 
@@ -205,9 +211,10 @@ void cmi_coroutine_terminate(struct cmi_coroutine *cp)
     cmb_assert_release(cp != NULL);
     cmb_assert_debug(cp != coroutine_main);
     cmb_assert_debug(cp != coroutine_current);
+    cmb_assert_debug(cp->status != CMI_COROUTINE_UNINITIALIZED);
 
     cmb_assert_debug(cp->stack != NULL);
-    registry_remove(cp);
+    coroutine_registry_remove(cp);
     cmi_tsan_destroy_fiber(cp->tsan_fiber);
     cmi_coroutine_stack_free(cp->stack, cp->stack_size);
 
@@ -216,13 +223,12 @@ void cmi_coroutine_terminate(struct cmi_coroutine *cp)
     cmi_memset(cp, 0, sizeof(*cp));
     cp->pool_allocated = pool_allocated;
     cmb_assert_debug(cp->stack == NULL);
+
+    cp->status = CMI_COROUTINE_UNINITIALIZED;
 }
 
 /*
- * cmi_coroutine_destroy - Free memory allocated for a coroutine and its stack
- * if not already free'd by cmi_coroutine_terminate, which should properly be
- * called first by the user code.
- *
+ * cmi_coroutine_destroy - Free memory allocated for a coroutine.
  * The given coroutine cannot be main or the currently executing coroutine.
  */
 void cmi_coroutine_destroy(struct cmi_coroutine *cp)
@@ -230,14 +236,10 @@ void cmi_coroutine_destroy(struct cmi_coroutine *cp)
     cmb_assert_debug(cp != NULL);
     cmb_assert_debug(cp != coroutine_main);
     cmb_assert_debug(cp != coroutine_current);
-
-    if (cp->stack != NULL) {
-        registry_remove(cp);
-        cmi_tsan_destroy_fiber(cp->tsan_fiber);
-        cmi_coroutine_stack_free(cp->stack, cp->stack_size);
-    }
-
     cmb_assert_debug(cp->pool_allocated);
+    /* Please call cmi_coroutine_terminate first */
+    cmb_assert_debug(cp->status == CMI_COROUTINE_UNINITIALIZED);
+
     cmi_mempool_free(&coroutine_pool, cp);
  }
 
@@ -434,7 +436,7 @@ void cmi_coroutine_thread_cleanup(void)
     while (coroutine_registry != NULL) {
         struct cmi_coroutine *cp = coroutine_registry;
         cmb_assert_debug(cp != cmi_coroutine_current());
-        registry_remove(cp);
+        coroutine_registry_remove(cp);
         cmi_coroutine_stack_free(cp->stack, cp->stack_size);
         cmi_tsan_destroy_fiber(cp->tsan_fiber);
         if (cp->pool_allocated) {
@@ -451,15 +453,27 @@ void cmi_coroutine_thread_cleanup(void)
 /* Install cp's stack as the OS-current stack (Windows: TEB fields; Linux: no-op) */
 extern void cmi_coroutine_os_adopt_stack(const struct cmi_coroutine *cp);
 
-/*
- * cmi_coroutine_reset_to_main - Recover after a non-local jump (longjmp) has
- * returned control to the thread's own stack from inside a running coroutine,
- * bypassing the normal context switch. The physical stack pointer is already
- * back on the thread stack; this fixes up the bookkeeping the jump skipped:
- * makes the main coroutine current again and re-syncs the sanitizer fiber state
- * to the main stack, discarding the abandoned coroutine's stack.
- */
-void cmi_coroutine_reset_to_main(void)
+/* Prepare ASAN for a sudden change of coroutine context.
+ * Argument unused now, reserved for possible future use. */
+void cmi_coroutine_recovery_prepare(void *stack_marker)
+{
+    cmb_unused(stack_marker);
+
+    if (coroutine_main == NULL || coroutine_current == coroutine_main) {
+        /* Either no coroutine has run yet on this thread, or this was called
+         * from the main coroutine. In either case, the current stack is already
+         * the main stack, no action needed. */
+        return;
+    }
+
+    cmi_asan_start_switch(NULL,
+                          coroutine_main->stack_limit,
+                          (size_t)(coroutine_main->stack_base
+                                   - coroutine_main->stack_limit));
+}
+
+/* Clean up after an abandoned trial */
+void cmi_coroutine_recovery_finalize(void *stack_marker)
 {
     if (coroutine_main == NULL || coroutine_current == coroutine_main) {
         /* Either no coroutine has run yet on this thread, or this was called
@@ -468,25 +482,21 @@ void cmi_coroutine_reset_to_main(void)
         return;
     }
 
-    coroutine_current = coroutine_main;
+    const unsigned char *limit = cmi_coroutine_stacklimit();
+    const unsigned char *mark = stack_marker;
+    if ((limit != NULL) && (mark > limit)) {
+        cmi_asan_unpoison(limit, (size_t)(mark - limit));
+    }
 
-    /* ASan: we are already on the main stack. Announce the switch with a NULL
-     * save so ASan drops the stack of the coroutine we abandoned, then
-     * finalize landing on the main stack. */
-    cmi_asan_start_switch(NULL,
-                          coroutine_main->stack_limit,
-                          (size_t)(coroutine_main->stack_base
-                                   - coroutine_main->stack_limit));
+    /* ASan: We are back, no saved state */
     cmi_asan_finish_switch(NULL);
 
-    /* TSan: we are back on the thread's own fiber. */
+    /* TSan: We are back on the thread's own fiber. */
     cmi_tsan_switch_fiber(coroutine_main->tsan_fiber);
 
-    /* Restore the OS stack bookkeeping the longjmp skipped. On Windows the
-     * context switch swaps the TEB StackBase/StackLimit/DeallocationStack
-     * fields; the jump back to the main stack bypassed the restoring half, so
-     * the TEB still describes the abandoned coroutine and the kernel would
-     * raise STATUS_BAD_STACK on the next stack validation. Reinstall main's.
-     * No-op on platforms without such per-thread stack bounds. */
+    /* Restore any OS-specific  bookkeeping that longjmp skipped, e.g. TEB */
     cmi_coroutine_os_adopt_stack(coroutine_main);
+
+    /* We should be safe now, officially declare that we are in main */
+    coroutine_current = coroutine_main;
 }
