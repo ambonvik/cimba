@@ -1284,13 +1284,13 @@ Benchmarking Cimba performance
 ------------------------------
 
 Performance-wise, we believe Cimba is a strong contender at the workstation level,
-between a data analyst's notebook and the supercomputer Beowulf cluster. We will try to
-support this by two performance comparisons, one to either side.
+between a data analyst's notebook and the supercomputer cluster. We will try to
+support this by two performance comparisons, one to either side of Cimba.
 
 Cimba vs SimPy
 ^^^^^^^^^^^^^^
 
-The most direct comparison for Cimba is probably
+The most direct comparison for Cimba on the lower side is probably
 `the Python package SimPy <https://pypi.org/project/simpy/>`_.
 It provides similar functionality to Cimba, only with Python as its base language
 instead of C. SimPy emphasizes ease of use as a main design objective, following the
@@ -1515,7 +1515,7 @@ tutorial <tut_3>` or :ref:`LNG harbor tutorial <tut_4>` in SimPy for a similar
 benchmarking.
 
 Moreover, Cimba's stackful coroutines allow calls to context-switching functions (like
-``cmb_process_hold()`` or ``cmb_resource_acquire()``) from arbitrary deep within
+:c:func:`cmb_process_hold()` or :c:func:`cmb_resource_acquire()`) from arbitrary deep within
 function call hierarchies. Control will leave the call stack where it is and pick up
 again from the same point when control is passed back into that ``cmb_process``. This
 makes for a very natural way to express agentic behavior by simulated processes. The
@@ -1556,15 +1556,15 @@ same reason.
 Cimba vs Time Warp PDES
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-Another interesting reference point is found in the literature on large-scale
-parallel discrete event simulation (PDES). This has been an active research area since
-around 1980, originally spurred by the limited memory capacity of the computers of the
-day and the resulting need to divide a large simulation between several devices. In these
-frameworks, each simulation run (trial) is distributed across many physical cores, each
-representing some logical subsystem of the overall simulation. Events are executed by
-passing messages between the cores. The critical design question is how to ensure a strict
-time-ordering of events in simulated time and guarantee the same result as from a
-sequential simulation.
+Looking to the upper side of Cimba's intended usage, there are interesting reference
+points in the literatureon large-scale parallel discrete event simulation (PDES).
+This has been an active research area since around 1980, originally spurred by the limited
+memory capacity of the computers of the day and the resulting need to divide a large
+simulation between several devices. In these frameworks, each simulation run (trial) is
+distributed across many physical cores, each representing some logical subsystem of the
+overall simulation. Events are executed by passing messages between the cores. The
+critical design question is how to ensure a strict time-ordering of events in simulated
+time and guarantee the same result as from a sequential simulation.
 
 One approach is *optimistic synchronization*, where CPUs are allowed to run ahead, but
 anti-events are sent to initiate rollback if a violation of time sequence is detected.
@@ -1576,13 +1576,13 @@ guaranteed valid.
 
 `In a 2015 review paper <https://informs-sim.org/wsc15papers/004.pdf>`_, Richard
 Fujimoto, one of the pioneers in the PDES field, states that PDES performance has leveled
-out at around 250 K events/second/core on massively parallel supercomputers since ach
-CPU has reached a clock rate limit. Further performance improvement comes from increasing
+out at around 250 K events/second/core on massively parallel supercomputers since CPU
+cores have reached a clock rate limit. Further performance improvement comes from increasing
 the number of cores.
 
 Unfortunately, we do not have a massively parallel supercomputer available for direct
 benhmarking against Cimba, but to the nearest order of magnitude: The PC we used for
-the SimPy benchmark above has 32 _physical_ cores, running two threads per physical core.
+the SimPy benchmark above has 32 physical cores, running two threads per physical core.
 Cimba runs about 1 M events/second on a single core and about 25 M events/second/core
 on 32 physical cores for a scaling efficiency of 76 %.
 
@@ -1592,26 +1592,19 @@ reason is that keeping our entire event queue in "hot" CPU cache memory is order
 magnitude faster than communicating the events across a link between separate devices,
 no matter how fast that link is.
 
-The original reason for PDES, limited memory capacity per device, is no longer valid.
-The PC referred to above has 128 GB of memory and can easily fit 64 complete trials in
-parallel, two per physical core, even with thousands of active processes in each trial.
-The remaining use case for Time Warp and similar PDES seems to be for extremely large
-simulations distributed across the nodes of
+The original reason for PDES, limited memory capacity per CPU necessitating
+distributing the model across many, is no longer valid. The PC referred to above has
+128 GB of memory and can easily fit 64 complete trials in parallel, two per physical core,
+even with thousands of active processes in each trial. The remaining use case for Time Warp
+and similar PDES seems to be for extremely large simulations distributed across the nodes of
 `Beowulf clusters <https://en.wikipedia.org/wiki/Beowulf_cluster>`_, and then mostly
 for cases where the problem can be structured as nearly independent sub-systems
 limiting the amount of message passing between the nodes.
 
-Still, it would be interesting to run an apples-to-apples benchmark between a PDES like
-`ROSS <https://ross-org.github.io/about.html>`_ or
-`Devastator <https://dl.acm.org/doi/abs/10.1145/3615979.3656061>`_
-(with a single trial distributed across many cores) and a distributed version of Cimba
-(many trials on each core, experiments on each cluster node, a simple Python script to
-parse out parameter combinations to the various nodes and collect the results).
-
 .. _background_name:
 
-How about the name 'Cimba'?
----------------------------
+What about the name 'Cimba'?
+----------------------------
 
 Very simple. This is a simulation library in C, the author's initials are 'AMB', 'simba'
 means 'lion' in Swahili, and real lions are among the very few predators that eat python

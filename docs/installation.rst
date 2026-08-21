@@ -85,7 +85,7 @@ Verifying your installation
 ---------------------------
 
 After installation, we can write a C program like
-`[tutorial/hello.c] <https://github.com/ambonvik/cimba/blob/main/tutorial/hello.c>`_:
+`tutorial/hello.c <https://github.com/ambonvik/cimba/blob/main/tutorial/hello.c>`_:
 
 .. code-block:: c
 
@@ -104,7 +104,7 @@ Compile it as any other C program, linking to the Cimba library:
 
 If all goes well, this program should produce output similar to::
 
-    Hello world, I am Cimba 3.0.0-beta.
+    Hello world, I am Cimba 3.0.0-RC1.
 
 You now have a working Cimba installation.
 

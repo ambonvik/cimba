@@ -92,24 +92,18 @@ It is powerful, fast, reliable, and free.
 
   The CPU used here has 32 *physical* cores, running two threads per physical core.
   Cimba runs about 1 M events/second on a single core and about 25 M events/second/core
-  on 32 physical cores for a scaling efficiency of 76 %.
-
-  Comparing this to the literature on large-scale parallel discrete event simulation
+  on 32 physical cores for a scaling efficiency of 76 %. This also compares favorably to
+  `the literature on large-scale parallel discrete event simulation <https://informs-sim .org/wsc15papers/004.pdf>`_
   (PDES), where each simulation trial is distributed across many physical cores,
-  `Fujimoto (2015) <https://informs-sim.org/wsc15papers/004.pdf>`_ states that
-  performance for the Time Warp-type PDES algorithms has leveled out at around 250 K
-  events/second/core on massively parallel supercomputers. Further performance
-  improvement in recent years only comes from increasing the number of cores.
+  where it seems that  performance for the Time Warp-type PDES algorithms has leveled
+  out at around 250 K events/second/core on massively parallel supercomputers.
 
   *Cimba runs two orders of magnitude faster than Time Warp PDES measured in events per
   second per core.*
 
-  The reason is, of course, that keeping our entire event queue in "hot" CPU cache memory
+  The reason is that keeping our entire event queue in "hot" CPU cache memory
   is orders of magnitude faster than communicating the same events across a link between
-  separate devices, no matter how fast that link is. The inner loop of identifying and
-  executing the next event is the hottest loop in a discrete event simulation. Additional
-  delays there will unavoidably slow down the entire simulation. Cimba is built from
-  the ground up to make that event-processing loop spin as fast as technically possible.
+  separate devices, no matter how fast that link is.
 
 * *Reliable*: Cimba is well engineered, self-contained open source. There is no mystery to
   the results you get. The code is written with liberal use of assertions to enforce
