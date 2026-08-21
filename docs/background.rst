@@ -1583,7 +1583,7 @@ the number of cores.
 Unfortunately, we do not have a massively parallel supercomputer available for direct
 benhmarking against Cimba, but to the nearest order of magnitude: The PC we used for
 the SimPy benchmark above has 32 physical cores, running two threads per physical core.
-Cimba runs about 1 M events/second on a single core and about 25 M events/second/core
+Cimba runs about 32 M events/second on a single core and about 25 M events/second/core
 on 32 physical cores for a scaling efficiency of 76 %.
 
 If those numbers are anywhere near comparable to Fujimoto's, it means that *Cimba runs
