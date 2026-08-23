@@ -1,42 +1,16 @@
 ![large logo](images/logo_large.jpg)
 
-## A multithreaded discrete event simulation library in C
+Cimba is a general purpose, fast discrete event simulation library written in C and assembly,
+providing an expressive process-oriented simulation worldview combined with multithreaded
+trial parallelism in a shared memory space for high performance on modern
+desktop computers. The simulated processes are implemented as stackful coroutines 
+("fibers") inside the pthreads. Cimba can also use massive GPU parallelism to
+calculate model physics within the processes or events of the simulation. As far as we 
+know, there is no other discrete event simulation tool that can provide 
+a similar combination of powerful features and performance. 
 
-### What is it?
-A fast discrete event simulation library written in C and assembly with POSIX pthreads 
-for running multiple trials in parallel on multi-core CPUs. Simulated processes are 
-implemented as stackful coroutines ("fibers") inside the pthreads. Compute-intensive 
-model physics can be implemented as massively parallel CUDA (or other GPGPU) functions 
-inside the coroutines.
-
-A relevant benchmark is the Python simulation package SimPy. Cimba models run 40-50 times 
-faster than SimPy equivalents. The chart below shows the
-number of simulated events processed per second of wall clock time on a simple M/M/1
-queue implemented in SimPy and Cimba. _Cimba runs twice as fast (32M events/sec) on a
-single CPU core as SimPy does when using all 64 logical cores (16M events/sec)._
-
-![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
-
-The CPU used here has 32 _physical_ cores, running two threads per physical core. 
-Cimba runs about 1 M events/sec on a single core and about 25 M events/second/core on 32 
-physical cores for a scaling efficiency of 76 %.
-
-Another reference point is found in the literature on large-scale 
-parallel discrete event simulation (PDES). In these models, each simulation run is 
-distributed across many physical cores.
-[Fujimoto (2015)](https://informs-sim.org/wsc15papers/004.pdf) states that performance 
-for the PDES algorithms now has leveled out at around 250 K events/second/core 
-on massively parallel supercomputers. Further performance improvement in recent 
-years comes from increasing the number of cores. 
-
-Cimba runs two orders of magnitude faster than this on a per-core basis. The reason is, 
-of course, that keeping our entire event queue in "hot" CPU cache memory is orders of 
-magnitude faster than communicating the events across a link between separate devices. 
-
-#### Implementation status:
-* x86-64: Public release candidate 3.0.0 RC1 for Linux and Windows.
-* Apple Silicon: Planned
-* ARM: Planned
+It is currently implemented for both Linux and Windows on the x86-64 architecture, 
+with other platforms planned.
 
 #### Important status note for Release Candidate 1 (Aug 2026): 
 From 3.0.0 RC1, the Cimba object lifecycle Create - Initialize - Terminate - Destroy is
@@ -59,7 +33,41 @@ steps in the object lifecycles, with a missing `_initialize`or `_terminate` for 
 `cmb_` object declared as a local variable on the stack as the prime suspect.
 
 ### Why should I use it?
-It is fast, powerful, reliable, and free.
+It is powerful, fast, reliable, and free.
+
+* *Powerful*: Cimba provides a comprehensive toolkit for discrete event simulation:
+
+  * Processes implemented as asymmetric stackful coroutines. A simulated process can
+    yield and resume control from any level of a function call stack, allowing
+    well-structured coding of arbitrarily large simulation models.
+    A simulated process can run in an infinite loop
+    or act as a one-shot customer passing through the system, being both an active
+    agent and a passive object as needed.
+
+  * Pre-packaged process interaction mechanisms like resources, resource pools, buffers,
+    object queues, priority queues, and timeouts. Cimba also provides condition variables
+    where your simulated processes can wait for arbitrarily complex conditions to become
+    true – anything you can express as a function returning a binary true or false result.
+
+  * A wide range of fast, high-quality random number generators, both
+    of academically important and more empirically oriented types. Important
+    distributions like normal and exponential are implemented by state-of-the-art
+    ziggurat rejection sampling for speed and accuracy.
+
+  * Integrated logging and data collection features that make it easy
+    to get a model running and understand what is happening inside it, including
+    custom asserts to pinpoint sources of errors.
+
+  * An entire experiment design is expressed as an array of trials with various
+    parameters, all trials executed in parallel and statistics calculated, all in the
+    same program. Cimba's architecture strongly encourages applying Design of
+    Experiments principles when setting up the trial array.
+
+  * As a C library, Cimba allows easy integration with other libraries and programs. You
+    could call CUDA routines to calculate model physics or to enhance your simulation
+    models with GPU-powered agentic behavior.
+    You could even call the Cimba simulation engine from other programming languages,
+    since the C calling convention is standard and well-documented.
 
 * *Fast*: The speed from multithreaded parallel execution translates to high
   resolution in your simulation modeling. You can run hundreds of replications
@@ -67,50 +75,39 @@ It is fast, powerful, reliable, and free.
   intervals in your experiments and a high density of data points along parameter
   variations.
 
-  In the benchmark shown above, Cimba reduces the run time by 98 % compared to the 
-  same model in SimPy using all CPU cores. This translates into doing your simulation 
-  experiments in seconds instead of minutes, or in minutes instead of hours.
+  * A relevant benchmark is the Python simulation package SimPy. Cimba models run 40-50 times
+    faster than SimPy equivalents. The chart below shows the
+    number of simulated events processed per second of wall clock time on a simple M/M/1
+    queue implemented in SimPy and Cimba. _Cimba runs twice as fast (32M events/sec) on a
+    single CPU core as SimPy does when using all 64 logical cores (16M events/sec combined)._
 
-  If you need even more speed, CUDA kernels can be used for massively parallel 
-  computation inside each simulated process, e.g., for AI-enabled agents or for 
-  intricate physics calculations. In 
-  [one of our tutorials](https://cimba.readthedocs.io/en/latest/tutorial.html#adding-cuda-gpu-power-for-simulation-physics), 
-  we demonstrate how to combine multithreaded trials with CUDA functions running on 
-  multiple GPUs.
+    ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
 
-* *Powerful*: Cimba provides a comprehensive toolkit for discrete event simulation:
+    In this benchmark, Cimba reduces the run time by 98 % compared to the
+    same model in SimPy using all CPU cores. This translates into doing your simulation
+    experiments in seconds instead of minutes, or in minutes instead of hours. The reason for
+    the performance advantage is simply that compiled C code and hand-rolled assembly will
+    always run much faster than Python code that needs to be interpreted at runtime.
 
-  * Processes implemented as asymmetric stackful coroutines. A simulated process can
-    yield and resume control from any level of a function call stack, allowing 
-    well-structured coding of arbitrarily large simulation models. 
-    A simulated process can run in an infinite loop 
-    or act as a one-shot customer passing through the system, being both an active 
-    agent and a passive object as needed.
+  * Another performance reference point is found in the literature on large-scale
+    parallel discrete event simulation (PDES). In these models, each simulation run is
+    distributed across many physical cores.
+    [Fujimoto (2015)](https://informs-sim.org/wsc15papers/004.pdf) states that performance
+    for the PDES algorithms has leveled out at around 250 K events/second/core
+    on massively parallel supercomputers due to inherent clock speed limitations on each core. Further 
+    performance improvement in recent years only comes from increasing the number of cores. 
+    *Cimba runs two orders of magnitude faster than this on a per-core basis.* The CPU used 
+    in the benchmark above has 32 _physical_ cores, running two threads per physical core.
+    Cimba runs about 32 M events/sec on a single core and about 25 M events/second/core on 32
+    physical cores. The reason is that keeping our entire event queue in "hot" CPU cache memory
+    is orders of magnitude faster than communicating the events across a link between separate devices.
 
-  * Pre-packaged process interaction mechanisms like resources, resource pools, buffers, 
-    object queues, priority queues, and timeouts. Cimba also provides condition variables 
-    where your simulated processes can wait for arbitrarily complex conditions to become 
-    true – anything you can express as a function returning a binary true or false result.
-
-  * A wide range of fast, high-quality random number generators, both
-    of academically important and more empirically oriented types. Important 
-    distributions like normal and exponential are implemented by state-of-the-art 
-    ziggurat rejection sampling for speed and accuracy.
-  
-  * Integrated logging and data collection features that make it easy
-    to get a model running and understand what is happening inside it, including 
-    custom asserts to pinpoint sources of errors.
-  
-  * An entire experiment design is expressed as an array of trials with various 
-    parameters, all trials executed in parallel and statistics calculated, all in the 
-    same program. Cimba's architecture strongly encourages applying Design of 
-    Experiments principles when setting up the trial array.
-
-  * As a C library, Cimba allows easy integration with other libraries and programs. You 
-    could call CUDA routines to calculate model physics or to enhance your simulation 
-    models with GPU-powered agentic behavior.
-    You could even call the Cimba simulation engine from other programming languages, 
-    since the C calling convention is standard and well-documented. 
+  * If you need even more speed, CUDA kernels can be used for massively parallel 
+    computation inside each simulated process, e.g., for AI-enabled agents or for 
+    intricate physics calculations. In 
+    [one of our tutorials](https://cimba.readthedocs.io/en/latest/tutorial.html#adding-cuda-gpu-power-for-simulation-physics), 
+    we demonstrate how to combine multithreaded trials with CUDA functions running on 
+    multiple GPUs.
 
 * *Reliable*: Cimba is well-engineered open source. There is no mystery to the results you get.
 
@@ -124,7 +121,7 @@ It is fast, powerful, reliable, and free.
     by the one-liner ``meson test -C build`` from the terminal command line. 
   
   * Cimba is compatible with sanitizers for undefined behavior (UBSan), memory address safety 
-    (ASan), and thread safety (TSan). These sanitizers are executed automatically as 
+    (ASan), thread safety (TSan), and memory leaks (LeakSan). These sanitizers are executed automatically as 
     GitHub runners on every push to the repository as public verification of our reliability 
     claim, right here: https://github.com/ambonvik/cimba/actions
 
@@ -134,9 +131,6 @@ It is fast, powerful, reliable, and free.
     done. The latest reviews can be found here: https://github.com/ambonvik/cimba/tree/main/code_reviews
 
 * *Free*: Cimba should fit well into the budget of most research groups.
-
-As far as we know, there is no other open source simulation library that can provide 
-this combination of features.
 
 ### What can I use Cimba for?
 It is a general-purpose discrete event simulation library, in the spirit of a
