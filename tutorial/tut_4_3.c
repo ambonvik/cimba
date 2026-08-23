@@ -983,7 +983,9 @@ int main(void)
     printf("It took %g sec\n", elapsed);
 
     write_gnuplot_commands();
-    (void)system("gnuplot -persistent tut_4_2.gp");
+    if (system("gnuplot -persistent tut_4_3.gp") != 0) {
+        cmb_logger_warning(stderr, "gnuplot launch failed");
+    }
 
     return 0;
 }
@@ -1007,7 +1009,7 @@ void write_gnuplot_commands(void)
     };
     unsigned scenario;
     unsigned param;
-    FILE *cmdfp = fopen("tut_4_2.gp", "w");
+    FILE *cmdfp = fopen("tut_4_3.gp", "w");
 
     fprintf(cmdfp, "set terminal qt size 1200,1000 enhanced font 'Arial,9'\n");
     fprintf(cmdfp, "set multiplot layout 3,4 rowsfirst \\\n");
