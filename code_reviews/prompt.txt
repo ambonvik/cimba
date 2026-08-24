@@ -1,20 +1,23 @@
 Hey Claude,
-Please review my discrete event simulation library Cimba for design, coding style, correctness,
-reliability, maintainability, and performance.
+Please review my discrete event simulation library Cimba for design, coding style,
+correctness, reliability, maintainability, and performance.
+
 The repo is at: https://github.com/ambonvik/cimba
+
 The documentation: https://cimba.readthedocs.io/en/latest/index.html
+
 A related blog: https://ambonvik.github.io
 
-The library should be held to a high standard for correctness and reliability. It may be used
-for high stakes simulation work by researchers and analysts. It needs to be solid infrastructure
-for important work.
+The library should be held to a high standard for correctness and reliability. It may be
+used for high-stakes simulation work by researchers and analysts. It needs to be solid
+infrastructure for important work.
 
-The current status of the library is Release Candidate 1. You will find a few earlier reviews
-in the repo code_reviews directory. All issues pointed out in the earlier reviews are fixed and
-verified in incremental reviews, also found in the code_reviews directory.
+The current status of the library is Release Candidate. You will find a few earlier
+reviews in the repo code_reviews directory. All issues pointed out in the earlier reviews
+are fixed and verified in incremental reviews, also found in the code_reviews directory.
 
-Please point out both strengths and weaknesses, giving specific improvement suggestions where
-needed.
+Please point out both strengths and weaknesses, giving specific improvement suggestions
+where needed.
 
-Please provide a review summary document in MarkDown format that can be posted on GitHub as
-your assessment, similar to the earlier reviews.
+Please provide a review summary document in MarkDown format that can be posted on GitHub
+as your assessment, similar to the earlier reviews.
