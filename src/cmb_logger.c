@@ -47,15 +47,18 @@ extern void cimba_trial_abandon(void);
  * The standard assert() macro does not obey our NASSERT convention, only NDEBUG.
  * Define file scope custom asserts to avoid unintended recursion.
  */
+#define do_assert(x)  do { \
+                       if (!(x)) { \
+                          fprintf(stderr, \
+                          "assert(%s) failed in file %s line %d\n", \
+                          #x, CMB_FILE_NAME, __LINE__); \
+                          abort(); \
+                       } \
+                    } while (0)
+
+#define logger_assert_always(x) do_assert(x)
+
 #ifndef NASSERT
-  #define do_assert(x)  do { \
-                           if (!(x)) { \
-                              fprintf(stderr, \
-                              "assert(%s) failed in file %s line %d\n", \
-                              #x, CMB_FILE_NAME, __LINE__); \
-                              abort(); \
-                           } \
-                        } while (0)
   #define logger_assert_release(x)  do_assert(x)
   #ifndef NDEBUG
     #define logger_assert_debug(x)  do_assert(x)
@@ -67,7 +70,6 @@ extern void cimba_trial_abandon(void);
   #define logger_assert_debug(x)  do { (void)sizeof(x); } while (0)
 #endif
 
-#define logger_assert_always(x) do_assert(x)
 
 /* The current logging level. A single mask shared by all threads, so changing
  * it affects logging from every thread. Accessed atomically. Initially all on. */
