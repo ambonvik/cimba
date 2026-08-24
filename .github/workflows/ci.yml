@@ -104,6 +104,7 @@ jobs:
       - name: Test
         run: meson test -C build-ubsan --print-errorlogs --timeout-multiplier 20
 
+  # Linux: debug build under ThreadSanitizer
   linux-tsan:
     runs-on: ubuntu-latest
     env:
@@ -122,6 +123,39 @@ jobs:
         run: meson compile -C build-tsan
       - name: Test
         run: meson test -C build-tsan --print-errorlogs --timeout-multiplier 100
+
+  # Linux only: the all-out profile-guided build (-Dbenchopt).
+  linux-pgo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build nasm meson
+      - name: Phase 1 — build instrumented
+        run: |
+          meson setup build-pgo --buildtype=release -Denable_docs=false -Dbenchopt=generate
+          meson compile -C build-pgo
+      - name: Phase 1 — training workload
+        run: |
+          meson test -C build-pgo --print-errorlogs --timeout-multiplier 10
+          ./build-pgo/benchmark/MM1_single
+          ./build-pgo/benchmark/MM1_multi
+      - name: Phase 2 — rebuild using the profiles (same directory)
+        run: |
+          set -o pipefail
+          meson configure build-pgo -Dbenchopt=use
+          meson compile -C build-pgo 2>&1 | tee pgo-use.log
+      - name: Verify the profiles were actually consumed
+        run: |
+          if grep 'missing-profile' pgo-use.log | grep 'libcimba'; then
+            echo "::error::Library objects built without profile data — not a PGO binary"
+            exit 1
+          fi
+          echo "All libcimba objects compiled with profile data."
+      - name: Test the optimized build
+        run: meson test -C build-pgo --print-errorlogs --timeout-multiplier 10
 
   # Windows (MinGW) — test debug and release builds
   windows-mingw-build:
