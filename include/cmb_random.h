@@ -434,7 +434,7 @@ extern double cmb_random_hyperexponential(uint64_t n,
 
 /**
  * @brief Gamma distribution on `[0, oo)` with shape parameter `shape`, where
- *        `shape > 0`. Equal to `cmb_random_std_gamma(shape, 1.0)`.
+ *        `shape > 0`. Equal to `cmb_random_gamma(shape, 1.0)`.
  *
  * Generalizes the Erlang distribution to noninteger `n` (shape).
  * The mean and variance equal `shape`.
@@ -461,10 +461,7 @@ static inline double cmb_random_gamma(const double shape, const double scale)
     cmb_assert_release(shape > 0.0);
     cmb_assert_release(scale > 0.0);
 
-    const double r = (shape >= 1.0) ?
-        scale * cmb_random_std_gamma(shape) :
-        scale * (cmb_random_std_gamma(shape + 1.0)
-                 * pow(cmb_random(), 1.0 / shape));
+    const double r = scale * cmb_random_std_gamma(shape);
 
     cmb_assert_debug(r >= 0.0);
     return r;

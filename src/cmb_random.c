@@ -470,6 +470,12 @@ double cmb_random_std_gamma(const double shape)
     static CMB_THREAD_LOCAL double a_prev = 0.0;
     static CMB_THREAD_LOCAL double c = 0.0;
     static CMB_THREAD_LOCAL double d = 0.0;
+
+    if (shape < 1.0) {
+        return (cmb_random_std_gamma(shape + 1.0)
+                 * pow(cmb_random(), 1.0 / shape));
+    }
+
     if (shape != a_prev) {
         d = shape - 1.0 / 3.0;
         c = 1.0 / sqrt(9.0 * d);
