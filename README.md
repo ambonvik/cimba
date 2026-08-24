@@ -198,6 +198,7 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
         
         struct cmb_objectqueue *qp = ctx->sim->queue;
         const double mean_hld = ctx->trl->arr_mean;
+        
         for (uint64_t ui = 0; ui < NUM_OBJECTS; ui++) {
             const double t_hld = cmb_random_exponential(mean_hld);
             cmb_process_hold(t_hld);
@@ -220,6 +221,7 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
         const double mean_srv = ctx->trl->srv_mean;
         uint64_t *cnt = &(ctx->trl->obj_cnt);
         double *sum = &(ctx->trl->sum_wait);
+        
         while (true) {
             void *object = NULL;
             cmb_objectqueue_get(qp, &object);
@@ -298,8 +300,9 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
 
 ```
 Note that we have intentionally left out comments in the code above, hopefully 
-demonstrating that it is fairly self-explanatory. See [our tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html)
-at ReadTheDocs for more usage examples with explanations.
+demonstrating that it is fairly self-explanatory. We have also used one "internal"
+`cmi_` feature, the memory pool for fast allocation of the queue objects. See
+[our tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html) at ReadTheDocs for more usage examples with explanations.
 
 ### So, what can I use all that speed for?
 As shown above, it is some 45 times faster than SimPy in a relevant benchmark. It means 
