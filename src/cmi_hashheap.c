@@ -858,7 +858,7 @@ uint64_t cmi_hashheap_pattern_cancel(struct cmi_hashheap *hp,
     if (hsz > match_buf_size) {
         /* Safe also for initial call, since realloc reverts to malloc if target
          * is NULL, and our cmb_calloc wrapper includes the return value test */
-        match_buf = (uint64_t*)cmi_realloc(match_buf, hsz);
+        match_buf = (uint64_t*)cmi_realloc(match_buf, hsz * sizeof(*match_buf));
         match_buf_size = hsz;
     }
     /* First pass, recording the matches */
