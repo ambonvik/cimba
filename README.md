@@ -180,6 +180,7 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
     struct trial {
         double arr_mean;
         double srv_mean;
+        
         uint64_t obj_cnt;
         double sum_wait;
         double avg_wait;
@@ -194,11 +195,13 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
     {
         cmb_unused(me);
         const struct context *ctx = vctx;
+        
         struct cmb_objectqueue *qp = ctx->sim->queue;
         const double mean_hld = ctx->trl->arr_mean;
         for (uint64_t ui = 0; ui < NUM_OBJECTS; ui++) {
             const double t_hld = cmb_random_exponential(mean_hld);
             cmb_process_hold(t_hld);
+            
             void *object = cmi_mempool_alloc(&objectpool);
             double *dblp = object;
             *dblp = cmb_time();
@@ -212,6 +215,7 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
     {
         cmb_unused(me);
         const struct context *ctx = vctx;
+        
         struct cmb_objectqueue *qp = ctx->sim->queue;
         const double mean_srv = ctx->trl->srv_mean;
         uint64_t *cnt = &(ctx->trl->obj_cnt);
@@ -219,9 +223,11 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
         while (true) {
             void *object = NULL;
             cmb_objectqueue_get(qp, &object);
+            
             const double *dblp = object;
             const double t_srv = cmb_random_exponential(mean_srv);
             cmb_process_hold(t_srv);
+            
             *sum += cmb_time() - *dblp;
             *cnt += 1u;
             cmi_mempool_free(&objectpool, object);
@@ -235,6 +241,7 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
         cmb_logger_flags_off(CMB_LOGGER_INFO);
         cmb_random_initialize(cmb_random_hwseed());
         cmb_event_queue_initialize(0.0);
+        
         struct context *ctx = malloc(sizeof(*ctx));
         ctx->trl = trl;
         struct simulation *sim = malloc(sizeof(*sim));
@@ -246,6 +253,7 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
         sim->arrival = cmb_process_create();
         cmb_process_initialize(sim->arrival, "Arrival", arrivalfunc, ctx, 0);
         cmb_process_start(sim->arrival);
+        
         sim->service = cmb_process_create();
         cmb_process_initialize(sim->service, "Service", servicefunc, ctx, 0);
         cmb_process_start(sim->service);
@@ -254,9 +262,11 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
     
         cmb_process_terminate(sim->arrival);
         cmb_process_destroy(sim->arrival);
+        
         cmb_process_stop(sim->service, NULL);
         cmb_process_terminate(sim->service);
         cmb_process_destroy(sim->service);
+        
         cmb_objectqueue_terminate(sim->queue);
         cmb_objectqueue_destroy(sim->queue);
     
@@ -274,6 +284,7 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
         trl->srv_mean = 1.0 / SERVICE_RATE;
         trl->obj_cnt = 0u;
         trl->sum_wait = 0.0;
+        
         run_trial(trl);
     
         printf("Average system time %f (expected %f)\n",
@@ -286,8 +297,9 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
     }
 
 ```
-See [our tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html) at ReadTheDocs for more usage examples.
-
+Note that we have intentionally left out comments in the code above, hopefully 
+demonstrating that it is fairly self-explanatory. See [our tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html)
+at ReadTheDocs for more usage examples with explanations.
 
 ### So, what can I use all that speed for?
 As shown above, it is some 45 times faster than SimPy in a relevant benchmark. It means 
@@ -296,7 +308,8 @@ delay breaking your line of thought.
 
 If you can run, say, 10 replications with SimPy within a certain budget for time and 
 computing resources, you can run 450 with Cimba. That will tighten the confidence 
-intervals in your results by a factor of about 8.
+intervals in your results by a factor of about 8. You can read more about this in our 
+blog post on the topic, [Speed Is Power](https://ambonvik.github.io/speed-is-power/).
 
 For another illustration of how to benefit from the sheer speed, the experiment in 
 [test_cimba.c](test/test_cimba.c)
