@@ -214,7 +214,7 @@ static void print_c_code(void)
                                           / (yarr[i] - yarr[i - 1])));
         printf(", UINT64_C(0x%016" PRIx64 ")", uconcavity);
     }
-    printf(" };\n");;
+    printf(" };\n");
 
     printf("\n/* Alias table, probabilities scaled to uint64_t */\n");
     printf("static const uint8_t exp_zig_alias[%d] = {",ARRSIZE);
