@@ -311,8 +311,9 @@ delay breaking your line of thought.
 
 If you can run, say, 10 replications with SimPy within a certain budget for time and 
 computing resources, you can run 450 with Cimba. That will tighten the confidence 
-intervals in your results by a factor of about 8. You can read more about this in our 
-blog post on the topic, [Speed Is Power](https://ambonvik.github.io/speed-is-power/).
+intervals in your results by a factor of about 8. The details are in our 
+blog post on the topic, 
+[Speed is (statistical) power](https://ambonvik.github.io/speed-is-power/).
 
 For another illustration of how to benefit from the sheer speed, the experiment in 
 [test_cimba.c](test/test_cimba.c)
