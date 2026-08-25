@@ -848,13 +848,13 @@ static void data_bar_print(FILE *fp,
         }
 
         data_print_chars(fp, symbol_full, num_filled);
-        const int r = fputc(symbol_bar, fp);;
+        const int r = fputc(symbol_bar, fp);
         cmb_assert_release(r == symbol_bar);
     }
     else {
         const uint16_t num_spaces = max_bar_width;
         data_print_chars(fp, symbol_empty, num_spaces);
-        int r = fputc(symbol_bar, fp);;
+        int r = fputc(symbol_bar, fp);
         cmb_assert_release(r == symbol_bar);
         data_print_chars(fp, symbol_full, num_filled);
 
@@ -863,7 +863,7 @@ static void data_bar_print(FILE *fp,
             cmb_assert_release(r == symbol_half);
         }
         else if (rem > 0.0) {
-            r = fputc(symbol_thin, fp);;
+            r = fputc(symbol_thin, fp);
             cmb_assert_release(r == symbol_thin);
         }
     }
