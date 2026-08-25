@@ -760,14 +760,12 @@ static inline unsigned int cmb_random_bernoulli(const double p)
 
 /**
  * @brief Geometric distribution, a discrete parallel to the exponential
- *        distribution, returns an integer value in `[1, oo)`.
+ *        distribution, returns an integer value in `[1, UINT64_MAX]`.
  *
  * Models the number of trials up to and including the first success in a
  * series of consecutive Bernoulli trials each with probability `p` of success.
  *
  * Mean `1/p`, variance `(1-p)/p^2`.
- *
- * Performs the calculation by simulating the experiment.
  *
  * See also https://en.wikipedia.org/wiki/Geometric_distribution
  */
@@ -821,15 +819,17 @@ static inline uint64_t cmb_random_pascal(const uint64_t m, const double p)
 
 /**
  * @brief Poisson distribution, number of arrivals per unit time in a Poisson
- *        process with arrival rate `r`, where `r > 0`.
+ *        process with arrival rate `r > 0`. Note that the algorithm
+ *        loses numerical precision for very large `r` above 1e12 or so. At such
+ *        rates. the Poisson distribution is indistinguishable from the normal
+ *        distribution. Use that instead for `r > 1e12`. We limit the valid
+ *        parameter range to `r > 0` and `r < 1e12` here.
  *
  * Mean `r`, variance `r`, interarrival times exponentially distributed with
  * mean `1/r`.
  *
  * Models the number of shot noise pulses, customer arrivals, incoming calls,
  * Geiger counter clicks, etc., per unit of time.
- *
- * Performs the calculation by simulating the experiment.
  *
  * See also https://en.wikipedia.org/wiki/Poisson_distribution
  */

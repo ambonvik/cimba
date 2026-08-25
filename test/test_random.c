@@ -399,7 +399,7 @@ static void test_quality_erlang(uint64_t nsamples, const unsigned k, const doubl
     QTEST_FINISH();
 }
 
-static void test_quality_hypoexponential(uint64_t nsamples, const unsigned k, const double m[k])
+static void test_quality_hypoexponential(const uint64_t nsamples, const unsigned k, const double m[k])
 {
     printf("\nQuality testing cmb_random_hypoexponential, k = %u, m = [", k);
     for (unsigned ui = 0; ui < k-1; ui++) {
@@ -478,7 +478,7 @@ static void test_quality_weibull(const uint64_t nsamples,
     QTEST_FINISH();
 }
 
-static void test_quality_lognormal(const uint64_t nsamples,const double m, const double s)
+static void test_quality_lognormal(const uint64_t nsamples, const double m, const double s)
 {
     printf("\nQuality testing log-normal distribution, m %g, s %g\n", m, s);
     QTEST_PREPARE();
@@ -495,7 +495,7 @@ static void test_quality_lognormal(const uint64_t nsamples,const double m, const
     QTEST_FINISH();
 }
 
-static void test_quality_logistic(const uint64_t nsamples,const double m, const double s)
+static void test_quality_logistic(const uint64_t nsamples, const double m, const double s)
 {
     printf("\nQuality testing logistic distribution, m %g, s %g\n", m, s);
     QTEST_PREPARE();
@@ -509,7 +509,7 @@ static void test_quality_logistic(const uint64_t nsamples,const double m, const 
     QTEST_FINISH();
 }
 
-static void test_quality_cauchy(const uint64_t nsamples,const double m, const double s)
+static void test_quality_cauchy(const uint64_t nsamples, const double m, const double s)
 {
     printf("\nQuality testing cauchy distribution, m %g, s %g\n", m, s);
     QTEST_PREPARE();
@@ -521,7 +521,7 @@ static void test_quality_cauchy(const uint64_t nsamples,const double m, const do
     QTEST_FINISH();
 }
 
-static void test_quality_gamma(const uint64_t nsamples,const double shape, const double scale)
+static void test_quality_gamma(const uint64_t nsamples, const double shape, const double scale)
 {
     printf("\nQuality testing gamma distribution, shape %g, scale %g\n", shape, scale);
     QTEST_PREPARE();
@@ -538,7 +538,7 @@ static void test_quality_gamma(const uint64_t nsamples,const double shape, const
     QTEST_FINISH();
 }
 
-static void test_quality_pareto(const uint64_t nsamples,const double a, const double b)
+static void test_quality_pareto(const uint64_t nsamples, const double a, const double b)
 {
     printf("\nQuality testing Pareto distribution, shape %g, scale %g\n", a, b);
     QTEST_PREPARE();
@@ -556,7 +556,9 @@ static void test_quality_pareto(const uint64_t nsamples,const double a, const do
     QTEST_FINISH();
 }
 
-static void test_quality_beta(const uint64_t nsamples,const double a, const double b, const double l, const double r)
+static void test_quality_beta(const uint64_t nsamples,
+                              const double a, const double b,
+                              const double l, const double r)
 {
     printf("\nQuality testing beta distribution, shape %g, scale %g, left %g, right %g\n", a, b, l, r);
     QTEST_PREPARE();
@@ -575,7 +577,7 @@ static void test_quality_beta(const uint64_t nsamples,const double a, const doub
     QTEST_FINISH();
 }
 
-static void test_quality_std_beta(const uint64_t nsamples,const double a, const double b)
+static void test_quality_std_beta(const uint64_t nsamples, const double a, const double b)
 {
     printf("\nQuality testing beta distribution, shape %g, scale %g\n", a, b);
     QTEST_PREPARE();
@@ -593,7 +595,8 @@ static void test_quality_std_beta(const uint64_t nsamples,const double a, const 
     QTEST_FINISH();
 }
 
-static void test_quality_PERT(const uint64_t nsamples,const double left, const double mode, const double right)
+static void test_quality_PERT(const uint64_t nsamples,
+                              const double left, const double mode, const double right)
 {
     printf("\nQuality testing PERT distribution, left %g, mode %g, right %g\n", left, mode, right);
     QTEST_PREPARE();
@@ -666,7 +669,8 @@ static void test_quality_std_t_dist(const uint64_t nsamples, const double v)
     QTEST_FINISH();
 }
 
-static void test_quality_t_dist(const uint64_t nsamples, const double m, const double s, const double v)
+static void test_quality_t_dist(const uint64_t nsamples,
+                                const double m, const double s, const double v)
 {
     printf("\nQuality testing t distribution, m %g, s %g, v %g,\n", m, s, v);
     QTEST_PREPARE();
@@ -788,9 +792,11 @@ static void test_quality_pascal(const uint64_t nsamples, const unsigned m, const
     QTEST_FINISH();
 }
 
+
 static void test_quality_poisson(const uint64_t nsamples, const double r)
 {
     printf("\nQuality testing Poisson distribution, r = %g\n", r);
+
     QTEST_PREPARE();
     QTEST_EXECUTE((double)cmb_random_poisson(r), x >= 0);
 
@@ -1001,6 +1007,7 @@ int main(const int argc, char *argv[])
     test_quality_gamma(nsamples, 3.0, 0.5);
     test_quality_gamma(nsamples, 1.0, 1.0);
     test_quality_gamma(nsamples, 0.5, 2.0);
+    test_quality_gamma(nsamples, 0.1, 2.0);
 
     test_quality_lognormal(nsamples, 1.0, 0.5);
     test_quality_logistic(nsamples, 1.0, 0.5);
@@ -1010,6 +1017,7 @@ int main(const int argc, char *argv[])
     test_quality_beta(nsamples, 2.0, 5.0, 0.0, 1.0);
     test_quality_beta(nsamples, 0.5, 2.0, 0.0, 1.0);
     test_quality_beta(nsamples, 0.5, 0.5, 2.0, 5.0);
+    test_quality_beta(nsamples, 0.1, 0.5, -2.0, 2.0);
     test_quality_PERT(nsamples, 2.0, 5.0, 10.0);
     test_quality_pareto(nsamples, 3.0, 2.0);
 
@@ -1026,7 +1034,9 @@ int main(const int argc, char *argv[])
     test_quality_geometric(nsamples, 0.1);
     test_quality_binomial(nsamples, 10, 0.1);
     test_quality_pascal(nsamples, 10, 0.1);
-    test_quality_poisson(nsamples, 10.0);
+
+    test_quality_poisson(nsamples, 5.0);
+    test_quality_poisson(nsamples, 50.0);
 
     test_quality_dice(nsamples, 1, 6);
 

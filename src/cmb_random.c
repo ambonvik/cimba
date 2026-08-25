@@ -463,20 +463,26 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
  *   Marsaglia & Tsang (2000): "A Simple Method for Generating Gamma Variables",
  *   https://dl.acm.org/doi/10.1145/358407.358414
  */
-double cmb_random_std_gamma(const double shape)
+double cmb_random_std_gamma(double shape)
 {
     cmb_assert_release(shape > 0.0);
 
+    /* Cache to avoid recalculating needlessly */
     static CMB_THREAD_LOCAL double a_prev = 0.0;
     static CMB_THREAD_LOCAL double c = 0.0;
     static CMB_THREAD_LOCAL double d = 0.0;
 
+    double mult = 1.0;
     if (shape < 1.0) {
-        return (cmb_random_std_gamma(shape + 1.0)
-                 * pow(cmb_random(), 1.0 / shape));
+        /* Make sure we do not accidentally produce a zero, range [0,1) */
+        const double f = 1.0 - cmb_random();
+        cmb_assert_debug(f > 0.0);
+        mult = pow(f, 1.0 / shape);
+        shape += 1.0;
     }
 
     if (shape != a_prev) {
+        /* Update cache */
         d = shape - 1.0 / 3.0;
         c = 1.0 / sqrt(9.0 * d);
         a_prev = shape;
@@ -489,18 +495,18 @@ double cmb_random_std_gamma(const double shape)
             v = 1.0 + c * x;
         } while (v <= 0.0);
 
-        double w = v * v * v;
-        double u = cmb_random();
+        const double w = v * v * v;
+        const double u = cmb_random();
         if ((u < 1.0 - 0.331 * (x * x) * (x * x))
             || (log(u) < (0.5 * x * x) + (d * (1.0 - w + log(w))))) {
-            const double ret = d * w;
+            const double ret = mult * d * w;
+
             cmb_assert_debug(ret >= 0.0);
             return ret;
         }
     }
 
-    /* not reached */
-    cmb_assert_debug(0);
+    /* Not reached */
 }
 
 /* Triangular distribution */
@@ -521,7 +527,7 @@ double cmb_random_triangular(const double min,
         x = (max - sqrt((1.0 - u) * (max- min) * (max - mode)));
     }
 
-    cmb_assert_debug((x >= min) && (x < max));
+    cmb_assert_debug((x >= min) && (x <= max));
     return x;
 }
 
@@ -559,8 +565,8 @@ int cmb_random_flip(void)
 }
 
 /*
- * Geometric distribution, the number of trials until
- * and including the first success.
+ * Geometric distribution, the number of trials until and including the
+ * first success.
  */
 uint64_t cmb_random_geometric(const double p)
 {
@@ -576,11 +582,16 @@ uint64_t cmb_random_geometric(const double p)
     static CMB_THREAD_LOCAL double prev = 0.0;
     static CMB_THREAD_LOCAL double denom = 0.0;
     if (p != prev) {
-        denom = -log(1.0 - p);
+        denom = -log1p(-p);
         prev = p;
     }
 
-    uint64_t x = (uint64_t)ceil(cmb_random_std_exponential() / denom);
+    const double d = ceil(cmb_random_std_exponential() / denom);
+    uint64_t x = (d >= (double)UINT64_MAX) ? UINT64_MAX : (uint64_t)d;
+    if (x == 0) {
+        /* Special case with probability ~2⁽-64) */
+        x = UINT64_C(1);
+    }
 
     cmb_assert_debug(x >= 1u);
     return x;
@@ -625,29 +636,157 @@ uint64_t cmb_random_negative_binomial(const uint64_t m, const double p)
 }
 
 /*
- * Poisson distribution, number of arrivals with rate r in unit time,
- * using our fast exponential distribution to simulate it, arrival by arrival.
+ * Poisson distribution, number of arrivals per unit time in a Poisson
+ *        process with arrival rate `r`, where `r > 0`.
  */
-uint64_t cmb_random_poisson(const double r)
-{
-    cmb_assert_release(r > 0.0);
+static const double CMI_HALF_LOG_2PI = 0.91893853320467266954;
 
-    const double m = 1.0 / r;
-    double t = 0.0;
-    uint64_t ctr = 0;
-    for (;;) {
-        t += cmb_random_exponential(m);
-        if (t <= 1.0) {
-            /* Still within time window */
-            ctr++;
-        }
-        else {
-            /* Unit time elapsed */
+/* log(k!) for k < 10, where the Stirling series is not accurate enough. */
+static const double log_fact_table[10] = {
+    0.0,                     0.0,
+    0.69314718055994528623,  1.7917594692280549573,
+    3.1780538303479457518,   4.7874917427820458116,
+    6.579251212010101213,    8.5251613610654146669,
+    10.604602902745250859,   12.801827480081469091
+};
+
+/*
+ * poisson_chop - Inversion by chop-down search from zero. Returns the smallest
+ * k whose cumulative probability reaches the uniform draw.
+ * See Kemp, A. W. (1981), "Efficient generation of logarithmically distributed
+ * pseudo-random variables", Applied Statistics 30(3)
+ * or Devroye, L. (1986), Non-Uniform Random Variate Generation, Springer
+ */
+uint64_t poisson_chop(const double r)
+{
+    cmb_assert_debug(r > 0.0);
+
+    /* Thread local cache to avoid unnecessarily repeated exp() */
+    static CMB_THREAD_LOCAL double r_prev = 0.0;
+    static CMB_THREAD_LOCAL double p0 = 0.0;
+
+    if (r != r_prev) {
+        /* Update cache */
+        r_prev = r;
+        p0 = exp(-r);
+    }
+
+    double u = cmb_random();
+    double p = p0;
+    uint64_t k = 0;
+    while (u > p) {
+        u -= p;
+        k++;
+        p *= r / (double)k;
+        if (p == 0.0) {
+            /* Tail underflow, bail out from what would be an infinite cycle */
             break;
         }
     }
 
-    return ctr;
+    return k;
+}
+
+/*
+ * poisson_ptrd - Transformed rejection with decomposition. Constant expected
+ * cost in r. Roughly 86 percent of draws leave by the fast path having consumed
+ * a single uniform and evaluated no transcendental. Only valid for r >= 10.
+ *
+ * Adapted from Roy Ward's C++ implementation (BSD 3-clause, see NOTICE),
+ * https://github.com/royward/random-variate-poisson/blob/main/LICENSE
+ * of an algorithm from
+ *     Hoermann, W. (1993), "The transformed rejection method for generating
+ *     Poisson random variables", Insurance: Mathematics and Economics 12(1):39-45.
+ *
+ * BSD 3-Clause, see NOTICE.
+ */
+uint64_t poisson_ptrd(const double r)
+{
+    cmb_assert_debug(r >= 10.0);
+
+    /* Thread local cache */
+    static CMB_THREAD_LOCAL double r_prev = 0.0;
+    static CMB_THREAD_LOCAL double smu = 0.0;
+    static CMB_THREAD_LOCAL double a = 0.0;
+    static CMB_THREAD_LOCAL double b = 0.0;
+    static CMB_THREAD_LOCAL double vr = 0.0;
+    static CMB_THREAD_LOCAL double vr_fast = 0.0;
+    static CMB_THREAD_LOCAL double inv_alpha = 0.0;
+
+    if (r != r_prev) {
+        /* Update cache */
+        r_prev = r;
+        smu = sqrt(r);
+        b = 0.931 + 2.53 * smu;
+        a = -0.059 + 0.02483 * b;
+        vr = 0.9277 - 3.6224 / (b - 2.0);
+        vr_fast = 0.86 * vr;
+        inv_alpha = 1.1239 + 1.1328 / (b - 3.4);
+    }
+
+    for (;;) {
+        double v = cmb_random();
+        double u;
+
+        if (v < vr_fast) {
+            u = v / vr - 0.43;
+            const double us = 0.5 - fabs(u);
+            const double k = floor((2.0 * a / us + b) * u + r + 0.445);
+
+            cmb_assert_debug(k >= 0.0);
+            return (uint64_t)k;
+        }
+
+        const double t = cmb_random();
+        if (v >= vr) {
+            u = t - 0.5;
+        }
+        else {
+            u = v / vr - 0.93;
+            u = ((u < 0.0) ? -0.5 : 0.5) - u;
+            v = t * vr;
+        }
+
+        const double us = 0.5 - fabs(u);
+        if ((us <= 0.0) || ((us < 0.013) && (v > us))) {
+            /* us == 0 is reachable because cmb_random() covers [0, 1) and so
+             * u can be exactly -0.5. Guard before dividing by us. */
+            continue;
+        }
+
+        const double k = floor((2.0 * a / us + b) * u + r + 0.445);
+        v = v * inv_alpha / (a / (us * us) + b);
+
+        if (k >= 10.0) {
+            const double rhs = (k + 0.5) * log(r / k) - r - CMI_HALF_LOG_2PI
+                               + k - (1.0 / 12.0 - 1.0 / (360.0 * k * k)) / k;
+            if (log(v * smu) <= rhs) {
+                cmb_assert_debug(k >= 0.0);
+                return (uint64_t)k;
+            }
+        }
+        else if (k >= 0.0) {
+            /* k in [0, 10): exact log factorial. The k >= 0 test must precede
+             * the table index, and rejects the -inf produced by tiny us. */
+            const uint64_t ki = (uint64_t)k;
+            if (log(v) < ((k * log(r)) - r - log_fact_table[ki])) {
+                return ki;
+            }
+        }
+    }
+}
+
+/*
+ * cmb_random_poisson - Number of events in unit time at rate r.
+ */
+#define PTRD_MAX 1e12
+#define PTRD_MIN 20
+uint64_t cmb_random_poisson(const double r)
+{
+    cmb_assert_release(r > 0.0);
+    cmb_assert_release(r <= PTRD_MAX);
+
+    return (r < PTRD_MIN) ? poisson_chop(r) : poisson_ptrd(r);
 }
 
 /*
@@ -786,11 +925,13 @@ struct cmb_random_alias *cmb_random_alias_create(const uint64_t n,
     while (idxl > 0) {
         const uint64_t g = large[--idxl];
         ap->uprob[g] = UINT64_MAX;
+        ap->alias[g] = g;
     }
 
     while (idxs > 0) {
         const uint64_t l = small[--idxs];
         ap->uprob[l] = UINT64_MAX;
+        ap->alias[l] = l;
     }
 
     cmi_free(large);
@@ -808,6 +949,8 @@ struct cmb_random_alias *cmb_random_alias_create(const uint64_t n,
 uint64_t cmb_random_alias_sample(const struct cmb_random_alias *ap)
 {
     cmb_assert_release(ap != NULL);
+    cmb_assert_debug(ap->uprob != NULL);
+    cmb_assert_debug(ap->alias != NULL);
 
     const uint64_t idx = cmb_random_discrete_uniform(ap->n);
     const bool c = (cmb_random_sfc64() >= ap->uprob[idx]);
@@ -822,8 +965,8 @@ uint64_t cmb_random_alias_sample(const struct cmb_random_alias *ap)
 void cmb_random_alias_destroy(struct cmb_random_alias *ap)
 {
     cmb_assert_release(ap != NULL);
-    cmb_assert_release(ap->uprob != NULL);
-    cmb_assert_release(ap->alias != NULL);
+    cmb_assert_debug(ap->uprob != NULL);
+    cmb_assert_debug(ap->alias != NULL);
 
     if (!cmi_memregistry_is_demolishing) {
         cmi_memregistry_remove(&(ap->destroy));
