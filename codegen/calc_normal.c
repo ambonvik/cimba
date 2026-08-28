@@ -84,7 +84,7 @@ static void calculate_ziggurat(void)
                   * of the error function derivative.
                   * Three cases: Below inflection point (convex),
                   * above inflection point (concave),
-                  * straddleinflection point (both, either side of x = 1.0) */
+                  * straddle inflection point (both, either side of x = 1.0) */
                 double xargmax;
                 struct segment seg;
                 seg.x1 = xarr[i];
@@ -93,7 +93,7 @@ static void calculate_ziggurat(void)
                 seg.y2 = yarr[i-1];
 
                 if (xarr[i] > 1.0) {
-                    /* concave region */
+                    /* Concave region */
                     (void)cmi_bisection(xarr[i], xarr[i-1],
                                         dist_deriv, &seg, &xargmax);
                     double ypdf = pdf(xargmax);
@@ -101,7 +101,7 @@ static void calculate_ziggurat(void)
                     concavity[i] = yline - ypdf;
                 }
                 else if (xarr[i-1] < 1.0) {
-                    /* convex region */
+                    /* Convex region */
                     (void)cmi_bisection(xarr[i], xarr[i-1],
                                         dist_deriv, &seg,  &xargmax);
                     double ypdf = pdf(xargmax);
@@ -128,7 +128,7 @@ static void calculate_ziggurat(void)
                 }
             }
 
-            double ytmp = (i == 0) ? 0.0 : yarr[i-1];
+            const double ytmp = (i == 0) ? 0.0 : yarr[i-1];
             acum += area[i] + (xarr[i] - 0.0) * (yarr[i] - ytmp);
 
             /* Make ready for the next layer */
@@ -186,8 +186,8 @@ static void calculate_alias_table(void)
     }
 
     while ((idxs > 0) && (idxl > 0)) {
-        uint8_t l = small[--idxs];
-        uint8_t g = large[--idxl];
+        const uint8_t l = small[--idxs];
+        const uint8_t g = large[--idxl];
         prob[l] = work[l];
         assert(prob[l] <= 1.0);
         alias[l] = g;
@@ -201,12 +201,12 @@ static void calculate_alias_table(void)
     }
 
     while (idxl > 0) {
-        uint8_t g = large[--idxl];
+        const uint8_t g = large[--idxl];
         prob[g] = 1.0;
     }
 
     while (idxs > 0) {
-        uint8_t l = small[--idxs];
+        const uint8_t l = small[--idxs];
         prob[l] = 1.0;
     }
 
@@ -252,7 +252,7 @@ static void print_c_code(void)
     for (int i = 0; i < ARRSIZE-1; i++) {
         printf(" %.15g,", ldexp(yarr[i] * sqrt(2.0 * M_PI), -63));
     }
-    printf(" %.15g };\n", ldexp(yarr[ARRSIZE-1], -63));
+    printf(" %.15g };\n", ldexp(yarr[ARRSIZE-1] * sqrt(2.0 * M_PI), -63));
 
     int64_t max_iconcavity = 0ll;
     printf("\n/* Max distance from linear interpolation to actual pdf in\n");

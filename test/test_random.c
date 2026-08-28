@@ -747,10 +747,10 @@ static void test_quality_geometric(const uint64_t nsamples, const double p)
     const double mean = 1.0 / p;
     const double q = 1.0 - p;
     const double var = q / (p * p);
-    const double skew = (q - p) / sqrt(p * q);
-    const double kurt = (1.0 - 6.0 * p * q) / (p * q);
+    const double skew = (2 - p) / sqrt(q);
+    const double kurt = 6.0 + p * p / q;
 
-    print_expected(nsamples, true, mean, true,var,true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -1033,6 +1033,7 @@ int main(const int argc, char *argv[])
     test_quality_bernoulli(nsamples, 0.6);
     test_quality_geometric(nsamples, 0.1);
     test_quality_binomial(nsamples, 10, 0.1);
+    test_quality_binomial(nsamples, 100, 0.5);
     test_quality_pascal(nsamples, 10, 0.1);
 
     test_quality_poisson(nsamples, 5.0);

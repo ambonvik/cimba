@@ -151,7 +151,11 @@ extern uint64_t cmb_random_fmix64(uint64_t seed, uint64_t nonce);
 CMB_MAYBE_UNUSED
 static inline double cmb_random(void)
 {
-    return ldexp((double)(cmb_random_sfc64() >> 11), -53);
+    const uint64_t x = cmb_random_sfc64();
+    const double r = (double)(x >> 11) * 0x1.0p-53;
+
+    cmb_assert_debug((r >= 0.0) && (r < 1.0));
+    return r;
 }
 
 /**
@@ -309,7 +313,7 @@ static inline double cmb_random_cauchy(const double mode, const double scale)
 /** @cond */
 extern const uint8_t cmi_random_exp_zig_max;
 extern const double cmi_random_exp_zig_pdf_x[];
-extern double cmi_random_exp_not_hot(uint64_t u_cand_x);
+extern double cmi_random_exp_not_hot(int64_t i_cand_x);
 /** @endcond */
 
 /**
@@ -326,11 +330,13 @@ extern double cmi_random_exp_not_hot(uint64_t u_cand_x);
 CMB_MAYBE_UNUSED
 static inline double cmb_random_std_exponential(void)
 {
-    const uint64_t u_cand_x = cmb_random_sfc64();
-    const uint8_t idx = u_cand_x & 0xff;
-    double r = (idx <= cmi_random_exp_zig_max) ?
-        cmi_random_exp_zig_pdf_x[idx] * (double) u_cand_x :
-        cmi_random_exp_not_hot(u_cand_x);
+    uint64_t bits = cmb_random_sfc64();
+    /* Clear the sign bit for 63 useful bits */
+    const int64_t i_cand_x = (*(int64_t *) &bits) & INT64_MAX;
+    const uint8_t idx = i_cand_x & 0xFF;
+    const double r = (idx <= cmi_random_exp_zig_max) ?
+                        cmi_random_exp_zig_pdf_x[idx] * (double) i_cand_x :
+                        cmi_random_exp_not_hot(i_cand_x);
 
     cmb_assert_debug(r >= 0.0);
     return r;
@@ -353,7 +359,7 @@ static inline double cmb_random_exponential(const double mean)
 {
     cmb_assert_release(mean > 0.0);
 
-    double r = mean * cmb_random_std_exponential();
+    const double r = mean * cmb_random_std_exponential();
 
     cmb_assert_debug(r >= 0.0);
     return r;
@@ -775,11 +781,9 @@ extern uint64_t cmb_random_geometric(double p);
  * @brief Binomial distribution, number of successes in n independent Bernoulli
  *        trials each with probability `p`.
  *
- * Models a drawing process with replacement (or from an infinite pool).
+ * Models a drawing process with replacement (or drawing from an infinite pool).
  *
  * Mean `np`, variance `np(1-p)`.
- *
- * Performs the calculation by simulating the experiment.
  *
  * See also https://en.wikipedia.org/wiki/Geometric_distribution
  */
@@ -797,14 +801,12 @@ extern uint64_t cmb_random_binomial(uint64_t n, double p);
  * successfully transmit an m-bit (or -packet) message. Also known as the Pascal
  * distribution.
  *
- * Performs the calculation by simulating the experiment.
- *
  * See also https://en.wikipedia.org/wiki/Negative_binomial_distribution
  */
 extern uint64_t cmb_random_negative_binomial(uint64_t m, double p);
 
 /**
- * @brief Pascal distribution an alias for the negative binomial distribution,
+ * @brief Pascal distribution, an alias for the negative binomial distribution,
  *        `cmb_random_negative_binomial()`, the number of failures before the
  *        `m`th success in independent Bernoulli trials each with probability
  *        `p`, sampled with replacement (or equivalently from an infinite pool).
@@ -817,11 +819,16 @@ static inline uint64_t cmb_random_pascal(const uint64_t m, const double p)
     return cmb_random_negative_binomial(m, p);
 }
 
+/** @cond */
+extern uint64_t cmi_random_poisson_chopdown(double r);
+extern uint64_t cmi_random_poisson_ptrd(double r);
+/** @endcond */
+
 /**
  * @brief Poisson distribution, number of arrivals per unit time in a Poisson
- *        process with arrival rate `r > 0`. Note that the algorithm
- *        loses numerical precision for very large `r` above 1e12 or so. At such
- *        rates. the Poisson distribution is indistinguishable from the normal
+ *        process with arrival rate `r > 0`. Note that the algorithm used
+ *        loses numerical precision for very large `r` above 1e14 or so. At such
+ *        rates. The Poisson distribution is indistinguishable from the normal
  *        distribution. Use that instead for `r > 1e12`. We limit the valid
  *        parameter range to `r > 0` and `r < 1e12` here.
  *
@@ -833,7 +840,18 @@ static inline uint64_t cmb_random_pascal(const uint64_t m, const double p)
  *
  * See also https://en.wikipedia.org/wiki/Poisson_distribution
  */
-extern uint64_t cmb_random_poisson(double r);
+CMB_MAYBE_UNUSED
+static inline uint64_t cmb_random_poisson(double r)
+{
+    cmb_assert_release(r > 0.0);
+    cmb_assert_release(r <= 1e12);
+
+    /* Hörmann's PTRD is valid for r > 10, faster for r > 15-20.
+     * A simple inversion search is faster below. Switch at 17 here.
+     * Implementation references given in cmb_random.c */
+    return (r < 17.0) ? cmi_random_poisson_chopdown(r)
+                      : cmi_random_poisson_ptrd(r);
+}
 
 /**
  * @brief A discrete uniform distribution on `[0, 1, ..., n-1]` for `n > 0`.

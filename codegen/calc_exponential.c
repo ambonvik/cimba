@@ -35,7 +35,7 @@ double concavity[ARRSIZE] = { 0.0 };
 double area[ARRSIZE] = { 0.0 };
 double prob[ARRSIZE] = { 0.0 };
 double x_tail = 0.0;
-uint64_t uprob[ARRSIZE] = { 0 };
+int64_t iprob[ARRSIZE] = { 0 };
 uint8_t alias[ARRSIZE] = { 0 };
 uint8_t i_max = 0;
 
@@ -155,13 +155,15 @@ static void calculate_alias_table(void)
     }
 
     while (idxl > 0) {
-        uint8_t g = large[--idxl];
+        const uint8_t g = large[--idxl];
         prob[g] = 1.0;
+        alias[g] = g;
     }
 
     while (idxs > 0) {
-        uint8_t l = small[--idxs];
+        const uint8_t l = small[--idxs];
         prob[l] = 1.0;
+        alias[l] = l;
     }
 
     for (int i = 0; i < ARRSIZE; i++) {
@@ -169,12 +171,12 @@ static void calculate_alias_table(void)
         if (prob[i] == 1.0) {
             /* May accidentally round upwards and overflow in conversion
              * to double, make sure that does not happen */
-            uprob[i] = UINT64_MAX;
+            iprob[i] = INT64_MAX;
         }
         else {
             /* Safe, may round upwards to 2^64 in conversion, but will
              * then multiply by something < 1, ending safely below */
-            uprob[i] = (uint64_t)(prob[i] * (double)UINT64_MAX);
+            iprob[i] = (int64_t)(prob[i] * (double)INT64_MAX);
         }
     }
 }
@@ -192,42 +194,43 @@ static void print_c_code(void)
     printf("\n * Index of top layer: */\n");
     printf("const uint8_t cmi_random_exp_zig_max = %d;\n", i_max);
 
-    printf("\n/* Ziggurat corner points (X, Y) on pdf curve, scaled by 2^-64 */\n");
+    printf("\n/* Ziggurat corner points (X, Y) on the pdf curve, \n");
+    printf(" * x-axis scaled by 2^-63 */\n");
     printf("const double cmi_random_exp_zig_pdf_x[%d] = {",ARRSIZE);
     for (int i = 0; i < ARRSIZE-1; i++) {
-        printf(" %.15g,", ldexp(xarr[i], -64));
+        printf(" %.15g,", ldexp(xarr[i], -63));
     }
-    printf(" %.15g };\n", ldexp(xarr[ARRSIZE-1], -64));
+    printf(" %.15g };\n", ldexp(xarr[ARRSIZE-1], -63));
 
     printf("static const double cmi_random_exp_zig_pdf_y[%d] = {",ARRSIZE);
     for (int i = 0; i < ARRSIZE-1; i++) {
-        printf(" %.15g,", ldexp(yarr[i], -64));
+        printf(" %.15g,", ldexp(yarr[i], -63));
     }
-    printf(" %.15g };\n", ldexp(yarr[ARRSIZE-1], -64));
+    printf(" %.15g };\n", ldexp(yarr[ARRSIZE-1], -63));
 
     printf("\n/* Max distance from linear interpolation to actual pdf in\n");
-    printf(" * each overhang, scaled to uint64_t */\n");
-    printf("static const uint64_t exp_zig_u_concavity[%d] = { UINT64_C(0x%016" PRIx64 ")",
-           ARRSIZE, (uint64_t)0u);
+    printf(" * each overhang, scaled to int64_t */\n");
+    printf("static const int64_t exp_zig_i_concavity[%d] = { INT64_C(0x%016" PRIx64 ")",
+           ARRSIZE, (int64_t)0u);
     for (int i = 1; i <= i_max + 1; i++) {
-        const uint64_t uconcavity = (uint64_t) ((double) UINT64_MAX * (concavity[i]
+        const int64_t uconcavity = (int64_t) ((double) INT64_MAX * (concavity[i]
                                           / (yarr[i] - yarr[i - 1])));
-        printf(", UINT64_C(0x%016" PRIx64 ")", uconcavity);
+        printf(", INT64_C(0x%016" PRIx64 ")", uconcavity);
     }
     printf(" };\n");
 
-    printf("\n/* Alias table, probabilities scaled to uint64_t */\n");
+    printf("\n/* Alias table, probabilities scaled to int64_t */\n");
     printf("static const uint8_t exp_zig_alias[%d] = {",ARRSIZE);
     for (int i = 0; i < ARRSIZE-1; i++) {
         printf(" %d,", alias[i]);
     }
     printf(" %d };\n", alias[ARRSIZE-1]);
 
-    printf("static const uint64_t exp_zig_u_prob[%d] = {",ARRSIZE);
+    printf("static const int64_t exp_zig_i_prob[%d] = {",ARRSIZE);
     for (int i = 0; i < ARRSIZE-1; i++) {
-        printf(" UINT64_C(0x%016" PRIx64 "),", uprob[i]);
+        printf(" INT64_C(0x%016" PRIx64 "),", iprob[i]);
     }
-    printf(" UINT64_C(0x%016" PRIx64 ") };\n", uprob[ARRSIZE-1]);
+    printf(" INT64_C(0x%016" PRIx64 ") };\n", iprob[ARRSIZE-1]);
 
     printf("\n/* Actual X value for the beginning of the tail */\n");
     printf("static const double exp_zig_x_tail_start = %.15g;\n", x_tail);

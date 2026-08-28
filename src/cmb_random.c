@@ -8,6 +8,11 @@
  *      Copyright (c) Chris D McFarland 2025.
  *      Used with permission by author.
  *
+* A good general reference text is
+*       Devroye, L. (1986), Non-Uniform Random Variate Generation, Springer
+ *      available online at https://luc.devroye.org/handbooksimulation1.pdf
+ *      https://luc.devroye.org/LucDevroye-NonUniformRandomVariateGeneration-10.1007_978-1-4613-8643-8-1986.pdf
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -192,18 +197,32 @@ uint64_t cmb_random_curseed(void)
  *      https://www.keithschwarz.com/darts-dice-coins/
  */
 
-/*
- * We do as many calculations as possible in unsigned integer for speed.
- * Helper functions to map uint64_t values to doubles on the correct scale.
- */
-static double zig_exp_convert_x(const double *dpx, const uint64_t u)
+/* Helper functions to map int64_t values to doubles on the correct scale */
+static double zig_convert_x(const double *dpx, const int64_t ix)
 {
-    return ldexp((*dpx), 64) + (*(dpx - 1) - *dpx) * (double)u;
+    /* Multiply by 2^63, equal to ldexp((*dpx), 63) but faster */
+    const double x1 = (*dpx) * 9223372036854775808.0;
+    const double x2 = (*(dpx - 1) - *dpx) * (double)ix;
+
+    return x1 + x2;
 }
 
-static inline double zig_exp_convert_y(const double *dpy, const uint64_t u)
+static double zig_convert_y(const double *dpy, const int64_t iy)
 {
-    return ldexp(*(dpy - 1), 64) + (*dpy - *(dpy - 1)) * (double)u;
+    const double y1 = (*(dpy - 1)) * 9223372036854775808.0;
+    const double y2 = (*dpy - *(dpy - 1)) * (double)iy;
+
+    return y1 + y2;
+}
+
+/* Pull 64 bits of randomness, convert to signed and clear the sign bit
+ * for 63 bits net, always positive sign */
+static int64_t zig_sample63(void)
+{
+    const uint64_t bits = cmb_random_sfc64();
+    const int64_t r = (*(int64_t *)&bits) & INT64_MAX;
+
+    return r;
 }
 
 /*
@@ -214,45 +233,44 @@ static inline double zig_exp_convert_y(const double *dpy, const uint64_t u)
 #include "cmi_random_exp_zig.inc"
 
 /* Fallback sampling function, called in about 1,5 % of cases */
-double cmi_random_exp_not_hot(uint64_t u_cand_x)
+double cmi_random_exp_not_hot(int64_t i_cand_x)
 {
     /* Offset for tail sample generation, implemented as iteration */
     double x_offset = 0.0;
     for (;;) {
         /* We are in one of the leftover pieces, alias sample for which one. */
-        uint64_t u_cand_y = cmb_random_sfc64();
-        uint8_t jdx = u_cand_y & 0xff;
-        const bool aliased = (cmb_random_sfc64() >= exp_zig_u_prob[jdx]);
-        jdx = (aliased) ? exp_zig_alias[jdx] : jdx;
+        int64_t i_cand_y = zig_sample63();
+        uint8_t jdx = i_cand_y & 0xff;
+        jdx = (i_cand_x >= exp_zig_i_prob[jdx]) ? exp_zig_alias[jdx] : jdx;
         if (jdx > 0) {
             /* Not in tail, rejection sample from within this right triangular
              * overhang only.
              */
             for (;;) {
                 /* First time through we still have 56 bits of unused randomness
-                 * in u_cand_x, now re-interpreted as an X value along the base
+                 * in i_cand_x, now re-interpreted as an X value along the base
                  * of the sampled overhang triangle. Make sure the current X, Y
                  * pair belongs to the triangle, reflecting if necessary.
                  */
-                if (u_cand_y > (UINT64_MAX - u_cand_x)) {
-                    u_cand_y = UINT64_MAX - u_cand_y;
-                    u_cand_x = UINT64_MAX - u_cand_x;
+                if (i_cand_y > (INT64_MAX - i_cand_x)) {
+                    i_cand_y = INT64_MAX -i_cand_y;
+                    i_cand_x = INT64_MAX - i_cand_x;
                 }
 
                 /* Are we far enough from the pdf to avoid calculating it? */
-                uint64_t u_dist = (UINT64_MAX - u_cand_x) - u_cand_y;
-                if (u_dist >= exp_zig_u_concavity[jdx]) {
+                const int64_t i_dist = (INT64_MAX - i_cand_x) - i_cand_y;
+                if (i_dist >= exp_zig_i_concavity[jdx]) {
                     /* Surely inside, scale and return the candidate X value */
                     const double *dpx = &(cmi_random_exp_zig_pdf_x[jdx]);
-                    const double x = zig_exp_convert_x(dpx, u_cand_x);
+                    const double x = zig_convert_x(dpx, i_cand_x);
                     return x + x_offset;
                 }
                 else {
                     /* Maybe inside, do exact pdf calculation to decide */
                     const double *dpx = &(cmi_random_exp_zig_pdf_x[jdx]);
-                    const double x = zig_exp_convert_x(dpx, u_cand_x);
+                    const double x = zig_convert_x(dpx, i_cand_x);
                     const double *dpy = &(cmi_random_exp_zig_pdf_y[jdx]);
-                    const double y = zig_exp_convert_y(dpy, u_cand_y);
+                    const double y = zig_convert_y(dpy, i_cand_y);
                     if (y <= exp(-x)) {
                         /* Safely inside */
                         return x + x_offset;
@@ -260,8 +278,8 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x)
                 }
 
                 /* No joy, try another X, Y pair in this overhang */
-                u_cand_y = cmb_random_sfc64();
-                u_cand_x = cmb_random_sfc64();
+                i_cand_y = zig_sample63();
+                i_cand_x = zig_sample63();
             }
         }
         else {
@@ -270,14 +288,14 @@ double cmi_random_exp_not_hot(uint64_t u_cand_x)
         }
 
         /* Generate a new candidate x-value */
-        u_cand_x = cmb_random_sfc64();
-        const uint8_t idx = u_cand_x & 0xff;
+        i_cand_x = zig_sample63();
+        const uint8_t idx = i_cand_x & 0xff;
         /* Re-try the hot path before looping back to the top */
         if (idx <= cmi_random_exp_zig_max) {
             /* Lucky path: Candidate X value is in ziggurat,
              * scale to length of layer idx and return */
             return cmi_random_exp_zig_pdf_x[idx]
-                   * (double) u_cand_x + x_offset;
+                   * (double) i_cand_x + x_offset;
         }
     }
 
@@ -322,24 +340,6 @@ double cmb_random_hyperexponential(const uint64_t n,
  * sampling.
  */
 
-/* Helper functions to map int64_t values to doubles on the correct scale */
-static double zig_nor_convert_x(const double *dpx, const int64_t ix)
-{
-    return ldexp((*dpx), 63) + (*(dpx - 1) - *dpx) * (double)ix;
-}
-
-static double zig_nor_convert_y(const double *dpy, const uint64_t uy)
-{
-    return ldexp(*(dpy - 1), 63) + (*dpy - *(dpy - 1)) * (double)uy;
-}
-
-/* Pull 64 bits of randomness, convert to signed and clear the sign bit */
-static int64_t zig_sample63(void)
-{
-    uint64_t bits = cmb_random_sfc64();
-    return (*(int64_t *)&bits) & INT64_MAX;
-}
-
 /* pdf pre-scaled by sqrt (2 * M_PI) to avoid recalculating constant */
 static inline double sc_nor_pdf(const double x)
 {
@@ -353,7 +353,7 @@ static inline double sc_nor_pdf(const double x)
 double cmi_random_nor_not_hot(int64_t i_cand_x)
 {
     /* Save the sign bit for later use and clear it */
-    double sign = ((i_cand_x >> 63) ? -1.0 : 1.0);
+    const double sign = ((i_cand_x >> 63) ? -1.0 : 1.0);
     i_cand_x &= INT64_MAX;
 
     /* Alias sample to find out which overhang area */
@@ -364,7 +364,7 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
         /* Convex overhang */
         for (;;) {
             const double *dpx = &(cmi_random_nor_zig_pdf_x[jdx]);
-            const double x = zig_nor_convert_x(dpx, i_cand_x);
+            const double x = zig_convert_x(dpx, i_cand_x);
             const int64_t i_dist = (INT64_MAX - i_cand_x) - i_cand_y;
             if (i_dist >= 0) {
                 /* Surely inside */
@@ -373,7 +373,7 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
             else if (i_dist + nor_zig_i_convexity[jdx] >= 0) {
                 /* Maybe inside, calculate pdf for precise rejection sampling */
                 const double *dpy = &(cmi_random_nor_zig_pdf_y[jdx]);
-                const double y = zig_nor_convert_y(dpy, i_cand_y);
+                const double y = zig_convert_y(dpy, i_cand_y);
                 if (y < sc_nor_pdf(x)) {
                     return sign * x;
                 }
@@ -404,7 +404,7 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
 
             /* Are we far enough from the pdf to avoid calculating it? */
             const double *dpx = &(cmi_random_nor_zig_pdf_x[jdx]);
-            const double x = zig_nor_convert_x(dpx, i_cand_x);
+            const double x = zig_convert_x(dpx, i_cand_x);
             const int64_t i_dist = (INT64_MAX - i_cand_x) - i_cand_y;
             if (i_dist >= nor_zig_i_concavity[jdx]) {
                 return sign * x;
@@ -412,7 +412,7 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
             else {
                 /* Maybe inside, need to do exact pdf calculation to decide */
                 const double *dpy = &(cmi_random_nor_zig_pdf_y[jdx]);
-                const double y = zig_nor_convert_y(dpy, i_cand_y);
+                const double y = zig_convert_y(dpy, i_cand_y);
                 if (y <= sc_nor_pdf(x)) {
                     return sign * x;
                 }
@@ -428,14 +428,14 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
         cmb_assert_debug(jdx == nor_zig_inflection);
         for (;;) {
             const double *dpx = &(cmi_random_nor_zig_pdf_x[jdx]);
-            const double x = zig_nor_convert_x(dpx, i_cand_x);
+            const double x = zig_convert_x(dpx, i_cand_x);
             const int64_t i_dist = (INT64_MAX - i_cand_x) - i_cand_y;
             if (i_dist >= nor_zig_i_concavity[jdx]) {
                 return sign * x;
             }
             else if (i_dist + nor_zig_i_convexity[jdx] > 0) {
                 const double *dpy = &(cmi_random_nor_zig_pdf_y[jdx]);
-                const double y = zig_nor_convert_y(dpy, i_cand_y);
+                const double y = zig_convert_y(dpy, i_cand_y);
                 if (y < sc_nor_pdf(x)) {
                     return sign * x;
                 }
@@ -458,6 +458,7 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
  * In principle similar to the ziggurat method, except that the covering
  * function is a power of a normal distribution, and that the squeezing
  * function underneath the pdf is a continuous function instead of a ziggurat.
+ * Leverages our fast normal distribution for its efficiency and simplicity.
  *
  * See:
  *   Marsaglia & Tsang (2000): "A Simple Method for Generating Gamma Variables",
@@ -574,7 +575,7 @@ uint64_t cmb_random_geometric(const double p)
 
     if (p == 1.0) {
         /* Special case, the log below would overflow */
-        return 1u;
+        return UINT64_C(1);
     }
 
     /* Caching for cases where many samples are required with same p,
@@ -587,29 +588,309 @@ uint64_t cmb_random_geometric(const double p)
     }
 
     const double d = ceil(cmb_random_std_exponential() / denom);
-    uint64_t x = (d >= (double)UINT64_MAX) ? UINT64_MAX : (uint64_t)d;
+    const uint64_t x = (d >= (double)UINT64_MAX) ? UINT64_MAX : (uint64_t)d;
     if (x == 0) {
-        /* Special case with probability ~2⁽-64) */
-        x = UINT64_C(1);
+        /* Special case with probability ~2^(-64) */
+        return UINT64_C(1);
     }
 
     cmb_assert_debug(x >= 1u);
     return x;
 }
 
-/* Binomial distribution, the number of successes in n trials */
-uint64_t cmb_random_binomial(const uint64_t n, const double p)
-{
-    cmb_assert_release(n > 0);
-    cmb_assert_release((p > 0.0) && (p <= 1.0));
+/*
+ * Binomial distribution.
+ * Max n at 2^53
+ *
+ */
+static const uint64_t binomial_n_max = UINT64_C(9007199254740992);
 
-    uint64_t sctr = 0;
-    for (uint64_t ui = 0u; ui < n; ui++) {
-        sctr += cmb_random_bernoulli(p);
+/*
+ * cmi_random_binomial_chopdown - Inversion chop-down search.
+ * Expects already folded p, so p <= 0.5 here.
+ */
+static uint64_t cmi_random_binomial_chopdown(const uint64_t n, const double p)
+{
+    cmb_assert_debug(n <= binomial_n_max);
+    cmb_assert_debug((p > 0.0) && (p <= 0.5));
+
+    /* Thread local cache */
+    static CMB_THREAD_LOCAL uint64_t n_prev = 0u;
+    static CMB_THREAD_LOCAL double p_prev = -1.0;
+    static CMB_THREAD_LOCAL double p0 = 0.0;
+    static CMB_THREAD_LOCAL double r = 0.0;
+
+    if ((n != n_prev) || (p != p_prev)) {
+        /* Update cache */
+        n_prev = n;
+        p_prev = p;
+        p0 = exp((double)n * log1p(-p));
+        r = p / (1.0 - p);
     }
 
-    cmb_assert_debug(sctr <= n);
-    return sctr;
+    double u = cmb_random();
+    double pk = p0;
+    uint64_t k = 0u;
+
+    while (u > pk) {
+        u -= pk;
+        k++;
+        if (k > n) {
+            /* Clamp to fix accumulated rounding errors */
+            k = n;
+            break;
+        }
+
+        pk *= ((double)(n - k + 1u) / (double)k) * r;
+        if (pk == 0.0) {
+            /* Tail underflow, bail out of infinite cycle */
+            break;
+        }
+    }
+
+    return k;
+}
+
+/*
+ * stirling_tail, correction term fc(k) for the Stirling approximation.
+ *   fc(k) = 1/(12 * (k+1)) - 1/(360 * (k+1)^3) + 1/(1260 * (k+1)^5)
+ *
+ * Additional terms needed for small k, using tabulated exact values
+ * calculated in Python `mpmath` as
+ *   ex = log(factorial(k)) - (mpf(1)/2*log(2*pi) + (k+mpf(1)/2)*log(k+1) - (k+1))
+ * which matches the values stated in Hörmann's paper (with one more significant
+ * digit given here for full double precision resolution).
+ */
+static const double stirling_tab[10] = {
+    8.1061466795327261e-02,   /* fc(0) */
+    4.1340695955409297e-02,   /* fc(1) */
+    2.7677925684998338e-02,   /* fc(2) */
+    2.0790672103765093e-02,   /* fc(3) */
+    1.6644691189821193e-02,   /* fc(4) */
+    1.3876128823070748e-02,   /* fc(5) */
+    1.1896709945891770e-02,   /* fc(6) */
+    1.0411265261972096e-02,   /* fc(7) */
+    9.2554621827127329e-03,   /* fc(8) */
+    8.3305634333628708e-03,   /* fc(9) */
+};
+
+static double stirling_tail(const double k)
+{
+    cmb_assert_debug(k >= 0.0);
+
+    double fc;
+    if (k < 10.0) {
+        const int i = (int)k;
+        fc =  stirling_tab[i];
+    }
+    else {
+        const double kp1 = k + 1.0;
+        const double kp1s = kp1 * kp1;
+        fc = (1.0 / 12.0 - (1.0 / 360.0 - 1.0 / (1260.0 * kp1s)) / kp1s) / kp1;
+    }
+
+    return fc;
+}
+
+static double signof(const double x)
+{
+    if (x > 0.0) {
+        return 1.0;
+    }
+    else if (x < 0.0) {
+        return -1.0;
+    }
+    else {
+        cmb_assert_debug(x == 0.0);
+        return 0.0;
+    }
+}
+
+/*
+ * cmi_random_binomial_btrd - Transformed rejection with squeeze.
+ *      Expects the folded p, so p <= 0.5 here, and n*p at or above validity
+ *      threshold 10.
+ *
+ * See:
+ *     Hörmann, W. (1993), "The generation of binomial random variates",
+ *     Journal of Statistical Computation and Simulation 46(1-2):101-110.
+ *
+ *     Hörmann, W. (1992). The generation of binomial random variates. (April
+ *     1992 ed.) Institut für Statistik und Mathematik, Abt. f. Angewandte
+ *     Statistik u. Datenverarbeitung, WU Vienna University of Economics and
+ *     Business. Preprint Series / Department of Applied Statistics and Data
+ *     Processing No. 1
+ *     https://doi.org/10.57938/79ec156b-9c3d-4b5d-a939-07a1846443fd
+ *     https://research.wu.ac.at/ws/files/18967500/document.pdf
+ */
+static uint64_t cmi_random_binomial_btrd(const uint64_t n, const double p)
+{
+    cmb_assert_debug(n <= binomial_n_max);
+    cmb_assert_debug((p > 0.0) && (p <= 0.5));
+    cmb_assert_debug(((double)n * p) >= 10.0);
+
+    static CMB_THREAD_LOCAL uint64_t n_prev = 0u;
+    static CMB_THREAD_LOCAL double p_prev = -1.0;
+    static CMB_THREAD_LOCAL double dn = 0.0;
+    static CMB_THREAD_LOCAL double npq = 0.0;
+    static CMB_THREAD_LOCAL double a = 0.0;
+    static CMB_THREAD_LOCAL double b = 0.0;
+    static CMB_THREAD_LOCAL double c = 0.0;
+    static CMB_THREAD_LOCAL double vr = 0.0;
+    static CMB_THREAD_LOCAL double urvr = 0.0;
+    static CMB_THREAD_LOCAL double alpha = 0.0;
+    static CMB_THREAD_LOCAL double r = 0.0;
+    static CMB_THREAD_LOCAL double nr = 0.0;
+    static CMB_THREAD_LOCAL double m = 0.0;
+    static CMB_THREAD_LOCAL int64_t im = 0;
+
+    if ((n != n_prev) || (p != p_prev)) {
+        /* Update cache */
+        n_prev = n;
+        p_prev = p;
+        dn = (double)n;
+        m = floor((dn + 1.0) * p);
+        im = (int64_t)m;
+        const double q = 1.0 - p;
+        r = p / q;
+        nr = (dn + 1.0) * r;
+        npq = dn * p * q;
+        const double spq = sqrt(npq);
+        b = 1.15 + 2.53 * spq;
+        a = -0.0873 + 0.0248 * b + 0.01 * p;
+        c = dn * p + 0.5;
+        alpha = (2.83 + 5.1 / b) * spq;
+        vr = 0.92 - 4.2 / b;
+        urvr = 0.86 * vr;
+    }
+
+    for (;;) {
+        /* 1. Decomposition step */
+        double u = 0.0;
+        double v = cmb_random();
+        if (v <= urvr) {
+            /* Lucky, fast return */
+            u = (v / vr) - 0.43;
+            const double g = (2.0 * a) / (0.5 - fabs(u));
+            const double ret = floor(u * (g + b) + c);
+
+            cmb_assert_debug(ret >= 0.0);
+            return (uint64_t)ret;
+        }
+
+        /* 2. Generate candidate pair (u, v) */
+        if (v >= vr) {
+            /* Range (0.0, 1.0) */
+            u = (1.0 - cmb_random()) - 0.5;
+        }
+        else {
+            u = v/vr - 0.93;
+            u = signof(u) * 0.5 - u;
+            v = (1.0 - cmb_random()) * vr;
+        }
+
+        /* 3.0 Can it be rejected? */
+        const double us = 0.5 - fabs(u);
+        const double g = ((2.0 * a) / us) + b;
+        const int64_t k = (int64_t)floor(g * u + c);
+        if ((k < 0) || (k > dn)) {
+            /* Reject, try again */
+            continue;
+        }
+
+        v = v * alpha /(a / (us * us) + b);
+        const double km = fabs(k - m);
+
+        if (km <= 15.0) {
+            /* 3.1 Evaluate f(k) iteratively */
+            double f = 1.0;
+            if (im < k) {
+                int64_t i = im;
+                while (i != k) {
+                    i++;
+                    f *= nr/i - r;
+                }
+            }
+            else if (im > k) {
+                int64_t i = k;
+                while (i != im) {
+                    i++;
+                    v *= nr/i - r;
+                }
+            }
+
+            if (v <= f) {
+                return k;
+            }
+            else {
+                continue;
+            }
+        }
+
+        /* 3.2 Squeeze accept or reject */
+        v = log(v);
+        const double rho = (km/npq) * (((km/3.0 + 0.625) * km + 1.0/6.0) / npq + 0.5);
+        const double t = -km * km /(2.0 * npq);
+        if (v < t - rho) {
+            return k;
+        }
+        if (v > t + rho) {
+            continue;
+        }
+
+        /* 3.3 Setup for final check */
+        const double nm = n - m + 1.0;
+        const double h = (m + 0.5) * log((m + 1.0) / (r * nm))
+                    + stirling_tail(m) + stirling_tail(dn - m);
+
+        /* 3.4 Final acceptance-rejection test */
+        const double nk = dn - k + 1.0;
+        const double ugh = h + (dn + 1.0) * log(nm / nk)
+                          + (k + 0.5) * log(nk * r / (k + 1.0))
+                          - stirling_tail(k) - stirling_tail(dn - (double)k);
+        if (v <= ugh) {
+            return k;
+        }
+
+        /* No joy, try again */
+    }
+}
+
+
+/*
+ * cmb_random_binomial - Number of successes in n independent trials, each
+ * succeeding with probability p. Switching from chop-down inversion search
+ * to Hörmann's BTRD at np = 30 for performance, BTRD valid for np > 10.
+ */
+
+static const double binomial_np_switch = 30.0;
+
+uint64_t cmb_random_binomial(const uint64_t n, const double p)
+{
+    cmb_assert_release(n <= binomial_n_max);
+    cmb_assert_release((p > 0.0) && (p <= 1.0));
+
+    if (p == 1.0) {
+        /* Special case, guaranteed to succeed on every trial */
+        return n;
+    }
+
+    /* Fold to p <= 0.5: halves the inversion work  */
+    const bool flip = (p > 0.5);
+    const double pp = flip ? (1.0 - p) : p;
+    cmb_assert_debug(pp > 0.0);
+
+    uint64_t k;
+    if (((double)n * pp) < binomial_np_switch) {
+        k = cmi_random_binomial_chopdown(n, pp);
+    }
+    else {
+        k = cmi_random_binomial_btrd(n, pp);
+    }
+
+    cmb_assert_debug(k <= n);
+
+    return flip ? (n - k) : k;
 }
 
 /*
@@ -626,38 +907,42 @@ uint64_t cmb_random_negative_binomial(const uint64_t m, const double p)
         return 0u;
     }
 
-    uint64_t fctr = 0;
-    for (uint64_t ui = 0u; ui < m; ui++) {
-        /* The geometric distribution includes the final success, subtract it */
-        fctr += cmb_random_geometric(p) - 1u;
-    }
+    const double lambda = cmb_random_gamma(m, (1.0 - p) / p);
 
-    return fctr;
+    return cmb_random_poisson(lambda);
 }
 
 /*
  * Poisson distribution, number of arrivals per unit time in a Poisson
  *        process with arrival rate `r`, where `r > 0`.
  */
-static const double CMI_HALF_LOG_2PI = 0.91893853320467266954;
+
+/* Constant, 0.5 * log(2 * pi) */
+static const double half_log_2pi = 0.91893853320467266954;
 
 /* log(k!) for k < 10, where the Stirling series is not accurate enough. */
 static const double log_fact_table[10] = {
-    0.0,                     0.0,
-    0.69314718055994528623,  1.7917594692280549573,
-    3.1780538303479457518,   4.7874917427820458116,
-    6.579251212010101213,    8.5251613610654146669,
-    10.604602902745250859,   12.801827480081469091
+    0.0,
+    0.0,
+    0.69314718055994528623,
+    1.7917594692280549573,
+    3.1780538303479457518,
+    4.7874917427820458116,
+    6.579251212010101213,
+    8.5251613610654146669,
+    10.604602902745250859,
+    12.801827480081469091
 };
 
 /*
- * poisson_chop - Inversion by chop-down search from zero. Returns the smallest
- * k whose cumulative probability reaches the uniform draw.
+ * cmi_random_poisson_chopdown - Inversion by chop-down search from zero.
+ * Returns the smallest k whose cumulative probability reaches the uniform draw.
  * See Kemp, A. W. (1981), "Efficient generation of logarithmically distributed
  * pseudo-random variables", Applied Statistics 30(3)
  * or Devroye, L. (1986), Non-Uniform Random Variate Generation, Springer
+ * available online at https://luc.devroye.org/handbooksimulation1.pdf
  */
-uint64_t poisson_chop(const double r)
+uint64_t cmi_random_poisson_chopdown(const double r)
 {
     cmb_assert_debug(r > 0.0);
 
@@ -688,7 +973,7 @@ uint64_t poisson_chop(const double r)
 }
 
 /*
- * poisson_ptrd - Transformed rejection with decomposition. Constant expected
+ * cmi_random_poisson_ptrd - Transformed rejection with decomposition. Constant expected
  * cost in r. Roughly 86 percent of draws leave by the fast path having consumed
  * a single uniform and evaluated no transcendental. Only valid for r >= 10.
  *
@@ -700,7 +985,7 @@ uint64_t poisson_chop(const double r)
  *
  * BSD 3-Clause, see NOTICE.
  */
-uint64_t poisson_ptrd(const double r)
+uint64_t cmi_random_poisson_ptrd(const double r)
 {
     cmb_assert_debug(r >= 10.0);
 
@@ -758,7 +1043,7 @@ uint64_t poisson_ptrd(const double r)
         v = v * inv_alpha / (a / (us * us) + b);
 
         if (k >= 10.0) {
-            const double rhs = (k + 0.5) * log(r / k) - r - CMI_HALF_LOG_2PI
+            const double rhs = (k + 0.5) * log(r / k) - r - half_log_2pi
                                + k - (1.0 / 12.0 - 1.0 / (360.0 * k * k)) / k;
             if (log(v * smu) <= rhs) {
                 cmb_assert_debug(k >= 0.0);
@@ -774,19 +1059,6 @@ uint64_t poisson_ptrd(const double r)
             }
         }
     }
-}
-
-/*
- * cmb_random_poisson - Number of events in unit time at rate r.
- */
-#define PTRD_MAX 1e12
-#define PTRD_MIN 20
-uint64_t cmb_random_poisson(const double r)
-{
-    cmb_assert_release(r > 0.0);
-    cmb_assert_release(r <= PTRD_MAX);
-
-    return (r < PTRD_MIN) ? poisson_chop(r) : poisson_ptrd(r);
 }
 
 /*
@@ -814,7 +1086,7 @@ uint64_t cmb_random_discrete_uniform (const uint64_t s)
     return m >> 64u;
 }
 
-static double sum_tolerance = 1.0e-3;
+static const double sum_tolerance = 1.0e-3;
 static bool sums_to_one(const uint64_t n, const double p[n])
 {
     double sum = 0.0;
