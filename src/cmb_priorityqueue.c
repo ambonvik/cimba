@@ -332,7 +332,7 @@ uint64_t cmb_priorityqueue_position(struct cmb_priorityqueue *pqp,
     cmb_assert_release(pqp != NULL);
 
     struct cmi_hashheap *hp = &(pqp->queue);
-    if ((hp == NULL) || (hp->heap_count == 0u)) {
+    if (hp->heap_count == 0u) {
         return 0u;
     }
 
