@@ -78,10 +78,9 @@ static CMB_THREAD_LOCAL intptr_t recovery_buf[5];
 extern void cmi_coroutine_recovery_prepare(void *stack_marker);
 extern void cmi_coroutine_recovery_finalize(void *stack_marker);
 
+extern void cmi_coroutine_thread_cleanup(void);
 extern void cmi_event_thread_cleanup(void);
 extern void cmi_hashheap_thread_cleanup(void);
-extern void cmi_event_thread_cleanup(void);
-extern void cmi_coroutine_thread_cleanup(void);
 extern void cmi_mempool_thread_cleanup(void);
 
 /*
@@ -168,19 +167,18 @@ uint64_t cimba_thread_id(void)
 
 uint32_t cimba_threads_num(void)
 {
-    const uint32_t r = (cmg_worker_threads == 0u) ? cmi_cpu_cores()
-                                                  : cmg_worker_threads;
+    const uint32_t n_threads = __atomic_load_n(&cmg_worker_threads, __ATOMIC_RELAXED);
+    const uint32_t r = (n_threads == 0u) ? cmi_cpu_cores() : n_threads;
     cmb_assert_debug(r >= 1u);
 
     return r;
 }
 
-uint32_t cimba_threads_use(uint32_t n_threads)
+uint32_t cimba_threads_use(const uint32_t n_threads)
 {
     __atomic_store_n(&cmg_worker_threads, n_threads, __ATOMIC_RELAXED);
 
-    const uint32_t r = (cmg_worker_threads == 0u) ? cmi_cpu_cores()
-                                                  : cmg_worker_threads;
+    const uint32_t r = (n_threads == 0u) ? cmi_cpu_cores() : n_threads;
     cmb_assert_debug(r >= 1u);
 
     return r;
@@ -303,7 +301,7 @@ static void *thread_worker_func(void *arg)
                  * destroyed during the trial, just flush registry without
                  * calling registered teardown functions - may be intentional
                  * from the user, do not override.    */
-                cmb_logger_warning(stdout, "Memory leak detected, memregistry not empty at end of trial");;
+                cmb_logger_warning(stdout, "Memory leak detected, memregistry not empty at end of trial");
                 while (!cmi_dlist_is_empty(&cmi_memregistry)) {
                     (void)cmi_dlist_remove_first(&cmi_memregistry);
                 }
