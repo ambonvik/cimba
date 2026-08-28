@@ -681,8 +681,12 @@ void cmb_dataset_histogram_print(const struct cmb_dataset *dsp,
 
     if (low_lim == high_lim) {
         /* Autoscale to dataset range */
-        low_lim = dsp->min;
-        high_lim = dsp->max;
+        low_lim = floor(dsp->min);
+        const double rng = dsp->max - dsp->min;
+        const double w = fmax(1.0, ceil(rng/num_bins));
+        const double ncand = ceil(rng / w) + 1.0;
+        num_bins = (unsigned)(fmin((double)num_bins, ncand));
+        high_lim = low_lim + num_bins * w;
     }
 
     struct cmi_dataset_histogram *hp = NULL;
