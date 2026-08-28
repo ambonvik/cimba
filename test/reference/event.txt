@@ -15,94 +15,94 @@ Scheduled event 8
 Scheduled event 9
 Scheduling end event
 --------------------- Event queue ---------------------
-time    3.315 prio 4: hash_key 6	test_action	bar	yuk
-time    8.702 prio 3: hash_key 3	test_action	foo	yuk
-time    6.631 prio 5: hash_key 5	test_action	bar	bar
-time    10.55 prio 2: hash_key 9	test_action	yuk	yuk
-time    23.10 prio 1: hash_key 4	test_action	bar	foo
-time    12.30 prio 2: hash_key 2	test_action	foo	bar
-time    34.52 prio 3: hash_key 7	test_action	yuk	foo
-time    41.04 prio 3: hash_key 1	test_action	foo	foo
-time    14.88 prio 4: hash_key 8	test_action	yuk	bar
+time    3.629 prio 4: hash_key 6	test_action	bar	yuk
+time    3.764 prio 4: hash_key 8	test_action	yuk	bar
+time    4.295 prio 2: hash_key 2	test_action	foo	bar
+time    6.518 prio 1: hash_key 4	test_action	bar	foo
+time    10.26 prio 5: hash_key 5	test_action	bar	bar
+time    14.40 prio 3: hash_key 3	test_action	foo	yuk
+time    20.83 prio 3: hash_key 7	test_action	yuk	foo
+time    38.54 prio 3: hash_key 1	test_action	foo	foo
+time    18.10 prio 2: hash_key 9	test_action	yuk	yuk
 time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
 -------------------------------------------------------
 
 Searching for an event (test_action	bar	foo)...found event 4
-It has time 23.1029 priority 1.
+It has time 6.51762 priority 1.
 Canceling it
 
 Searching for it again...  --------------------- Event queue ---------------------
-time    3.315 prio 4: hash_key 6	test_action	bar	yuk
-time    8.702 prio 3: hash_key 3	test_action	foo	yuk
-time    6.631 prio 5: hash_key 5	test_action	bar	bar
-time    10.55 prio 2: hash_key 9	test_action	yuk	yuk
+time    3.629 prio 4: hash_key 6	test_action	bar	yuk
+time    3.764 prio 4: hash_key 8	test_action	yuk	bar
+time    4.295 prio 2: hash_key 2	test_action	foo	bar
+time    18.10 prio 2: hash_key 9	test_action	yuk	yuk
+time    10.26 prio 5: hash_key 5	test_action	bar	bar
+time    14.40 prio 3: hash_key 3	test_action	foo	yuk
+time    20.83 prio 3: hash_key 7	test_action	yuk	foo
+time    38.54 prio 3: hash_key 1	test_action	foo	foo
 time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
-time    12.30 prio 2: hash_key 2	test_action	foo	bar
-time    34.52 prio 3: hash_key 7	test_action	yuk	foo
-time    41.04 prio 3: hash_key 1	test_action	foo	foo
-time    14.88 prio 4: hash_key 8	test_action	yuk	bar
 -------------------------------------------------------
 
 Wildcard search, searching for test action events with subject yuk, any object
-	canceling 9
 	canceling 8
+	canceling 9
 	canceling 7
 --------------------- Event queue ---------------------
-time    3.315 prio 4: hash_key 6	test_action	bar	yuk
-time    8.702 prio 3: hash_key 3	test_action	foo	yuk
-time    6.631 prio 5: hash_key 5	test_action	bar	bar
-time    41.04 prio 3: hash_key 1	test_action	foo	foo
+time    3.629 prio 4: hash_key 6	test_action	bar	yuk
+time    10.26 prio 5: hash_key 5	test_action	bar	bar
+time    4.295 prio 2: hash_key 2	test_action	foo	bar
+time    38.54 prio 3: hash_key 1	test_action	foo	foo
 time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
-time    12.30 prio 2: hash_key 2	test_action	foo	bar
+time    14.40 prio 3: hash_key 3	test_action	foo	yuk
 -------------------------------------------------------
 
 Scheduling new events with subject yuk
 --------------------- Event queue ---------------------
-time    3.315 prio 4: hash_key 6	test_action	bar	yuk
-time    8.702 prio 3: hash_key 3	test_action	foo	yuk
-time    6.631 prio 5: hash_key 5	test_action	bar	bar
+time    3.629 prio 4: hash_key 6	test_action	bar	yuk
+time    10.26 prio 5: hash_key 5	test_action	bar	bar
+time    4.295 prio 2: hash_key 2	test_action	foo	bar
 time    20.00 prio 20: hash_key 12	test_action	yuk	bar
 time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
-time    12.30 prio 2: hash_key 2	test_action	foo	bar
+time    14.40 prio 3: hash_key 3	test_action	foo	yuk
 time    20.00 prio 20: hash_key 11	test_action	yuk	foo
-time    41.04 prio 3: hash_key 1	test_action	foo	foo
+time    38.54 prio 3: hash_key 1	test_action	foo	foo
 time    20.00 prio 20: hash_key 13	test_action	yuk	yuk
 -------------------------------------------------------
 
 Rescheduling and reprioritizing two events with subject yuk
 --------------------- Event queue ---------------------
-time    3.315 prio 4: hash_key 6	test_action	bar	yuk
-time    8.702 prio 3: hash_key 3	test_action	foo	yuk
-time    6.631 prio 5: hash_key 5	test_action	bar	bar
+time    3.629 prio 4: hash_key 6	test_action	bar	yuk
+time    10.26 prio 5: hash_key 5	test_action	bar	bar
+time    4.295 prio 2: hash_key 2	test_action	foo	bar
 time    20.00 prio 20: hash_key 13	test_action	yuk	yuk
 time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
-time    12.30 prio 2: hash_key 2	test_action	foo	bar
+time    14.40 prio 3: hash_key 3	test_action	foo	yuk
 time    28.00 prio 20: hash_key 11	test_action	yuk	foo
-time    41.04 prio 3: hash_key 1	test_action	foo	foo
+time    38.54 prio 3: hash_key 1	test_action	foo	foo
 time    20.00 prio 3: hash_key 12	test_action	yuk	bar
 -------------------------------------------------------
 
 Wildcard search, counting events with subject bar, any object
 Found 2 events
 --------------------- Event queue ---------------------
-time    3.315 prio 4: hash_key 6	test_action	bar	yuk
-time    8.702 prio 3: hash_key 3	test_action	foo	yuk
-time    6.631 prio 5: hash_key 5	test_action	bar	bar
+time    3.629 prio 4: hash_key 6	test_action	bar	yuk
+time    10.26 prio 5: hash_key 5	test_action	bar	bar
+time    4.295 prio 2: hash_key 2	test_action	foo	bar
 time    20.00 prio 20: hash_key 13	test_action	yuk	yuk
 time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
-time    12.30 prio 2: hash_key 2	test_action	foo	bar
+time    14.40 prio 3: hash_key 3	test_action	foo	yuk
 time    28.00 prio 20: hash_key 11	test_action	yuk	foo
-time    41.04 prio 3: hash_key 1	test_action	foo	foo
+time    38.54 prio 3: hash_key 1	test_action	foo	foo
 time    20.00 prio 3: hash_key 12	test_action	yuk	bar
 -------------------------------------------------------
 
 Wildcard search, cancelling any events with subject bar, any object
 Cancelled 2 events
 --------------------- Event queue ---------------------
-time    8.702 prio 3: hash_key 3	test_action	foo	yuk
+time    4.295 prio 2: hash_key 2	test_action	foo	bar
 time    20.00 prio 20: hash_key 13	test_action	yuk	yuk
-time    12.30 prio 2: hash_key 2	test_action	foo	bar
-time    41.04 prio 3: hash_key 1	test_action	foo	foo
+time    14.40 prio 3: hash_key 3	test_action	foo	yuk
+time    38.54 prio 3: hash_key 1	test_action	foo	foo
 time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
 time    20.00 prio 3: hash_key 12	test_action	yuk	bar
 time    28.00 prio 20: hash_key 11	test_action	yuk	foo
@@ -111,61 +111,70 @@ time    28.00 prio 20: hash_key 11	test_action	yuk	foo
 Executing the simulation, starting time 3.00000
 --------------------------------------------------------------------------------
 Time:		Type:	Action: 		Subject:		Object:
-    8.7018	dispatcher	test_action (45):  test_action	foo	yuk
-    12.300	dispatcher	test_action (45):  test_action	foo	bar
-    16.309	dispatcher	test_action (45):  test_action	foo	yuk
+    4.2945	dispatcher	test_action (45):  test_action	foo	bar
+    14.404	dispatcher	test_action (45):  test_action	foo	yuk
+    14.770	dispatcher	test_action (45):  test_action	foo	yuk
+    17.395	dispatcher	test_action (45):  test_action	foo	yuk
+    19.509	dispatcher	test_action (45):  test_action	foo	bar
     20.000	dispatcher	test_action (45):  test_action	yuk	yuk
     20.000	dispatcher	test_action (45):  test_action	yuk	bar
-    21.668	dispatcher	test_action (45):  test_action	yuk	bar
-    21.819	dispatcher	test_action (45):  test_action	yuk	yuk
-    22.068	dispatcher	test_action (45):  test_action	foo	bar
-    24.166	dispatcher	test_action (45):  test_action	foo	bar
-    24.332	dispatcher	test_action (45):  test_action	yuk	yuk
+    20.505	dispatcher	test_action (45):  test_action	yuk	bar
+    21.033	dispatcher	test_action (45):  test_action	foo	yuk
+    22.846	dispatcher	test_action (45):  test_action	foo	bar
+    24.701	dispatcher	test_action (45):  test_action	yuk	bar
     28.000	dispatcher	test_action (45):  test_action	yuk	foo
-    29.119	dispatcher	test_action (45):  test_action	foo	yuk
-    29.895	dispatcher	test_action (45):  test_action	foo	bar
-    32.372	dispatcher	test_action (45):  test_action	yuk	yuk
-    33.230	dispatcher	test_action (45):  test_action	foo	bar
-    35.510	dispatcher	test_action (45):  test_action	yuk	foo
-    40.925	dispatcher	test_action (45):  test_action	yuk	yuk
-    41.042	dispatcher	test_action (45):  test_action	foo	foo
-    42.404	dispatcher	test_action (45):  test_action	yuk	yuk
-    42.890	dispatcher	test_action (45):  test_action	foo	yuk
-    45.161	dispatcher	test_action (45):  test_action	foo	yuk
-    50.927	dispatcher	test_action (45):  test_action	yuk	foo
-    51.510	dispatcher	test_action (45):  test_action	foo	yuk
-    53.506	dispatcher	test_action (45):  test_action	foo	bar
-    54.223	dispatcher	test_action (45):  test_action	foo	bar
-    56.556	dispatcher	test_action (45):  test_action	yuk	yuk
-    57.715	dispatcher	test_action (45):  test_action	yuk	yuk
-    61.181	dispatcher	test_action (45):  test_action	foo	yuk
-    61.246	dispatcher	test_action (45):  test_action	yuk	bar
-    63.914	dispatcher	test_action (45):  test_action	yuk	yuk
-    67.915	dispatcher	test_action (45):  test_action	foo	foo
-    69.354	dispatcher	test_action (45):  test_action	yuk	bar
-    69.558	dispatcher	test_action (45):  test_action	yuk	bar
-    70.211	dispatcher	test_action (45):  test_action	foo	bar
-    70.576	dispatcher	test_action (45):  test_action	foo	foo
-    71.401	dispatcher	test_action (45):  test_action	foo	foo
-    71.402	dispatcher	test_action (45):  test_action	yuk	yuk
-    73.626	dispatcher	test_action (45):  test_action	yuk	yuk
-    74.992	dispatcher	test_action (45):  test_action	yuk	foo
-    75.784	dispatcher	test_action (45):  test_action	foo	yuk
-    77.867	dispatcher	test_action (45):  test_action	foo	foo
-    77.965	dispatcher	test_action (45):  test_action	yuk	foo
-    78.957	dispatcher	test_action (45):  test_action	foo	yuk
-    81.910	dispatcher	test_action (45):  test_action	yuk	yuk
-    83.775	dispatcher	test_action (45):  test_action	yuk	yuk
-    84.139	dispatcher	test_action (45):  test_action	foo	bar
-    85.134	dispatcher	test_action (45):  test_action	foo	yuk
-    85.535	dispatcher	test_action (45):  test_action	yuk	bar
-    89.113	dispatcher	test_action (45):  test_action	foo	bar
-    89.683	dispatcher	test_action (45):  test_action	yuk	yuk
-    95.278	dispatcher	test_action (45):  test_action	foo	bar
-    96.958	dispatcher	test_action (45):  test_action	foo	yuk
-    97.672	dispatcher	test_action (45):  test_action	foo	foo
-    97.681	dispatcher	test_action (45):  test_action	yuk	foo
-    98.419	dispatcher	test_action (45):  test_action	foo	yuk
+    29.116	dispatcher	test_action (45):  test_action	foo	bar
+    29.501	dispatcher	test_action (45):  test_action	foo	bar
+    32.491	dispatcher	test_action (45):  test_action	foo	yuk
+    38.536	dispatcher	test_action (45):  test_action	foo	foo
+    39.483	dispatcher	test_action (45):  test_action	yuk	foo
+    39.720	dispatcher	test_action (45):  test_action	yuk	bar
+    42.441	dispatcher	test_action (45):  test_action	yuk	foo
+    46.607	dispatcher	test_action (45):  test_action	foo	bar
+    49.039	dispatcher	test_action (45):  test_action	yuk	bar
+    51.149	dispatcher	test_action (45):  test_action	foo	bar
+    51.199	dispatcher	test_action (45):  test_action	foo	yuk
+    52.945	dispatcher	test_action (45):  test_action	foo	foo
+    53.215	dispatcher	test_action (45):  test_action	yuk	bar
+    54.380	dispatcher	test_action (45):  test_action	foo	foo
+    56.698	dispatcher	test_action (45):  test_action	foo	foo
+    57.788	dispatcher	test_action (45):  test_action	foo	foo
+    58.606	dispatcher	test_action (45):  test_action	yuk	yuk
+    59.006	dispatcher	test_action (45):  test_action	yuk	yuk
+    60.485	dispatcher	test_action (45):  test_action	yuk	yuk
+    62.531	dispatcher	test_action (45):  test_action	yuk	bar
+    62.940	dispatcher	test_action (45):  test_action	yuk	bar
+    63.752	dispatcher	test_action (45):  test_action	yuk	bar
+    65.807	dispatcher	test_action (45):  test_action	yuk	yuk
+    66.646	dispatcher	test_action (45):  test_action	yuk	yuk
+    68.336	dispatcher	test_action (45):  test_action	yuk	bar
+    69.302	dispatcher	test_action (45):  test_action	foo	foo
+    70.064	dispatcher	test_action (45):  test_action	yuk	bar
+    70.196	dispatcher	test_action (45):  test_action	foo	bar
+    70.540	dispatcher	test_action (45):  test_action	foo	yuk
+    70.746	dispatcher	test_action (45):  test_action	yuk	foo
+    71.274	dispatcher	test_action (45):  test_action	yuk	yuk
+    71.412	dispatcher	test_action (45):  test_action	yuk	yuk
+    71.621	dispatcher	test_action (45):  test_action	yuk	foo
+    72.033	dispatcher	test_action (45):  test_action	foo	foo
+    72.170	dispatcher	test_action (45):  test_action	yuk	yuk
+    72.985	dispatcher	test_action (45):  test_action	foo	yuk
+    73.614	dispatcher	test_action (45):  test_action	foo	foo
+    75.756	dispatcher	test_action (45):  test_action	foo	bar
+    76.819	dispatcher	test_action (45):  test_action	foo	bar
+    78.968	dispatcher	test_action (45):  test_action	yuk	yuk
+    81.050	dispatcher	test_action (45):  test_action	yuk	yuk
+    82.227	dispatcher	test_action (45):  test_action	yuk	yuk
+    82.237	dispatcher	test_action (45):  test_action	foo	bar
+    82.534	dispatcher	test_action (45):  test_action	yuk	bar
+    82.861	dispatcher	test_action (45):  test_action	yuk	foo
+    83.416	dispatcher	test_action (45):  test_action	yuk	foo
+    83.421	dispatcher	test_action (45):  test_action	yuk	yuk
+    83.672	dispatcher	test_action (45):  test_action	foo	bar
+    85.723	dispatcher	test_action (45):  test_action	yuk	yuk
+    87.285	dispatcher	test_action (45):  test_action	yuk	foo
+    87.959	dispatcher	test_action (45):  test_action	yuk	foo
+    91.478	dispatcher	test_action (45):  test_action	yuk	bar
     100.00	dispatcher	end_sim (55):  end_sim	<NULL>	<NULL>
     100.00	dispatcher	end_sim (56):  ===> end_sim: game over <===
 --------------------------------------------------------------------------------
