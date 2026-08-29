@@ -621,6 +621,28 @@ void cmi_dataset_histogram_fill(struct cmi_dataset_histogram *hp,
     }
 }
 
+/*
+ * histogram_nice_unit - Largest of 1, 2 or 5 times a power of ten that does
+ * not exceed v. Used to snap the label base to a round number.
+ */
+static double histogram_nice_unit(const double v)
+{
+    cmb_assert_debug(v > 0.0);
+
+    const double k = floor(log10(v));
+    const double mantissa = v / pow(10.0, k);
+
+    double c = 1.0;
+    if (mantissa >= 5.0) {
+        c = 5.0;
+    }
+    else if (mantissa >= 2.0) {
+        c = 2.0;
+    }
+
+    return c * pow(10.0, k);
+}
+
 void cmi_dataset_histogram_print(const struct cmi_dataset_histogram *hp,
                                  FILE *fp)
 {
@@ -634,22 +656,44 @@ void cmi_dataset_histogram_print(const struct cmi_dataset_histogram *hp,
     const uint16_t max_stars = 50u;
     const double scale = hp->binmax / (double)max_stars;
 
-    /* Print the histogram */
+    const double edge_mag = fmax(fabs(hp->low_lim), fabs(hp->high_lim));
+    const bool use_offset = (hp->binsize < (edge_mag * 1.0e-3));
+
+    double base = 0.0;
+    if (use_offset) {
+        const double span = (double)(hp->num_bins - 2u) * hp->binsize;
+        const double unit = histogram_nice_unit(span / 10.0);
+        base = floor(hp->low_lim / unit) * unit;
+    }
+
+    const double origin = hp->low_lim - base;
     data_print_line(fp, symbol_thin, line_length);
-    int r = fprintf(fp, "( -Infinity, %#10.4g)   |", hp->low_lim);
+
+    int r;
+    if (use_offset) {
+        r = fprintf(fp, "Bucket edges shown as offsets from base %.15g, bucket width %#.4g\n",
+                    base, hp->binsize);
+        cmb_assert_release(r > 0);
+        data_print_line(fp, symbol_thin, line_length);
+    }
+
+    r = fprintf(fp, "( -Infinity, %#10.4g)   |", origin);
     cmb_assert_release(r > 0);
     data_print_blocks(fp, scale, hp->hbins[0u]);
+
     for (unsigned ui = 1u; ui < hp->num_bins - 1u; ui++) {
         r = fprintf(fp, "[%#10.4g, %#10.4g)   |",
-                hp->low_lim + (ui - 1u) * hp->binsize,
-                hp->low_lim + ui * hp->binsize);
+                    origin + (double)(ui - 1u) * hp->binsize,
+                    origin + (double)ui * hp->binsize);
         cmb_assert_release(r > 0);
         data_print_blocks(fp, scale, hp->hbins[ui]);
     }
 
-    r = fprintf(fp, "[%#10.4g,   Infinity)   |", hp->high_lim);
+    r = fprintf(fp, "[%#10.4g,   Infinity)   |",
+                origin + (double)(hp->num_bins - 2u) * hp->binsize);
     cmb_assert_release(r > 0);
     data_print_blocks(fp, scale, hp->hbins[hp->num_bins - 1u]);
+
     data_print_line(fp, symbol_thin, line_length);
 }
 
