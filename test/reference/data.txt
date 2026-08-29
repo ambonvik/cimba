@@ -509,4 +509,31 @@ Min    1.021  First_Q    1.438  Median    1.489  Third_Q    1.807  Max    1.920
 
 Cleaning up: cmb_timeseries_terminate
 ================================================================================
+--------------------------------------------------------------------------------
+Testing empty datasets
+    0.0000	dispatcher	cmb_dataset_print (517):  Warning: No data to print, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_sort (275):  Warning: No data to sort, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_median (443):  Warning: Cannot take median of empty data set., seed 0x34f05c64d7ad598f	
+Median of empty dataset: 0.000000
+    0.0000	dispatcher	cmb_dataset_fivenum_print (470):  Warning: No data to display in five-number summary, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_histogram_print (785):  Warning: No data to display in histogram, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_ACF (814):  Warning: No data for calculating ACF, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_PACF (883):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_correlogram_print (1046):  Warning: No data for correlogram, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_summarize (408):  Warning: Cannot summarize empty data set., seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_summarize (408):  Warning: Cannot summarize empty data set., seed 0x34f05c64d7ad598f	
+N        0
+--------------------------------------------------------------------------------
+Testing empty timeseries
+    0.0000	dispatcher	cmb_timeseries_sort_x (440):  Warning: No data to sort, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_sort_t (473):  Warning: No data to sort, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_finalize (191):  Warning: Finalizing empty time series, nothing added., seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_print (260):  Warning: No data to print, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_median (508):  Warning: Cannot take median of empty time series., seed 0x34f05c64d7ad598f	
+Median of empty timeseries: 0.000000
+    0.0000	dispatcher	cmb_timeseries_fivenum_print (563):  Warning: No data to display in five-number summary, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_histogram_print (323):  Warning: No data to display in histogram, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_summarize (232):  Warning: Cannot summarize empty time series., seed 0x34f05c64d7ad598f	
+N        0
+--------------------------------------------------------------------------------
 ********************************************************************************
