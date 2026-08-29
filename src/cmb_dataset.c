@@ -914,8 +914,8 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
 
     for (unsigned uk = 2u; uk <= n; ++uk) {
         if (v <= pacf_min_variance) {
-            cmb_logger_warning(NULL,
-                "PACF: prediction variance exhausted at lag %u, "
+            cmb_logger_warning(stdout,
+                "Prediction variance exhausted at lag %u, "
                 "remaining coefficients set to zero", uk - 1u);
             for (unsigned uj = uk; uj <= n; ++uj) {
                 pacf[uj] = 0.0;
@@ -942,33 +942,6 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
         }
 
         v *= (1.0 - p * p);
-    }
-
-    /* Calculate phi[k][j], the j-th coefficient for a k-th order
-     * autoregression model     */
-    for (unsigned uk = 2u; uk <= n; ++uk) {
-        double numsum = 0.0;
-        for (unsigned uj = 1u; uj < uk; ++uj) {
-            numsum += phi[uk - 1][uj] * acf[uk - uj];
-        }
-
-        double densum = 0.0;
-        for (unsigned uj = 1u; uj < uk; ++uj) {
-            densum += phi[uk - 1][uj] * acf[uj];
-        }
-
-        /* The k-th PACF coefficient is the k-th autoregression
-         * coefficient phi[k][k]    */
-        cmb_assert_debug(densum < 1.0);
-        phi[uk][uk] = (acf[uk] - numsum) / (1.0 - densum);
-        pacf[uk] = phi[uk][uk];
-        cmb_assert_debug((pacf[uk] >= -1.0) && (pacf[uk] <= 1.0));
-
-        /* Update everything else for the next iteration */
-        for (unsigned uj = 1u; uj < uk; ++uj) {
-            phi[uk][uj] = phi[uk - 1u][uj]
-                          - phi[uk][uk] * phi[uk - 1u][uk - uj];
-        }
     }
 
     cmi_free(phi[0]);
