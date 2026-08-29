@@ -181,7 +181,7 @@ static inline double cmb_random_uniform(const double min, const double max)
 
 /**
  * @brief Triangular distribution on the interval `[min, max)` with peak at
- *        `mode`, where `min < mode < max`.
+ *        `mode`, where `min <= mode <= max` and `min < max`.
  *
  * The probability density function is zero at `min` and `max`, and reaches a
  * maximum of `2 / (max - min)` at `mode`. The mean is `(min + mode + max) / 3`.
@@ -376,20 +376,7 @@ static inline double cmb_random_exponential(const double mean)
  *
  * See also https://en.wikipedia.org/wiki/Erlang_distribution
  */
-CMB_MAYBE_UNUSED
-static inline double cmb_random_erlang(const unsigned k, const double m)
-{
-    cmb_assert_release(k > 0u);
-    cmb_assert_release(m > 0.0);
-
-    double x = 0.0;
-    for (unsigned i = 0u; i < k; i++) {
-        x += cmb_random_exponential(m);
-    }
-
-    cmb_assert_debug(x >= 0.0);
-    return x;
-}
+extern double cmb_random_erlang(const unsigned k, const double m);
 
 /**
  * @brief Hypoexponential on `[0, oo)`, a sum of `n` exponentially distributed
@@ -826,11 +813,8 @@ extern uint64_t cmi_random_poisson_ptrd(double r);
 
 /**
  * @brief Poisson distribution, number of arrivals per unit time in a Poisson
- *        process with arrival rate `r > 0`. Note that the algorithm used
- *        loses numerical precision for very large `r` above 1e14 or so. At such
- *        rates. The Poisson distribution is indistinguishable from the normal
- *        distribution. Use that instead for `r > 1e12`. We limit the valid
- *        parameter range to `r > 0` and `r < 1e12` here.
+ *        process with arrival rate `r > 0`. Rates higher than 1e18 are not
+ *        numerically representable, so `r < 1e18`.
  *
  * Mean `r`, variance `r`, interarrival times exponentially distributed with
  * mean `1/r`.
@@ -840,18 +824,7 @@ extern uint64_t cmi_random_poisson_ptrd(double r);
  *
  * See also https://en.wikipedia.org/wiki/Poisson_distribution
  */
-CMB_MAYBE_UNUSED
-static inline uint64_t cmb_random_poisson(double r)
-{
-    cmb_assert_release(r > 0.0);
-    cmb_assert_release(r <= 1e12);
-
-    /* Hörmann's PTRD is valid for r > 10, faster for r > 15-20.
-     * A simple inversion search is faster below. Switch at 17 here.
-     * Implementation references given in cmb_random.c */
-    return (r < 17.0) ? cmi_random_poisson_chopdown(r)
-                      : cmi_random_poisson_ptrd(r);
-}
+extern uint64_t cmb_random_poisson(double r);
 
 /**
  * @brief A discrete uniform distribution on `[0, 1, ..., n-1]` for `n > 0`.

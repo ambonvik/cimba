@@ -27,7 +27,6 @@
  */
 
 #include <math.h>
-#include <stdbool.h>
 #include <stdio.h>
 
 #include "cmb_logger.h"
@@ -52,7 +51,7 @@ static CMB_THREAD_LOCAL struct {
 /* Storage for the seed used in this thread */
 static CMB_THREAD_LOCAL uint64_t initial_seed = DUMMY_SEED;
 
-/*
+/*******************************************************************************
  * Main pseudo-random number generator - 64-bit output, 256-bit state.
  * An implementation of Chris Doty-Humphrey's sfc64. Fast and high-quality.
  * Public domain, see https://pracrand.sourceforge.net
@@ -151,7 +150,7 @@ uint64_t cmb_random_curseed(void)
     return initial_seed;
 }
 
-/*
+/*******************************************************************************
  * Exponential distribution, fast ziggurat method.
  *
  * Basically, this is a rejection sampling algorithm. We want to generate a
@@ -225,14 +224,16 @@ static int64_t zig_sample63(void)
     return r;
 }
 
-/*
- * We #include the lookup tables to avoid cluttering up this code.
+/* We #include the lookup tables to avoid cluttering up this code.
  * The file is built on the fly in the build script by executing programs
- * found in src/codegen
- */
+ * found in src/codegen */
 #include "cmi_random_exp_zig.inc"
 
-/* Fallback sampling function, called in about 1,5 % of cases */
+/* Fallback sampling function, called in about 1,5 % of cases.
+ * Note that it uses signed integers even if exponentials are non-negative,
+ * since casts between signed int and double are faster than between
+ * unsigned and double. The doubles have a 53-bit mantissa anyway, so the
+ * difference between 64 and 63 bit integers does not lose any precision. */
 double cmi_random_exp_not_hot(int64_t i_cand_x)
 {
     /* Offset for tail sample generation, implemented as iteration */
@@ -303,7 +304,31 @@ double cmi_random_exp_not_hot(int64_t i_cand_x)
     cmb_assert_debug(0);
 }
 
-/*
+/*******************************************************************************
+ * Erlang distribution, adds up a few exponentials for small k, calls gamma
+ * for large k.
+ */
+
+double cmb_random_erlang(const unsigned k, const double m)
+{
+    cmb_assert_release(k > 0u);
+    cmb_assert_release(m > 0.0);
+
+    double x = 0.0;
+    if (k < 10) {
+        for (unsigned i = 0u; i < k; i++) {
+            x += cmb_random_exponential(m);
+        }
+    }
+    else {
+        x = cmb_random_gamma((double)k, m);
+    }
+
+    cmb_assert_debug(x >= 0.0);
+    return x;
+}
+
+/*******************************************************************************
  * Hyperexponential on [0, oo), choosing and samples one of n exponential
  * distributions. The probability of selecting distribution i is p_arr[i],
  * the mean of that distribution is m_arr[i].
@@ -331,7 +356,7 @@ double cmb_random_hyperexponential(const uint64_t n,
     return x;
 }
 
-/*
+/*******************************************************************************
  * Normal distribution, fast Ziggurat method.
  *
  * Optimized algorithm from Chris McFarland, the same source and method as
@@ -349,7 +374,7 @@ static inline double sc_nor_pdf(const double x)
 /* #include the lookup tables to avoid cluttering up this code */
 #include "cmi_random_nor_zig.inc"
 
-/* The actual normal distribution sampling function */
+/* The fallback normal distribution sampling function */
 double cmi_random_nor_not_hot(int64_t i_cand_x)
 {
     /* Save the sign bit for later use and clear it */
@@ -451,7 +476,7 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
     cmb_assert_debug(false);
 }
 
-/*
+/*******************************************************************************
  * Gamma distribution
  *
  * Rejection sampling with an easy-to-check squeeze underneath the pdf.
@@ -475,7 +500,7 @@ double cmb_random_std_gamma(double shape)
 
     double mult = 1.0;
     if (shape < 1.0) {
-        /* Make sure we do not accidentally produce a zero, range [0,1) */
+        /* Make sure we do not accidentally produce a zero */
         const double f = 1.0 - cmb_random();
         cmb_assert_debug(f > 0.0);
         mult = pow(f, 1.0 / shape);
@@ -510,13 +535,16 @@ double cmb_random_std_gamma(double shape)
     /* Not reached */
 }
 
-/* Triangular distribution */
+/*******************************************************************************
+ * Triangular distribution
+ */
 double cmb_random_triangular(const double min,
                              const double mode,
                              const double max)
 {
     cmb_assert_release(min <= mode);
     cmb_assert_release(mode <= max);
+    cmb_assert_release(min < max);
 
     const double u = cmb_random();
 
@@ -532,7 +560,9 @@ double cmb_random_triangular(const double min,
     return x;
 }
 
-/* Modified PERT distribution */
+/*******************************************************************************
+ * Modified PERT distribution
+ */
 double cmb_random_PERT_mod(const double min,
                            const double mode,
                            const double max,
@@ -551,7 +581,9 @@ double cmb_random_PERT_mod(const double min,
     return x;
 }
 
-/* Simple flip of a fair unbiased coin, caching bits for efficiency */
+/*******************************************************************************
+ * Simple flip of a fair unbiased coin, caching bits for efficiency
+ */
 int cmb_random_flip(void)
 {
     static CMB_THREAD_LOCAL uint64_t bits;
@@ -565,7 +597,7 @@ int cmb_random_flip(void)
     return ((bits >> --bitpos) & 1) ? 1 : 0;
 }
 
-/*
+/*******************************************************************************
  * Geometric distribution, the number of trials until and including the
  * first success.
  */
@@ -598,17 +630,18 @@ uint64_t cmb_random_geometric(const double p)
     return x;
 }
 
+/******************************************************************************
+ * Binomial distribution. Uses Hörmann's fast BTRD algorithm for large rates
+ * and a simple inversion search for small.
+ */
+
 /*
- * Binomial distribution.
- * Max n at 2^53
- *
+ * cmi_random_binomial_chopdown - Simple nversion chop-down search.
+ * Expects already folded p, so p <= 0.5 here. Limit n range to 2^53, size of a
+ * double mantissa.
  */
 static const uint64_t binomial_n_max = UINT64_C(9007199254740992);
 
-/*
- * cmi_random_binomial_chopdown - Inversion chop-down search.
- * Expects already folded p, so p <= 0.5 here.
- */
 static uint64_t cmi_random_binomial_chopdown(const uint64_t n, const double p)
 {
     cmb_assert_debug(n <= binomial_n_max);
@@ -745,7 +778,7 @@ static uint64_t cmi_random_binomial_btrd(const uint64_t n, const double p)
     static CMB_THREAD_LOCAL int64_t im = 0;
 
     if ((n != n_prev) || (p != p_prev)) {
-        /* Update cache */
+        /* 0. Update cache */
         n_prev = n;
         p_prev = p;
         dn = (double)n;
@@ -893,54 +926,13 @@ uint64_t cmb_random_binomial(const uint64_t n, const double p)
     return flip ? (n - k) : k;
 }
 
-/*
- * Negative binomial distribution, number of failures until m'th success,
- * where p > 0 is the probability of success in each trial.
- */
-uint64_t cmb_random_negative_binomial(const uint64_t m, const double p)
-{
-    cmb_assert_release(m > 0);
-    cmb_assert_release((p > 0.0) && (p <= 1.0));
-
-    if (p == 1.0) {
-        /* Special case, guaranteed to succeed on first trial */
-        return 0u;
-    }
-
-    const double lambda = cmb_random_gamma(m, (1.0 - p) / p);
-
-    return cmb_random_poisson(lambda);
-}
-
-/*
+/*******************************************************************************
  * Poisson distribution, number of arrivals per unit time in a Poisson
  *        process with arrival rate `r`, where `r > 0`.
  */
 
-/* Constant, 0.5 * log(2 * pi) */
-static const double half_log_2pi = 0.91893853320467266954;
-
-/* log(k!) for k < 10, where the Stirling series is not accurate enough. */
-static const double log_fact_table[10] = {
-    0.0,
-    0.0,
-    0.69314718055994528623,
-    1.7917594692280549573,
-    3.1780538303479457518,
-    4.7874917427820458116,
-    6.579251212010101213,
-    8.5251613610654146669,
-    10.604602902745250859,
-    12.801827480081469091
-};
-
 /*
- * cmi_random_poisson_chopdown - Inversion by chop-down search from zero.
- * Returns the smallest k whose cumulative probability reaches the uniform draw.
- * See Kemp, A. W. (1981), "Efficient generation of logarithmically distributed
- * pseudo-random variables", Applied Statistics 30(3)
- * or Devroye, L. (1986), Non-Uniform Random Variate Generation, Springer
- * available online at https://luc.devroye.org/handbooksimulation1.pdf
+ * cmi_random_poisson_chopdown - Simple inversion search
  */
 uint64_t cmi_random_poisson_chopdown(const double r)
 {
@@ -972,18 +964,45 @@ uint64_t cmi_random_poisson_chopdown(const double r)
     return k;
 }
 
+/* Constant, 0.5 * log(2 * pi) = log(sqrt(2 * pi)) */
+static const double half_log_2pi = 0.91893853320467278;
+
+/* log(k!) for k < 10, where the Stirling series is not accurate enough.
+ * Calculated in Python mpmath at 50 digits precision and rounded to double
+ * precision resolution. */
+static const double log_fact_table[10] = {
+    0.0,
+    0.0,
+    0.69314718055994531,
+    1.7917594692280550,
+    3.1780538303479456,
+    4.7874917427820460,
+    6.5792512120101010,
+    8.5251613610654143,
+   10.6046029027452502,
+   12.8018274800814696
+};
+
 /*
  * cmi_random_poisson_ptrd - Transformed rejection with decomposition. Constant expected
  * cost in r. Roughly 86 percent of draws leave by the fast path having consumed
  * a single uniform and evaluated no transcendental. Only valid for r >= 10.
  *
- * Adapted from Roy Ward's C++ implementation (BSD 3-clause, see NOTICE),
- * https://github.com/royward/random-variate-poisson/blob/main/LICENSE
- * of an algorithm from
- *     Hoermann, W. (1993), "The transformed rejection method for generating
- *     Poisson random variables", Insurance: Mathematics and Economics 12(1):39-45.
+ * See
+ *  Hörmann, W. (1993), "The transformed rejection method for generating
+ *  Poisson random variables", Insurance: Mathematics and Economics 12(1):39-45.
  *
- * BSD 3-Clause, see NOTICE.
+ *  Hörmann, W. (1992). The transformed rejection method for generating Poisson random
+ *  variables. (April 1992 ed.) Institut für Statistik und Mathematik, Abt. f. Angewandte
+ *  Statistik u. Datenverarbeitung, WU Vienna University of Economics and Business.
+ *  Preprint Series / Department of Applied Statistics and Data Processing No. 2
+ *  https://doi.org/10.57938/feb80d49-2db4-4305-bf0f-09b35b3f45f1
+ *  https://research.wu.ac.at/ws/portalfiles/portal/18953249/document.pdf
+ *
+ * Implementation adapted from Roy Ward's C++ implementation (BSD 3-clause, see NOTICE),
+ *      https://github.com/royward/random-variate-poisson
+ * See also his blog post:
+ *      https://www.orange-kiwi.com/posts/fast-integer-poisson-random-variates-for-procedural-generation/
  */
 uint64_t cmi_random_poisson_ptrd(const double r)
 {
@@ -999,21 +1018,23 @@ uint64_t cmi_random_poisson_ptrd(const double r)
     static CMB_THREAD_LOCAL double inv_alpha = 0.0;
 
     if (r != r_prev) {
-        /* Update cache */
+        /* 0. Update cache */
         r_prev = r;
         smu = sqrt(r);
         b = 0.931 + 2.53 * smu;
         a = -0.059 + 0.02483 * b;
+        inv_alpha = 1.1239 + 1.1328 / (b - 3.4);
         vr = 0.9277 - 3.6224 / (b - 2.0);
         vr_fast = 0.86 * vr;
-        inv_alpha = 1.1239 + 1.1328 / (b - 3.4);
     }
 
     for (;;) {
+        /* 1. Generate a uniform random number V */
         double v = cmb_random();
         double u;
 
         if (v < vr_fast) {
+            /* Decomposition step succeeded */
             u = v / vr - 0.43;
             const double us = 0.5 - fabs(u);
             const double k = floor((2.0 * a / us + b) * u + r + 0.445);
@@ -1022,23 +1043,27 @@ uint64_t cmi_random_poisson_ptrd(const double r)
             return (uint64_t)k;
         }
 
+        /* 2. Generate a uniform random number U */
         const double t = cmb_random();
         if (v >= vr) {
+            /* Generate U in  in (-0.5, 0.5)  */
             u = t - 0.5;
         }
         else {
+            /* Generate V in (0, vr) */
             u = v / vr - 0.93;
-            u = ((u < 0.0) ? -0.5 : 0.5) - u;
+            u = signof(u) * 0.5 - u;
             v = t * vr;
         }
 
+        /* 3.0 Can it be rejected out of hand? */
         const double us = 0.5 - fabs(u);
         if ((us <= 0.0) || ((us < 0.013) && (v > us))) {
-            /* us == 0 is reachable because cmb_random() covers [0, 1) and so
-             * u can be exactly -0.5. Guard before dividing by us. */
+            /* Try another */
             continue;
         }
 
+        /* 3.1 Transform */
         const double k = floor((2.0 * a / us + b) * u + r + 0.445);
         v = v * inv_alpha / (a / (us * us) + b);
 
@@ -1051,19 +1076,71 @@ uint64_t cmi_random_poisson_ptrd(const double r)
             }
         }
         else if (k >= 0.0) {
-            /* k in [0, 10): exact log factorial. The k >= 0 test must precede
-             * the table index, and rejects the -inf produced by tiny us. */
+            /* 3.2 k in [0, 10): check exact log factorial. */
             const uint64_t ki = (uint64_t)k;
             if (log(v) < ((k * log(r)) - r - log_fact_table[ki])) {
                 return ki;
             }
         }
+
+        /* No joy, try another */
     }
 }
 
-/*
- * Generate a uniform integer on [0, s) by using Daniel Lemire's "nearly
- * divisionless" algorithm. See:
+uint64_t cmb_random_poisson(double r)
+{
+    cmb_assert_release(r > 0.0);
+    cmb_assert_release(r <= 1.0e18);
+
+    uint64_t x;
+    if (r < 17.0) {
+        /* The simple inversion search is faster */
+        x = cmi_random_poisson_chopdown(r);
+    }
+    else if (r < 1.0e10) {
+        /* Use Hörmann's PTRD */
+        x = cmi_random_poisson_ptrd(r);
+    }
+    else {
+        /* The normal approximation is more accurate for very large r */
+        const double z = cmb_random_std_normal();
+        const double d = floor(r + sqrt(r) * z + 0.5);
+        if (d <= 0.0) {
+            x = UINT64_C(0);
+        }
+        else if (d >= (double)UINT64_MAX) {
+            x = UINT64_MAX;
+        }
+        else {
+            x = (uint64_t) d;
+        }
+    }
+
+    return x;
+}
+
+/*******************************************************************************
+ * Negative binomial distribution, number of failures until m'th success,
+ * where p > 0 is the probability of success in each trial.
+ */
+uint64_t cmb_random_negative_binomial(const uint64_t m, const double p)
+{
+    cmb_assert_release(m > 0);
+    cmb_assert_release((p > 0.0) && (p <= 1.0));
+
+    if (p == 1.0) {
+        /* Special case, guaranteed to succeed on first trial */
+        return 0u;
+    }
+
+    const double lambda = cmb_random_gamma(m, (1.0 - p) / p);
+
+    return cmb_random_poisson(lambda);
+}
+
+/*******************************************************************************
+ * Discrete uniform, generate a uniform integer on [0, s) by using Daniel
+ * Lemire's "nearly divisionless" algorithm. See:
  *  https://arxiv.org/pdf/1805.10941
  *  https://lemire.me/blog/2019/06/06/nearly-divisionless-random-integer-generation-on-various-systems/
  */
@@ -1097,7 +1174,7 @@ static bool sums_to_one(const uint64_t n, const double p[n])
     return (fabs(sum - 1.0) <= sum_tolerance) ? true : false;
 }
 
-/*
+/*******************************************************************************
  * Non-uniform discrete distribution on [0, n-1], typically used for selecting
  * in an array.
  */

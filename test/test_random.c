@@ -24,7 +24,6 @@
 
 #include <errno.h>
 #include <inttypes.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -923,7 +922,7 @@ static void test_speed_vose_alias(const uint64_t nsamples, const unsigned init, 
         const double t_alias = (double)(ce_alias - cs_alias) / CLOCKS_PER_SEC;
         const double ips_alias = (double)nsamples / t_alias;
         const double speedup = (ips_alias - ips_simple) / ips_simple;
-        printf("%u\t%9.4g\t%9.4g\t%8.4g%%\n", n, ips_simple, ips_alias, 100.0 * speedup);
+        printf("%u\t%9.4g\t%9.4g\t%8.4g %%\n", n, ips_simple, ips_alias, 100.0 * speedup);
     }
 
     cmi_test_print_line("=");
@@ -1038,6 +1037,7 @@ int main(const int argc, char *argv[])
 
     test_quality_poisson(nsamples, 5.0);
     test_quality_poisson(nsamples, 50.0);
+    test_quality_poisson(nsamples, 1.0e13);
 
     test_quality_dice(nsamples, 1, 6);
 
