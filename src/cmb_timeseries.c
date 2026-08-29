@@ -18,6 +18,7 @@
  */
 
 #include <float.h>
+#include <inttypes.h>
 #include <stdio.h>
 
 #include "cmb_logger.h"
@@ -186,17 +187,18 @@ uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, const double t)
     const uint64_t n = dsp->count;
 
     uint64_t r = UINT64_C(0);
-    if (dsp->xa != NULL) {
+    if (dsp->count == 0u) {
+        cmb_logger_warning(stdout, "Finalizing empty time series, nothing added.");
+    }
+    else {
+        cmb_assert_debug(dsp->xa != NULL);
         cmb_assert_debug(tsp->ta != NULL);
-        cmb_assert_debug(tsp->ta[n - 1u] <= t);
+        /* Validate user input, hence release assert */
+        cmb_assert_release(tsp->ta[n - 1u] <= t);
 
         const double x = dsp->xa[n - 1u];
         r = cmb_timeseries_add(tsp, x, t);
         cmb_assert_debug((r == n + 1) && (dsp->xa[n] == x) && (tsp->ta[n] == t));
-    }
-    else {
-        cmb_assert_debug(n == UINT64_C(0));
-        cmb_logger_info(stdout, "Finalizing empty data set.");
     }
 
     return r;
@@ -215,35 +217,35 @@ uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsrc,
 {
     cmb_assert_release(tsrc != NULL);
     cmb_assert_release(wtgt != NULL);
-
-    const struct cmb_dataset *dsp = (struct cmb_dataset *)tsrc;
-    const uint64_t n = dsp->count;
-    if (n == 0u) {
-        cmb_logger_warning(stdout, "Cannot summarize empty timeseries.");
-        return 0u;
-    }
-
     const struct cmb_dataset *dsrc = &(tsrc->ds);
     cmb_assert_release(dsrc->cookie == CMI_INITIALIZED);
-    cmb_assert_release(dsrc->xa != NULL);
 
+    /* Ensure consistent state for wtgt */
     if (wtgt->ds.cookie == CMI_INITIALIZED) {
         cmb_wtdsummary_terminate(wtgt);
-        cmb_assert_debug(wtgt->ds.cookie != CMI_INITIALIZED);
     }
-
     cmb_wtdsummary_initialize(wtgt);
-    cmb_assert_debug(wtgt->ds.cookie == CMI_INITIALIZED);
 
+    /* Is there anything to put into it? */
     const uint64_t un = cmb_timeseries_count(tsrc);
-    cmb_assert_debug(un > 0u);
-    for (uint64_t ui = 0u; ui < un - 1u; ui++) {
-        const double x = dsrc->xa[ui];
-        const double w = tsrc->wa[ui];
-        (void)cmb_wtdsummary_add(wtgt, x, w);
+    if (un == 0u) {
+        cmb_logger_warning(stdout, "Cannot summarize empty time series.");
+   }
+    else if (un == 1u) {
+        cmb_logger_info(stdout, "Cannot summarize single time series entry.");
+    }
+    else {
+        cmb_assert_debug(tsrc->wa != NULL);
+        cmb_assert_debug(dsrc->xa != NULL);
+
+        for (uint64_t ui = 0u; ui < un - 1u; ui++) {
+            const double x = dsrc->xa[ui];
+            const double w = tsrc->wa[ui];
+            (void)cmb_wtdsummary_add(wtgt, x, w);
+        }
     }
 
-    return un - 1u;
+    return wtgt->ds.count;
 }
 
 void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp)
@@ -254,15 +256,17 @@ void cmb_timeseries_print(const struct cmb_timeseries *tsp, FILE *fp)
 
     const struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     const uint64_t n = dsp->count;
-    if (dsp->xa != NULL) {
+    if (n == 0u) {
+        cmb_logger_warning(fp, "No data to print");
+    }
+    else {
+        cmb_assert_debug(dsp->xa != NULL);
         cmb_assert_debug(tsp->ta != NULL);
         cmb_assert_debug(tsp->wa != NULL);
+
         for (uint64_t ui = 0; ui < n; ui++) {
             fprintf(fp, "%g\t%g\t%g\n", tsp->ta[ui], dsp->xa[ui], tsp->wa[ui]);
         }
-    }
-    else {
-        cmb_logger_warning(fp, "No data to print");
     }
 }
 
@@ -340,12 +344,12 @@ uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
                              const struct cmb_timeseries *src)
 {
     cmb_assert_release(src != NULL);
-    cmb_assert_release(((struct cmb_dataset *)src)->cookie == CMI_INITIALIZED);
+    const struct cmb_dataset *dsp_src = (struct cmb_dataset *)src;
+    cmb_assert_release(dsp_src->cookie == CMI_INITIALIZED);
     cmb_assert_release(tgt != NULL);
     cmb_assert_release(tgt != src);
 
-    struct cmb_dataset *dsp_tgt = (struct cmb_dataset *) tgt;
-    const struct cmb_dataset *dsp_src = (struct cmb_dataset *)src;
+    struct cmb_dataset *dsp_tgt = (struct cmb_dataset *)tgt;
     (void)cmb_dataset_copy(dsp_tgt, dsp_src);
 
     if (tgt->ta != NULL) {
@@ -428,12 +432,19 @@ static void timeseries_heapify(const uint64_t un,
 void cmb_timeseries_sort_x(struct cmb_timeseries *tsp)
 {
     cmb_assert_release(tsp != NULL);
-    cmb_assert_release(((struct cmb_dataset *)tsp)->cookie == CMI_INITIALIZED);
-
     struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
-    if (dsp->xa != NULL) {
-        const uint64_t un = dsp->count;
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
+
+    const uint64_t un = dsp->count;
+    if (un == 0u) {
+        cmb_logger_warning(stdout, "No data to sort");
+    }
+    else {
+        cmb_assert_debug(tsp->ta != NULL);
+        cmb_assert_debug(tsp->wa != NULL);
+        cmb_assert_debug(dsp->xa != NULL);
         cmb_assert_debug(INT64_MAX >= UINT64_MAX / 2u);
+
         for (int64_t root = (int64_t)(un / 2u) - 1u; root >= 0u; root--) {
             timeseries_heapify(un, dsp->xa, tsp->ta, tsp->wa,  root);
         }
@@ -454,12 +465,19 @@ void cmb_timeseries_sort_x(struct cmb_timeseries *tsp)
 void cmb_timeseries_sort_t(struct cmb_timeseries *tsp)
 {
     cmb_assert_release(tsp != NULL);
-    cmb_assert_release(((struct cmb_dataset *)tsp)->cookie == CMI_INITIALIZED);
-
     struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
-    if (tsp->ta != NULL) {
-        const uint64_t un = dsp->count;
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
+
+    const uint64_t un = dsp->count;
+    if (un == 0u) {
+        cmb_logger_warning(stdout, "No data to sort");
+    }
+    else {
+        cmb_assert_debug(tsp->ta != NULL);
+        cmb_assert_debug(tsp->wa != NULL);
+        cmb_assert_debug(dsp->xa != NULL);
         cmb_assert_debug(INT64_MAX >= UINT64_MAX / 2u);
+
         for (int64_t root = (int64_t)(un / 2u) - 1u; root >= 0u; root--) {
             timeseries_heapify(un, tsp->ta, dsp->xa, tsp->wa,  root);
         }
@@ -482,39 +500,47 @@ void cmb_timeseries_sort_t(struct cmb_timeseries *tsp)
 double cmb_timeseries_median(const struct cmb_timeseries *tsp)
 {
     cmb_assert_release(tsp != NULL);
-    cmb_assert_release(((struct cmb_dataset *)tsp)->cookie == CMI_INITIALIZED);
-    cmb_assert_release(tsp->wa != NULL);
+    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
-    struct cmb_timeseries tmp_ts = { 0 };
-    cmb_timeseries_initialize(&tmp_ts);
-    const uint64_t un = cmb_timeseries_copy(&tmp_ts, tsp);
-    cmb_timeseries_sort_x(&tmp_ts);
-
-    const struct cmb_dataset *dsp = (struct cmb_dataset *)(&tmp_ts);
-    cmb_assert_debug(dsp->xa != NULL);
-    cmb_assert_debug(dsp->count == un);
-
-    double wsum = 0.0;
-    double *wcum = cmi_calloc(un, sizeof(*wcum));
-    for (uint64_t ui = 0u; ui < un; ui++) {
-        wsum += tmp_ts.wa[ui];
-        wcum[ui] = wsum;
-    }
-
-    const double wmid = 0.5 * wsum;
     double r = 0.0;
-     for (uint64_t ui = 0u; ui < un - 1; ui++) {
-        if ((wcum[ui] <= wmid) && (wcum[ui + 1] > wmid)) {
-            cmb_assert_debug(wcum[ui + 1] > wcum[ui]);
-            r = dsp->xa[ui] + (dsp->xa[ui + 1]
-                            - dsp->xa[ui]) * (wmid - wcum[ui])
-                               / (wcum[ui + 1] - wcum[ui]);
-            break;
-        }
+    if (dsp->count == 0u) {
+        cmb_logger_warning(stdout, "Cannot take median of empty time series.");
     }
+    else {
+        cmb_assert_debug(tsp->ta != NULL);
+        cmb_assert_debug(tsp->wa != NULL);
 
-    cmi_free(wcum);
-    cmb_timeseries_terminate(&tmp_ts);
+        struct cmb_timeseries tmp_ts = { 0 };
+        cmb_timeseries_initialize(&tmp_ts);
+        const uint64_t un = cmb_timeseries_copy(&tmp_ts, tsp);
+        cmb_timeseries_sort_x(&tmp_ts);
+
+        dsp = (struct cmb_dataset *)(&tmp_ts);
+        cmb_assert_debug(dsp->xa != NULL);
+        cmb_assert_debug(dsp->count == un);
+
+        double wsum = 0.0;
+        double *wcum = cmi_calloc(un, sizeof(*wcum));
+        for (uint64_t ui = 0u; ui < un; ui++) {
+            wsum += tmp_ts.wa[ui];
+            wcum[ui] = wsum;
+        }
+
+        const double wmid = 0.5 * wsum;
+        for (uint64_t ui = 0u; ui < un - 1; ui++) {
+            if ((wcum[ui] <= wmid) && (wcum[ui + 1] > wmid)) {
+                cmb_assert_debug(wcum[ui + 1] > wcum[ui]);
+                r = dsp->xa[ui] + (dsp->xa[ui + 1]
+                                - dsp->xa[ui]) * (wmid - wcum[ui])
+                                   / (wcum[ui + 1] - wcum[ui]);
+                break;
+            }
+        }
+
+        cmi_free(wcum);
+        cmb_timeseries_terminate(&tmp_ts);
+    }
 
     return r;
 }
@@ -529,71 +555,82 @@ void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
                                   const bool lead_ins)
 {
     cmb_assert_release(tsp != NULL);
-    cmb_assert_release(((struct cmb_dataset *)tsp)->cookie == CMI_INITIALIZED);
-    cmb_assert_release(tsp->wa != NULL);
+    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(fp != NULL);
 
-    struct cmb_timeseries tmp_ts = { 0 };
-    cmb_timeseries_initialize(&tmp_ts);
-    const uint64_t un = cmb_timeseries_copy(&tmp_ts, tsp);
-    cmb_timeseries_sort_x(&tmp_ts);
-
-    const struct cmb_dataset *dsp = (struct cmb_dataset *)(&tmp_ts);
-    cmb_assert_debug(dsp->xa != NULL);
-    cmb_assert_debug(dsp->count == un);
-    const double xmin = dsp->min;
-    const double xmax = dsp->max;
-
-    double wsum = 0.0;
-    double *wcum = cmi_calloc(un, sizeof(*wcum));
-    for (uint64_t ui = 0u; ui < un; ui++) {
-        wsum += tmp_ts.wa[ui];
-        wcum[ui] = wsum;
+    if (dsp->count == 0u) {
+        cmb_logger_warning(fp, "No data to display in five-number summary");
     }
+    else if (dsp->count < 4u) {
+        cmb_logger_warning(fp, "Not enough data for five-number summary, only have %" PRIu64,
+            dsp->count);
+    }
+    else {
+        cmb_assert_release(tsp->wa != NULL);
 
-    const double w025 = 0.25 * wsum;
-    const double w050 = 0.50 * wsum;
-    const double w075 = 0.75 * wsum;
+        struct cmb_timeseries tmp_ts = { 0 };
+        cmb_timeseries_initialize(&tmp_ts);
+        const uint64_t un = cmb_timeseries_copy(&tmp_ts, tsp);
+        cmb_timeseries_sort_x(&tmp_ts);
 
-    double x025 = xmin;
-    double x050 = xmin;
-    double x075 = xmin;
+        dsp = (struct cmb_dataset *)(&tmp_ts);
+        cmb_assert_debug(dsp->xa != NULL);
+        cmb_assert_debug(dsp->count == un);
+        const double xmin = dsp->min;
+        const double xmax = dsp->max;
 
-    for (uint64_t ui = 0u; ui < un - 1; ui++) {
-        const double w_low = wcum[ui];
-        const double w_high = wcum[ui + 1];
+        double wsum = 0.0;
+        double *wcum = cmi_calloc(un, sizeof(*wcum));
+        for (uint64_t ui = 0u; ui < un; ui++) {
+            wsum += tmp_ts.wa[ui];
+            wcum[ui] = wsum;
+        }
 
-        if (w_high > w_low) {
-            const double gap = dsp->xa[ui + 1] - dsp->xa[ui];
-            const double wgap = w_high - w_low;
+        const double w025 = 0.25 * wsum;
+        const double w050 = 0.50 * wsum;
+        const double w075 = 0.75 * wsum;
 
-            if ((w_low <= w025) && (w_high > w025)) {
-                const double xint = dsp->xa[ui] + (gap * (w025 - w_low) / wgap);
-                x025 = clamp(xint, dsp->xa[ui], dsp->xa[ui + 1]);
-            }
+        double x025 = xmin;
+        double x050 = xmin;
+        double x075 = xmin;
 
-            if ((w_low <= w050) && (w_high > w050)) {
-                const double xint = dsp->xa[ui] + (gap * (w050 - w_low) / wgap);
-                x050 = clamp(xint, dsp->xa[ui], dsp->xa[ui + 1]);
-            }
+        for (uint64_t ui = 0u; ui < un - 1; ui++) {
+            const double w_low = wcum[ui];
+            const double w_high = wcum[ui + 1];
 
-            if ((w_low <= w075) && (w_high > w075)) {
-                const double xint = dsp->xa[ui] + (gap * (w075 - w_low) / wgap);
-                x075 = clamp(xint, dsp->xa[ui], dsp->xa[ui + 1]);
+            if (w_high > w_low) {
+                const double gap = dsp->xa[ui + 1] - dsp->xa[ui];
+                const double wgap = w_high - w_low;
+
+                if ((w_low <= w025) && (w_high > w025)) {
+                    const double xint = dsp->xa[ui] + (gap * (w025 - w_low) / wgap);
+                    x025 = clamp(xint, dsp->xa[ui], dsp->xa[ui + 1]);
+                }
+
+                if ((w_low <= w050) && (w_high > w050)) {
+                    const double xint = dsp->xa[ui] + (gap * (w050 - w_low) / wgap);
+                    x050 = clamp(xint, dsp->xa[ui], dsp->xa[ui + 1]);
+                }
+
+                if ((w_low <= w075) && (w_high > w075)) {
+                    const double xint = dsp->xa[ui] + (gap * (w075 - w_low) / wgap);
+                    x075 = clamp(xint, dsp->xa[ui], dsp->xa[ui + 1]);
+                }
             }
         }
+
+        cmb_assert_debug((xmin <= x025) && (x025 <= x050) && (x050 <= x075) && (x075 <= xmax));
+
+        const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
+                ((lead_ins) ? "Min " : ""), xmin,
+                ((lead_ins) ? "  First_Q " : "\t"), x025,
+                ((lead_ins) ? "  Median " : "\t"), x050,
+                ((lead_ins) ? "  Third_Q " : "\t"), x075,
+                ((lead_ins) ? "  Max " : "\t"), xmax);
+        cmb_assert_release(r > 0);
+
+        cmi_free(wcum);
+        cmb_timeseries_terminate(&tmp_ts);
     }
-
-    cmb_assert_debug((xmin <= x025) && (x025 <= x050) && (x050 <= x075) && (x075 <= xmax));
-
-    const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
-            ((lead_ins) ? "Min " : ""), xmin,
-            ((lead_ins) ? "  First_Q " : "\t"), x025,
-            ((lead_ins) ? "  Median " : "\t"), x050,
-            ((lead_ins) ? "  Third_Q " : "\t"), x075,
-            ((lead_ins) ? "  Max " : "\t"), xmax);
-    cmb_assert_release(r > 0);
-
-    cmi_free(wcum);
-    cmb_timeseries_terminate(&tmp_ts);
 }

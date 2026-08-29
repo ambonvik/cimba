@@ -271,7 +271,11 @@ void cmb_dataset_sort(const struct cmb_dataset *dsp)
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
-    if (dsp->xa != NULL) {
+    if (dsp->count == 0u) {
+        cmb_logger_warning(stdout, "No data to sort");
+    }
+    else {
+        cmb_assert_debug(dsp->xa != NULL);
         const uint64_t un = dsp->count;
         double *arr = dsp->xa;
         cmb_assert_debug(INT64_MAX >= UINT64_MAX / 2);
@@ -396,20 +400,24 @@ uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsrc,
 
     if (dstgt->cookie == CMI_INITIALIZED) {
         cmb_datasummary_terminate(dstgt);
-        cmb_assert_debug(dstgt->cookie != CMI_INITIALIZED);
     }
     cmb_datasummary_initialize(dstgt);
-    cmb_assert_debug(dstgt->cookie == CMI_INITIALIZED);
 
-    for (uint64_t ui = 0; ui < dsrc->count; ui++) {
-        cmb_datasummary_add(dstgt, dsrc->xa[ui]);
+    const uint64_t un = dsrc->count;
+    if (un == 0u) {
+        cmb_logger_warning(stdout, "Cannot summarize empty data set.");
     }
+    else {
+        for (uint64_t ui = 0; ui < un; ui++) {
+            cmb_datasummary_add(dstgt, dsrc->xa[ui]);
+        }
+     }
 
     return dstgt->count;
 }
 
 /* Assumes that v is already sorted */
-static double data_array_median(const unsigned n, const double v[n])
+static double data_array_median(const uint64_t n, const double v[n])
 {
     cmb_assert_release(n > 0u);
     cmb_assert_debug(cmi_dataset_is_sorted(n, v));
@@ -431,16 +439,17 @@ double cmb_dataset_median(const struct cmb_dataset *dsp)
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
 
     double r = 0.0;
-    if (dsp->xa != NULL) {
+    if (dsp->count == 0u) {
+        cmb_logger_warning(stdout, "Cannot take median of empty data set.");
+    }
+    else {
+        cmb_assert_debug(dsp->xa != NULL);
         struct cmb_dataset dtmp = { 0 };
         cmb_dataset_initialize(&dtmp);
         cmb_dataset_copy(&dtmp, dsp);
         cmb_dataset_sort(&dtmp);
         r = data_array_median(dtmp.count, dtmp.xa);
         cmb_dataset_terminate(&dtmp);
-    }
-    else {
-        cmb_logger_warning(stdout, "Cannot take median of empty data set.");
     }
 
     return r;
@@ -457,7 +466,7 @@ void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(fp != NULL);
 
-    if (dsp->xa == NULL) {
+    if (dsp->count == 0u) {
         cmb_logger_warning(fp, "No data to display in five-number summary");
     }
     else if (dsp->count < 4u) {
@@ -465,6 +474,7 @@ void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
             dsp->count);
     }
     else {
+        cmb_assert_debug(dsp->xa != NULL);
         struct cmb_dataset dtmp = { 0 };
         cmb_dataset_initialize(&dtmp);
         cmb_dataset_copy(&dtmp, dsp);
@@ -474,10 +484,10 @@ void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
         const double max = dtmp.max;
         const double med = data_array_median(dtmp.count, dtmp.xa);
 
-        const unsigned lhsz = dtmp.count / 2;
+        const uint64_t lhsz = dtmp.count / 2;
         const double q1 = data_array_median(lhsz, dtmp.xa);
         double q3;
-        const unsigned uhsz = dtmp.count - lhsz;
+        const uint64_t uhsz = dtmp.count - lhsz;
         if ((dtmp.count % 2) == 0) {
             /* Even number of entries */
             q3 = data_array_median(uhsz, &(dtmp.xa[lhsz]));
@@ -503,13 +513,14 @@ void cmb_dataset_print(const struct cmb_dataset *dsp, FILE *fp)
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(fp != NULL);
 
-    if (dsp->xa != NULL) {
-        for (uint64_t l = 0; l < dsp->count; l++) {
-            fprintf(fp, "%g\n", dsp->xa[l]);
-        }
+    if (dsp->count == 0u) {
+        cmb_logger_warning(fp, "No data to print");
     }
     else {
-        cmb_logger_warning(fp, "No data to print");
+        cmb_assert_debug(dsp->xa != NULL);
+        for (uint64_t l = 0u; l < dsp->count; l++) {
+            fprintf(fp, "%g\n", dsp->xa[l]);
+        }
     }
 }
 
@@ -796,14 +807,28 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
-    cmb_assert_release(dsp->xa != NULL);
-    cmb_assert_release(dsp->count > 1);
-    cmb_assert_release((n > 0u) && (n < dsp->count));
+    cmb_assert_release(n > 0u);
+    cmb_assert_release(acf != NULL);
+
+    if (dsp->count == 0u) {
+        cmb_logger_warning(stdout, "No data for calculating ACF");
+        return;
+    }
+    else if (dsp->count == 1u) {
+        cmb_logger_warning(stdout, "Cannot calculate ACF of a single point");
+        return;
+    }
+    else if (dsp->count < n + 1) {
+        cmb_logger_warning(stdout, "Cannot calculate %u ACFs from %" PRIu64 " data points",
+                            n, dsp->count);
+        return;
+    }
 
     /* Calculate mean and variance in a single pass,
      * similar to cmb_datasummary() above.  */
     double m1 = 0.0;
     double m2 = 0.0;
+    cmb_assert_debug(dsp->xa != NULL);
     for (uint64_t ui = 0; ui < dsp->count; ui++) {
         const double d = dsp->xa[ui] - m1;
         const double d_n = d / ((double)(ui + 1u));
@@ -816,7 +841,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
     const double min_acf_variance = 1e-9;
     if (var < min_acf_variance) {
         /* Would be numerically unstable to divide by that */
-        cmb_logger_warning(stderr,
+        cmb_logger_warning(stdout,
                 "Dataset nearly constant (variance %g), ACFs rounded to zero",
                  var);
         for (unsigned ui = 1; ui <= n; ui++) {
@@ -841,6 +866,9 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
  * Durbin-Levinson algorithm, optionally using previously calculated ACFs
  * to avoid repeating a computationally expensive step if already done once.
  */
+static const double pacf_min_variance = 1.0e-12;
+static const double pacf_tolerance = 1.0e-9;
+
 void cmb_dataset_PACF(const struct cmb_dataset *dsp,
                       const unsigned int n,
                       double pacf[],
@@ -848,10 +876,22 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
-    cmb_assert_release(dsp->xa != NULL);
-    cmb_assert_release(dsp->count > 1u);
-    cmb_assert_release((n > 0u) && (n < dsp->count - 1u));
-    cmb_assert_release(pacf != NULL);
+    cmb_assert_release(n > 0u);
+    cmb_assert_release(acf != NULL);
+
+    if (dsp->count == 0u) {
+        cmb_logger_warning(stdout, "No data for calculating PACF");
+        return;
+    }
+    else if (dsp->count == 1u) {
+        cmb_logger_warning(stdout, "Cannot calculate PACF of a single point");
+        return;
+    }
+    else if (dsp->count < n + 1) {
+        cmb_logger_warning(stdout, "Cannot calculate %u PACFs from %" PRIu64 " data points",
+                            n, dsp->count);
+        return;
+    }
 
     bool free_acf = false;
     if (acf == NULL) {
@@ -864,17 +904,48 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
     double **phi = cmi_malloc(((size_t)n + 1u) * sizeof(double *));
     phi[0] = cmi_calloc(((size_t)n + 1u) * ((size_t)n + 1u), sizeof(double));
     for (unsigned ui = 1u; ui <= n; ui++) {
-        phi[ui] = phi[0] + ui * n;
+        phi[ui] = phi[0] + ui * (n + 1u);
     }
 
-    /* Per definition */
     pacf[0] = 1.0;
     pacf[1] = acf[1];
     phi[1][1] = pacf[1];
+    double v = 1.0 - acf[1] * acf[1];
+
+    for (unsigned uk = 2u; uk <= n; ++uk) {
+        if (v <= pacf_min_variance) {
+            cmb_logger_warning(NULL,
+                "PACF: prediction variance exhausted at lag %u, "
+                "remaining coefficients set to zero", uk - 1u);
+            for (unsigned uj = uk; uj <= n; ++uj) {
+                pacf[uj] = 0.0;
+            }
+            break;
+        }
+
+        double numsum = 0.0;
+        for (unsigned uj = 1u; uj < uk; ++uj) {
+            numsum += phi[uk - 1u][uj] * acf[uk - uj];
+        }
+
+        double p = (acf[uk] - numsum) / v;
+
+        cmb_assert_debug((p >= -1.0 - pacf_tolerance)
+                         && (p <= 1.0 + pacf_tolerance));
+        p = fmin(1.0, fmax(-1.0, p));
+
+        phi[uk][uk] = p;
+        pacf[uk] = p;
+
+        for (unsigned uj = 1u; uj < uk; ++uj) {
+            phi[uk][uj] = phi[uk - 1u][uj] - p * phi[uk - 1u][uk - uj];
+        }
+
+        v *= (1.0 - p * p);
+    }
 
     /* Calculate phi[k][j], the j-th coefficient for a k-th order
-     * autoregression model
-     */
+     * autoregression model     */
     for (unsigned uk = 2u; uk <= n; ++uk) {
         double numsum = 0.0;
         for (unsigned uj = 1u; uj < uk; ++uj) {
@@ -887,8 +958,8 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
         }
 
         /* The k-th PACF coefficient is the k-th autoregression
-         * coefficient phi[k][k]
-         */
+         * coefficient phi[k][k]    */
+        cmb_assert_debug(densum < 1.0);
         phi[uk][uk] = (acf[uk] - numsum) / (1.0 - densum);
         pacf[uk] = phi[uk][uk];
         cmb_assert_debug((pacf[uk] >= -1.0) && (pacf[uk] <= 1.0));
@@ -968,9 +1039,22 @@ void cmb_dataset_correlogram_print(const struct cmb_dataset *dsp,
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
-    cmb_assert_release(dsp->xa != NULL);
-    cmb_assert_release(dsp->count > 1u);
-    cmb_assert_release((n > 0u) && (n <= dsp->count));
+    cmb_assert_release(fp != NULL);
+    cmb_assert_release(n > 0u);
+
+    if (dsp->count == 0u) {
+        cmb_logger_warning(fp, "No data for correlogram");
+        return;
+    }
+    else if (dsp->count == 1u) {
+        cmb_logger_warning(fp, "Cannot plot correlogram of a single point");
+        return;
+    }
+    else if (dsp->count < n + 1) {
+        cmb_logger_warning(fp, "Cannot plot %u ACFs from %" PRIu64 " data points",
+                            n, dsp->count);
+        return;
+    }
 
     bool free_acf = false;
     if (acf == NULL) {
