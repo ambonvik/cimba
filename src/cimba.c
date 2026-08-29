@@ -21,6 +21,7 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
 #include <pthread.h>
 #include <stdint.h>
 
@@ -66,7 +67,9 @@ CMB_THREAD_LOCAL uint64_t cmi_thread_id = UINT64_C(0);
 
 /* For recovering from trial-ending cmb_logger_error calls */
 CMB_THREAD_LOCAL bool cmi_recovery_armed = false;
-static uint64_t cmi_failed_trials;
+static uint64_t failed_trials;
+static uint64_t leaked_objects;
+static uint64_t leaking_trials;
 
 static CMB_THREAD_LOCAL cimba_trial_cleanup_func *trial_cleanup_func = NULL;
 static CMB_THREAD_LOCAL void *trial_cleanup_arg = NULL;
@@ -301,9 +304,10 @@ static void *thread_worker_func(void *arg)
                  * destroyed during the trial, just flush registry without
                  * calling registered teardown functions - may be intentional
                  * from the user, do not override.    */
-                cmb_logger_warning(stdout, "Memory leak detected, memregistry not empty at end of trial");
+                (void)__atomic_fetch_add(&leaking_trials, 1, __ATOMIC_RELAXED);
                 while (!cmi_dlist_is_empty(&cmi_memregistry)) {
                     (void)cmi_dlist_remove_first(&cmi_memregistry);
+                    (void)__atomic_fetch_add(&leaked_objects, 1, __ATOMIC_RELAXED);
                 }
             }
         }
@@ -323,7 +327,7 @@ static void *thread_worker_func(void *arg)
             cmi_memregistry_cleanup();
 
             /* Increment the failure counter across all worker threads */
-            (void)__atomic_fetch_add(&cmi_failed_trials, 1, __ATOMIC_RELAXED);
+            (void)__atomic_fetch_add(&failed_trials, 1, __ATOMIC_RELAXED);
         }
 
         /* Reset the simulation clock and event queue. */
@@ -369,7 +373,9 @@ uint64_t cimba_run(void *your_experiment_array,
     cmg_trial_struct_sz = trial_struct_size;
     cmg_trial_func = your_trial_func;
     cmg_total_trials = num_trials;
-    cmi_failed_trials = 0u;
+    failed_trials = 0u;
+    leaked_objects = 0u;
+    leaking_trials = 0u;
 
     /* Start the worker threads and let them help themselves to the trials */
     const uint32_t nthreads = (cmg_worker_threads == 0u) ? cmi_cpu_cores() : cmg_worker_threads;
@@ -391,8 +397,19 @@ uint64_t cimba_run(void *your_experiment_array,
 
     cmi_free(threads);
 
+
+#ifndef NASSERT
+    if (leaked_objects > 0u) {
+        printf("cimba_run: Warning: Possible memory leaks detected, total of %"
+                PRIu64 " objects leaked from %" PRIu64 " trials\n",
+                leaked_objects, leaking_trials);
+        printf("If not intentionally keeping objects in memory between trials,"
+                " check for missing cmb_*_destroy() calls.\n");
+    }
+#endif
+
     /* Only unlock when all is said and done */
     pthread_mutex_unlock(&cmg_experiment_mutex);
 
-    return cmi_failed_trials;
+    return failed_trials;
 }
