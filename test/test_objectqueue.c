@@ -205,7 +205,7 @@ void test_queue(const uint64_t seed, const double dur)
                                putterfunc,
                                quetst->queue,
                                pri);
-        cmb_assert_always(cmb_process_priority(quetst->putters[ui]) == pri);;
+        cmb_assert_always(cmb_process_priority(quetst->putters[ui]) == pri);
         cmb_assert_always(cmb_process_status(quetst->putters[ui]) == CMB_PROCESS_INITIALIZED);
         cmb_assert_always(cmb_process_context(quetst->putters[ui]) == quetst->queue);
         cmb_process_start(quetst->putters[ui]);
