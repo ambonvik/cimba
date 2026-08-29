@@ -253,7 +253,7 @@ void run_mg1_trial(void *vtrl)
      * again not initialized before this call. So we do that too. */
     cmb_random_initialize(trl->seed);
 
-    struct context *ctx = malloc(sizeof(*ctx));;
+    struct context *ctx = malloc(sizeof(*ctx));
     cimba_trial_cleanup_set(trial_cleanup, ctx);
     cmb_assert_always(ctx != NULL);
     ctx->trl = trl;
