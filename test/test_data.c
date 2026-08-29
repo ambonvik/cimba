@@ -816,6 +816,88 @@ void test_timeseries(const uint64_t nsamples)
     cmi_test_print_line("=");
 }
 
+/* It is likely that some simulation run does not produce any data, perhaps
+ * because it was too short for the scenario and no events occurred. That
+ * will result in empty data sets and time series. If the model code tries
+ * to calculate statistics or otherwise process the empties, there should be
+ * sensible warnings and results, not inexplicable crashes. So, we test it. */
+void test_empties(void)
+{
+    cmi_test_print_line("-");
+    printf("Testing empty datasets\n");
+
+    struct cmb_dataset ds = { 0 };
+    cmb_dataset_initialize(&ds);
+    struct cmb_dataset *dsp = cmb_dataset_create();
+    cmb_dataset_initialize(dsp);
+
+    cmb_dataset_print(dsp, stdout);
+    cmb_dataset_copy(dsp, &ds);
+    cmb_dataset_merge(dsp, dsp, &ds);
+    cmb_dataset_sort(&ds);
+
+    const double dm = cmb_dataset_median(dsp);
+    printf("Median of empty dataset: %f\n", dm);
+    cmb_dataset_fivenum_print(dsp, stdout, true);
+    cmb_dataset_histogram_print(dsp, stdout, 20, 0.0, 0.0);
+
+    double acf[21];
+    cmb_dataset_ACF(dsp, 20, acf);
+    cmb_dataset_PACF(dsp, 20, acf, acf);
+    cmb_dataset_correlogram_print(dsp, stdout, 20, acf);
+
+    struct cmb_datasummary dsu = { 0 };
+    cmb_datasummary_initialize(&dsu);
+    cmb_dataset_summarize(dsp, &dsu);
+
+    struct cmb_datasummary *dsup = cmb_datasummary_create();
+    cmb_datasummary_initialize(dsup);
+    cmb_dataset_summarize(&ds, dsup);
+    cmb_datasummary_merge(dsup, dsup, &dsu);
+    cmb_datasummary_print(dsup, stdout, true);
+
+    cmb_datasummary_terminate(dsup);
+    cmb_datasummary_destroy(dsup);
+    cmb_datasummary_terminate(&dsu);
+    cmb_dataset_terminate(dsp);
+    cmb_dataset_destroy(dsp);
+    cmb_dataset_terminate(&ds);
+
+    cmi_test_print_line("-");
+    printf("Testing empty timeseries\n");
+    struct cmb_timeseries ts = { 0 };
+    cmb_timeseries_initialize(&ts);
+    struct cmb_timeseries *tsp = cmb_timeseries_create();
+    cmb_timeseries_initialize(tsp);
+
+    cmb_timeseries_copy(tsp, &ts);
+    cmb_timeseries_sort_x(tsp);
+    cmb_timeseries_sort_t(tsp);
+    cmb_timeseries_finalize(tsp, 0.0);
+    cmb_timeseries_print(tsp, stdout);
+
+    const double tm = cmb_timeseries_median(tsp);
+    printf("Median of empty timeseries: %f\n", tm);
+    cmb_timeseries_fivenum_print(tsp, stdout, true);
+    cmb_timeseries_histogram_print(tsp, stdout, 20, 0.0, 0.0);
+
+    struct cmb_wtdsummary ws = { 0 };
+    cmb_wtdsummary_initialize(&ws);
+    struct cmb_wtdsummary *wsp = cmb_wtdsummary_create();
+    cmb_wtdsummary_initialize(wsp);
+    cmb_wtdsummary_merge(wsp, &ws, wsp);
+    cmb_timeseries_summarize(tsp, wsp);
+    cmb_wtdsummary_print(wsp, stdout, true);
+
+    cmb_wtdsummary_terminate(wsp);
+    cmb_wtdsummary_destroy(wsp);
+    cmb_wtdsummary_terminate(&ws);
+    cmb_timeseries_terminate(&ts);
+    cmb_timeseries_terminate(tsp);
+    cmb_timeseries_destroy(tsp);
+    cmi_test_print_line("-");
+}
+
 int main(const int argc, char *argv[])
 {
     uint64_t nsamples = MAX_SAMPLES;
@@ -865,6 +947,8 @@ int main(const int argc, char *argv[])
     test_wsummary(nsamples);
     test_dataset(nsamples);
     test_timeseries(nsamples);
+
+    test_empties();
 
     cmb_random_terminate();
     cmi_test_print_line("*");
