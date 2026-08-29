@@ -207,7 +207,7 @@ void *ratfunc(struct cmb_process *me, void *ctx)
                             "Holding, amount held: %" PRIu64,
                             amount_held);
             const double dt = cmb_random_exponential(1.0);
-            cmb_assert_always(dt >= 0.0);;
+            cmb_assert_always(dt >= 0.0);
             sig = cmb_process_hold(dt);
             cmb_logger_user(stdout, USERFLAG, "Hold returned signal %" PRIi64, sig);
 
