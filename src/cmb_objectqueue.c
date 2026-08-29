@@ -222,18 +222,24 @@ struct cmb_timeseries *cmb_objectqueue_history(struct cmb_objectqueue *oqp)
 void cmb_objectqueue_report_print(struct cmb_objectqueue *oqp, FILE *fp) {
     cmb_assert_release(oqp != NULL);
     cmb_assert_release(oqp->base.cookie == CMI_INITIALIZED);
+    cmb_assert_release(fp != NULL);
 
-    fprintf(fp, "Queue lengths for %s:\n", oqp->base.name);
     const struct cmb_timeseries *ts = &(oqp->history);
-    struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
-    cmb_wtdsummary_initialize(ws);
-    (void)cmb_timeseries_summarize(ts, ws);
-    cmb_wtdsummary_print(ws, fp, true);
-    cmb_wtdsummary_terminate(ws);
-    cmb_wtdsummary_destroy(ws);
+    if (cmb_timeseries_count(ts) == 0u) {
+        cmb_logger_warning(fp, "No history to print");
+    }
+    else {
+        fprintf(fp, "Queue lengths for %s:\n", oqp->base.name);
+        struct cmb_wtdsummary *ws = cmb_wtdsummary_create();
+        cmb_wtdsummary_initialize(ws);
+        (void)cmb_timeseries_summarize(ts, ws);
+        cmb_wtdsummary_print(ws, fp, true);
+        cmb_wtdsummary_terminate(ws);
+        cmb_wtdsummary_destroy(ws);
 
-    const unsigned nbin = (oqp->capacity > 20) ? 20 : oqp->capacity + 1;
-    cmb_timeseries_histogram_print(ts, fp, nbin, 0.0, (double)(oqp->capacity + 1u));
+        const unsigned nbin = (oqp->capacity > 20) ? 20 : oqp->capacity + 1;
+        cmb_timeseries_histogram_print(ts, fp, nbin, 0.0, (double)(oqp->capacity + 1u));
+    }
 }
 
 int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
