@@ -295,6 +295,7 @@ uint64_t cmb_dataset_copy(struct cmb_dataset *tgt,
     cmb_assert_release(src != NULL);
     cmb_assert_release(src->cookie == CMI_INITIALIZED);
     cmb_assert_release(tgt != NULL);
+    cmb_assert_release(tgt != src);
 
     if (tgt->xa != NULL) {
         cmb_assert_release(tgt->cookie == CMI_INITIALIZED);
@@ -439,7 +440,7 @@ double cmb_dataset_median(const struct cmb_dataset *dsp)
         cmb_dataset_terminate(&dtmp);
     }
     else {
-        cmb_logger_warning(stderr, "Cannot take median without any data.");
+        cmb_logger_warning(stdout, "Cannot take median of empty data set.");
     }
 
     return r;
@@ -577,6 +578,7 @@ struct cmi_dataset_histogram *cmi_dataset_histogram_create(const unsigned num_bi
     const double range = high_lim - low_lim;
 
     struct cmi_dataset_histogram *hp = cmi_malloc(sizeof(*hp));
+    /* Allow for overflow bins on either end */
     hp->num_bins = num_bins + 2u;
     hp->binsize = range / (double)(num_bins);
     hp->low_lim = low_lim;
@@ -643,6 +645,56 @@ static double histogram_nice_unit(const double v)
     return c * pow(10.0, k);
 }
 
+/* histogram_nice_width - Smallest of 1, 2 or 5 times a power of ten that is
+ * at least v. Gives round bucket edges at any magnitude. */
+static double histogram_nice_width(const double v)
+{
+    cmb_assert_debug(v > 0.0);
+
+    const double p = pow(10.0, floor(log10(v)));
+    const double m = v / p;
+
+    double c = 10.0;
+    if (m <= 1.0) {
+        c = 1.0;
+    }
+    else if (m <= 2.0) {
+        c = 2.0;
+    }
+    else if (m <= 5.0) {
+        c = 5.0;
+    }
+
+    return c * p;
+}
+
+/* Autoscale to dataset range */
+void cmi_dataset_histogram_autoscale(const struct cmb_dataset *dsp,
+                                     unsigned int *num_bins,
+                                     double *low_lim, double *high_lim)
+{
+    double w = 0.0;
+    double nb = (double)(*num_bins);
+    const double rng = dsp->max - dsp->min;
+    if (rng <= 0.0) {
+        /* All values identical; any positive width will do */
+        w = 1.0;
+    }
+    else {
+        const double raw = rng / nb;
+        w = (raw >= 1.0) ? ceil(raw) : histogram_nice_width(raw);
+    }
+
+    const double ll = floor(dsp->min / w) * w;
+    const double ncand = ceil((dsp->max - ll) / w) + 1.0;
+    nb = (unsigned)(fmin(nb, ncand));
+    const double hl = ll + nb * w;
+
+    *num_bins = (unsigned int)nb;
+    *low_lim = ll;
+    *high_lim = hl;
+}
+
 void cmi_dataset_histogram_print(const struct cmi_dataset_histogram *hp,
                                  FILE *fp)
 {
@@ -707,7 +759,7 @@ void cmi_dataset_histogram_destroy(struct cmi_dataset_histogram *hp)
 /* The external callable function to print a histogram */
 void cmb_dataset_histogram_print(const struct cmb_dataset *dsp,
                                  FILE *fp,
-                                 unsigned num_bins,
+                                 unsigned int num_bins,
                                  double low_lim,
                                  double high_lim)
 {
@@ -724,13 +776,7 @@ void cmb_dataset_histogram_print(const struct cmb_dataset *dsp,
     }
 
     if (low_lim == high_lim) {
-        /* Autoscale to dataset range */
-        low_lim = floor(dsp->min);
-        const double rng = dsp->max - dsp->min;
-        const double w = fmax(1.0, ceil(rng/num_bins));
-        const double ncand = ceil(rng / w) + 1.0;
-        num_bins = (unsigned)(fmin((double)num_bins, ncand));
-        high_lim = low_lim + num_bins * w;
+        cmi_dataset_histogram_autoscale(dsp, &num_bins, &low_lim, &high_lim);
     }
 
     struct cmi_dataset_histogram *hp = NULL;
@@ -745,7 +791,7 @@ void cmb_dataset_histogram_print(const struct cmb_dataset *dsp,
  * Calculate the first n autocorrelation coefficients.
  */
 void cmb_dataset_ACF(const struct cmb_dataset *dsp,
-                     const unsigned n,
+                     const unsigned int n,
                      double acf[])
 {
     cmb_assert_release(dsp != NULL);
@@ -755,8 +801,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
     cmb_assert_release((n > 0u) && (n < dsp->count));
 
     /* Calculate mean and variance in a single pass,
-     * similar to cmb_datasummary() above
-     */
+     * similar to cmb_datasummary() above.  */
     double m1 = 0.0;
     double m2 = 0.0;
     for (uint64_t ui = 0; ui < dsp->count; ui++) {
@@ -785,8 +830,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
             for (uint64_t ui = 0; ui < ustop; ui++) {
                 dk += (dsp->xa[ui] - m1) * (dsp->xa[ui + ulag] - m1);
             }
-            const double acov = dk / ((double)(ustop));
-            acf[ulag] = acov / var;
+            acf[ulag] = dk / m2;
             cmb_assert_debug((acf[ulag] >= -1.0) && (acf[ulag] <= 1.0));
         }
     }
@@ -798,7 +842,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
  * to avoid repeating a computationally expensive step if already done once.
  */
 void cmb_dataset_PACF(const struct cmb_dataset *dsp,
-                      const unsigned n,
+                      const unsigned int n,
                       double pacf[],
                       double acf[])
 {
@@ -867,7 +911,7 @@ static void data_bar_print(FILE *fp,
                            const double acfval,
                            const uint16_t max_bar_width)
 {
-    cmb_assert_release((acfval >= -1.0) && (acfval <= 1.0));
+    cmb_assert_debug((acfval >= -1.0) && (acfval <= 1.0));
 
     const double bar_width = (double)max_bar_width * fabs(acfval);
     const uint16_t num_filled = (uint16_t)floor(bar_width);
@@ -884,35 +928,35 @@ static void data_bar_print(FILE *fp,
 
         if (rem > min_rem_plus) {
             const int r = fputc(symbol_half, fp);
-            cmb_assert_release(r == symbol_half);
+            cmb_assert_debug(r == symbol_half);
         }
         else if (rem > 0.0) {
             const int r = fputc(symbol_thin, fp);
-            cmb_assert_release(r == symbol_thin);
+            cmb_assert_debug(r == symbol_thin);
         }
         else {
             const int r = fputc(symbol_empty, fp);
-            cmb_assert_release(r == symbol_empty);
+            cmb_assert_debug(r == symbol_empty);
         }
 
         data_print_chars(fp, symbol_full, num_filled);
         const int r = fputc(symbol_bar, fp);
-        cmb_assert_release(r == symbol_bar);
+        cmb_assert_debug(r == symbol_bar);
     }
     else {
         const uint16_t num_spaces = max_bar_width;
         data_print_chars(fp, symbol_empty, num_spaces);
         int r = fputc(symbol_bar, fp);
-        cmb_assert_release(r == symbol_bar);
+        cmb_assert_debug(r == symbol_bar);
         data_print_chars(fp, symbol_full, num_filled);
 
         if (rem > min_rem_plus) {
             r = fputc(symbol_half, fp);
-            cmb_assert_release(r == symbol_half);
+            cmb_assert_debug(r == symbol_half);
         }
         else if (rem > 0.0) {
             r = fputc(symbol_thin, fp);
-            cmb_assert_release(r == symbol_thin);
+            cmb_assert_debug(r == symbol_thin);
         }
     }
 }

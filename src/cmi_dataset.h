@@ -64,5 +64,9 @@ extern void cmi_dataset_histogram_print(const struct cmi_dataset_histogram *hp,
 
 extern void cmi_dataset_histogram_destroy(struct cmi_dataset_histogram *hp);
 
+extern void cmi_dataset_histogram_autoscale(const struct cmb_dataset *dsp,
+                                     unsigned int *num_bins,
+                                     double *low_lim, double *high_lim);
+
 #endif /* CIMBA_CMI_DATASET_H */
 

@@ -184,12 +184,21 @@ uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, const double t)
 
     const struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     const uint64_t n = dsp->count;
-    cmb_assert_release((n == 0u) || ((tsp->ta != NULL)
-                                 && (tsp->ta[n - 1u] <= t)));
-    const double x = dsp->xa[n - 1u];
-    const uint64_t r = cmb_timeseries_add(tsp, x, t);
 
-    cmb_assert_debug((r == n + 1) && (dsp->xa[n] == x) && (tsp->ta[n] == t));
+    uint64_t r = UINT64_C(0);
+    if (dsp->xa != NULL) {
+        cmb_assert_debug(tsp->ta != NULL);
+        cmb_assert_debug(tsp->ta[n - 1u] <= t);
+
+        const double x = dsp->xa[n - 1u];
+        r = cmb_timeseries_add(tsp, x, t);
+        cmb_assert_debug((r == n + 1) && (dsp->xa[n] == x) && (tsp->ta[n] == t));
+    }
+    else {
+        cmb_assert_debug(n == UINT64_C(0));
+        cmb_logger_info(stdout, "Finalizing empty data set.");
+    }
+
     return r;
 }
 
@@ -205,8 +214,14 @@ uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsrc,
                                   struct cmb_wtdsummary *wtgt)
 {
     cmb_assert_release(tsrc != NULL);
-    cmb_assert_release(tsrc->ta != NULL);
     cmb_assert_release(wtgt != NULL);
+
+    const struct cmb_dataset *dsp = (struct cmb_dataset *)tsrc;
+    const uint64_t n = dsp->count;
+    if (n == 0u) {
+        cmb_logger_warning(stdout, "Cannot summarize empty timeseries.");
+        return 0u;
+    }
 
     const struct cmb_dataset *dsrc = &(tsrc->ds);
     cmb_assert_release(dsrc->cookie == CMI_INITIALIZED);
@@ -289,7 +304,7 @@ static void timeseries_histogram_fill(struct cmi_dataset_histogram *hp,
 
 void cmb_timeseries_histogram_print(const struct cmb_timeseries *tsp,
                                     FILE *fp,
-                                    uint16_t num_bins,
+                                    unsigned int num_bins,
                                     double low_lim,
                                     double high_lim)
 {
@@ -310,9 +325,7 @@ void cmb_timeseries_histogram_print(const struct cmb_timeseries *tsp,
     }
 
     if (low_lim == high_lim) {
-        /* Autoscale to dataset range */
-        low_lim = dsp->min;
-        high_lim = dsp->max;
+        cmi_dataset_histogram_autoscale(dsp, &num_bins, &low_lim, &high_lim);
     }
 
     struct cmi_dataset_histogram *hp = NULL;
@@ -329,6 +342,7 @@ uint64_t cmb_timeseries_copy(struct cmb_timeseries *tgt,
     cmb_assert_release(src != NULL);
     cmb_assert_release(((struct cmb_dataset *)src)->cookie == CMI_INITIALIZED);
     cmb_assert_release(tgt != NULL);
+    cmb_assert_release(tgt != src);
 
     struct cmb_dataset *dsp_tgt = (struct cmb_dataset *) tgt;
     const struct cmb_dataset *dsp_src = (struct cmb_dataset *)src;

@@ -262,7 +262,7 @@ extern void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
  */
 extern void cmb_timeseries_histogram_print(const struct cmb_timeseries *tsp,
                                            FILE *fp,
-                                           uint16_t num_bins,
+                                           unsigned int num_bins,
                                            double low_lim,
                                            double high_lim);
 
