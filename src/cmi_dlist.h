@@ -80,7 +80,7 @@ CMB_MAYBE_UNUSED
 static inline bool cmi_dlist_is_empty(const struct cmi_dlist_node *head)
 {
     cmb_assert_debug(head != NULL);
-    cmb_assert_debug((head->next != NULL) && (head->prev != NULL));;
+    cmb_assert_debug((head->next != NULL) && (head->prev != NULL));
 
     return (head->next == head);
 }
