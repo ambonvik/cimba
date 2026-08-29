@@ -214,19 +214,24 @@ struct cmb_timeseries *cmb_priorityqueue_history(struct cmb_priorityqueue *pqp)
 void cmb_priorityqueue_report_print(struct cmb_priorityqueue *pqp, FILE *fp) {
     cmb_assert_release(pqp != NULL);
     cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
+    cmb_assert_release(fp != NULL);
 
-    fprintf(fp, "Queue lengths for %s:\n", pqp->base.name);
     const struct cmb_timeseries *ts = &(pqp->history);
+    if (cmb_timeseries_count(ts) == 0u) {
+        cmb_logger_warning(fp, "No history to print");
+    }
+    else {
+        fprintf(fp, "Queue lengths for %s:\n", pqp->base.name);
+        struct cmb_wtdsummary ws = { 0 };
+        cmb_wtdsummary_initialize(&ws);
+        (void)cmb_timeseries_summarize(ts, &ws);
+        cmb_wtdsummary_print(&ws, fp, true);
+        const double qmax = cmb_wtdsummary_max(&ws);
+        cmb_wtdsummary_terminate(&ws);
 
-    struct cmb_wtdsummary ws = { 0 };
-    cmb_wtdsummary_initialize(&ws);
-    (void)cmb_timeseries_summarize(ts, &ws);
-    cmb_wtdsummary_print(&ws, fp, true);
-    const double qmax = cmb_wtdsummary_max(&ws);
-    cmb_wtdsummary_terminate(&ws);
-
-    const uint32_t nbins = (qmax > 10.0) ? 10 : (uint32_t)(qmax + 1.0);
-    cmb_timeseries_histogram_print(ts, fp, nbins, 0.0, qmax + 1.0);
+        const uint32_t nbins = (qmax > 10.0) ? 10 : (uint32_t)(qmax + 1.0);
+        cmb_timeseries_histogram_print(ts, fp, nbins, 0.0, qmax + 1.0);
+    }
 }
 
 int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
