@@ -140,25 +140,32 @@ uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
     dstmp.count = dsrc1->count + dsrc2->count;
     dstmp.min = (dsrc1->min < dsrc2->min) ? dsrc1->min : dsrc2->min;
     dstmp.max = (dsrc1->max > dsrc2->max) ? dsrc1->max : dsrc2->max;
+    if (dstmp.count > 0u) {
+        const double n1 = (double)dsrc1->count;
+        const double n2 = (double)dsrc2->count;
+        const double n = (double)dstmp.count;
+        const double d21 = dsrc2->m1 - dsrc1->m1;
+        const double d21_n = d21 / n;
+        const double d21_n_2 = d21_n * d21_n;
+        const double d21_n_3 = d21_n * d21_n_2;
 
-    const double n1 = (double)dsrc1->count;
-    const double n2 = (double)dsrc2->count;
-    const double n = (double)dstmp.count;
-    const double d21 = dsrc2->m1 - dsrc1->m1;
-    const double d21_n = d21 / n;
-    const double d21_n_2 = d21_n * d21_n;
-    const double d21_n_3 = d21_n * d21_n_2;
-
-    dstmp.m1 = dsrc1->m1 + n2 * d21_n;
-    dstmp.m2 = dsrc1->m2 + dsrc2->m2
-                     + n1 * n2 * d21 * d21_n;
-    dstmp.m3 = dsrc1->m3 + dsrc2->m3
-                     + n1 * n2 * (n1 - n2) * d21 * d21_n_2
-                     + 3.0 * (n1 * dsrc2->m2 - n2 * dsrc1->m2) * d21_n;
-    dstmp.m4 = dsrc1->m4 + dsrc2->m4
-                     + n1 * n2 * (n1 * n1 - n1 * n2 + n2 * n2) * d21 * d21_n_3
-                     + 6.0 * (n1 * n1 * dsrc2->m2 + n2 * n2 * dsrc1->m2) * d21_n_2
-                     + 4.0 * (n1 * dsrc2->m3 - n2 * dsrc1->m3) * d21_n;
+        dstmp.m1 = dsrc1->m1 + n2 * d21_n;
+        dstmp.m2 = dsrc1->m2 + dsrc2->m2
+                         + n1 * n2 * d21 * d21_n;
+        dstmp.m3 = dsrc1->m3 + dsrc2->m3
+                         + n1 * n2 * (n1 - n2) * d21 * d21_n_2
+                         + 3.0 * (n1 * dsrc2->m2 - n2 * dsrc1->m2) * d21_n;
+        dstmp.m4 = dsrc1->m4 + dsrc2->m4
+                         + n1 * n2 * (n1 * n1 - n1 * n2 + n2 * n2) * d21 * d21_n_3
+                         + 6.0 * (n1 * n1 * dsrc2->m2 + n2 * n2 * dsrc1->m2) * d21_n_2
+                         + 4.0 * (n1 * dsrc2->m3 - n2 * dsrc1->m3) * d21_n;
+    }
+    else {
+        dstmp.m1 = 0.0;
+        dstmp.m2 = 0.0;
+        dstmp.m2 = 0.0;
+        dstmp.m4 = 0.0;
+    }
 
     if (tgt->cookie == CMI_INITIALIZED) {
         cmb_datasummary_terminate(tgt);
