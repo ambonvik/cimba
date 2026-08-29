@@ -519,7 +519,7 @@ Median of empty dataset: 0.000000
     0.0000	dispatcher	cmb_dataset_histogram_print (785):  Warning: No data to display in histogram, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_dataset_ACF (814):  Warning: No data for calculating ACF, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_dataset_PACF (883):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_correlogram_print (1046):  Warning: No data for correlogram, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_correlogram_print (1019):  Warning: No data for correlogram, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_dataset_summarize (408):  Warning: Cannot summarize empty data set., seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_dataset_summarize (408):  Warning: Cannot summarize empty data set., seed 0x34f05c64d7ad598f	
 N        0
