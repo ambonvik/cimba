@@ -91,7 +91,7 @@ It is powerful, fast, reliable, and free.
   runtime.
 
   The CPU used here has 32 *physical* cores, running two threads per physical core.
-  Cimba runs about 1 M events/second on a single core and about 25 M events/second/core
+  Cimba runs about 32 M events/second on a single core and about 25 M events/second/core
   on 32 physical cores for a scaling efficiency of 76 %. This also compares favorably to
   `the literature on large-scale parallel discrete event simulation <https://informs-sim .org/wsc15papers/004.pdf>`_
   (PDES), where each simulation trial is distributed across many physical cores,
