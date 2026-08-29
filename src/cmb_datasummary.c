@@ -163,7 +163,7 @@ uint64_t cmb_datasummary_merge(struct cmb_datasummary *tgt,
     else {
         dstmp.m1 = 0.0;
         dstmp.m2 = 0.0;
-        dstmp.m2 = 0.0;
+        dstmp.m3 = 0.0;
         dstmp.m4 = 0.0;
     }
 
