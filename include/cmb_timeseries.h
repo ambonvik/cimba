@@ -159,11 +159,14 @@ extern void cmb_timeseries_sort_x(struct cmb_timeseries *tsp);
 extern void cmb_timeseries_sort_t(struct cmb_timeseries *tsp);
 
 /**
- * @brief  Calculate summary statistics of the time series.
+ * @brief  Calculate summary statistics of the time series. The last value in
+ *         the time series is a still open interval, will not be included in the
+ *         summary unless `cmb_timeseries_finalize()` is called to set its end time.
  *
  * @memberof cmb_timeseries
  * @param tsrc Pointer to a time series object.
- * @param wtgt Pointer to a weighted data summary object.
+ * @param wtgt Pointer to a weighted data summary object. Any content will be
+ *             overwritten.
  * @return The number of data points in the summary.
  */
 extern uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsrc,

@@ -151,8 +151,9 @@ extern uint64_t cmb_dataset_add(struct cmb_dataset *dsp, double x);
  * @brief  Calculate summary statistics of the data series
  *
  * @memberof cmb_dataset
- * @param dsrc Pointer to a dataset object.
- * @param dstgt Pointer to a data summary object to store the results.
+ * @param dsrc  Pointer to a dataset object.
+ * @param dstgt Pointer to a data summary object to store the results. Any
+ *              content will be overwritten.
  * @return The number of data values included in the summary.
  */
 extern uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsrc,
