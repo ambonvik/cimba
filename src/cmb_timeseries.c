@@ -188,7 +188,7 @@ uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, const double t)
 
     uint64_t r = UINT64_C(0);
     if (dsp->count == 0u) {
-        cmb_logger_warning(stdout, "Finalizing empty time series, nothing added.");
+        cmb_logger_warning(stdout, "Finalizing empty time series, nothing added");
     }
     else {
         cmb_assert_debug(dsp->xa != NULL);
@@ -229,10 +229,10 @@ uint64_t cmb_timeseries_summarize(const struct cmb_timeseries *tsrc,
     /* Is there anything to put into it? */
     const uint64_t un = cmb_timeseries_count(tsrc);
     if (un == 0u) {
-        cmb_logger_warning(stdout, "Cannot summarize empty time series.");
+        cmb_logger_warning(stdout, "Cannot summarize empty time series");
    }
     else if (un == 1u) {
-        cmb_logger_info(stdout, "Cannot summarize single time series entry.");
+        cmb_logger_info(stdout, "Cannot summarize single time series entry");
     }
     else {
         cmb_assert_debug(tsrc->wa != NULL);
@@ -505,7 +505,7 @@ double cmb_timeseries_median(const struct cmb_timeseries *tsp)
 
     double r = 0.0;
     if (dsp->count == 0u) {
-        cmb_logger_warning(stdout, "Cannot take median of empty time series.");
+        cmb_logger_warning(stdout, "Cannot take median of empty time series");
     }
     else {
         cmb_assert_debug(tsp->ta != NULL);
