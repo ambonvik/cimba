@@ -52,7 +52,7 @@ static CMB_THREAD_LOCAL struct {
 static CMB_THREAD_LOCAL uint64_t initial_seed = DUMMY_SEED;
 
 /* Bit-buffer for cmb_random_flip */
-static CMB_THREAD_LOCAL uint64_t flip_bits;
+static CMB_THREAD_LOCAL uint64_t flip_bits = DUMMY_SEED;
 static CMB_THREAD_LOCAL uint8_t flip_bitpos = 0;
 
 /*******************************************************************************
@@ -112,11 +112,20 @@ static uint64_t splitmix64(void)
 }
 
 /*
- * Initializer for pseudo-random number state.
- * Bootstraps one 64-bit seed to 256 bits of state using cmb_random_splitmix()
+ * Initializer for sfc64 pseudo-random number state.
+ * Bootstraps one 64-bit seed to 256 bits of state using cmb_random_splitmix().
+ *
  * Intentionally randomizes the counter (.d) to start at a random place in the
- * cycle. Pulls a few samples from the generator to get rid of any initial
- * transient.
+ * cycle. This starting point is one that is also reachable starting from
+ * zero, just with an offset. That implies that all published sfc64 results in
+ * PractRand and BigCrush tests carry over unchanged, and the cycle length stays
+ * the same "at least 2^64". However, if each trial consumes L sfc64 samples,
+ * where L << 2^64, this reduces the probability of getting overlapping sample
+ * sequences between trials or threads by about 2^64 / L compared to starting
+ * all counters from zero.
+ *
+ * Finally pulls a few samples from the generator to get rid of any initial
+ * transient, and pre-loads the cmb_random_flip() buffer.
  */
 void cmb_random_initialize(const uint64_t seed)
 {
@@ -131,8 +140,8 @@ void cmb_random_initialize(const uint64_t seed)
         (void)cmb_random_sfc64();
     }
 
-    flip_bits = UINT64_C(0);
-    flip_bitpos = 0u;
+    flip_bits = cmb_random_sfc64();
+    flip_bitpos = UINT64_C(64);
 }
 
 /*
@@ -147,12 +156,12 @@ void cmb_random_terminate(void) {
 
     splitmix_state = DUMMY_SEED;
 
-    flip_bits = UINT64_C(0);
+    flip_bits = DUMMY_SEED;
     flip_bitpos = 0u;
 }
 
 /*
- * Return The 64-bit seed that was used to initialize the generator.
+ * Return the 64-bit seed that was used to initialize the generator.
  * If it returns ´0x0000DEAD5EED0000`, the generator was never initialized.
  */
 uint64_t cmb_random_curseed(void)
