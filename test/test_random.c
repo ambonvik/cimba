@@ -957,7 +957,7 @@ int main(const int argc, char *argv[])
                 timing_enabled = true;
                 break;
             default:
-                fprintf(stderr, "Usage: %s [-s <seed>][-t]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-n <nsamples>][-s <seed>][-t]\n", argv[0]);
                 return EXIT_FAILURE;
         }
     }
