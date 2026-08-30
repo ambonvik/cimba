@@ -39,7 +39,6 @@ install_headers(
     'cmi_hashheap.h',
     'cmi_holdable.h',
     'cmi_slist.h',
-    'cmi_mempool.h',
     'cmi_memregistry.h',
     'cmi_memutils.h',
     'cmi_resourcebase.h'
