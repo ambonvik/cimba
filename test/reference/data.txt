@@ -183,7 +183,8 @@ Unweighted histogram: cmb_dataset_histogram_print
 [    0.8500,     0.9000)   |###############################################=
 [    0.9000,     0.9500)   |#################################################=
 [    0.9500,      1.000)   |#################################################-
-[     1.000,   Infinity)   |
+[     1.000,      1.050)   |
+[     1.050,   Infinity)   |
 --------------------------------------------------------------------------------
 
 Autocorrelation coefficients: cmb_dataset_ACF
@@ -365,7 +366,8 @@ Weighted histogram:
 [    0.8500,     0.9000)   |###########################-
 [    0.9000,     0.9500)   |########################=
 [    0.9500,      1.000)   |###########################-
-[     1.000,   Infinity)   |
+[     1.000,      1.050)   |
+[     1.050,   Infinity)   |
 --------------------------------------------------------------------------------
 Unweighted histogram of same data:
 --------------------------------------------------------------------------------
@@ -390,7 +392,8 @@ Unweighted histogram of same data:
 [    0.8500,     0.9000)   |###############################################=
 [    0.9000,     0.9500)   |##############################################=
 [    0.9500,      1.000)   |##############################################=
-[     1.000,   Infinity)   |
+[     1.000,      1.050)   |
+[     1.050,   Infinity)   |
 --------------------------------------------------------------------------------
 ================================================================================
 
@@ -518,8 +521,9 @@ Median of empty dataset: 0.000000
     0.0000	dispatcher	cmb_dataset_fivenum_print (470):  Warning: No data to display in five-number summary, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_dataset_histogram_print (785):  Warning: No data to display in histogram, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_dataset_ACF (814):  Warning: No data for calculating ACF, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_PACF (883):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_correlogram_print (1019):  Warning: No data for correlogram, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_PACF (884):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_PACF (884):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_correlogram_print (1020):  Warning: No data for correlogram, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_dataset_summarize (408):  Warning: Cannot summarize empty data set., seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_dataset_summarize (408):  Warning: Cannot summarize empty data set., seed 0x34f05c64d7ad598f	
 N        0
@@ -527,13 +531,13 @@ N        0
 Testing empty timeseries
     0.0000	dispatcher	cmb_timeseries_sort_x (440):  Warning: No data to sort, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_timeseries_sort_t (473):  Warning: No data to sort, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_timeseries_finalize (191):  Warning: Finalizing empty time series, nothing added., seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_finalize (191):  Warning: Finalizing empty time series, nothing added, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_timeseries_print (260):  Warning: No data to print, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_timeseries_median (508):  Warning: Cannot take median of empty time series., seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_median (508):  Warning: Cannot take median of empty time series, seed 0x34f05c64d7ad598f	
 Median of empty timeseries: 0.000000
     0.0000	dispatcher	cmb_timeseries_fivenum_print (563):  Warning: No data to display in five-number summary, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_timeseries_histogram_print (323):  Warning: No data to display in histogram, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_timeseries_summarize (232):  Warning: Cannot summarize empty time series., seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_summarize (232):  Warning: Cannot summarize empty time series, seed 0x34f05c64d7ad598f	
 N        0
 --------------------------------------------------------------------------------
 ********************************************************************************
