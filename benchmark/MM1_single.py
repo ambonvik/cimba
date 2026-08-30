@@ -1,8 +1,5 @@
 import simpy
 import random
-import time
-import multiprocessing
-import statistics
 
 NUM_OBJECTS = 1000000
 ARRIVAL_RATE = 0.9
@@ -34,6 +31,7 @@ def run_trial():
 
 def main():
     avg_tsys = run_trial()
+    # Note: We did not use a warm-up period, some undershoot bias will occur
     print(f"Average time in system: {avg_tsys}, expected: "
           f"{1.0 / (SERVICE_RATE - ARRIVAL_RATE)}")
 

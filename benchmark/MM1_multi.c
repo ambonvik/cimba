@@ -160,6 +160,7 @@ int main(void)
         const double ci_l = mean_tsys - ci_w;
         const double ci_u = mean_tsys + ci_w;
 
+        /* Note: We did not use a warm-up period, some undershoot bias will occur */
         printf("Average system time %f (n %u, conf.int. %f - %f, expected %f)\n",
                mean_tsys, un, ci_l, ci_u, 1.0 / (SERVICE_RATE - ARRIVAL_RATE));
 

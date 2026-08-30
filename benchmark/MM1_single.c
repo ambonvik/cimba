@@ -136,6 +136,7 @@ int main(void)
     trl->sum_wait = 0.0;
     run_trial(trl);
 
+    /* Note: We did not use a warm-up period, some undershoot bias will occur */
     printf("Average system time %f (expected %f)\n",
             trl->sum_wait / (double)trl->obj_cnt,
             1.0 / (SERVICE_RATE - ARRIVAL_RATE));

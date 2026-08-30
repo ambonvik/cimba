@@ -50,6 +50,7 @@ def main():
         ci_l = mean_tsys - ci_w
         ci_u = mean_tsys + ci_w
 
+        # Note: We did not use a warm-up period, some undershoot bias will occur
         print(f"Average time in system: {mean_tsys} (n {n}, conf int {ci_l} - "
               f"{ci_u}, expected: "
               f"{1.0 / (SERVICE_RATE - ARRIVAL_RATE)})")
