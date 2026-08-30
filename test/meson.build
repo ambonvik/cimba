@@ -183,6 +183,16 @@ test_process = executable('test_process',
 
 test('process', test_process)
 
+# build, but do not run automatically in test suite
+test_practrand = executable('test_practrand',
+                         files('test_practrand.c', 'test.h'),
+                         include_directories : [inc_api, inc_int],
+                         link_with : cimba_lib,
+                         dependencies : [project_deps],
+                         install : false,
+                         native : true
+)
+
 test_random = executable('test_random',
                          files('test_random.c', 'test.h'),
                          include_directories : [inc_api, inc_int],
@@ -192,7 +202,6 @@ test_random = executable('test_random',
                          native : true
 )
 
-# will certainly take a while
 test('random', test_random, timeout : 0)
 
 test_resource = executable('test_resource',
