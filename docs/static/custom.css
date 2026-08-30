@@ -6,12 +6,10 @@
     font-size: 90%;
     padding: 2px 3px;
     border-radius: 3px;
-    vertical-align: -45%;
-    display: inline-block;
-    line-height: 1.0;
+    overflow: visible !important;
 }
 
-.rst-content code-literal .xref {
+.rst-content code.literal .xref {
     color: #2980b9 !important;
     font-weight: bold;
 }
