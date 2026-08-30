@@ -207,26 +207,34 @@ uint64_t cmb_wtdsummary_merge(struct cmb_wtdsummary *tgt,
     ts->count = dsp1->count + dsp2->count;
     ts->min = (dsp1->min < dsp2->min) ? dsp1->min : dsp2->min;
     ts->max = (dsp1->max > dsp2->max) ? dsp1->max : dsp2->max;
+    if (ts->count > 0u) {
+        const double w1 = ws1->wsum;
+        const double w2 = ws2->wsum;
+        const double ws = w1 + w2;
+        const double d21 = dsp2->m1 - dsp1->m1;
+        const double d21_w = d21 / ws;
+        const double d21_w_2 = d21_w * d21_w;
+        const double d21_w_3 = d21_w * d21_w_2;
 
-    const double w1 = ws1->wsum;
-    const double w2 = ws2->wsum;
-    const double ws = w1 + w2;
-    const double d21 = dsp2->m1 - dsp1->m1;
-    const double d21_w = d21 / ws;
-    const double d21_w_2 = d21_w * d21_w;
-    const double d21_w_3 = d21_w * d21_w_2;
-
-    tws.wsum = ws;
-    ts->m1 = dsp1->m1 + w2 * d21_w;
-    ts->m2 = dsp1->m2 + dsp2->m2
-                      + w1 * w2 * d21 * d21_w;
-    ts->m3 = dsp1->m3 + dsp2->m3
-                      + w1 * w2 * (w1 - w2) * d21 * d21_w_2
-                      + 3.0 * (w1 * dsp2->m2 - w2 * dsp1->m2) * d21_w;
-    ts->m4 = dsp1->m4 + dsp2->m4
-                      + w1 * w2 * (w1 * w1 - w1 * w2 + w2 * w2) * d21 * d21_w_3
-                      + 6.0 * (w1 * w1 * dsp2->m2 + w2 * w2 * dsp1->m2) * d21_w_2
-                      + 4.0 * (w1 * dsp2->m3 - w2 * dsp1->m3) * d21_w;
+        tws.wsum = ws;
+        ts->m1 = dsp1->m1 + w2 * d21_w;
+        ts->m2 = dsp1->m2 + dsp2->m2
+                          + w1 * w2 * d21 * d21_w;
+        ts->m3 = dsp1->m3 + dsp2->m3
+                          + w1 * w2 * (w1 - w2) * d21 * d21_w_2
+                          + 3.0 * (w1 * dsp2->m2 - w2 * dsp1->m2) * d21_w;
+        ts->m4 = dsp1->m4 + dsp2->m4
+                          + w1 * w2 * (w1 * w1 - w1 * w2 + w2 * w2) * d21 * d21_w_3
+                          + 6.0 * (w1 * w1 * dsp2->m2 + w2 * w2 * dsp1->m2) * d21_w_2
+                          + 4.0 * (w1 * dsp2->m3 - w2 * dsp1->m3) * d21_w;
+    }
+    else {
+        tws.wsum = 0.0;
+        ts->m1 = 0.0;
+        ts->m2 = 0.0;
+        ts->m3 = 0.0;
+        ts->m4 = 0.0;
+    }
 
     if (tgt->ds.cookie == CMI_INITIALIZED) {
         cmb_wtdsummary_terminate(tgt);
