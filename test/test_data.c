@@ -842,8 +842,10 @@ void test_empties(void)
     cmb_dataset_histogram_print(dsp, stdout, 20, 0.0, 0.0);
 
     double acf[21];
+    double pacf[21];
     cmb_dataset_ACF(dsp, 20, acf);
-    cmb_dataset_PACF(dsp, 20, acf, acf);
+    cmb_dataset_PACF(dsp, 20, pacf, NULL);
+    cmb_dataset_PACF(dsp, 20, pacf, acf);
     cmb_dataset_correlogram_print(dsp, stdout, 20, acf);
 
     struct cmb_datasummary dsu = { 0 };
@@ -887,6 +889,7 @@ void test_empties(void)
     cmb_wtdsummary_initialize(wsp);
     cmb_wtdsummary_merge(wsp, &ws, wsp);
     cmb_timeseries_summarize(tsp, wsp);
+    cmb_wtdsummary_merge(&ws, wsp, &ws);
     cmb_wtdsummary_print(wsp, stdout, true);
 
     cmb_wtdsummary_terminate(wsp);
