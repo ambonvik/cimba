@@ -51,6 +51,10 @@ static CMB_THREAD_LOCAL struct {
 /* Storage for the seed used in this thread */
 static CMB_THREAD_LOCAL uint64_t initial_seed = DUMMY_SEED;
 
+/* Bit-buffer for cmb_random_flip */
+static CMB_THREAD_LOCAL uint64_t flip_bits;
+static CMB_THREAD_LOCAL uint8_t flip_bitpos = 0;
+
 /*******************************************************************************
  * Main pseudo-random number generator - 64-bit output, 256-bit state.
  * An implementation of Chris Doty-Humphrey's sfc64. Fast and high-quality.
@@ -126,6 +130,9 @@ void cmb_random_initialize(const uint64_t seed)
     for (int i = 0; i < 20; i++) {
         (void)cmb_random_sfc64();
     }
+
+    flip_bits = UINT64_C(0);
+    flip_bitpos = 0u;
 }
 
 /*
@@ -139,6 +146,9 @@ void cmb_random_terminate(void) {
     prng_state.d = DUMMY_SEED;
 
     splitmix_state = DUMMY_SEED;
+
+    flip_bits = UINT64_C(0);
+    flip_bitpos = 0u;
 }
 
 /*
@@ -586,15 +596,12 @@ double cmb_random_PERT_mod(const double min,
  */
 int cmb_random_flip(void)
 {
-    static CMB_THREAD_LOCAL uint64_t bits;
-    static CMB_THREAD_LOCAL uint8_t bitpos = 0;
-
-    if (bitpos == 0) {
-        bits = cmb_random_sfc64();
-        bitpos = 64;
+    if (flip_bitpos == 0) {
+        flip_bits = cmb_random_sfc64();
+        flip_bitpos = 64;
     }
 
-    return ((bits >> --bitpos) & 1) ? 1 : 0;
+    return ((flip_bits >> --flip_bitpos) & 1) ? 1 : 0;
 }
 
 /*******************************************************************************
@@ -774,7 +781,7 @@ static uint64_t cmi_random_binomial_btrd(const uint64_t n, const double p)
     static CMB_THREAD_LOCAL double alpha = 0.0;
     static CMB_THREAD_LOCAL double r = 0.0;
     static CMB_THREAD_LOCAL double nr = 0.0;
-    static CMB_THREAD_LOCAL double m = 0.0;
+    static CMB_THREAD_LOCAL double dm = 0.0;
     static CMB_THREAD_LOCAL int64_t im = 0;
 
     if ((n != n_prev) || (p != p_prev)) {
@@ -782,8 +789,8 @@ static uint64_t cmi_random_binomial_btrd(const uint64_t n, const double p)
         n_prev = n;
         p_prev = p;
         dn = (double)n;
-        m = floor((dn + 1.0) * p);
-        im = (int64_t)m;
+        dm = floor((dn + 1.0) * p);
+        im = (int64_t)dm;
         const double q = 1.0 - p;
         r = p / q;
         nr = (dn + 1.0) * r;
@@ -824,15 +831,22 @@ static uint64_t cmi_random_binomial_btrd(const uint64_t n, const double p)
 
         /* 3.0 Can it be rejected? */
         const double us = 0.5 - fabs(u);
-        const double g = ((2.0 * a) / us) + b;
-        const int64_t k = (int64_t)floor(g * u + c);
-        if ((k < 0) || (k > dn)) {
-            /* Reject, try again */
+        if (us <= 0.0) {
+            /* Numerically intractable, will be rejected anyway */
             continue;
         }
 
+        const double g = ((2.0 * a) / us) + b;
+        const double dk = floor(g * u + c);
+        if (dk < 0.0 || dk > dn) {
+            /* Reject */
+            continue;
+        }
+
+        const int64_t k = (int64_t)dk;
+        cmb_assert_debug((k > 0) && (k < n));
         v = v * alpha /(a / (us * us) + b);
-        const double km = fabs(k - m);
+        const double km = fabs(dk - dm);
 
         if (km <= 15.0) {
             /* 3.1 Evaluate f(k) iteratively */
@@ -841,14 +855,14 @@ static uint64_t cmi_random_binomial_btrd(const uint64_t n, const double p)
                 int64_t i = im;
                 while (i != k) {
                     i++;
-                    f *= nr/i - r;
+                    f *= nr / i - r;
                 }
             }
             else if (im > k) {
                 int64_t i = k;
                 while (i != im) {
                     i++;
-                    v *= nr/i - r;
+                    v *= nr / i - r;
                 }
             }
 
@@ -862,8 +876,9 @@ static uint64_t cmi_random_binomial_btrd(const uint64_t n, const double p)
 
         /* 3.2 Squeeze accept or reject */
         v = log(v);
-        const double rho = (km/npq) * (((km/3.0 + 0.625) * km + 1.0/6.0) / npq + 0.5);
-        const double t = -km * km /(2.0 * npq);
+        const double rho = (km / npq) * (((km / 3.0 + 0.625) * km + 1.0 / 6.0)
+                            / npq + 0.5);
+        const double t = -km * km / (2.0 * npq);
         if (v < t - rho) {
             return k;
         }
@@ -872,9 +887,9 @@ static uint64_t cmi_random_binomial_btrd(const uint64_t n, const double p)
         }
 
         /* 3.3 Setup for final check */
-        const double nm = n - m + 1.0;
-        const double h = (m + 0.5) * log((m + 1.0) / (r * nm))
-                    + stirling_tail(m) + stirling_tail(dn - m);
+        const double nm = n - dm + 1.0;
+        const double h = (dm + 0.5) * log((dm + 1.0) / (r * nm))
+                    + stirling_tail(dm) + stirling_tail(dn - dm);
 
         /* 3.4 Final acceptance-rejection test */
         const double nk = dn - k + 1.0;
@@ -1146,7 +1161,7 @@ uint64_t cmb_random_negative_binomial(const uint64_t m, const double p)
  */
 uint64_t cmb_random_discrete_uniform (const uint64_t s)
 {
-    cmb_assert_debug(s > 0u);
+    cmb_assert_release(s > 0u);
 
     uint64_t x = cmb_random_sfc64();
     __uint128_t m = (__uint128_t) x * (__uint128_t) s;
