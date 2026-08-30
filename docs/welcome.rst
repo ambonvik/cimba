@@ -84,10 +84,10 @@ It is powerful, fast, reliable, and free.
   million events per second) than SimPy does with all 64 logical cores (right chart, about
   16 million events per second).*
 
-  .. figure:: ../images/Speed_test_AMD_3970x.png
+  .. image:: ../images/Speed_test_AMD_3970x.png
 
-        Cimba built with `-O3 -fprofile-use -DNDEBUG -DNLOGINFO -DNASSERT -DNMXCSR`, SimPy
-        on Python 3.14.7
+  (Cimba built with gcc options `-O3 -fprofile-use -DNDEBUG -DNLOGINFO -DNASSERT
+  -DNMXCSR`, SimPy running on Python 3.14.7, host system AMD Ryzen Threadripper 3970x.)
 
   The reason for this speed difference is that a compiled program in C and hand-rolled
   assembly will always run faster than code that needs to be interpreted on-the-fly at
