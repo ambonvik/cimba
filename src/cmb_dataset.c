@@ -698,7 +698,7 @@ void cmi_dataset_histogram_autoscale(const struct cmb_dataset *dsp,
 
     const double ll = floor(dsp->min / w) * w;
     const double ncand = ceil((dsp->max - ll) / w) + 1.0;
-    nb = (unsigned)(fmin(nb, ncand));
+    nb = (unsigned)ncand;
     const double hl = ll + nb * w;
 
     *num_bins = (unsigned int)nb;
@@ -877,7 +877,8 @@ void cmb_dataset_PACF(const struct cmb_dataset *dsp,
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(n > 0u);
-    cmb_assert_release(acf != NULL);
+    cmb_assert_release(pacf != NULL);
+    cmb_assert_release(pacf != acf);
 
     if (dsp->count == 0u) {
         cmb_logger_warning(stdout, "No data for calculating PACF");
