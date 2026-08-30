@@ -597,7 +597,7 @@ processes do not promise. They *demand*.
 
 .. _background_random:
 
-Pseudo-random number generators and distributions
+Pseudo-random number generators and distribution
 -------------------------------------------------
 
 Cimba has a few specific requirements to its pseudo-random number generators as well. For
@@ -607,15 +607,16 @@ possible to reproduce the exact sequence of random numbers in a trial when given
 same seed. We cannot have the outcome depend on other trials that may or may not be
 running in parallel. This is not very difficult to do, but it needs to be considered
 from the beginning, since the obvious way to code a PRNG is to keep its state in static
-variables between calls.
+variables between calls. To be able to guarantee this property, Cimba contains its own
+PRNG and distributions.
 
-The PRNG in Cimba is an implementation of Chris Doty-Humphrey's ``sfc64``. It
+The PRNG in Cimba is an implementation of Chris Doty-Humphrey's `sfc64`. It
 provides 64-bit output and maintains a 256-bit state. It is certain to have a cycle
 period of at least 2^64, and is both faster and higher statistical quality than
 better-known generators such as the Mersenne Twister. It is in public domain, see
 https://pracrand.sourceforge.net
 for the details. In our implementation, the PRNG state is thread local, giving each trial
-its own stream of random numbers, independent from any other trials.
+its own sequence of random numbers, independent from any other trials.
 
 We initialize the PRNG in a three-stage bootstrapping process:
 
@@ -628,60 +629,184 @@ We initialize the PRNG in a three-stage bootstrapping process:
   return the best entropy that is available, if necessary by doing a mashup of the clock
   value, thread identifier, and CPU cycle counter.
 
-* Second, the seed is used to initialize the PRNG by calling :c:func:`cmb_random_initialize`.
-  It needs to create 256 bits of state from a 64-bit seed. We use a dedicated 64-bit state
+  Of course, the user code can choose to provide its own seed value instead for
+  reproducibility.
+
+* Second, the 64-bit master seed is used to initialize the PRNG by calling
+  :c:func:`cmb_random_initialize`.
+  It needs to create 256 bits of state from a 64-bit seed. We use a dedicated 64-bit-state
   PRNG for this. We initialize it with the 64-bit seed, and then draw four samples from it
-  to initialize the state of our main PRNG. This auxiliary PRNG is *splitmix64*, also
+  to initialize the state of our main PRNG. This auxiliary PRNG is `splitmix64`, also
   public domain, see https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64#C
+
+  Note that this is slightly different from the published ``sfc64``, which initializes
+  three 64-bit state variables to the same seed value and the fourth, the counter, to
+  zero in every case. By randomizing also the counter, we start the generator at a
+  random point along its cycle. This starting point is one that is also reachable
+  if starting the counter from zero, just with an offset.
+
+  This implies that published `sfc64` results in PractRand and BigCrush tests carry
+  over, and that the cycle length stays the same, at least :math:`2^64`. However, if
+  each trial consumes :math:`L` `sfc64` samples, where :math:`L \ll 2^{64}`, this reduces
+  the probability of  getting overlapping sample sequences between trials or threads by
+  about :math:`2^{64} / L`   compared to starting all counters from zero.
 
 * Finally, :c:func:`cmb_random_initialize` draws and discards 20 samples from the main PRNG
   to make sure that any initial transient is gone before returning and allowing
   :c:func:`cmb_random_sfc64` to provide pseudo-random numbers to the user application.
 
 The result is a pseudo-random number sequence that cannot be distinguished from true
-randomness by any available statistical methods. In particular, successive values
-appear to be totally uncorrelated, so it is not necessary or recommended to use
-multiple streams of pseudo-random numbers in the same trial. It would do more harm than
+randomness by any available statistical methods. As evidence, we built a small test
+program to feed the :c:func:`cmb_random_sfc64` output to `PractRand <https://pracrand
+.sourceforge.net>`_:
+
+.. code-block:: c
+
+    int main(const int argc, char *argv[])
+    {
+        uint64_t master_seed = cmb_random_hwseed();
+        size_t words_per_seed = 64;
+
+        fprintf(stderr, "test_practrand, Cimba version %s\n", cimba_version());
+        fprintf(stderr, "master_seed = 0x%016" PRIx64 ", words_per_seed = %zu\n\n",
+                master_seed, words_per_seed);
+
+        static uint64_t buf[16384];          /* 128 KiB per write */
+        size_t   n = 0;                       /* words currently in buf */
+        uint64_t i = 0;                       /* trial index */
+
+        for (;;) {
+            /* A new batch */
+            cmb_random_initialize(cmb_random_fmix64(master_seed, i++));
+
+            for (size_t j = 0; j < words_per_seed; j++) {
+                /* Generate sample to buffer */
+                buf[n++] = cmb_random_sfc64();
+                if (n == sizeof buf / sizeof buf[0]) {
+                    /* Write the buffered samples */
+                    if (fwrite(buf, sizeof buf, 1, stdout) != 1) {
+                        /* PractRand closed the pipe */
+                        cmb_random_terminate();
+                        return 0;
+                    }
+
+                    /* Restart buffer */
+                    n = 0;
+                }
+            }
+        }
+
+        /* Not reached */
+    }
+
+We can then run it from the command line as:
+
+.. code-block:: none
+
+    [ambonvik@Threadripper PractRand]$ ../github/cimba/build/test/test_practrand | ./RNG_test stdin64 -tlmax 1TB -multithreaded
+    test_practrand, Cimba version 3.0.0-RC2
+    master_seed = 0x3611a744ee599a82, words_per_seed = 64
+
+    RNG_test using PractRand version 0.96
+    RNG = RNG_stdin64, seed = unknown
+    test set = core, folding = standard (64 bit)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 1 gigabyte (2^30 bytes), time= 3.2 seconds
+      no anomalies in 227 test result(s)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 2 gigabytes (2^31 bytes), time= 6.6 seconds
+      no anomalies in 242 test result(s)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 4 gigabytes (2^32 bytes), time= 13.4 seconds
+      no anomalies in 256 test result(s)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 8 gigabytes (2^33 bytes), time= 26.1 seconds
+      no anomalies in 270 test result(s)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 16 gigabytes (2^34 bytes), time= 51.9 seconds
+      no anomalies in 283 test result(s)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 32 gigabytes (2^35 bytes), time= 101 seconds
+      no anomalies in 296 test result(s)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 64 gigabytes (2^36 bytes), time= 200 seconds
+      no anomalies in 308 test result(s)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 128 gigabytes (2^37 bytes), time= 392 seconds
+      no anomalies in 320 test result(s)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 256 gigabytes (2^38 bytes), time= 776 seconds
+      no anomalies in 332 test result(s)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 512 gigabytes (2^39 bytes), time= 1536 seconds
+      no anomalies in 343 test result(s)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 1 terabyte (2^40 bytes), time= 3050 seconds
+      no anomalies in 354 test result(s)
+
+This is a very clean bill of health for the fundamental PRNG, also when it is being
+periodically reinitialized like it would be in a simulation model.
+
+In particular, successive values appear to be uncorrelated, so it is not necessary to
+use multiple streams of pseudo-random numbers in the same trial. It would do more harm than
 good. For this reason, the PRNG is not implemented as an object in the simulated world,
-where various entities can carry around their own sources of randomness, but more like
+where various entities can carry around their own streams of randomness, but more like
 a property of the simulated world. It just *is*. The simulated entities can obtain
 sample values from it according to whatever distribution is needed.
 
 The basic :c:func:`cmb_random_sfc64()` returns an unsigned 64-bit bit pattern from the PRNG.
 This is a bit spartan for most purposes. The function :c:func:`cmb_random()` instead returns
-the sample as a ``double`` between zero and one. The first unit test in
-``test/test_random.c`` checks the output of :c:func:`cmb_random()` against its expected values:
+the sample as a ``double`` between zero and one, strictly :math:`[0,1)`. The first unit
+test in ``test/test_random.c`` checks the output of :c:func:`cmb_random()` against its
+expected values:
 
 .. code-block:: none
 
-    Quality testing basic random number generator cmb_random(), uniform on [0,1)
-    Drawing 100000000 samples...
+    ********************************************************************************
+    ************** Testing random number generators and distributions **************
+    ********************************************************************************
+    Using seed: 0x47c62bcb9a24782d
 
-    Expected: N 100000000  Mean   0.5000  StdDev   0.2887  Variance  0.08333  Skewness    0.000  Kurtosis   -1.200
-    Actual:   N 100000000  Mean   0.5000  StdDev   0.2887  Variance  0.08333  Skewness -1.537e-05  Kurtosis   -1.200
+    Quality testing basic random number generator cmb_random(), uniform on [0,1)
+    Drawing 1000000 samples...
+
+    Expected: N  1000000  Mean   0.5000  StdDev   0.2887  Variance  0.08333  Skewness    0.000  Kurtosis   -1.200
+    Actual:   N  1000000  Mean   0.5001  StdDev   0.2887  Variance  0.08337  Skewness -0.0002640  Kurtosis   -1.200
     --------------------------------------------------------------------------------
-    ( -Infinity,  8.569e-09)   |
-    [ 8.569e-09,    0.05000)   |#################################################=
+    ( -Infinity,      0.000)   |
+    [     0.000,    0.05000)   |#################################################=
     [   0.05000,     0.1000)   |#################################################=
-    [    0.1000,     0.1500)   |#################################################=
-    [    0.1500,     0.2000)   |#################################################=
+    [    0.1000,     0.1500)   |#################################################-
+    [    0.1500,     0.2000)   |#################################################-
     [    0.2000,     0.2500)   |#################################################=
     [    0.2500,     0.3000)   |#################################################=
     [    0.3000,     0.3500)   |#################################################=
-    [    0.3500,     0.4000)   |#################################################=
+    [    0.3500,     0.4000)   |#################################################-
     [    0.4000,     0.4500)   |#################################################=
     [    0.4500,     0.5000)   |#################################################=
-    [    0.5000,     0.5500)   |#################################################=
-    [    0.5500,     0.6000)   |#################################################=
+    [    0.5000,     0.5500)   |#################################################-
+    [    0.5500,     0.6000)   |#################################################-
     [    0.6000,     0.6500)   |#################################################=
-    [    0.6500,     0.7000)   |#################################################=
+    [    0.6500,     0.7000)   |##################################################
     [    0.7000,     0.7500)   |#################################################=
     [    0.7500,     0.8000)   |#################################################=
     [    0.8000,     0.8500)   |#################################################=
     [    0.8500,     0.9000)   |#################################################=
-    [    0.9000,     0.9500)   |##################################################
+    [    0.9000,     0.9500)   |#################################################=
     [    0.9500,      1.000)   |#################################################=
-    [     1.000,  Infinity )   |-
+    [     1.000,      1.050)   |
+    [     1.050,   Infinity)   |
     --------------------------------------------------------------------------------
 
     Autocorrelation factors (expected 0.0):
@@ -689,19 +814,19 @@ the sample as a ``double`` between zero and one. The first unit test in
     --------------------------------------------------------------------------------
        1  -0.000                                 -|
        2  -0.000                                 -|
-       3   0.000                                  |-
-       4   0.000                                  |-
-       5   0.000                                  |-
-       6   0.000                                  |-
-       7   0.000                                  |-
-       8  -0.000                                 -|
-       9  -0.000                                 -|
-      10  -0.000                                 -|
-      11  -0.000                                 -|
+       3  -0.001                                 -|
+       4   0.001                                  |-
+       5  -0.000                                 -|
+       6  -0.000                                 -|
+       7  -0.001                                 -|
+       8  -0.001                                 -|
+       9  -0.001                                 -|
+      10  -0.001                                 -|
+      11   0.001                                  |-
       12  -0.000                                 -|
-      13   0.000                                  |-
-      14  -0.000                                 -|
-      15  -0.000                                 -|
+      13   0.001                                  |-
+      14   0.002                                  |-
+      15   0.001                                  |-
     --------------------------------------------------------------------------------
 
     Partial autocorrelation factors (expected 0.0):
@@ -709,44 +834,45 @@ the sample as a ``double`` between zero and one. The first unit test in
     --------------------------------------------------------------------------------
        1  -0.000                                 -|
        2  -0.000                                 -|
-       3   0.000                                  |-
-       4   0.000                                  |-
-       5   0.000                                  |-
-       6   0.000                                  |-
-       7   0.000                                  |-
-       8  -0.000                                 -|
-       9  -0.000                                 -|
-      10  -0.000                                 -|
-      11  -0.000                                 -|
+       3  -0.001                                 -|
+       4   0.001                                  |-
+       5  -0.000                                 -|
+       6  -0.000                                 -|
+       7  -0.001                                 -|
+       8  -0.001                                 -|
+       9  -0.001                                 -|
+      10  -0.001                                 -|
+      11   0.001                                  |-
       12  -0.000                                 -|
-      13   0.000                                  |-
-      14  -0.000                                 -|
-      15  -0.000                                 -|
+      13   0.001                                  |-
+      14   0.002                                  |-
+      15   0.000                                  |-
     --------------------------------------------------------------------------------
 
     Raw moment:   Expected:   Actual:   Error:
     --------------------------------------------------------------------------------
-        1             0.5     0.50002    0.004 %
-        2         0.33333     0.33335    0.006 %
-        3            0.25     0.25002    0.008 %
-        4             0.2     0.20002    0.010 %
-        5         0.16667     0.16669    0.012 %
-        6         0.14286     0.14288    0.013 %
-        7           0.125     0.12502    0.015 %
-        8         0.11111     0.11113    0.016 %
-        9             0.1     0.10002    0.018 %
-       10        0.090909    0.090926    0.019 %
-       11        0.083333    0.083349    0.019 %
-       12        0.076923    0.076938    0.020 %
-       13        0.071429    0.071443    0.020 %
-       14        0.066667     0.06668    0.021 %
-       15          0.0625    0.062513    0.021 %
+        1             0.5     0.50007    0.015 %
+        2         0.33333     0.33345    0.034 %
+        3            0.25     0.25013    0.050 %
+        4             0.2     0.20013    0.064 %
+        5         0.16667     0.16679    0.077 %
+        6         0.14286     0.14298    0.088 %
+        7           0.125     0.12512    0.099 %
+        8         0.11111     0.11123    0.109 %
+        9             0.1     0.10012    0.119 %
+       10        0.090909    0.091026    0.128 %
+       11        0.083333    0.083448    0.138 %
+       12        0.076923    0.077037    0.148 %
+       13        0.071429    0.071541    0.157 %
+       14        0.066667    0.066777    0.166 %
+       15          0.0625     0.06261    0.175 %
     --------------------------------------------------------------------------------
+    ================================================================================
 
-Another way to check the quality is to generate a million successive (x, y) pairs from
-:c:func:`cmb_random()` and plot them. The human eye is pretty good at detecting correlations
-and patterns, sometimes even where no pattern exists, so this is a quite sensitive (but
-informal) test:
+Another way to check the quality is to generate a million successive :math:`(x, y)` pairs
+from :c:func:`cmb_random()` and plot them. The human eye is pretty good at detecting
+correlations and patterns, sometimes even where no pattern exists, so this is a quite
+sensitive (but informal) test:
 
 .. image:: ../images/crossplot_random.png
 
@@ -756,13 +882,13 @@ selected for speed and accuracy. Please run
 `the unit test <https://github.com/ambonvik/cimba/blob/main/test/test_random.c>`_
 for verification of the individual distributions versus expected values.
 
-The exponential and normal distributions are implementations of Chris McFarland's
-improved Ziggurat algorithms, see https://github.com/cd-mcfarland/fast_prng
-or https://arxiv.org/pdf/1403.6870
+The exponential and normal distributions are implementations of `Chris McFarland's
+improved Ziggurat algorithms <https://arxiv.org/pdf/1403.6870>`_.
 
-The gamma distribution uses an algorithm due to Marsaglia and Tsang. It uses a similar
-rejection sampling approach as the Ziggurat algorithm, but with a continuous function
-instead of the stepped rectangles of the Ziggurat. See https://dl.acm.org/doi/10.1145/358407.358414
+The gamma distribution uses `an algorithm due to Marsaglia and Tsang <https://dl.acm
+.org/doi/10.1145/358407.358414>`_. It uses a similar rejection sampling approach as
+the Ziggurat algorithm, but with a continuous function instead of the stepped rectangles
+of the Ziggurat.
 
 Many other distributions are built on top of these, as sums, products, or ratios of
 samples. For example, the infamous Cauchy distribution is simply the ratio of two normal
@@ -772,6 +898,12 @@ Cimba also provides a collection of discrete-valued distributions, starting from
 simple unbiased coin flip in :c:func:`cmb_random_flip`. It also provides Bernoulli trials
 (biased coin flips, if such a thing exists), fair and loaded dice, geometric, Poisson and
 Pascal distributions, and so forth.
+
+The binomial distribution is an implementation of `Wolfgang Hörmann's BTRD algorithm
+<https://research.wu.ac.at/en/publications/the-generation-of-binomial-random-variates-6/>`_
+and the Poisson algorithm his `PTRD algorithm
+<https://research.wu.ac.at/de/publications/the-transformed-rejection-method-for-generating-poisson-random-va-6/>`_.
+These are also fast rejection-type algorithms.
 
 In some cases, a model needs to sample based on some empirical, discrete-valued set of
 probabilities. The probabilities can be given as an array *p[n]*, where *p[i]* is the
