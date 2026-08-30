@@ -232,17 +232,18 @@ extern void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
 
 /**
  * @brief Print a simple character-based histogram. Will autoscale to the
- * dataset range if `LowerLimit == UpperLimit`.
+ * dataset range if `LowerLimit == UpperLimit`. The requested number of bins may
+ * be overruled if autoscaling, actual number of bins <= `num_bins`+ 2.
  *
  *  Will print the symbol '#' for a full bar "pixel", '=' for one that is more
  *  than half full, and '-' for one that is less than half full.
-*
+ *
  *  Adds overflow bins to the ends of the range to catch anything outside.
  *
  * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly `stdout`
- * @param num_bins The number of bins, not including the two overflow bins
+ * @param num_bins The number of bins, not including the two overflow bins.
  * @param low_lim The lower limit for the bin range.
  * @param high_lim The upper limit for the bin range.
  */
