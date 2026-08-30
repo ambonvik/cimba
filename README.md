@@ -80,7 +80,7 @@ It is powerful, fast, reliable, and free.
     number of simulated events processed per second of wall clock time on a simple M/M/1
     queue implemented in SimPy and Cimba. _Cimba runs more than twice as fast (41.8M 
     events/sec) on a single CPU core as SimPy does when using all 64 logical cores 
-  * (16M events/sec combined)._
+    (16M events/sec combined)._
 
     ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
 
