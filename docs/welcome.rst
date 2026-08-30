@@ -85,6 +85,7 @@ It is powerful, fast, reliable, and free.
   16 million events per second).*
 
   .. image:: ../images/Speed_test_AMD_3970x.png
+  .. caption:: Cimba built with `-O3 -fprofile-use -DNDEBUG -DNLOGINFO -DNASSERT -DNMXCSR`, SimPy on Python 3.14.7
 
   The reason for this speed difference is that a compiled program in C and hand-rolled
   assembly will always run faster than code that needs to be interpreted on-the-fly at
@@ -93,7 +94,7 @@ It is powerful, fast, reliable, and free.
   The CPU used here has 32 *physical* cores, running two threads per physical core.
   Cimba runs about 42 M events/second on a single core and about 28 M events/second/core
   on 32 physical cores for a scaling efficiency of 67 %. This also compares favorably to
-  `the literature on large-scale parallel discrete event simulation <https://informs-sim .org/wsc15papers/004.pdf>`_
+  `the literature on large-scale parallel discrete event simulation <https://informs-sim.org/wsc15papers/004.pdf>`_
   (PDES), where each simulation trial is distributed across many physical cores,
   where it seems that  performance for the Time Warp-type PDES algorithms has leveled
   out at around 250 K events/second/core on massively parallel supercomputers.
