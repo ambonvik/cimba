@@ -853,7 +853,6 @@ static uint64_t cmi_random_binomial_btrd(const uint64_t n, const double p)
         }
 
         const int64_t k = (int64_t)dk;
-        cmb_assert_debug((k >= 0) && (k <= n));
         v = v * alpha / (a / (us * us) + b);
         const double km = fabs(dk - dm);
 
