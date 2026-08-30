@@ -5,7 +5,15 @@ Versioning in the strictest sense. There may be minor breaking changes in some o
 corner without this warranting a new major release. We will summarize new features, 
 changes, and bug fixes below. For complete details, see the git commit history.
 
-### 2026-xx-xx: 3.0.0 Release Candidate 1
+### 2026-08-30: 3.0.0 Release Candidate 2
+* Minor bug fixes and performance improvements.
+* Faster random number algorithms for integer-valued distributions (Poisson, binomial, 
+  geometric, Pascal) based on transformed rejection methods.
+* Minor performance improvements to uniform and exponential distributions.
+* Better-looking autoscaling of histograms.
+* Runs 15-30 % faster than RC1 on our M/M/1 queue benchmarks.
+
+### 2026-08-21: 3.0.0 Release Candidate 1
 * Possibly breaking change: Tightened enforcement of the Create - Initialize -
   Terminate - Destroy object lifecycle, necessary for proper memory recovery in error
   handling for multithreaded trials.

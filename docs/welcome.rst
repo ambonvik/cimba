@@ -77,12 +77,12 @@ It is powerful, fast, reliable, and free.
   and parameter variations in just a few seconds, generating tight confidence intervals
   in your experiments and high density of data points along parameter variations.
 
-  In a M/M/1 queue benchmark, Cimba runs about *45-50 times faster* than SimPy with all
+  In a M/M/1 queue benchmark, Cimba runs about *30-60 times faster* than SimPy with all
   available cores in use. This corresponds to a 98 % reduction in run time.
 
-  In fact, *Cimba runs twice as fast on a single CPU core (left chart, about 32 million
-  events per second) than SimPy does with all 64 logical cores (right chart, about 16
-  million events per second).*
+  In fact, *Cimba runs more than twice as fast on a single CPU core (left chart, about 42
+  million events per second) than SimPy does with all 64 logical cores (right chart, about
+  16 million events per second).*
 
   .. image:: ../images/Speed_test_AMD_3970x.png
 
@@ -91,8 +91,8 @@ It is powerful, fast, reliable, and free.
   runtime.
 
   The CPU used here has 32 *physical* cores, running two threads per physical core.
-  Cimba runs about 32 M events/second on a single core and about 25 M events/second/core
-  on 32 physical cores for a scaling efficiency of 76 %. This also compares favorably to
+  Cimba runs about 42 M events/second on a single core and about 28 M events/second/core
+  on 32 physical cores for a scaling efficiency of 67 %. This also compares favorably to
   `the literature on large-scale parallel discrete event simulation <https://informs-sim .org/wsc15papers/004.pdf>`_
   (PDES), where each simulation trial is distributed across many physical cores,
   where it seems that  performance for the Time Warp-type PDES algorithms has leveled

@@ -75,11 +75,12 @@ It is powerful, fast, reliable, and free.
   intervals in your experiments and a high density of data points along parameter
   variations.
 
-  * A relevant benchmark is the Python simulation package SimPy. Cimba models run 40-50 times
-    faster than SimPy equivalents. The chart below shows the
+  * A relevant benchmark is the Python simulation package SimPy. Cimba models run 
+    30-60 times faster than SimPy equivalents. The chart below shows the
     number of simulated events processed per second of wall clock time on a simple M/M/1
-    queue implemented in SimPy and Cimba. _Cimba runs twice as fast (32M events/sec) on a
-    single CPU core as SimPy does when using all 64 logical cores (16M events/sec combined)._
+    queue implemented in SimPy and Cimba. _Cimba runs more than twice as fast (41.8M 
+    events/sec) on a single CPU core as SimPy does when using all 64 logical cores 
+  * (16M events/sec combined)._
 
     ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
 
@@ -98,11 +99,11 @@ It is powerful, fast, reliable, and free.
     performance improvement in recent years only comes from increasing the number of cores. 
     *Cimba runs two orders of magnitude faster than this on a per-core basis.* The CPU used 
     in the benchmark above has 32 _physical_ cores, running two threads per physical core.
-    Cimba runs about 32 M events/sec on a single core and about 25 M events/second/core on 32
+    Cimba runs about 42 M events/sec on a single core and about 28 M events/second/core on 32
     physical cores. The reason is that keeping our entire event queue in "hot" CPU cache memory
     is orders of magnitude faster than communicating the events across a link between separate devices.
 
-  * If you need even more speed, CUDA kernels can be used for massively parallel 
+  * If you need even higher speed, CUDA kernels can be used for massively parallel 
     computation inside each simulated process, e.g., for AI-enabled agents or for 
     intricate physics calculations. In 
     [one of our tutorials](https://cimba.readthedocs.io/en/latest/tutorial.html#adding-cuda-gpu-power-for-simulation-physics), 
