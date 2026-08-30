@@ -149,9 +149,11 @@ It is a general-purpose discrete event simulation library, in the spirit of a
 
 If you look under the hood, you will also find additional reusable internal components.
 Cimba contains stackful coroutines doing their own thing on thread-safe cactus stacks. 
-There are fast memory pool allocators for generic small objects and hash-heaps combining 
-a binary heap and an open addressing hash map using Fibonacci hashing. Although not part 
-of the public Cimba API, these components can also be used in your model if needed.
+There are fast memory pool allocators for generic small objects, intrusive linked 
+lists, and hash-heaps combining a binary heap and an open addressing hash map using 
+Fibonacci hashing. Although not part of the public Cimba API, these components can also
+be used in your model if needed, but be aware that anything in the `cmi_` namespace may 
+change in future (minor) versions.
 
 ### What does the code look like?
 It is C code. As an illustration, this is the entire code for [our multithreaded M/M/1 
