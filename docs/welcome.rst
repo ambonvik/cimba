@@ -158,11 +158,13 @@ For example, you can use it to model:
 See :ref:`the tutorials <tutorial>` for illustrations of both expressive power and how to use
 it for multi-threaded computing power.
 
-If you look under the hood, you will also find reusable internal components
-like stackful coroutines doing their own thing on thread-safe cactus stacks,
-fast memory pool allocators for generic small objects, and sophisticated data
-structures like hash-heaps combining a binary heap and an open addressing hash
-map with Fibonacci hashing for fast access to various objects.
+If you look under the hood, you will also find additional reusable internal components.
+Cimba contains stackful coroutines doing their own thing on thread-safe cactus stacks.
+There are fast memory pool allocators for generic small objects, intrusive linked
+lists, and hash-heaps combining a binary heap and an open addressing hash map using
+Fibonacci hashing. Although not part of the public Cimba API, these components can also
+be used in your model if needed, but be aware that anything in the ``cmi_`` namespace may
+change in future (minor) versions.
 
 Obtaining and installing Cimba
 ------------------------------
