@@ -182,12 +182,8 @@ static void test_quality_std_exponential(uint64_t nsamples)
 static double exponential_inv(const double m)
 {
     cmb_assert_release(m > 0.0);
-    double x;
 
-    /* In the extremely unlikely case of exact zero, reject it and retry */
-    while ((x = cmb_random()) == 0.0) { }
-
-    return -log(x) * m;
+    return -log(1.0 - cmb_random()) * m;
 }
 
 static void test_speed_exponential(uint64_t nsamples, const double m)
@@ -392,7 +388,8 @@ static void test_quality_erlang(uint64_t nsamples, const unsigned k, const doubl
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_erlang(k, m), x >= 0.0);
 
-    print_expected(nsamples, true, k * m, true, k * m * m, true, 2.0 / sqrt((double)k), true, 6.0 / (double)k);
+    print_expected(nsamples, true, k * m, true, k * m * m,
+                             true, 2.0 / sqrt((double)k), true, 6.0 / (double)k);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -418,7 +415,8 @@ static void test_quality_hypoexponential(const uint64_t nsamples, const unsigned
         msumcube += m[i] * m[i] * m[i];
     }
 
-    print_expected(nsamples, true, msum, true, msumsq, true, 2.0 * msumcube / pow(msumsq, 1.5), false, 0.0);
+    print_expected(nsamples, true, msum, true, msumsq,
+                             true, 2.0 * msumcube / pow(msumsq, 1.5), false, 0.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -488,7 +486,7 @@ static void test_quality_lognormal(const uint64_t nsamples, const double m, cons
     const double skew = (exp(s * s) + 2.0) * sqrt(exp(s * s) - 1);
     const double kurt = exp(4.0 * s * s) + 2.0 * exp(3.0 * s * s) + 3.0 * exp (2.0 * s * s) - 6;
 
-    print_expected(nsamples, true, mean, true,var,true, skew, true, kurt);
+    print_expected(nsamples, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -502,7 +500,7 @@ static void test_quality_logistic(const uint64_t nsamples, const double m, const
 
     const double var = s * s * M_PI * M_PI / 3.0;
 
-    print_expected(nsamples, true, m, true,var,true, 0.0, true, 6.0 / 5.0);
+    print_expected(nsamples, true, m, true, var, true, 0.0, true, 6.0 / 5.0);
 
     QTEST_REPORT();
     QTEST_FINISH();
@@ -546,7 +544,7 @@ static void test_quality_pareto(const uint64_t nsamples, const double a, const d
     const double mean = (a > 1.0) ? (a * b / (a - 1.0)) : HUGE_VAL;
     const double var = (a > 2.0) ? ((a * b * b) / ((a - 1.0) * (a - 1.0) * (a - 2.0))) : HUGE_VAL;
     const double skew = (a > 3.0) ? 2.0 * ((1.0 + a) / (a - 3.0)) * sqrt((a - 2.0) / a) : HUGE_VAL;
-    const double kurt = (a > 3.0) ? 6.0 * ( a * a * a + a * a - 6.0 * a - 2.0)
+    const double kurt = (a > 4.0) ? 6.0 * ( a * a * a + a * a - 6.0 * a - 2.0)
                                         / (a * (a - 3.0) * (a - 4)) : HUGE_VAL;
 
     print_expected(nsamples, (a > 1.0), mean, (a > 2.0),var,(a > 3.0), skew, (a > 3.0), kurt);
