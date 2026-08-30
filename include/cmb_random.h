@@ -476,8 +476,14 @@ static inline double cmb_random_std_beta(const double a, const double b)
     cmb_assert_release(a > 0.0);
     cmb_assert_release(b > 0.0);
 
-    const double x = cmb_random_std_gamma(a);
-    const double y = cmb_random_std_gamma(b);
+    double x;
+    double y;
+    do {
+        /* Guard against the exceedingly unlikely double zero outcome */
+        x = cmb_random_std_gamma(a);
+        y = cmb_random_std_gamma(b);
+    } while ((x == 0.0) && (y == 0.0));
+
     const double r = x / (x + y);
 
     cmb_assert_debug((r >= 0.0) && (r <= 1.0));
@@ -545,7 +551,6 @@ static inline double cmb_random_PERT(const double min,
 
     const double x = cmb_random_PERT_mod(min, mode, max, 4.0);
 
-
     cmb_assert_debug((x >= min) && (x <= max));
     return x;
 }
@@ -595,7 +600,9 @@ static inline double cmb_random_pareto(const double shape, const double mode)
     cmb_assert_release(shape > 0.0);
     cmb_assert_release(mode > 0.0);
 
-    const double x = mode / pow(cmb_random(), 1.0 / shape);
+    /* Generate uniform sample on (0.0, 1.0] */
+    const double y = 1.0 - cmb_random();
+    const double x = mode / pow(y, 1.0 / shape);
 
     cmb_assert_debug(x >= mode);
     return x;
@@ -772,7 +779,7 @@ extern uint64_t cmb_random_geometric(double p);
  *
  * Mean `np`, variance `np(1-p)`.
  *
- * See also https://en.wikipedia.org/wiki/Geometric_distribution
+ * See also https://en.wikipedia.org/wiki/Binomial_distribution
  */
 extern uint64_t cmb_random_binomial(uint64_t n, double p);
 
@@ -814,7 +821,7 @@ extern uint64_t cmi_random_poisson_ptrd(double r);
 /**
  * @brief Poisson distribution, number of arrivals per unit time in a Poisson
  *        process with arrival rate `r > 0`. Rates higher than 1e18 are not
- *        numerically representable, so `r < 1e18`.
+ *        numerically representable, so `r <= 1e18`.
  *
  * Mean `r`, variance `r`, interarrival times exponentially distributed with
  * mean `1/r`.
@@ -919,7 +926,7 @@ struct cmb_random_alias {
  *        number of entries.
  *
  * `cmb_random_alias_create()` allocates and returns a look-up table of
- * `(prob, alias)` pairs, `cmb_random_alias_draw()` samples it efficiently as
+ * `(prob, alias)` pairs, `cmb_random_alias_sample()` samples it efficiently as
  * many times as needed, `cmb_random_alias_destroy()` frees the memory when
  * finished.
  *
@@ -959,7 +966,7 @@ extern uint64_t cmb_random_alias_sample(const struct cmb_random_alias *ap);
 
 /**
  * @brief Destroy alias lookup table created by `cmb_random_alias_create()`
- *        after `cmb_random_alias_draw()` is finished using it.
+ *        after `cmb_random_alias_sample()` is finished using it.
  *
  * @param ap Pointer to an allocated `cmb_random_alias` look-up table.
  */
