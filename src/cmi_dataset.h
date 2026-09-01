@@ -51,7 +51,7 @@ struct cmi_dataset_histogram {
     double *hbins;
 };
 
-extern struct cmi_dataset_histogram *cmi_dataset_histogram_create(unsigned num_bins,
+extern struct cmi_dataset_histogram *cmi_dataset_histogram_create(unsigned int num_bins,
                                                        double low_lim,
                                                        double high_lim);
 

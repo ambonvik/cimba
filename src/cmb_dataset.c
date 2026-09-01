@@ -581,16 +581,17 @@ static void data_print_line(FILE *fp,
     cmb_assert_release(r == symbol_newline);
 }
 
-struct cmi_dataset_histogram *cmi_dataset_histogram_create(const unsigned num_bins,
+struct cmi_dataset_histogram *cmi_dataset_histogram_create(const unsigned int num_bins,
                                                            const double low_lim,
                                                            const double high_lim)
 {
     cmb_assert_debug(num_bins > 0u);
-    const double range = high_lim - low_lim;
 
     struct cmi_dataset_histogram *hp = cmi_malloc(sizeof(*hp));
-    /* Allow for overflow bins on either end */
+    /* Add overflow bins on either end, also for autoscaled histograms,
+     * as a pair of "non plus ultra" markers. Sort of a visual assert(). */
     hp->num_bins = num_bins + 2u;
+    const double range = high_lim - low_lim;
     hp->binsize = range / (double)(num_bins);
     hp->low_lim = low_lim;
     hp->high_lim = high_lim;
@@ -615,7 +616,7 @@ void cmi_dataset_histogram_fill(struct cmi_dataset_histogram *hp,
     /* Distribute x-values to bins */
     for (uint64_t ui = 0u; ui < n; ui++) {
         /* In what bin does this x-value belong? */
-        uint16_t bin;
+        unsigned int bin;
         if (xa[ui] < hp->low_lim) {
             bin = 0u;
         }
@@ -697,9 +698,16 @@ void cmi_dataset_histogram_autoscale(const struct cmb_dataset *dsp,
     }
 
     const double ll = floor(dsp->min / w) * w;
-    const double ncand = ceil((dsp->max - ll) / w) + 1.0;
-    nb = (unsigned)ncand;
+    const double ncand = floor((dsp->max - ll) / w) + 1.0;
+    nb = ncand;
     const double hl = ll + nb * w;
+
+    /* cmi_dataset_histogram_create will recalculate
+     *      dsp->bin_size = (high_lim - low_lim) / num_bins;
+     * Ensure high_lim does not go to the overflow bin due to rounding error. */
+    if (ll + nb * w <= dsp->max) {
+        nb += 1.0;
+    }
 
     *num_bins = (unsigned int)nb;
     *low_lim = ll;
