@@ -183,8 +183,7 @@ Unweighted histogram: cmb_dataset_histogram_print
 [    0.8500,     0.9000)   |###############################################=
 [    0.9000,     0.9500)   |#################################################=
 [    0.9500,      1.000)   |#################################################-
-[     1.000,      1.050)   |
-[     1.050,   Infinity)   |
+[     1.000,   Infinity)   |
 --------------------------------------------------------------------------------
 
 Autocorrelation coefficients: cmb_dataset_ACF
@@ -263,8 +262,7 @@ N    10000  Mean -0.002352  StdDev    1.497  Variance    2.242  Skewness 0.00821
 [     2.500,      3.000)   |########=
 [     3.000,      3.500)   |#-
 [     3.500,      4.000)   |-
-[     4.000,      4.500)   |
-[     4.500,   Infinity)   |
+[     4.000,   Infinity)   |
 --------------------------------------------------------------------------------
 
 Autocorrelation coefficients:
@@ -368,8 +366,7 @@ Weighted histogram:
 [    0.8500,     0.9000)   |###########################-
 [    0.9000,     0.9500)   |########################=
 [    0.9500,      1.000)   |###########################-
-[     1.000,      1.050)   |
-[     1.050,   Infinity)   |
+[     1.000,   Infinity)   |
 --------------------------------------------------------------------------------
 Unweighted histogram of same data:
 --------------------------------------------------------------------------------
@@ -394,8 +391,7 @@ Unweighted histogram of same data:
 [    0.8500,     0.9000)   |###############################################=
 [    0.9000,     0.9500)   |##############################################=
 [    0.9500,      1.000)   |##############################################=
-[     1.000,      1.050)   |
-[     1.050,   Infinity)   |
+[     1.000,   Infinity)   |
 --------------------------------------------------------------------------------
 ================================================================================
 
@@ -521,11 +517,11 @@ Testing empty datasets
     0.0000	dispatcher	cmb_dataset_median (443):  Warning: Cannot take median of empty data set., seed 0x34f05c64d7ad598f	
 Median of empty dataset: 0.000000
     0.0000	dispatcher	cmb_dataset_fivenum_print (470):  Warning: No data to display in five-number summary, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_histogram_print (785):  Warning: No data to display in histogram, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_ACF (814):  Warning: No data for calculating ACF, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_PACF (884):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_PACF (884):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_correlogram_print (1020):  Warning: No data for correlogram, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_histogram_print (793):  Warning: No data to display in histogram, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_ACF (822):  Warning: No data for calculating ACF, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_PACF (892):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_PACF (892):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_correlogram_print (1028):  Warning: No data for correlogram, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_dataset_summarize (408):  Warning: Cannot summarize empty data set., seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_dataset_summarize (408):  Warning: Cannot summarize empty data set., seed 0x34f05c64d7ad598f	
 N        0
