@@ -37,10 +37,10 @@ the library and header files in system locations  ``/usr/local/lib``
 and ``/usr/local/include``. These should already be in the respective paths for
 compilation and runtime linking.
 
-If you encounter errors, such as the include file not found by the compiler or the Cimba
-library not found at runtime, please check that these paths are correctly configured on
-your system. The details of how to fix the issue may be distro-specific, so we will not
-try to give a recipe here.
+Cimba should build without any warnings or errors. If you encounter errors, such as the
+include file not found by the compiler or the Cimba library not found at runtime, please
+check that these paths are correctly configured on your system. The details of how to fix
+the issue may be distro-specific, so we will not try to give a recipe here.
 
 Windows
 -------
