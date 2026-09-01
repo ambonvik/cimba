@@ -55,17 +55,19 @@ int main(const int argc, char *argv[])
         }
     }
 
+    /* Print info to stderr since PractRand will read from our stdout */
     fprintf(stderr, "test_practrand, Cimba version %s\n", cimba_version());
     fprintf(stderr, "master_seed = 0x%016" PRIx64 ", words_per_seed = %zu\n\n",
             master_seed, words_per_seed);
 
-    static uint64_t buf[16384];          /* 128 KiB per write */
-    size_t   n = 0;                       /* words currently in buf */
-    uint64_t i = 0;                       /* trial index */
+    static uint64_t buf[16384];           /* 128 KiB per write */
+    size_t   n = 0;                       /* Words currently in buf */
+    uint64_t i = 0;                       /* Trial index */
 
     for (;;) {
-        /* A new batch */
-        cmb_random_initialize(cmb_random_fmix64(master_seed, i++));
+        /* A new batch representing a Cimba trial */
+        const uint64_t trial_seed = cmb_random_fmix64(master_seed, i++);
+        cmb_random_initialize(trial_seed);
 
         for (size_t j = 0; j < words_per_seed; j++) {
             /* Generate sample to buffer */
@@ -82,6 +84,8 @@ int main(const int argc, char *argv[])
                 n = 0;
             }
         }
+
+        cmb_random_terminate();
     }
 
     /* Not reached */
