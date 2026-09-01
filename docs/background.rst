@@ -597,7 +597,7 @@ processes do not promise. They *demand*.
 
 .. _background_random:
 
-Pseudo-random number generators and distribution
+Pseudo-random number generators and distributions
 -------------------------------------------------
 
 Cimba has a few specific requirements to its pseudo-random number generators as well. For
@@ -634,31 +634,44 @@ We initialize the PRNG in a three-stage bootstrapping process:
 
 * Second, the 64-bit master seed is used to initialize the PRNG by calling
   :c:func:`cmb_random_initialize`.
-  It needs to create 256 bits of state from a 64-bit seed. We use a dedicated 64-bit-state
+  It creates 256 bits of state from a 64-bit seed. We use a dedicated 64-bit-state
   PRNG for this. We initialize it with the 64-bit seed, and then draw four samples from it
-  to initialize the state of our main PRNG. This auxiliary PRNG is `splitmix64`, also
-  public domain, see https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64#C
+  to initialize the state of our main PRNG. This auxiliary PRNG is
+  `splitmix64 <https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64#C>`_,
+  also in the public domain.
 
-  Note that this is slightly different from the published ``sfc64``, which initializes
+  In cases where we need to create many deterministic seeds from a single master seed,
+  e.g., for a large number of independent trials, we use the `MurmurHash3` function
+  :c:func:`cmb_fmix64()` to generate the trial seeds from a master seed and a counter
+  used as a hash nonce value. The 64-bit trial seeds are then passed to
+  :c:func:`cmb_random_initialize()` where `splitmix64` amplifies them to 256-bit initial
+  states.
+
+  Note that this is slightly different from the published `sfc64`, which initializes
   three 64-bit state variables to the same seed value and the fourth, the counter, to
   zero in every case. By randomizing also the counter, we start the generator at a
   random point along its cycle. This starting point is one that is also reachable
   if starting the counter from zero, just with an offset.
 
   This implies that published `sfc64` results in PractRand and BigCrush tests carry
-  over, and that the cycle length stays the same, at least :math:`2^64`. However, if
-  each trial consumes :math:`L` `sfc64` samples, where :math:`L \ll 2^{64}`, this reduces
-  the probability of  getting overlapping sample sequences between trials or threads by
-  about :math:`2^{64} / L`   compared to starting all counters from zero.
+  over, and that the cycle length stays the same, at least :math:`2^{64}`. However, if
+  each trial consumes :math:`L` `sfc64` samples, where :math:`L \ll 2^{64}`,
+  randomizing the counter starting point reduces the (already low) probability of
+  getting overlapping sample sequences between trials or threads by about
+  :math:`2^{64} / L` compared to starting all counters from zero.
 
 * Finally, :c:func:`cmb_random_initialize` draws and discards 20 samples from the main PRNG
   to make sure that any initial transient is gone before returning and allowing
   :c:func:`cmb_random_sfc64` to provide pseudo-random numbers to the user application.
 
 The result is a pseudo-random number sequence that cannot be distinguished from true
-randomness by any available statistical methods. As evidence, we built a small test
-program to feed the :c:func:`cmb_random_sfc64` output to `PractRand <https://pracrand
-.sourceforge.net>`_:
+randomness by any currently available statistical methods.
+
+As evidence for this statement,we built a small test program to feed the
+:c:func:`cmb_random_sfc64` output to
+`PractRand <https://pracrand.sourceforge.net>`_,
+including periodic reinitializations with `splitmix64` like what would happen in a
+multi-trial experiment:
 
 .. code-block:: c
 
@@ -667,17 +680,19 @@ program to feed the :c:func:`cmb_random_sfc64` output to `PractRand <https://pra
         uint64_t master_seed = cmb_random_hwseed();
         size_t words_per_seed = 64;
 
+        /* Print info to stderr since PractRand will read from our stdout */
         fprintf(stderr, "test_practrand, Cimba version %s\n", cimba_version());
         fprintf(stderr, "master_seed = 0x%016" PRIx64 ", words_per_seed = %zu\n\n",
                 master_seed, words_per_seed);
 
-        static uint64_t buf[16384];          /* 128 KiB per write */
-        size_t   n = 0;                       /* words currently in buf */
-        uint64_t i = 0;                       /* trial index */
+        static uint64_t buf[16384];           /* 128 KiB per write */
+        size_t   n = 0;                       /* Words currently in buf */
+        uint64_t i = 0;                       /* Trial index */
 
         for (;;) {
-            /* A new batch */
-            cmb_random_initialize(cmb_random_fmix64(master_seed, i++));
+            /* A new batch representing a Cimba trial */
+            const uint64_t trial_seed = cmb_random_fmix64(master_seed, i++);
+            cmb_random_initialize(trial_seed);
 
             for (size_t j = 0; j < words_per_seed; j++) {
                 /* Generate sample to buffer */
@@ -694,6 +709,8 @@ program to feed the :c:func:`cmb_random_sfc64` output to `PractRand <https://pra
                     n = 0;
                 }
             }
+
+            cmb_random_terminate();
         }
 
         /* Not reached */
@@ -703,7 +720,7 @@ We can then run it from the command line as:
 
 .. code-block:: none
 
-    [ambonvik@Threadripper PractRand]$ ../github/cimba/build/test/test_practrand | ./RNG_test stdin64 -tlmax 1TB -multithreaded
+    [ambonvik@Threadripper PractRand]$ ../cimba/build/test/test_practrand | ./RNG_test stdin64 -tlmax 1TB -multithreaded
     test_practrand, Cimba version 3.0.0-RC2
     master_seed = 0x3611a744ee599a82, words_per_seed = 64
 
@@ -755,15 +772,57 @@ We can then run it from the command line as:
     length= 1 terabyte (2^40 bytes), time= 3050 seconds
       no anomalies in 354 test result(s)
 
-This is a very clean bill of health for the fundamental PRNG, also when it is being
-periodically reinitialized like it would be in a simulation model.
+This is a clean bill of health for :c:func:`cmb_random_sfc64()`, also when it is being
+periodically reinitialized like it would be in a simulation model. We can vary the
+number of samples between reinitializations, here 64, and get equally clean results
+even for just drawing a single `sfc64` sample for every `fmix64` hash and
+`splitmix64` state initialization. There is no detectable statistical pattern in the
+output from the periodic reinitializations.
 
-In particular, successive values appear to be uncorrelated, so it is not necessary to
-use multiple streams of pseudo-random numbers in the same trial. It would do more harm than
-good. For this reason, the PRNG is not implemented as an object in the simulated world,
+The tests above each pulled 137.4 billion samples without finding any non-random
+patterns in the data. In an attempt to find its limit, we let one run (with one million
+samples per reseeding, more representative of actual use) continue to 32 terabytes:
+
+.. code-block:: none
+
+    [ambonvik@Threadripper PractRand]$ ../cimba/build/test/test_practrand -n 1000000 | ./RNG_test stdin64 -tlmax 32TB -multithreaded
+    test_practrand, Cimba version 3.0.0-RC2
+    master_seed = 0xabecdc337e946ade, words_per_seed = 1000000
+
+    RNG_test using PractRand version 0.96
+    RNG = RNG_stdin64, seed = unknown
+    test set = core, folding = standard (64 bit)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 1 gigabyte (2^30 bytes), time= 3.3 seconds
+      no anomalies in 227 test result(s)
+
+    ...
+
+    rng=RNG_stdin64, seed=unknown
+    length= 16 terabytes (2^44 bytes), time= 49077 seconds
+      no anomalies in 392 test result(s)
+
+    rng=RNG_stdin64, seed=unknown
+    length= 32 terabytes (2^45 bytes), time= 97867 seconds
+      no anomalies in 400 test result(s)
+
+This was *4.4 trillion* (:math:`2^{42}`) samples without seeing any signs of
+statistically detectable patterns, matching previously known results for `sfc64`. It
+confirms that our implementation, including the periodic reinitialization, maintains
+the expected quality.
+
+For comparison, the well-known 64-bit
+`Mersenne Twister <https://en.wikipedia.org/wiki/Mersenne_Twister>`_
+`fails PractRand already at 512 GB <https://www.pcg-random.org/posts/how-to-test-with-practrand.html>`_,
+about 68.7 billion samples, or just 26 minutes into this run.
+
+With this high PRNG quality, it is not necessary to use multiple streams of pseudo-random
+numbers in the same trial to avoid overlapping cycles. That problem does not exist.
+Accordingly, the Cimba PRNG is not implemented as an object in the simulated world,
 where various entities can carry around their own streams of randomness, but more like
 a property of the simulated world. It just *is*. The simulated entities can obtain
-sample values from it according to whatever distribution is needed.
+sample values from it as needed according to whatever distribution is needed.
 
 The basic :c:func:`cmb_random_sfc64()` returns an unsigned 64-bit bit pattern from the PRNG.
 This is a bit spartan for most purposes. The function :c:func:`cmb_random()` instead returns
@@ -875,6 +934,11 @@ correlations and patterns, sometimes even where no pattern exists, so this is a 
 sensitive (but informal) test:
 
 .. image:: ../images/crossplot_random.png
+
+Even if it passes the informal eyeball tests, and the source code combined with the
+above results for the underlying `sfc64` generator conclusively proves that
+:c:func:`cmb_random()` in fact is uniformly distributed, we will need a way to
+quantifying our degree of certainty in this claim.
 
 The various pseudo-random number distributions build on this generator, shaping its
 output to match the required probability density functions. The algorithms used are
