@@ -156,37 +156,27 @@ be used in your model if needed, but be aware that anything in the `cmi_` namesp
 change in future (minor) versions.
 
 ### What does the code look like?
-It is C code. As an illustration, this is the entire code for [our multithreaded M/M/1 
-benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned above:
+It is C code. As an illustration, this is the entire program for a single-threaded M/M/1 
+queue simulation:
 
 ```
-    #include <inttypes.h>
-    #include <stdio.h>
-    #include <stdint.h>
-    
     #include <cimba.h>
+    #include <stdio.h>
     
-    #include "cmi_mempool.h"
-    
-    #define NUM_OBJECTS 1000000u
-    #define ARRIVAL_RATE 0.9
-    #define SERVICE_RATE 1.0
-    
-    CMB_THREAD_LOCAL struct cmi_mempool objectpool = CMI_MEMPOOL_STATIC_INIT(sizeof(void *), 512u);
+    #define USERFLAG1 0x00000001
     
     struct simulation {
-        struct cmb_process *arrival;
-        struct cmb_process *service;
-        struct cmb_objectqueue *queue;
+        struct cmb_process *arr;
+        struct cmb_buffer *que;
+        struct cmb_process *srv;
     };
     
     struct trial {
-        double arr_mean;
-        double srv_mean;
-        
-        uint64_t obj_cnt;
-        double sum_wait;
-        double avg_wait;
+        double arr_rate;
+        double srv_rate;
+        double warmup_s;
+        double duration_h;
+        double avg_queue_length;
     };
     
     struct context {
@@ -194,117 +184,192 @@ benchmark](https://github.com/ambonvik/cimba/tree/main/benchmark) mentioned abov
         struct trial *trl;
     };
     
-    void *arrivalfunc(struct cmb_process *me, void *vctx)
+    void end_sim(void *subject, void *object)
     {
-        cmb_unused(me);
-        const struct context *ctx = vctx;
-        
-        struct cmb_objectqueue *qp = ctx->sim->queue;
-        const double mean_hld = ctx->trl->arr_mean;
-        
-        for (uint64_t ui = 0; ui < NUM_OBJECTS; ui++) {
-            const double t_hld = cmb_random_exponential(mean_hld);
-            cmb_process_hold(t_hld);
-            
-            void *object = cmi_mempool_alloc(&objectpool);
-            double *dblp = object;
-            *dblp = cmb_time();
-            cmb_objectqueue_put(qp, object);
-        }
+        cmb_unused(subject);
+        cmb_assert_debug(object != NULL);
     
-        return NULL;
+        const struct context *ctx = object;
+        const struct simulation *sim = ctx->sim;
+        cmb_logger_user(stdout, USERFLAG1, "--- Game Over ---");
+        cmb_process_stop(sim->arr, NULL);
+        cmb_process_stop(sim->srv, NULL);
     }
     
-    void *servicefunc(struct cmb_process *me, void *vctx)
+    static void start_rec(void *subject, void *object)
+    {
+        cmb_unused(subject);
+        cmb_assert_debug(object != NULL);
+    
+        const struct context *ctx = object;
+        const struct simulation *sim = ctx->sim;
+        cmb_buffer_recording_start(sim->que);
+    }
+    
+    static void stop_rec(void *subject, void *object)
+    {
+        cmb_unused(subject);
+        cmb_assert_debug(object != NULL);
+    
+        const struct context *ctx = object;
+        const struct simulation *sim = ctx->sim;
+        cmb_buffer_recording_stop(sim->que);
+    }
+    
+    void *arrival_proc(struct cmb_process *me, void *vctx)
     {
         cmb_unused(me);
+        cmb_assert_debug(vctx != NULL);
+    
         const struct context *ctx = vctx;
-        
-        struct cmb_objectqueue *qp = ctx->sim->queue;
-        const double mean_srv = ctx->trl->srv_mean;
-        uint64_t *cnt = &(ctx->trl->obj_cnt);
-        double *sum = &(ctx->trl->sum_wait);
-        
+        const struct simulation *sim = ctx->sim;
+        const struct trial *trl = ctx->trl;
+        struct cmb_buffer *que = sim->que;
+    
+        cmb_assert_debug(trl->arr_rate > 0.0);
+        const double t_ia_mean = 1.0 / trl->arr_rate;
+    
         while (true) {
-            void *object = NULL;
-            cmb_objectqueue_get(qp, &object);
-            
-            const double *dblp = object;
-            const double t_srv = cmb_random_exponential(mean_srv);
-            cmb_process_hold(t_srv);
-            
-            *sum += cmb_time() - *dblp;
-            *cnt += 1u;
-            cmi_mempool_free(&objectpool, object);
+            const double t_ia = cmb_random_exponential(t_ia_mean);
+            cmb_logger_user(stdout, USERFLAG1, "Holds for %f time units", t_ia);
+            cmb_process_hold(t_ia);
+            uint64_t n = 1;
+            cmb_logger_user(stdout, USERFLAG1, "Puts one into the queue");
+            cmb_buffer_put(que, &n);
         }
     }
     
-    void run_trial(void *vtrl)
+    void *service_proc(struct cmb_process *me, void *vctx)
     {
+        cmb_unused(me);
+        cmb_assert_debug(vctx != NULL);
+    
+        const struct context *ctx = vctx;
+        const struct simulation *sim = ctx->sim;
+        const struct trial *trl = ctx->trl;
+        struct cmb_buffer *que = sim->que;
+    
+        cmb_assert_debug(trl->srv_rate > 0.0);
+        const double t_srv_mean = 1.0 / trl->srv_rate;
+    
+        while (true) {
+            uint64_t m = 1;
+            cmb_logger_user(stdout, USERFLAG1, "Gets one from the queue");
+            cmb_buffer_get(que, &m);
+            const double t_srv = cmb_random_exponential(t_srv_mean);
+            cmb_logger_user(stdout, USERFLAG1, "Got one, services it for %f time units", t_srv);
+            cmb_process_hold(t_srv);
+        }
+    }
+    
+    void run_MM1_trial(void *vtrl)
+    {
+        cmb_assert_debug(vtrl != NULL);
         struct trial *trl = vtrl;
     
-        cmb_logger_flags_off(CMB_LOGGER_INFO);
-        cmb_random_initialize(cmb_random_hwseed());
+        struct context ctx = {};
+        struct simulation sim = {};
+        ctx.sim = &sim;
+        ctx.trl = trl;
+    
+        const uint64_t seed = cmb_random_hwseed();
+        cmb_random_initialize(seed);
+    
+        cmb_logger_flags_off(CMB_LOGGER_INFO | USERFLAG1);
+    
         cmb_event_queue_initialize(0.0);
-        
-        struct context *ctx = malloc(sizeof(*ctx));
-        ctx->trl = trl;
-        struct simulation *sim = malloc(sizeof(*sim));
-        ctx->sim = sim;
     
-        sim->queue = cmb_objectqueue_create();
-        cmb_objectqueue_initialize(sim->queue, "Queue", CMB_UNLIMITED);
+        ctx.sim->que = cmb_buffer_create();
+        cmb_buffer_initialize(ctx.sim->que, "Queue", CMB_UNLIMITED);
     
-        sim->arrival = cmb_process_create();
-        cmb_process_initialize(sim->arrival, "Arrival", arrivalfunc, ctx, 0);
-        cmb_process_start(sim->arrival);
-        
-        sim->service = cmb_process_create();
-        cmb_process_initialize(sim->service, "Service", servicefunc, ctx, 0);
-        cmb_process_start(sim->service);
+        ctx.sim->arr = cmb_process_create();
+        cmb_process_initialize(ctx.sim->arr, "Arrival", arrival_proc, &ctx, 0);
+        cmb_process_start(ctx.sim->arr);
+    
+        ctx.sim->srv = cmb_process_create();
+        cmb_process_initialize(ctx.sim->srv, "Server", service_proc, &ctx, 0);
+        cmb_process_start(ctx.sim->srv);
+    
+        double t = trl->warmup_s;
+        cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
+        t += trl->duration_h;
+        cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
+        cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
     
         cmb_event_queue_execute();
     
-        cmb_process_terminate(sim->arrival);
-        cmb_process_destroy(sim->arrival);
+        cmb_buffer_print_report(sim.que, stdout);
         
-        cmb_process_stop(sim->service, NULL);
-        cmb_process_terminate(sim->service);
-        cmb_process_destroy(sim->service);
-        
-        cmb_objectqueue_terminate(sim->queue);
-        cmb_objectqueue_destroy(sim->queue);
+        struct cmb_wtdsummary wtdsum;
+        cmb_wtdsummary_initialize(&wtdsum);
+        const struct cmb_timeseries *ts = cmb_buffer_history(ctx.sim->que);
+        cmb_timeseries_summarize(ts, &wtdsum);
+        ctx.trl->avg_queue_length = cmb_wtdsummary_mean(&wtdsum);
+        cmb_wtdsummary_terminate(&wtdsum);
+    
+        cmb_process_terminate(ctx.sim->srv);
+        cmb_process_destroy(ctx.sim->srv);
+    
+        cmb_process_terminate(ctx.sim->arr);
+        cmb_process_destroy(ctx.sim->arr);
+    
+        cmb_buffer_terminate(ctx.sim->que);
+        cmb_buffer_destroy(ctx.sim->que);
     
         cmb_event_queue_terminate();
         cmb_random_terminate();
     
-        free(sim);
-        free(ctx);
     }
     
     int main(void)
     {
-        struct trial *trl = malloc(sizeof(*trl));
-        trl->arr_mean = 1.0 / ARRIVAL_RATE;
-        trl->srv_mean = 1.0 / SERVICE_RATE;
-        trl->obj_cnt = 0u;
-        trl->sum_wait = 0.0;
-        
-        run_trial(trl);
+        struct trial trl = {};
+        trl.arr_rate = 0.75;
+        trl.srv_rate = 1.0;
+        trl.warmup_s = 1000.0;
+        trl.duration_h = 1e6;
     
-        printf("Average system time %f (expected %f)\n",
-                trl->sum_wait / (double)trl->obj_cnt,
-                1.0 / (SERVICE_RATE - ARRIVAL_RATE));
+        run_MM1_trial(&trl);
     
-        free(trl);
+        printf("Avg %f\n", trl.avg_queue_length);
     
         return 0;
     }
 
 ```
+It will produce this output:
+```
+    Buffer levels for Queue
+    Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+    1.313e+06	   2.275	   3.286	   10.80	   2.226	   6.687
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      2.000)   |##################################################
+    [     2.000,      4.000)   |###############=
+    [     4.000,      6.000)   |#########-
+    [     6.000,      8.000)   |#####-
+    [     8.000,      10.00)   |##=
+    [     10.00,      12.00)   |#=
+    [     12.00,      14.00)   |=
+    [     14.00,      16.00)   |=
+    [     16.00,      18.00)   |-
+    [     18.00,      20.00)   |-
+    [     20.00,      22.00)   |-
+    [     22.00,      24.00)   |-
+    [     24.00,      26.00)   |-
+    [     26.00,      28.00)   |-
+    [     28.00,      30.00)   |-
+    [     30.00,      32.00)   |-
+    [     32.00,      34.00)   |-
+    [     34.00,      36.00)   |-
+    [     36.00,      38.00)   |-
+    [     38.00,   Infinity)   |
+    --------------------------------------------------------------------------------
+    Avg 2.275343
+```
+
 Note that we have intentionally left out comments in the code above, hopefully 
-demonstrating that it is fairly self-explanatory. We have also used one "internal"
-`cmi_` feature, the memory pool for fast allocation of the queue objects. See
+demonstrating that it is fairly self-explanatory. See
 [our tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html) at ReadTheDocs for more usage examples with explanations.
 
 ### So, what can I use all that speed for?
