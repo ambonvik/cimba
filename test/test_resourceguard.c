@@ -52,7 +52,7 @@
 
 #include "cmi_resourcebase.h"
 
-#include "test.h"
+#include "testutils.h"
 
 #define USERFLAG 0x00000001
 
@@ -652,7 +652,7 @@ int main(const int argc, char *argv[])
             case 's': {
                 errno = 0;
                 seed = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0 || seed == 0u) {
+                if (errno != 0) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
                 }
