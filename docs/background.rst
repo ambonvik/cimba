@@ -595,6 +595,67 @@ pre-packaged for the common resource types and exposed for the
 There may also be a weak pun here somewhere on the C++ ``promise`` keyword: Cimba
 processes do not promise. They *demand*.
 
+
+.. _background_data:
+
+Data sets and summaries
+-----------------------
+
+As we saw in the previous section, Cimba provides a simple set of statistics utilities
+for debugging and simple reporting. The most basic class is the :c:struct:`cmb_dataset`,
+simply a conveniently resizing array of sample values. It provides methods that require
+the individual values, such as calculating the median, quartiles, autocorrelation factors,
+and printing a histogram. It does not directly support fundamental statistics like mean
+and variance, though.
+
+These are provided through a separate class, :c:struct:`cmb_datasummary`, that computes
+running tallies for the first four moments in a single-pass algorithm whenever new data
+points are added to the summary, using the methods described by
+Pébay (https://www.osti.gov/servlets/purl/1028931)
+and Meng (https://arxiv.org/pdf/1510.04923).
+
+The reason for this is that we do not always need to keep all individual sample values,
+so we do not want to take the memory penalty of storing them if a simple summary is
+enough. In those cases, just adding the successive samples to a
+:c:struct:`cmb_datasummary` is more efficient. If we need both, collect the samples in
+a :c:struct:`cmb_dataset` and use the function :c:func:`cmb_dataset_summarize` to
+calculate a data summary object from the complete data set in a single pass.
+
+The basic dataset is extended to a time series by the :c:struct:`cmb_timeseries` class.
+It adds a second ``double`` to make each sample an ``(x, t)`` pair. In addition, it
+calculates a third value ``w`` (for *weight*) that represents the time interval between
+one sample and the next.
+
+Recall that in a discrete event simulation, nothing happens except at the event times,
+which can have arbitrary time intervals between them. We may need to handle time
+series, e.g., the length of some queue, that may be zero for a long time and have short
+bursts of several non-zero values, but perhaps with zero or near zero durations. If we
+want to calculate sensible statistics from this time series, the sample values need to
+be weighted by the duration they had. The :c:struct:`cmb_timeseries` calculates these
+weights on the fly.
+
+Similarly to the simple data set and data summary, there is a related
+:c:struct:`cmb_wtdsummary` class for calculating duration-weighted statistics from a time
+series, or, in cases where the complete time series data is not needed, directly in one
+pass by simply adding sample values to the :c:struct:`cmb_wtdsummary` along the way. The
+algorithm is described by Pébay and others in a separate publication, see
+https://link.springer.com/article/10.1007/s00180-015-0637-z
+
+If one for some reason needs to calculate *unweighted* statistics from a time series,
+simply use the :c:func:`cmb_dataset_summarize` function instead. As a derived class,
+the :c:struct:`cmb_timeseries` is still also a :c:struct:`cmb_dataset`, and
+:c:func:`cmb_dataset_summarize` will treat it as such.
+
+The single pass calculations of variance and higher moments are non-trivial. The
+obvious implementation is numerically unstable. We strongly recommend using the Cimba
+:c:struct:`cmb_summary` and :c:struct:`cmb_wtdsummary` to do this robustly whenever
+anything more than a simple sum and average is needed.
+
+And, of course, if more statistical power is needed, use the :c:func:`cmb_dataset_print`
+and :c:func:`cmb_timeseries_print` functions to write the raw data values to file, and
+use dedicated software such as *R* or *Gnuplot* to analyze and present the data.
+
+
 .. _background_random:
 
 Pseudo-random number generators and distributions
@@ -612,7 +673,7 @@ PRNG and distributions.
 
 The PRNG in Cimba is an implementation of Chris Doty-Humphrey's `sfc64`. It
 provides 64-bit output and maintains a 256-bit state. It is certain to have a cycle
-period of at least 2^64, and is both faster and higher statistical quality than
+period of at least :math:`2^{64}`, and is both faster and higher statistical quality than
 better-known generators such as the Mersenne Twister. It is in public domain, see
 https://pracrand.sourceforge.net
 for the details. In our implementation, the PRNG state is thread local, giving each trial
@@ -653,7 +714,7 @@ We initialize the PRNG in a three-stage bootstrapping process:
   random point along its cycle. This starting point is one that is also reachable
   if starting the counter from zero, just with an offset.
 
-  This implies that published `sfc64` results in PractRand and BigCrush tests carry
+  This implies that published `sfc64` results in PractRand and BigCrush tests will carry
   over, and that the cycle length stays the same, at least :math:`2^{64}`. However, if
   each trial consumes :math:`L` `sfc64` samples, where :math:`L \ll 2^{64}`,
   randomizing the counter starting point reduces the (already low) probability of
@@ -935,12 +996,90 @@ sensitive (but informal) test:
 
 .. image:: ../images/crossplot_random.png
 
-Even if it passes the informal eyeball tests, and the source code combined with the
+Even if it passes our informal eyeball tests, and the source code combined with the
 above results for the underlying `sfc64` generator conclusively proves that
 :c:func:`cmb_random()` in fact is uniformly distributed, we will need a way to
-quantifying our degree of certainty in this claim.
+quantifying our degree of certainty in this claim. For this purpose, we have built a
+battery of formal statistical test as part of the test suite.
 
-The various pseudo-random number distributions build on this generator, shaping its
+Feeding a million samples from `cmb_random()` through this test battery gives output
+similar to this:
+
+.. code:: none
+
+    ------------------------------------------------------------------------------------------------------------------------
+    Test:                                	Act.:   	Exp.:   	Interpretation:
+    ------------------------------------------------------------------------------------------------------------------------
+    Pearson's chi squared test          	    19.5	      15	Sigma: 0.8669	Odds: 1 in 5.2
+    Neyman's smooth test combined       	      14	      10	Sigma: 0.9508	Odds: 1 in 5.9
+        Neyman V1: mean                 	    -1.7	       0	Sigma: -1.697	Odds: 1 in 22
+        Neyman V2: variance             	  -0.457	       0	Sigma: -0.4569	Odds: 1 in 3.1
+        Neyman V3: skewness             	   -1.96	       0	Sigma: -1.964	Odds: 1 in 40
+        Neyman V4: kurtosis             	   0.763	       0	Sigma: 0.7631	Odds: 1 in 4.5
+        Neyman remainder: fine structure	     242	     251	Sigma: -0.3923	Odds: 1 in 2.9
+    Anderson-Darling EDF test            	    1.98	       1	Sigma: 1.316	Odds: 1 in 11
+    Combined assessment, Bonferroni on Neyman + Anderson-Darling:	Sigma: 0.8847	Odds: 1 in 5.3
+    ------------------------------------------------------------------------------------------------------------------------
+
+To demonstrate the sensitivity of the test battery, we can try feeding it data that
+instead is distributed according to a Beta distribution with :math:`\alpha = 0.99` and
+:math:`\beta = 0.99` instead. This data set is nearly uniform, but with a small
+tendency to "horns" at the top and bottom of the range. It is soundly rejected by our
+test battery in several different ways:
+
+.. code:: none
+
+    ------------------------------------------------------------------------------------------------------------------------
+    Test:                                	Act.:   	Exp.:   	Interpretation:
+    ------------------------------------------------------------------------------------------------------------------------
+    Pearson's chi squared test          	      73	      15	Sigma: 5.959	Odds: 1 in 7.9e+08	High : Malodorous
+    Neyman's smooth test combined       	    83.2	      10	Sigma: 7.329	Odds: 1 in 8.6e+12	High : Failed!
+        Neyman V1: mean                 	    1.01	       0	Sigma: 1.009	Odds: 1 in 6.4
+        Neyman V2: variance             	    7.62	       0	Sigma: 7.622	Odds: 1 in 8e+13	High : Failed!
+        Neyman V3: skewness             	  0.0716	       0	Sigma: 0.07161	Odds: 1 in 2.1
+        Neyman V4: kurtosis             	    3.69	       0	Sigma: 3.690	Odds: 1 in 8.9e+03	High : Unusual
+        Neyman remainder: fine structure	     265	     251	Sigma: 0.6493	Odds: 1 in 3.9
+    Anderson-Darling EDF test            	    11.3	       1	Sigma: 4.495	Odds: 1 in 2.9e+05	High : Suspicious
+    Combined assessment, Bonferroni on Neyman + Anderson-Darling:	Sigma: 7.236	Odds: 1 in 4.3e+12	High : Failed!
+    ------------------------------------------------------------------------------------------------------------------------
+
+As expected, it detects the bias towards high and low values most strongly as too-high
+variance, propagating to failing the combined Neyman smooth goodness-of-fit test, and
+from there to failing our combined assessment.
+
+Note that we deal in sigma values and odds here, not p-values, since most of the
+action will be within very narrow ranges of p-values near 1.0 and 0.0. The sigma (or
+Z-score), the number of standard deviations off the expected value, expresses that better.
+Note that the sigma is a signed quantity, where a negative sigma expresses that the
+statistic is below the expected value, e.g., that the data has less variability than
+expected.
+
+The verbal scale used for the interpretation is:
+
+.. code:: none
+
+    |Sigma|  Interpretation
+    ------------------------
+    < 3.0
+    > 3.0   Unusual
+    > 4.0   Suspicious
+    > 5.0   Malodorous
+    > 6.0   Failed
+    > 7.0   Failed!
+    > 8.0   Failed!!
+    > 9.0   Failed!!!
+
+For comparison, a :math:`p = 0.05` level in a two-sided test corresponds
+to a sigma of 1.96. Our scale will first start declaring something "unusual" at two-sided
+:math:`p = 0.0027` and "failed" at two-sided :math:`p = 1.973e−09`. We run large numbers
+of automated tests, and at conventional thresholds a clean run would flag somewhere
+almost every time (probability about 0.9 for each clean CI run). Large sample sizes make
+this affordable: At :math:n = 10^6 a genuine defect typically registers at tens of
+sigma rather than at two, so raising the threshold from 1.96 to 6 sigma costs very little
+detection power while eliminating routine false alarms. That lets us focus on any actual
+defects rather than fruitlessly chasing noise.
+
+The various pseudo-random number distributions build on the `sfc64` generator, shaping its
 output to match the required probability density functions. The algorithms used are
 selected for speed and accuracy. Please run
 `the unit test <https://github.com/ambonvik/cimba/blob/main/test/test_random.c>`_
@@ -983,64 +1122,6 @@ and destroyed with :c:func:`cmb_random_alias_destroy()`. (In this case, we have 
 the allocation and initialization steps into a single ``_create()`` function, and the
 termination and deallocation steps into the ``_destroy()`` function.)
 
-.. _background_data:
-
-Data sets and summaries
------------------------
-
-As we saw in the previous section, Cimba provides a simple set of statistics utilities
-for debugging and simple reporting. The most basic class is the :c:struct:`cmb_dataset`,
-simply a conveniently resizing array of sample values. It provides methods that require
-the individual values, such as calculating the median, quartiles, autocorrelation factors,
-and printing a histogram. It does not directly support fundamental statistics like mean
-and variance, though.
-
-These are provided through a separate class, :c:struct:`cmb_datasummary`, that computes
-running tallies for the first four moments in a single-pass algorithm whenever new data
-points are added to the summary, using the methods described by
-Pébay (https://www.osti.gov/servlets/purl/1028931)
-and Meng (https://arxiv.org/pdf/1510.04923).
-
-The reason for this is that we do not always need to keep all individual sample values,
-so we do not want to take the memory penalty of storing them if a simple summary is
-enough. In those cases, just adding the successive samples to a
-:c:struct:`cmb_datasummary` is more efficient. If we need both, collect the samples in
-a :c:struct:`cmb_dataset` and use the function :c:func:`cmb_dataset_summarize` to
-calculate a data summary object from the complete data set.
-
-The basic dataset is extended to a time series by the :c:struct:`cmb_timeseries` class.
-It adds a second ``double`` to make each sample an ``(x, t)`` pair. In addition, it
-calculates a third value ``w`` (for *weight*) that represents the time interval between
-one sample and the next.
-
-Recall that in a discrete event simulation, nothing happens except at the event times,
-which can have arbitrary time intervals between them. We may need to handle time
-series, e.g., the length of some queue, that may be zero for a long time and have short
-bursts of several non-zero values, but perhaps with zero or near zero durations. If we
-want to calculate sensible statistics from this time series, the sample values need to
-be weighted by the duration they had. The :c:struct:`cmb_timeseries` calculates these
-weights on the fly.
-
-Similarly to the simple data set and data summary, there is a related
-:c:struct:`cmb_wtdsummary` class for calculating duration-weighted statistics from a time
-series, or, in cases where the complete time series data is not needed, directly in one
-pass by simply adding sample values to the :c:struct:`cmb_wtdsummary` along the way. The
-algorithm is described by Pébay and others in a separate publication, see
-https://link.springer.com/article/10.1007/s00180-015-0637-z
-
-If one for some reason needs to calculate *unweighted* statistics from a time series,
-simply use the :c:func:`cmb_dataset_summarize` function instead. As a derived class,
-the :c:struct:`cmb_timeseries` is still also a :c:struct:`cmb_dataset`, and
-:c:func:`cmb_dataset_summarize` will treat it as such.
-
-The single pass calculations of variance and higher moments are non-trivial. The
-obvious implementation is numerically unstable. We strongly recommend using the Cimba
-:c:struct:`cmb_summary` and :c:struct:`cmb_wtdsummary` to do this robustly whenever
-anything more than a simple sum and average is needed.
-
-And, of course, if more statistical power is needed, use the :c:func:`cmb_dataset_print`
-and :c:func:`cmb_timeseries_print` functions to write the raw data values to file, and
-use dedicated software such as *R* or *Gnuplot* to analyze and present the data.
 
 .. _background_trials:
 
