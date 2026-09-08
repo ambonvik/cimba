@@ -223,12 +223,12 @@ extern double cmb_dataset_median(const struct cmb_dataset *dsp);
  * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  * @param fp A valid file pointer, possibly `stdout`
- * @param lead_ins Flag for whether to add lead-in texts or just print the
+ * @param legend Flag for whether to add lead-in texts or just print the
  *                 numeric values.
  */
 extern void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
                                       FILE *fp,
-                                      bool lead_ins);
+                                      bool legend);
 
 /**
  * @brief Print a simple character-based histogram. Will autoscale to the
