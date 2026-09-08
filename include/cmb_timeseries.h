@@ -240,12 +240,12 @@ extern double cmb_timeseries_median(const struct cmb_timeseries *tsp);
  * @memberof cmb_timeseries
  * @param tsp Pointer to a time series object.
  * @param fp A file pointer for the output, possibly `stdout`.
- * @param lead_ins A flag indicating whether to add explanatory text (if `true`)
+ * @param legend A flag indicating whether to add explanatory text (if `true`)
  *                 or not (if `false`).
 */
 extern void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
                                          FILE *fp,
-                                         bool lead_ins);
+                                         bool legend);
 
 /**
  * @brief Print a simple character-based histogram. Like
