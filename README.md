@@ -23,9 +23,10 @@ every `cmb_X_create()` by a `cmb_X_destroy()`.
 
 Previously, omitting `_terminate` or `_destroy` would be a silent memory leak. This 
 will naturally happen when a trial is abandoned midway by calling `cmb_logger_error()`. 
-Over a long experiment, this could accumulate to cause an out-of-memory crash. Cimba RC1 
-will now pass a Leak Sanitizer (LSan) test also with abandoned trials. To provide this 
-reliable memory leak detection and memory recovery from abandoned trials, tightened 
+Over a long experiment, this could accumulate to cause an out-of-memory crash. For 
+Cimba RC1, we added automatick tracking of `cmb_` objects with reclaim if the trial 
+is abandoned. Cimba will now pass a Leak Sanitizer (LSan) test also with abandoned 
+trials. To provide this  reliable memory leak detection and recovery, tightened 
 enforcement of (already documented) lifecycle management was needed to avoid 
 corrupting the internal state. It may break existing models that appeared to work correctly 
 until now (including some of our own tutorials). If so, please check for missing 
@@ -157,7 +158,8 @@ change in future (minor) versions.
 
 ### What does the code look like?
 It is C code. As an illustration, this is the entire program for a single-threaded M/M/1 
-queue simulation:
+queue simulation, combining active processes with a few discrete control events 
+happening at specific times.
 
 ```
     #include <cimba.h>
@@ -184,7 +186,7 @@ queue simulation:
         struct trial *trl;
     };
     
-    void end_sim(void *subject, void *object)
+    void end_sim_evnt(void *subject, void *object)
     {
         cmb_unused(subject);
         cmb_assert_debug(object != NULL);
@@ -196,7 +198,7 @@ queue simulation:
         cmb_process_stop(sim->srv, NULL);
     }
     
-    static void start_rec(void *subject, void *object)
+    static void start_rec_evnt(void *subject, void *object)
     {
         cmb_unused(subject);
         cmb_assert_debug(object != NULL);
@@ -206,7 +208,7 @@ queue simulation:
         cmb_buffer_recording_start(sim->que);
     }
     
-    static void stop_rec(void *subject, void *object)
+    static void stop_rec_evnt(void *subject, void *object)
     {
         cmb_unused(subject);
         cmb_assert_debug(object != NULL);
@@ -291,10 +293,10 @@ queue simulation:
         cmb_process_start(ctx.sim->srv);
     
         double t = trl->warmup_s;
-        cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
+        cmb_event_schedule(start_rec_evnt, NULL, &ctx, t, 0);
         t += trl->duration_h;
-        cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
-        cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
+        cmb_event_schedule(stop_rec_evnt, NULL, &ctx, t, 0);
+        cmb_event_schedule(end_sim_evnt, NULL, &ctx, t, -100);
     
         cmb_event_queue_execute();
     
@@ -318,7 +320,6 @@ queue simulation:
     
         cmb_event_queue_terminate();
         cmb_random_terminate();
-    
     }
     
     int main(void)
@@ -331,7 +332,7 @@ queue simulation:
     
         run_MM1_trial(&trl);
     
-        printf("Avg %f\n", trl.avg_queue_length);
+        printf("Average queue length %f\n", trl.avg_queue_length);
     
         return 0;
     }
@@ -365,7 +366,7 @@ It will produce this output:
     [     36.00,      38.00)   |-
     [     38.00,   Infinity)   |
     --------------------------------------------------------------------------------
-    Avg 2.275343
+    Average queue length 2.275343
 ```
 
 Note that we have intentionally left out comments in the code above, hopefully 
