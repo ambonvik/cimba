@@ -29,7 +29,7 @@
 #include "cmb_process.h"
 #include "cmb_random.h"
 
-#include "test.h"
+#include "testutils.h"
 
 #define USERFLAG1 0x00000001
 
@@ -217,7 +217,7 @@ int main(const int argc, char *argv[])
             case 's':
                 errno = 0;
                 seed = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0 || seed == 0u) {
+                if (errno != 0u) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
                 }
