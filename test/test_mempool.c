@@ -26,7 +26,7 @@
 #include "cmi_mempool.h"
 #include "cmi_memutils.h"
 
-#include "test.h"
+#include "testutils.h"
 
 CMB_THREAD_LOCAL struct cmi_mempool mempool_32b = CMI_MEMPOOL_STATIC_INIT(32u, 128u);
 
