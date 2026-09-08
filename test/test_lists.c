@@ -18,7 +18,7 @@
 
 #include "cmi_slist.h"
 #include "cmi_dlist.h"
-#include "test.h"
+#include "testutils.h"
 
 struct slist_item {
     int payload;
