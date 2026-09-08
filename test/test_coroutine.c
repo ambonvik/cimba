@@ -22,7 +22,7 @@
 
 #include "cmi_coroutine.h"
 #include "cmi_memutils.h"
-#include "test.h"
+#include "testutils.h"
 
 /* Simple test function, just a single event that returns */
 static void *corofunc(struct cmi_coroutine *myself, void *context)
