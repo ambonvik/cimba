@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
             case 's':
                 errno = 0;
                 seed = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0 || seed == 0u) {
+                if (errno != 0) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
                 }
