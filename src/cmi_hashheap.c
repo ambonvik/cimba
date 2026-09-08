@@ -190,7 +190,6 @@ void cmi_hashheap_reset(struct cmi_hashheap *hp)
     cmi_hashheap_initialize(hp, hexp, cmp);
 }
 
-
 /*
  * hash_key - Fibonacci hash function.
  * The "magic number" is approx 2^64 / phi, the golden ratio.
