@@ -34,7 +34,7 @@
 #include "cmb_timeseries.h"
 #include "cmb_wtdsummary.h"
 
-#include "test.h"
+#include "testutils.h"
 
 /* Test macros */
 #define MAX_SAMPLES 10000u
@@ -83,8 +83,6 @@ static void test_summary(const uint64_t nsamples)
 
     printf("\nSummary: cmb_datasummary_print\n");
     cmb_datasummary_print(&ds, stdout, true);
-    printf("Summary without lead-ins:\n");
-    cmb_datasummary_print(&ds, stdout, false);
 
     cmi_test_print_line("-");
     printf("\nOnce more, now on the heap: cmb_datasummary_create()\n");
@@ -913,7 +911,7 @@ int main(const int argc, char *argv[])
             case 'n':
                 errno = 0;
                 nsamples = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0 || seed == 0u) {
+                if (errno != 0 || nsamples == 0u) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
                 }
@@ -921,7 +919,7 @@ int main(const int argc, char *argv[])
             case 's':
                 errno = 0;
                 seed = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0 || seed == 0u) {
+                if (errno != 0) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
                 }
