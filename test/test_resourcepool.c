@@ -31,7 +31,7 @@
 #include "cmb_resourcepool.h"
 
 #include "cmi_memutils.h"
-#include "test.h"
+#include "testutils.h"
 
 #define USERFLAG 0x0000000
 
@@ -414,7 +414,7 @@ int main(const int argc, char *argv[])
             case 's':
                 errno = 0;
                 seed = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0 || seed == 0u) {
+                if (errno != 0) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
                 }
