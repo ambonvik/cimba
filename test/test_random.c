@@ -33,12 +33,11 @@
 #include "cmb_dataset.h"
 #include "cmb_random.h"
 
-#include "test.h"
+#include "testutils.h"
 
 /* Test macros */
 #define MOMENTS 15
 #define ACFS 15
-#define LEADINS true
 
 #define QTEST_PREPARE() \
     struct cmb_dataset ds = { 0 }; \
@@ -56,10 +55,24 @@
     struct cmb_datasummary dsu = { 0 }; \
     cmb_datasummary_initialize(&dsu); \
     cmb_dataset_summarize(&ds, &dsu); \
-    printf("Actual:   "); \
-    cmb_datasummary_print(&dsu, stdout, LEADINS); \
+    cmb_datasummary_print(&dsu, stdout, false); \
     cmb_dataset_histogram_print(&ds, stdout, 20, 0.0, 0.0); \
     cmb_datasummary_terminate(&dsu)
+
+#define QTEST_GOF(cdf, ctx) \
+    struct cmb_dataset ts = { 0 }; \
+    cmb_dataset_initialize(&ts); \
+    cmi_test_transform(&ts, &ds, cdf, ctx); \
+    printf("Transformed dataset, CDF(x):\n"); \
+    cmb_dataset_histogram_print(&ts, stdout, 20, 0.0, 0.0); \
+    printf("Testing transformed dataset for Goodness of Fit to U(0,1) distribution\n"); \
+    struct cmi_test_outcome result = { 0 }; \
+    cmi_test_u01(&ts, &result); \
+    cmi_test_outcome_print(&result, stdout); \
+    cmb_assert_always((result.status == CMI_TEST_OK) \
+                  && (fabs(result.combined_sigma) < 6.0)); \
+    cmb_dataset_terminate(&ts)
+
 
 #define QTEST_REPORT_ACFS() \
     printf("\nAutocorrelation factors (expected 0.0):\n"); \
@@ -72,17 +85,15 @@
     cmb_dataset_correlogram_print(&ds, stdout, ACFS, pacf)
 
 #define QTEST_FINISH() \
-    cmb_dataset_terminate(&ds); \
-    cmi_test_print_line("=")
+    cmb_dataset_terminate(&ds)
 
-static void print_single(const char *lead, const bool has_val, const double val)
+static void print_single(const bool has_val, const double val)
 {
-    printf("  %s ", lead);
     if (has_val) {
-        printf("%#8.4g", val);
+        printf("\t%#8.4g", val);
     }
     else {
-        printf("   ---  ");
+        printf("\t   ---  ");
     }
 }
 
@@ -92,18 +103,26 @@ static void print_expected(const uint64_t n,
                            const bool has_skew, const double skew,
                            const bool has_kurt, const double kurt)
 {
-    printf("\nExpected: N %8" PRIu64, n);
-    print_single("Mean", has_mean, mean);
-    print_single("StdDev", has_var, sqrt(var));
-    print_single("Variance", has_var, var);
-    print_single("Skewness", has_skew, skew);
-    print_single("Kurtosis", has_kurt, kurt);
+    printf("Expected vs actual:\n");
+    printf("Count   \tMean    \tStdDev  \tVariance\tSkewness\tExcess kurtosis\n");
+    if (n < 100000u) {
+        printf("%8" PRIu64, n);
+    }
+    else {
+        printf("%#8.4g", (double)n);
+    }
+
+    print_single(has_mean, mean);
+    print_single(has_var, sqrt(var));
+    print_single(has_var, var);
+    print_single(has_skew, skew);
+    print_single(has_kurt, kurt);
     printf("\n");
 }
 
 /**** Start of test scripts ****/
 
-static void test_quality_random(uint64_t nsamples)
+static void test_quality_random(const uint64_t nsamples)
 {
     printf("\nQuality testing basic random number generator cmb_random(), uniform on [0,1)\n");
 
@@ -148,10 +167,43 @@ static void test_quality_random(uint64_t nsamples)
     }
     cmi_test_print_line("-");
 
+    /* Run goodness-of-fit test battery, no CDF transform needed */
+    printf("Testing Goodness of Fit vs the U(0,1) distribution\n");
+    struct cmi_test_outcome result = { 0 };
+    cmi_test_u01(&ds, &result);
+    cmi_test_outcome_print(&result, stdout);
+    cmb_assert_always((result.status == CMI_TEST_OK)
+                      && (fabs(result.combined_sigma) < 6.0));
+
     QTEST_FINISH();
 }
 
-static void test_quality_uniform(uint64_t nsamples, const double a, const double b)
+struct cdf_uniform_params {
+    double a;
+    double b;
+};
+
+static double cdf_uniform(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    struct cdf_uniform_params *pp = ctx;
+    cmb_assert_debug(pp->a <= pp->b);
+
+    double r;
+    if (x <= pp->a) {
+        r = 0.0;
+    }
+    else if (x < pp->b) {
+        r = (x - pp->a) / (pp->b - pp->a);
+    }
+    else {
+        r = 1.0;
+    }
+
+    return r;
+}
+
+static void test_quality_uniform(const uint64_t nsamples, const double a, const double b)
 {
     printf("\nQuality testing cmb_random_uniform(%g,%g)\n", a, b);
     QTEST_PREPARE();
@@ -162,10 +214,22 @@ static void test_quality_uniform(uint64_t nsamples, const double a, const double
     print_expected(nsamples, true, 0.5 * (a + b), true, var, true, 0.0, true, -6.0 / 5.0);
 
     QTEST_REPORT();
+
+    struct cdf_uniform_params cdfpar = { .a = a, .b = b };
+    QTEST_GOF(cdf_uniform, &cdfpar);
     QTEST_FINISH();
 }
 
-static void test_quality_std_exponential(uint64_t nsamples)
+static double cdf_std_exp(const double x, void *ctx)
+{
+    cmb_unused(ctx);
+
+    const double r = 1.0 - exp(-x);
+
+    return r;
+}
+
+static void test_quality_std_exponential(const uint64_t nsamples)
 {
     printf("\nQuality testing standard exponential distribution, mean = 1\n");
     QTEST_PREPARE();
@@ -175,6 +239,7 @@ static void test_quality_std_exponential(uint64_t nsamples)
 
     QTEST_REPORT();
     QTEST_REPORT_ACFS();
+    QTEST_GOF(cdf_std_exp, NULL);
     QTEST_FINISH();
 }
 
@@ -186,7 +251,7 @@ static double exponential_inv(const double m)
     return -log(1.0 - cmb_random()) * m;
 }
 
-static void test_speed_exponential(uint64_t nsamples, const double m)
+static void test_speed_exponential(const uint64_t nsamples, const double m)
 {
     printf("\nSpeed testing standard exponential distribution\n");
     printf("\nInversion method, drawing %" PRIu64 " samples...", nsamples);
@@ -214,7 +279,22 @@ static void test_speed_exponential(uint64_t nsamples, const double m)
     cmi_test_print_line("=");
 }
 
-static void test_quality_exponential(uint64_t nsamples, const double m)
+struct cdf_exp_params {
+    double m;
+};
+
+static double cdf_exp(const double x, void *ctx)
+{
+    cmb_unused(ctx);
+    cmb_assert_debug(ctx != NULL);
+    struct cdf_exp_params *pp = ctx;
+
+    const double r = 1.0 - exp(-x / pp->m);
+
+    return r;
+}
+
+static void test_quality_exponential(const uint64_t nsamples, const double m)
 {
     printf("\nQuality testing exponential distribution, mean = %f\n", m);
     QTEST_PREPARE();
@@ -223,6 +303,9 @@ static void test_quality_exponential(uint64_t nsamples, const double m)
     print_expected(nsamples, true, m, true, m * m, true, 2.0, true, 6.0);
 
     QTEST_REPORT();
+
+    struct cdf_exp_params pp = { .m = m };
+    QTEST_GOF(cdf_exp, &pp);
     QTEST_FINISH();
 }
 
@@ -265,7 +348,16 @@ static double normal_raw_moment(const uint16_t n, const double mu, const double 
     }
 }
 
-static void test_quality_std_normal(uint64_t nsamples)
+static double cdf_std_normal(const double x, void *ctx)
+{
+    cmb_unused(ctx);
+
+    const double r = 0.5 * (1.0 - erf(x / sqrt(2.0)));
+
+    return r;
+}
+
+static void test_quality_std_normal(const uint64_t nsamples)
 {
     printf("\nQuality testing standard normal distribution, mean = 0, sigma = 1\n");
     QTEST_PREPARE();
@@ -321,10 +413,26 @@ static void test_quality_std_normal(uint64_t nsamples)
 
     }
 
+    QTEST_GOF(cdf_std_normal, NULL);
     QTEST_FINISH();
 }
 
-static void test_quality_normal(uint64_t nsamples, const double m, const double s)
+struct cdf_normal_params {
+    double m;
+    double s;
+};
+
+static double cdf_normal(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    struct cdf_normal_params *pp = ctx;
+
+    const double r = 0.5 * (1.0 - erf((x - pp->m) / (pp->s * sqrt(2.0))));
+
+    return r;
+}
+
+static void test_quality_normal(const uint64_t nsamples, const double m, const double s)
 {
     printf("\nQuality testing normal distribution, mean = %f, sigma = %f\n", m, s);
     QTEST_PREPARE();
@@ -333,10 +441,12 @@ static void test_quality_normal(uint64_t nsamples, const double m, const double 
     print_expected(nsamples, true, m, true, s * s, true, 0.0, true, 0.0);
 
     QTEST_REPORT();
+    struct cdf_normal_params pp = { .m = m, .s = s };
+    QTEST_GOF(cdf_normal, &pp);
     QTEST_FINISH();
 }
 
-static void test_speed_normal(uint64_t nsamples, const double m, const double s)
+static void test_speed_normal(const uint64_t nsamples, const double m, const double s)
 {
     printf("\nSpeed testing normal distribution\n");
     printf("\nBox Muller method, drawing %" PRIu64 " samples...", nsamples);
@@ -364,7 +474,37 @@ static void test_speed_normal(uint64_t nsamples, const double m, const double s)
     cmi_test_print_line("=");
 }
 
-static void test_quality_triangular(uint64_t nsamples, const double a, const double b, const double c)
+struct cdf_triang_params {
+    double a;
+    double b;
+    double c;
+};
+
+static double cdf_triang(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    struct cdf_triang_params *pp = ctx;
+    cmb_assert_debug((pp->a <= pp->b) && (pp->b <= pp->c) && (pp->a < pp->c));
+
+    double r;
+    if (x <= pp->a) {
+        r = 0.0;
+    }
+    else if (x < pp->b) {
+        r = ((x - pp->a) * (x - pp->a)) / ((pp->b - pp->a) * (pp->c - pp->a));
+    }
+    else if (x < pp->c) {
+        r = 1.0 - ((pp->c - x) * (pp->c - x)) / ((pp->c - pp->b) * (pp->c - pp->a));
+    }
+    else {
+        r = 1.0;
+    }
+
+    return r;
+}
+
+
+static void test_quality_triangular(const uint64_t nsamples, const double a, const double b, const double c)
 {
     printf("\nQuality testing cmb_random_triangular(%g, %g, %g)\n", a, b, c);
     QTEST_PREPARE();
@@ -379,10 +519,14 @@ static void test_quality_triangular(uint64_t nsamples, const double a, const dou
     print_expected(nsamples, true, mean, true, var, true, snum / sden, true, -3.0 / 5.0);
 
     QTEST_REPORT();
+
+    struct cdf_triang_params cdfpar = { .a = a, .b = b, .c = c };
+    QTEST_GOF(cdf_triang, &cdfpar);
+
     QTEST_FINISH();
 }
 
-static void test_quality_erlang(uint64_t nsamples, const unsigned k, const double m)
+static void test_quality_erlang(const uint64_t nsamples, const unsigned k, const double m)
 {
     printf("\nQuality testing cmb_random_erlang(%u, %g)\n", k, m);
     QTEST_PREPARE();
@@ -948,7 +1092,7 @@ int main(const int argc, char *argv[])
                 errno = 0;
                 seed = (uint64_t)strtoull(optarg, NULL, 0);
                 fixed_seed = true;
-                if (errno != 0 || seed == 0u) {
+                if (errno != 0) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
                 }
