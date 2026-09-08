@@ -4,7 +4,8 @@
 Using seed: 0x34f05c64d7ad598f
 
 System times for small ships:
-N     3336  Mean    10.97  StdDev    3.104  Variance    9.637  Skewness    3.339  Kurtosis    22.72
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+    3336	   10.97	   3.104	   9.637	   3.339	   22.72
 --------------------------------------------------------------------------------
 ( -Infinity,      6.000)   |
 [     6.000,      9.000)   |########################=
@@ -27,7 +28,8 @@ N     3336  Mean    10.97  StdDev    3.104  Variance    9.637  Skewness    3.339
 --------------------------------------------------------------------------------
 
 System times for large ships:
-N     1053  Mean    17.48  StdDev    6.361  Variance    40.46  Skewness    2.070  Kurtosis    6.438
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+    1053	   17.48	   6.361	   40.46	   2.070	   6.438
 --------------------------------------------------------------------------------
 ( -Infinity,      9.000)   |
 [     9.000,      12.00)   |####################=
@@ -52,7 +54,8 @@ N     1053  Mean    17.48  StdDev    6.361  Variance    40.46  Skewness    2.070
 --------------------------------------------------------------------------------
 
 Utilization of small berths:
-N     6576  Mean    3.832  StdDev    1.622  Variance    2.630  Skewness  -0.2797  Kurtosis  -0.8837
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+    6576	   3.832	   1.622	   2.630	 -0.2797	 -0.8837
 --------------------------------------------------------------------------------
 ( -Infinity,      0.000)   |
 [     0.000,     0.5000)   |####-
@@ -72,7 +75,8 @@ N     6576  Mean    3.832  StdDev    1.622  Variance    2.630  Skewness  -0.2797
 --------------------------------------------------------------------------------
 
 Utilization of large berths:
-N     2092  Mean    1.746  StdDev    1.083  Variance    1.173  Skewness  -0.2609  Kurtosis   -1.243
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+    2092	   1.746	   1.083	   1.173	 -0.2609	  -1.243
 --------------------------------------------------------------------------------
 ( -Infinity,      0.000)   |
 [     0.000,     0.2000)   |#########################-
@@ -95,7 +99,8 @@ N     2092  Mean    1.746  StdDev    1.083  Variance    1.173  Skewness  -0.2609
 --------------------------------------------------------------------------------
 
 Utilization of tugs:
-N    17417  Mean   0.7880  StdDev    1.240  Variance    1.537  Skewness    1.939  Kurtosis    4.013
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+   17417	  0.7880	   1.240	   1.537	   1.939	   4.013
 --------------------------------------------------------------------------------
 ( -Infinity,      0.000)   |
 [     0.000,     0.5000)   |##################################################

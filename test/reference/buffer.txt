@@ -10,7 +10,8 @@ Schedule end event
 Execute simulation...
 Report statistics...
 Buffer levels for Buf
-N    41980  Mean    4.970  StdDev    4.629  Variance    21.43  Skewness  0.01128  Kurtosis   -1.870
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+   41980	   4.970	   4.629	   21.43	 0.01128	  -1.870
 --------------------------------------------------------------------------------
 ( -Infinity,      0.000)   |
 [     0.000,      1.000)   |##################################################

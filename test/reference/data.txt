@@ -20,8 +20,7 @@ cmb_datasummary_kurtosis:	  -1.192	(expected   -1.200)
 --------------------------------------------------------------------------------
 
 Summary: cmb_datasummary_print
-N    10000  Mean   0.4966  StdDev   0.2886  Variance  0.08326  Skewness -0.0006596  Kurtosis   -1.192
-Summary without lead-ins:
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
    10000	  0.4966	  0.2886	 0.08326	-0.0006596	  -1.192
 --------------------------------------------------------------------------------
 
@@ -29,11 +28,13 @@ Once more, now on the heap: cmb_datasummary_create()
 Drawing 10000 U(0,1) samples and adding to data summary: cmb_datasummary_add
 
 Summary: cmb_datasummary_print
-N    10000  Mean    1.497  StdDev   0.2900  Variance  0.08410  Skewness  0.01735  Kurtosis   -1.209
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+   10000	   1.497	  0.2900	 0.08410	 0.01735	  -1.209
 
 Merging the two data summaries: cmb_datasummary_merge ... Returned 20000 samples
 Merged summary: cmb_datasummary_print
-N    20000  Mean   0.9970  StdDev   0.5780  Variance   0.3341  Skewness 0.004313  Kurtosis   -1.195
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+   20000	  0.9970	  0.5780	  0.3341	0.004313	  -1.195
 
 Cleaning up: cmb_datasummary_terminate, cmb_datasummary_destroy
 ================================================================================
@@ -48,7 +49,8 @@ Randomized agreement with two-pass reference, 10000 samples
 Equal-weight case: weighted(pop) vs unweighted(sample) relationship
 
 Report (Variance must be ~7.933, not the count-based ~9.916):
-N        7  Mean    5.653  StdDev    2.817  Variance    7.933  Skewness  -0.3103  Kurtosis   -1.219
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+       7	   5.653	   2.817	   7.933	 -0.3103	  -1.219
 
 All weighted-summary assertions passed.
 ================================================================================
@@ -150,7 +152,8 @@ cmb_dataset_max:	  0.9470
 cmb_dataset_median:	  0.3751
 --------------------------------------------------------------------------------
 Five number summary of dataset: cmb_dataset_fivenum_print ...
-Min  0.03848  First_Q   0.2049  Median   0.3751  Third_Q   0.5772  Max   0.9470
+Min     	First Q 	Median  	Third Q 	Max
+ 0.03848	  0.2049	  0.3751	  0.5772	  0.9470
 
 Clearing the dataset; cmb_dataset_reset
 
@@ -158,7 +161,8 @@ Drawing 10000 U(0,1) samples: cmb_dataset_add
 
 Summarizing the dataset: cmb_dataset_summarize ...returned 10000
 Summary generated from the dataset:
-N    10000  Mean   0.5034  StdDev   0.2884  Variance  0.08316  Skewness -0.008130  Kurtosis   -1.197
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+   10000	  0.5034	  0.2884	 0.08316	-0.008130	  -1.197
 
 Unweighted histogram: cmb_dataset_histogram_print
 --------------------------------------------------------------------------------
@@ -243,7 +247,8 @@ PACF correlogram: cmb_dataset_correlogram_print
 
 Creating a new dataset on the heap: cmb_dataset_create
 Filling it with noisy sine curves ...
-N    10000  Mean -0.002352  StdDev    1.497  Variance    2.242  Skewness 0.008211  Kurtosis   -1.192
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+   10000	-0.002352	   1.497	   2.242	0.008211	  -1.192
 --------------------------------------------------------------------------------
 ( -Infinity,     -4.000)   |
 [    -4.000,     -3.500)   |-
@@ -340,8 +345,10 @@ cmb_timeseries_max:	   1.000
 --------------------------------------------------------------------------------
 
 Summarizing: cmb_timeseries_summarize, cmb_wtdsummary_print, cmb_timeseries_fivenum_print ...
-N    10000  Mean   0.4481  StdDev   0.2834  Variance  0.08032  Skewness   0.2096  Kurtosis   -1.103
-Min 2.706e-05  First_Q   0.2008  Median   0.4250  Third_Q   0.6788  Max    1.000
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+   10000	  0.4481	  0.2834	 0.08032	  0.2096	  -1.103
+Min     	First Q 	Median  	Third Q 	Max
+2.706e-05	  0.2008	  0.4250	  0.6788	   1.000
 
 Weighted histogram:
 --------------------------------------------------------------------------------
@@ -398,11 +405,15 @@ Unweighted histogram of same data:
 Declaring another timeseries on the stack: cmb_timeseries_initialize
 Drawing 10000 x = U(1,2) samples at intervals Exp(1): cmb_timeseries_add
 Finalizing at time 9894.86: cmb_timeseries_finalize
-Src: N    10000  Mean    1.505  StdDev   0.2895  Variance  0.08379  Skewness -0.04290  Kurtosis   -1.181
-Tgt: N    10000  Mean   0.4481  StdDev   0.2834  Variance  0.08032  Skewness   0.2096  Kurtosis   -1.103
+Src: Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+   10000	   1.505	  0.2895	 0.08379	-0.04290	  -1.181
+Tgt: Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+   10000	  0.4481	  0.2834	 0.08032	  0.2096	  -1.103
 Copying src into tgt: cmb_timeseries_copy ... returned 10001
-Tgt: N    10000  Mean    1.505  StdDev   0.2895  Variance  0.08379  Skewness -0.04290  Kurtosis   -1.181
-Src: N    10000  Mean    1.505  StdDev   0.2895  Variance  0.08379  Skewness -0.04290  Kurtosis   -1.181
+Tgt: Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+   10000	   1.505	  0.2895	 0.08379	-0.04290	  -1.181
+Src: Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+   10000	   1.505	  0.2895	 0.08379	-0.04290	  -1.181
 
 Cleaning up: cmb_timeseries_terminate, cmb_timeseries_destroy
 --------------------------------------------------------------------------------
@@ -505,37 +516,40 @@ Content of timeseries: cmb_timeseries_print
 cmb_dataset_median:	   1.497
 cmb_timeseries_fivenum_print:
 --------------------------------------------------------------------------------
-Min    1.021  First_Q    1.454  Median    1.497  Third_Q    1.800  Max    1.920
+Min     	First Q 	Median  	Third Q 	Max
+   1.021	   1.454	   1.497	   1.800	   1.920
 --------------------------------------------------------------------------------
 
 Cleaning up: cmb_timeseries_terminate
 ================================================================================
 --------------------------------------------------------------------------------
 Testing empty datasets
-    0.0000	dispatcher	cmb_dataset_print (517):  Warning: No data to print, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_sort (275):  Warning: No data to sort, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_median (443):  Warning: Cannot take median of empty data set., seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_print (508):  Warning: No data to print, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_sort (260):  Warning: No data to sort, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_median (429):  Warning: Cannot take median of empty data set, seed 0x34f05c64d7ad598f	
 Median of empty dataset: 0.000000
-    0.0000	dispatcher	cmb_dataset_fivenum_print (470):  Warning: No data to display in five-number summary, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_histogram_print (793):  Warning: No data to display in histogram, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_ACF (822):  Warning: No data for calculating ACF, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_PACF (892):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_PACF (892):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_correlogram_print (1028):  Warning: No data for correlogram, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_summarize (408):  Warning: Cannot summarize empty data set., seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_dataset_summarize (408):  Warning: Cannot summarize empty data set., seed 0x34f05c64d7ad598f	
-N        0
+    0.0000	dispatcher	cmb_dataset_fivenum_print (456):  Warning: No data to display in five-number summary, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_histogram_print (784):  Warning: No data to display in histogram, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_ACF (813):  Warning: No data for calculating ACF, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_PACF (883):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_PACF (883):  Warning: No data for calculating PACF, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_correlogram_print (1019):  Warning: No data for correlogram, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_summarize (394):  Warning: Cannot summarize empty data set, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_dataset_summarize (394):  Warning: Cannot summarize empty data set, seed 0x34f05c64d7ad598f	
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+       0
 --------------------------------------------------------------------------------
 Testing empty timeseries
-    0.0000	dispatcher	cmb_timeseries_sort_x (440):  Warning: No data to sort, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_timeseries_sort_t (473):  Warning: No data to sort, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_sort_x (439):  Warning: No data to sort, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_sort_t (472):  Warning: No data to sort, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_timeseries_finalize (191):  Warning: Finalizing empty time series, nothing added, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_timeseries_print (260):  Warning: No data to print, seed 0x34f05c64d7ad598f	
-    0.0000	dispatcher	cmb_timeseries_median (508):  Warning: Cannot take median of empty time series, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_median (507):  Warning: Cannot take median of empty time series, seed 0x34f05c64d7ad598f	
 Median of empty timeseries: 0.000000
-    0.0000	dispatcher	cmb_timeseries_fivenum_print (563):  Warning: No data to display in five-number summary, seed 0x34f05c64d7ad598f	
+    0.0000	dispatcher	cmb_timeseries_fivenum_print (562):  Warning: No data to display in five-number summary, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_timeseries_histogram_print (323):  Warning: No data to display in histogram, seed 0x34f05c64d7ad598f	
     0.0000	dispatcher	cmb_timeseries_summarize (232):  Warning: Cannot summarize empty time series, seed 0x34f05c64d7ad598f	
-N        0
+Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+       0
 --------------------------------------------------------------------------------
 ********************************************************************************
