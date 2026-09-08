@@ -249,11 +249,11 @@ extern double cmb_datasummary_kurtosis(const struct cmb_datasummary *dsp);
  * @memberof cmb_datasummary
  * @param dsp Pointer to a data summary.
  * @param fp A file pointer for where to print, possibly `stdout`
- * @param lead_ins Flag to control if explanatory text is printed. If false,
- *                 only prints a tab-separated line of numeric values.
+ * @param legend Flag to control if explanatory text is printed. If false,
+ *               only prints a tab-separated line of numeric values.
  */
 extern void cmb_datasummary_print(const struct cmb_datasummary *dsp,
                               FILE *fp,
-                              bool lead_ins);
+                              bool legend);
 
 #endif /* CIMBA_CMB_DATASUMMARY_H */
