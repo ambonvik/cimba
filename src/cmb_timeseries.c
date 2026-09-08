@@ -424,8 +424,6 @@ static void timeseries_heapify(const uint64_t un,
             break;
         }
     }
-
-    cmb_assert_debug(cmi_dataset_is_max_heap(un, keya, uroot));
 }
 
 /* Heapsort from smallest to largest x-value */
@@ -434,6 +432,7 @@ void cmb_timeseries_sort_x(struct cmb_timeseries *tsp)
     cmb_assert_release(tsp != NULL);
     struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
+    static_assert(INT64_MAX >= UINT64_MAX / 2u);
 
     const uint64_t un = dsp->count;
     if (un == 0u) {
@@ -443,12 +442,12 @@ void cmb_timeseries_sort_x(struct cmb_timeseries *tsp)
         cmb_assert_debug(tsp->ta != NULL);
         cmb_assert_debug(tsp->wa != NULL);
         cmb_assert_debug(dsp->xa != NULL);
-        cmb_assert_debug(INT64_MAX >= UINT64_MAX / 2u);
 
-        for (int64_t root = (int64_t)(un / 2u) - 1u; root >= 0u; root--) {
+        for (int64_t root = (int64_t)(un / 2u) - 1u; root >= 0; root--) {
             timeseries_heapify(un, dsp->xa, tsp->ta, tsp->wa,  root);
         }
 
+        cmb_assert_debug(cmi_dataset_is_max_heap(un, dsp->xa, 0u));
         for (uint64_t ui = un - 1u; ui > 0u; ui--) {
             cmb_assert_debug(ui < un);
             cmi_dataset_swap(&(dsp->xa[0]), &(dsp->xa[ui]));
@@ -552,10 +551,10 @@ static double clamp(const double xval, const double xmin, const double xmax)
 
 void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
                                   FILE *fp,
-                                  const bool lead_ins)
+                                  const bool legend)
 {
     cmb_assert_release(tsp != NULL);
-    struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
+    const struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(fp != NULL);
 
@@ -622,12 +621,15 @@ void cmb_timeseries_fivenum_print(const struct cmb_timeseries *tsp,
 
         cmb_assert_debug((xmin <= x025) && (x025 <= x050) && (x050 <= x075) && (x075 <= xmax));
 
-        const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
-                ((lead_ins) ? "Min " : ""), xmin,
-                ((lead_ins) ? "  First_Q " : "\t"), x025,
-                ((lead_ins) ? "  Median " : "\t"), x050,
-                ((lead_ins) ? "  Third_Q " : "\t"), x075,
-                ((lead_ins) ? "  Max " : "\t"), xmax);
+        int r = 0;
+        if (legend)
+        {
+            r = fprintf(fp, "Min     \tFirst Q \tMedian  \tThird Q \tMax\n");
+            cmb_assert_release(r > 0);
+        }
+
+        r = fprintf(fp, "%#8.4g\t%#8.4g\t%#8.4g\t%#8.4g\t%#8.4g\n",
+                        xmin, x025, x050, x075, xmax);
         cmb_assert_release(r > 0);
 
         cmi_free(wcum);
