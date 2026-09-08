@@ -269,11 +269,11 @@ static inline double cmb_wtdsummary_kurtosis(const struct cmb_wtdsummary *wsp)
  * @memberof cmb_wtdsummary
  * @param wsp Pointer to a weighted data summary.
  * @param fp A file pointer for where to print, possibly `stdout`
- * @param lead_ins Flag to control if explanatory text is printed. If false,
+ * @param legend Flag to control if explanatory text is printed. If false,
  *                 only prints a tab-separated line of numeric values.
  */
 extern void cmb_wtdsummary_print(const struct cmb_wtdsummary *wsp,
                                  FILE *fp,
-                                 bool lead_ins);
+                                 bool legend);
 
 #endif /* CIMBA_CMB_WTDSUMMARY_H */
