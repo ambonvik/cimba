@@ -193,41 +193,27 @@ bool cmi_dataset_is_max_heap(const uint64_t un,
                              const uint64_t uroot)
 {
     cmb_assert_release(arr != NULL);
-    if ((un > 1u) && (uroot <= un)) {
-        uint64_t *queue = cmi_malloc(un * sizeof(uint64_t));
-        uint64_t uhead = 0u;
-        uint64_t utail = 0u;
-        queue[utail++] = uroot;
-        while (uhead < utail) {
-            const uint64_t ucur = queue[uhead++];
-            const uint64_t ucl = 2u * ucur + 1u;
-            const uint64_t ucr = 2u * ucur + 2u;
 
-            if (ucl < un) {
-                if (arr[ucur] < arr[ucl]) {
-                    cmi_free(queue);
-                    return false;
-                }
-
-                queue[utail++] = ucl;
-            }
-
-            if (ucr < un) {
-                if (arr[ucur] < arr[ucr]) {
-                    cmi_free(queue);
-                    return false;
-                }
-
-                queue[utail++] = ucr;
-            }
-        }
-        cmi_free(queue);
+    if ((un <= 1u) || (uroot >= un)) {
+        return true;
     }
 
-    /* No evidence to the contrary */
+    uint64_t lo = uroot;
+    uint64_t hi = uroot + 1u;
+    while (lo < un) {
+        const uint64_t end = (hi < un) ? hi : un;
+        for (uint64_t i = lo; i < end; i++) {
+            const uint64_t l = 2u * i + 1u;
+            const uint64_t r = l + 1u;
+            if ((l < un) && (arr[i] < arr[l])) { return false; }
+            if ((r < un) && (arr[i] < arr[r])) { return false; }
+        }
+        lo = 2u * lo + 1u;
+        hi = 2u * hi;
+    }
+
     return true;
 }
-
 
 /* Establish max heap condition in the dataset array starting from uroot */
 static void dataset_heapify(const uint64_t un,
@@ -261,8 +247,6 @@ static void dataset_heapify(const uint64_t un,
             break;
         }
     }
-
-    cmb_assert_debug(cmi_dataset_is_max_heap(un, arr, uroot));
 }
 
 /* Heapsort from smallest to largest value */
@@ -270,6 +254,7 @@ void cmb_dataset_sort(const struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
+    static_assert(INT64_MAX >= UINT64_MAX / 2u);
 
     if (dsp->count == 0u) {
         cmb_logger_warning(stdout, "No data to sort");
@@ -278,11 +263,12 @@ void cmb_dataset_sort(const struct cmb_dataset *dsp)
         cmb_assert_debug(dsp->xa != NULL);
         const uint64_t un = dsp->count;
         double *arr = dsp->xa;
-        cmb_assert_debug(INT64_MAX >= UINT64_MAX / 2);
-        for (int64_t root = (int64_t)(un / 2u) - 1u; root >= 0u; root--) {
+
+        for (int64_t root = (int64_t)(un / 2u) - 1u; root >= 0; root--) {
             dataset_heapify(un, arr, root);
         }
 
+        cmb_assert_debug(cmi_dataset_is_max_heap(un, arr, 0u));   /* once */
         for (uint64_t ui = un - 1u; ui > 0u; ui--) {
             cmb_assert_debug(ui < un);
             cmi_dataset_swap(&arr[0], &arr[ui]);
@@ -405,7 +391,7 @@ uint64_t cmb_dataset_summarize(const struct cmb_dataset *dsrc,
 
     const uint64_t un = dsrc->count;
     if (un == 0u) {
-        cmb_logger_warning(stdout, "Cannot summarize empty data set.");
+        cmb_logger_warning(stdout, "Cannot summarize empty data set");
     }
     else {
         for (uint64_t ui = 0; ui < un; ui++) {
@@ -440,7 +426,7 @@ double cmb_dataset_median(const struct cmb_dataset *dsp)
 
     double r = 0.0;
     if (dsp->count == 0u) {
-        cmb_logger_warning(stdout, "Cannot take median of empty data set.");
+        cmb_logger_warning(stdout, "Cannot take median of empty data set");
     }
     else {
         cmb_assert_debug(dsp->xa != NULL);
@@ -460,7 +446,7 @@ double cmb_dataset_median(const struct cmb_dataset *dsp)
  */
 void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
                                FILE *fp,
-                               const bool lead_ins)
+                               const bool legend)
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
@@ -491,18 +477,23 @@ void cmb_dataset_fivenum_print(const struct cmb_dataset *dsp,
         if ((dtmp.count % 2) == 0) {
             /* Even number of entries */
             q3 = data_array_median(uhsz, &(dtmp.xa[lhsz]));
-        } else {
+        }
+        else {
             /* Odd number of entries, exclude the median entry */
             q3 = data_array_median(uhsz - 1, &(dtmp.xa[lhsz + 1]));
         }
 
-        const int r = fprintf(fp, "%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g%s%#8.4g\n",
-                ((lead_ins) ? "Min " : ""), min,
-                ((lead_ins) ? "  First_Q " : "\t"), q1,
-                ((lead_ins) ? "  Median " : "\t"), med,
-                ((lead_ins) ? "  Third_Q " : "\t"), q3,
-                ((lead_ins) ? "  Max " : "\t"), max);
+        int r = 0;
+        if (legend)
+        {
+            r = fprintf(fp, "Min     \tFirst Q \tMedian  \tThird Q \tMax\n");
+          cmb_assert_release(r > 0);
+        }
+
+        r = fprintf(fp, "%#8.4g\t%#8.4g\t%#8.4g\t%#8.4g\t%#8.4g\n",
+                        min, q1, med, q3, max);
         cmb_assert_release(r > 0);
+
         cmb_dataset_terminate(&dtmp);
     }
 }
