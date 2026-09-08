@@ -27,7 +27,7 @@
 #include "cmb_random.h"
 
 #include "cmi_hashheap.h"
-#include "test.h"
+#include "testutils.h"
 
 /*
  * Test if heap_tag *a should go before *b. If so, return true.
@@ -328,7 +328,7 @@ int main(const int argc, char *argv[])
             case 's':
                 errno = 0;
                 seed = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0 || seed == 0u) {
+                if (errno != 0) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
                 }
