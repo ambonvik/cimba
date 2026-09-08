@@ -18,7 +18,7 @@ foreach item : matrix
 
     # build an executable of this build type
     exe = executable('test_assert_' + test_buildtype,
-                     files('test_assert.c', 'test.h'),
+                     files('test_assert.c', 'testutils.c'),
                      c_args : test_buildflags,
                      include_directories : [inc_api, inc_int],
                      link_with : cimba_lib,
@@ -39,7 +39,7 @@ foreach item : matrix
 endforeach
 
 test_buffer = executable('test_buffer',
-                         files('test_buffer.c', 'test.h'),
+                         files('test_buffer.c', 'testutils.c'),
                          include_directories : [inc_api, inc_int],
                          link_with : cimba_lib,
                          dependencies : [project_deps],
@@ -50,7 +50,7 @@ test_buffer = executable('test_buffer',
 test('buffer', test_buffer)
 
 test_cimba = executable('test_cimba',
-                         files('test_cimba.c', 'test.h'),
+                         files('test_cimba.c', 'testutils.c'),
                          include_directories : [inc_api, inc_int],
                          link_with : cimba_lib,
                          dependencies : [project_deps],
@@ -62,7 +62,7 @@ test_cimba = executable('test_cimba',
 test('cimba', test_cimba, is_parallel : false, timeout : 0)
 
 test_condition = executable('test_condition',
-                            files('test_condition.c', 'test.h'),
+                            files('test_condition.c', 'testutils.c'),
                             include_directories : [inc_api, inc_int],
                             link_with : cimba_lib,
                             dependencies : [project_deps],
@@ -73,7 +73,7 @@ test_condition = executable('test_condition',
 test('condition', test_condition)
 
 test_coroutine = executable('test_coroutine',
-                            files('test_coroutine.c', 'test.h'),
+                            files('test_coroutine.c', 'testutils.c'),
                             include_directories : [inc_api, inc_int],
                             link_with : cimba_lib,
                             dependencies : [project_deps],
@@ -84,7 +84,7 @@ test_coroutine = executable('test_coroutine',
 test('coroutine', test_coroutine)
 
 test_data = executable( 'test_data',
-                        files('test_data.c', 'test.h'),
+                        files('test_data.c', 'testutils.c'),
                         include_directories : [inc_api, inc_int],
                         link_with : cimba_lib,
                         dependencies : [project_deps],
@@ -96,7 +96,7 @@ test_data = executable( 'test_data',
 test('data', test_data, timeout : 0)
 
 test_event = executable('test_event',
-                        files('test_event.c', 'test.h'),
+                        files('test_event.c', 'testutils.c'),
                         include_directories : [inc_api, inc_int],
                         link_with : cimba_lib,
                         dependencies : [project_deps],
@@ -107,7 +107,7 @@ test_event = executable('test_event',
 test('event', test_event)
 
 test_hashheap = executable('test_hashheap',
-                        files('test_hashheap.c', 'test.h'),
+                        files('test_hashheap.c', 'testutils.c'),
                         include_directories : [inc_api, inc_int],
                         link_with : cimba_lib,
                         dependencies : [project_deps],
@@ -118,7 +118,7 @@ test_hashheap = executable('test_hashheap',
 test('hashheap', test_hashheap)
 
 test_lists = executable('test_lists',
-                           files('test_lists.c', 'test.h'),
+                           files('test_lists.c', 'testutils.c'),
                            include_directories : [inc_api, inc_int],
                            link_with : cimba_lib,
                            dependencies : [project_deps],
@@ -129,7 +129,7 @@ test_lists = executable('test_lists',
 test('lists', test_lists)
 
 test_logger = executable('test_logger',
-                         files('test_logger.c', 'test.h'),
+                         files('test_logger.c', 'testutils.c'),
                          include_directories : [inc_api, inc_int],
                          link_with : cimba_lib,
                          dependencies : [project_deps],
@@ -140,7 +140,7 @@ test_logger = executable('test_logger',
 test('logger', test_logger)
 
 test_mempool = executable('test_mempool',
-                         files('test_mempool.c', 'test.h'),
+                         files('test_mempool.c', 'testutils.c'),
                          include_directories : [inc_api, inc_int],
                          link_with : cimba_lib,
                          dependencies : [project_deps],
@@ -150,8 +150,8 @@ test_mempool = executable('test_mempool',
 
 test('mempool', test_mempool)
 
-test_objectqueue = executable('test_objectqueue',
-                              files('test_objectqueue.c', 'test.h'),
+test_objectqueue = executable('test_objectqueue', 'testutils.c',
+                              files('test_objectqueue.c'),
                               include_directories : [inc_api, inc_int],
                               link_with : cimba_lib,
                               dependencies : [project_deps],
@@ -162,7 +162,7 @@ test_objectqueue = executable('test_objectqueue',
 test('objectqueue', test_objectqueue)
 
 test_priorityqueue = executable('test_priorityqueue',
-                              files('test_priorityqueue.c', 'test.h'),
+                              files('test_priorityqueue.c', 'testutils.c'),
                               include_directories : [inc_api, inc_int],
                               link_with : cimba_lib,
                               dependencies : [project_deps],
@@ -173,7 +173,7 @@ test_priorityqueue = executable('test_priorityqueue',
 test('priorityqueue', test_priorityqueue)
 
 test_process = executable('test_process',
-                            files('test_process.c', 'test.h'),
+                            files('test_process.c', 'testutils.c'),
                             include_directories : [inc_api, inc_int],
                             link_with : cimba_lib,
                             dependencies : [project_deps],
@@ -183,18 +183,8 @@ test_process = executable('test_process',
 
 test('process', test_process)
 
-# build, but do not run automatically in test suite
-test_practrand = executable('test_practrand',
-                         files('test_practrand.c', 'test.h'),
-                         include_directories : [inc_api, inc_int],
-                         link_with : cimba_lib,
-                         dependencies : [project_deps],
-                         install : false,
-                         native : true
-)
-
 test_random = executable('test_random',
-                         files('test_random.c', 'test.h'),
+                         files('test_random.c', 'testutils.c'),
                          include_directories : [inc_api, inc_int],
                          link_with : cimba_lib,
                          dependencies : [project_deps],
@@ -205,7 +195,7 @@ test_random = executable('test_random',
 test('random', test_random, timeout : 0)
 
 test_resource = executable('test_resource',
-                          files('test_resource.c', 'test.h'),
+                          files('test_resource.c', 'testutils.c'),
                           include_directories : [inc_api, inc_int],
                           link_with : cimba_lib,
                           dependencies : [project_deps],
@@ -216,7 +206,7 @@ test_resource = executable('test_resource',
 test('resource', test_resource)
 
 test_resourceguard = executable('test_resourceguard',
-                                files('test_resourceguard.c', 'test.h'),
+                                files('test_resourceguard.c', 'testutils.c'),
                                 include_directories : [inc_api, inc_int],
                                 link_with : cimba_lib,
                                 dependencies : [project_deps],
@@ -227,7 +217,7 @@ test_resourceguard = executable('test_resourceguard',
 test('resourceguard', test_resourceguard)
 
 test_resourcepool = executable('test_resourcepool',
-                           files('test_resourcepool.c', 'test.h'),
+                           files('test_resourcepool.c', 'testutils.c'),
                            include_directories : [inc_api, inc_int],
                            link_with : cimba_lib,
                            dependencies : [project_deps],
@@ -250,3 +240,13 @@ test('stochastic',
      workdir: meson.project_source_root(),
 )
 
+test_testutils = executable('test_testutils',
+                            files('test_testutils.c', 'testutils.c'),
+                            include_directories : [inc_api, inc_int],
+                            link_with : cimba_lib,
+                            dependencies : [project_deps],
+                            install : false,
+                            native : true
+)
+
+test('testutils', test_testutils, timeout : 0)
