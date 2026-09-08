@@ -221,43 +221,50 @@ uint64_t cmb_datasummary_add(struct cmb_datasummary *dsp, const double y)
 
 void cmb_datasummary_print(const struct cmb_datasummary *dsp,
                        FILE *fp,
-                       const bool lead_ins)
+                       const bool legend)
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);
     cmb_assert_release(fp != NULL);
 
-    int r = fprintf(fp, "%s%8" PRIu64, ((lead_ins)? "N ": ""), dsp->count);
+    int r = 0;
+    if (legend ) {
+        r = fprintf(fp, "Count   \tMean    \tStdDev  \tVariance\tSkewness\tExcess kurtosis\n");
+        cmb_assert_release(r > 0);
+    }
+
+    if (dsp->count < 100000u) {
+        r = fprintf(fp, "%8" PRIu64, dsp->count);
+    }
+    else {
+        r = fprintf(fp, "%#8.4g", (double)(dsp->count));
+    }
+
     cmb_assert_release(r > 0);
     if (dsp->count > 0u) {
         const double mean = cmb_datasummary_mean(dsp);
-        r = fprintf(fp, "%s%#8.4g",
-                ((lead_ins) ? "  Mean " : "\t"), mean);
+        r = fprintf(fp, "\t%#8.4g", mean);
         cmb_assert_release(r > 0);
     }
 
     if (dsp->count > 1u) {
         const double var = cmb_datasummary_variance(dsp);
         const double std = sqrt(var);
-        r = fprintf(fp, "%s%#8.4g",
-                ((lead_ins) ? "  StdDev " : "\t"), std);
+        r = fprintf(fp, "\t%#8.4g", std);
         cmb_assert_release(r > 0);
-        r = fprintf(fp, "%s%#8.4g",
-                ((lead_ins) ? "  Variance " : "\t"), var);
+        r = fprintf(fp, "\t%#8.4g", var);
         cmb_assert_release(r > 0);
     }
 
     if (dsp->count > 2u) {
         const double skew = cmb_datasummary_skewness(dsp);
-        r = fprintf(fp, "%s%#8.4g",
-            ((lead_ins) ? "  Skewness " : "\t"), skew);
+        r = fprintf(fp, "\t%#8.4g", skew);
         cmb_assert_release(r > 0);
     }
 
     if (dsp->count > 3u) {
         const double kurt = cmb_datasummary_kurtosis(dsp);
-        r = fprintf(fp, "%s%#8.4g",
-            ((lead_ins) ? "  Kurtosis " : "\t"), kurt);
+        r = fprintf(fp, "\t%#8.4g", kurt);
         cmb_assert_release(r > 0);
     }
 
