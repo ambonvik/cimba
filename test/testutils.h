@@ -45,7 +45,7 @@ enum cmi_test_status {
     CMI_TEST_TOO_FEW,        /* Not enough samples per bin */
     CMI_TEST_OUT_OF_RANGE,   /* Sample outside [0,1] */
     CMI_TEST_DEGENERATE,     /* All samples near identical, NaN present */
-    CMI_TEST_SATURATED       /* Improbable numbers of exact zero and one samples */
+    CMI_TEST_SATURATED       /* Too many exact 0.0 and 1.0 samples */
 };
 
 struct cmi_test_partial {
@@ -77,7 +77,8 @@ typedef double (cmi_test_transform_func)(double, void*);
  * Goodness-of-fit test: Is the dataset ~U(0,1)?
  * Returns a sigma value where a high sigma indicates improbability.
  */
-extern double cmi_test_u01(const struct cmb_dataset *dsp, struct cmi_test_outcome *result);
+extern double cmi_test_u01(const struct cmb_dataset *dsp,
+                           struct cmi_test_outcome *result);
 
 /*
  * Two-sample test: Are the two datasets taken for the same distribution?
@@ -105,5 +106,12 @@ extern void cmi_test_transform(struct cmb_dataset *tgt,
                                const struct cmb_dataset *src,
                                cmi_test_transform_func *map,
                                void *arg);
+
+/* Log of the incomplete gamma function */
+extern void cmi_test_log_incomplete_gamma(double a, double x,
+                                          double *logp, double *logq);
+/* Log of the incomplete beta function */
+extern void cmi_test_log_incomplete_beta(double a, double b, double x,
+                                          double *logp, double *logq);
 
 #endif /* CIMBA_TESTUTILS_H */

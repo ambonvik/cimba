@@ -163,15 +163,6 @@ static void mod_gram_schmidt(double *basis, const unsigned k, const unsigned n)
 
 /**** Normal distribution utilities ****/
 
-/* Textbook version of CDF, will lose numerical precision in the lower tail */
-CMB_MAYBE_UNUSED
-static double normal_cdf(const double x, const double m, const double s)
-{
-    const double p = 0.5 * (1.0 + erf((x - m) / (s * sqrt(2.0))));
-
-    return p;
-}
-
 /* ppnd16 - percentage points of the normal distribution, 16 significant digits.
  * I.e., the inverse CDF of the standard normal distribution, returning the x
  * value that gives probability p starting from the negative tail. For the
@@ -304,7 +295,7 @@ static double ppnd16(const double p)
 
 /* Calculate log(P(a,x)) as incomplete gamma series
  * sum_{n>=0} x^n / (a(a+1)...(a+n)), valid for x < a+1. */
-static double incgam_log_series(const double a, const double x)
+static double igamma_log_series(const double a, const double x)
 {
     const int nterms = 100000;
     double ap = a;
@@ -326,7 +317,7 @@ static double incgam_log_series(const double a, const double x)
 
 /* Calculate log(Q(a,x)) as continued fraction, valid for x >= a+1, using the
  * modified Lentz algorithm. */
-static double incgam_log_cf(const double a, const double x)
+static double igamma_log_cf(const double a, const double x)
 {
     const int nterms = 100000;
     const double tiny = 1.0e-300;
@@ -361,7 +352,7 @@ static double incgam_log_cf(const double a, const double x)
 /* Regularized incomplete gamma in log space. Calculates both log(P(a,x)) and
  * log(Q(a,x)). Either pointer may be NULL but not both (that would be rather
  * useless). */
-static void incgam_log(const double a, const double x, double *logp, double *logq)
+static void igamma_log(const double a, const double x, double *logp, double *logq)
 {
     cmb_assert_debug(a > 0.0);
     cmb_assert_debug((logp != NULL) || (logq != NULL));
@@ -376,12 +367,12 @@ static void incgam_log(const double a, const double x, double *logp, double *log
         const double pf = -x + a * log(x) - lgamma(a);
         if (x < a + 1.0) {
             /* Calculate P(a,x) as series */
-            lp = pf + incgam_log_series(a, x);
+            lp = pf + igamma_log_series(a, x);
             lq = log1mexp(lp);
         }
         else {
             /* Calculate Q(a,x) as continuing fraction */
-            lq = pf + incgam_log_cf(a, x);
+            lq = pf + igamma_log_cf(a, x);
             lp = log1mexp(lq);
         }
     }
@@ -395,12 +386,127 @@ static void incgam_log(const double a, const double x, double *logp, double *log
     }
 }
 
+/* Regularized incomplete beta function I_x(a,b), evaluated in log space.
+ *
+ * Uses the continued fraction of Abramowitz & Stegun 26.5.8, evaluated by
+ * the modified Lentz method, with the symmetry I_x(a,b) = 1 - I_{1-x}(b,a)
+ * to stay in the region where the fraction converges quickly.
+ *
+ * Working in logs keeps tail probabilities far below DBL_MIN representable:
+ * I_0.9(0.5, 50) has a complement of about e^-117, which as a linear double
+ * would be indistinguishable from zero. */
+
+/* Continued fraction for the regularized incomplete beta (modified Lentz).
+ * Converges quickly for x < (a+1)/(a+b+2); the caller ensures this. */
+static double ibeta_cf_log(const double a, const double b, const double x)
+{
+    const int itmax = 100000;
+    const double tiny = 1.0e-300;
+
+    const double qab = a + b;
+    const double qap = a + 1.0;
+    const double qam = a - 1.0;
+
+    double c = 1.0;
+    double d = 1.0 - qab * x / qap;
+    if (fabs(d) < tiny) {
+        d = tiny;
+    }
+    d = 1.0 / d;
+    double h = d;
+
+    for (int m = 1; m < itmax; m++) {
+        const double dm = (double)m;
+        const double m2 = 2.0 * dm;
+
+        /* Even step */
+        double aa = dm * (b - dm) * x / ((qam + m2) * (a + m2));
+        d = 1.0 + aa * d;
+        if (fabs(d) < tiny) { d = tiny; }
+        c = 1.0 + aa / c;
+        if (fabs(c) < tiny) { c = tiny; }
+        d = 1.0 / d;
+        h *= d * c;
+
+        /* Odd step */
+        aa = -(a + dm) * (qab + dm) * x / ((a + m2) * (qap + m2));
+        d = 1.0 + aa * d;
+        if (fabs(d) < tiny) { d = tiny; }
+        c = 1.0 + aa / c;
+        if (fabs(c) < tiny) { c = tiny; }
+        d = 1.0 / d;
+        const double del = d * c;
+        h *= del;
+
+        if (fabs(del - 1.0) < DBL_EPSILON) {
+            break;
+        }
+    }
+
+    return log(h);
+}
+
+/*
+ * Writes log I_x(a,b) and log(1 - I_x(a,b)); either pointer may be NULL.
+ * Requires a > 0, b > 0, 0 <= x <= 1.
+ */
+void ibeta_log(const double a, const double b, const double x,
+               double *logp, double *logq)
+{
+    cmb_assert_debug((a > 0.0) && (b > 0.0));
+    cmb_assert_debug((x >= 0.0) && (x <= 1.0));
+
+    double lp;
+    double lq;
+
+    if (x <= 0.0) {
+        lp = -INFINITY;
+        lq = 0.0;
+    }
+    else if (x >= 1.0) {
+        lp = 0.0;
+        lq = -INFINITY;
+    }
+    else {
+        const double lbeta = lgamma(a) + lgamma(b) - lgamma(a + b);
+        const double y = 1.0 - x;
+        const double pfwd = a * log(x) + b * log1p(-x) - log(a) - lbeta;
+        const double prev = b * log(y) + a * log1p(-y) - log(b) - lbeta;
+
+        if (x < (a + 1.0) / (a + b + 2.0)) {
+            lp = pfwd + ibeta_cf_log(a, b, x);
+            if (lp > -1.0e-8) {
+                /* I is indistinguishable from 1; get the small tail directly
+                 * rather than by a complement that has nothing left to cancel */
+                lq = prev + ibeta_cf_log(b, a, y);
+                lp = log1mexp(lq);
+            }
+            else {
+                lq = log1mexp(lp);
+            }
+        }
+        else {
+            lq = prev + ibeta_cf_log(b, a, y);
+            if (lq > -1.0e-8) {
+                lp = pfwd + ibeta_cf_log(a, b, x);
+                lq = log1mexp(lp);
+            }
+            else {
+                lp = log1mexp(lq);
+            }
+        }
+    }
+
+    if (logp != NULL) { *logp = lp; }
+    if (logq != NULL) { *logq = lq; }
+}
+
 /* Chi-square tails in log space; DoF may be odd or even, no special cases needed. */
 CMB_MAYBE_UNUSED
 static double chisq_logcdf(const double x2, const double dof)
 {
     double lp;
-    incgam_log(0.5 * dof, 0.5 * x2, &lp, NULL);
+    igamma_log(0.5 * dof, 0.5 * x2, &lp, NULL);
 
     return lp;
 }
@@ -409,7 +515,7 @@ CMB_MAYBE_UNUSED
 static double chisq_logsf(const double x2, const double dof)
 {
     double lq;
-    incgam_log(0.5 * dof, 0.5 * x2, NULL, &lq);
+    igamma_log(0.5 * dof, 0.5 * x2, NULL, &lq);
 
     return lq;
 }
@@ -454,7 +560,7 @@ static double logp_to_sigma(const double logp)
 static double chisq_sigma(const double dof, const double x2)
 {
     double p, q;
-    incgam_log(0.5 * dof, 0.5 * x2, &p, &q);
+    igamma_log(0.5 * dof, 0.5 * x2, &p, &q);
 
     return (q < p) ? logp_to_sigma(q) : -logp_to_sigma(p);
 }
@@ -463,7 +569,7 @@ static double chisq_sigma(const double dof, const double x2)
 static double normal_logsf(const double z)
 {
     double lq;
-    incgam_log(0.5, 0.5 * z * z, NULL, &lq);
+    igamma_log(0.5, 0.5 * z * z, NULL, &lq);
     double r;
     if (z >= 0.0) {
         /* Half of erfc(z/sqrt2) */
@@ -488,12 +594,16 @@ static double bin_residuals(const struct cmb_dataset *dsp,
     uint64_t *bins = cmi_calloc(nr, sizeof(*bins));
 
     const uint64_t un = dsp->count;
-    const double binsz = 1.0 / (double)nr;
 
     for (uint64_t ui = 0; ui < un; ui++) {
         unsigned bin = (unsigned)(dsp->xa[ui] * (double)nr);
         if (bin >= nr) {
-            /* x == 1.0 belongs in the top bin here */
+            /* x == 1.0 belongs in the top bin here, intentionally different
+             * from the cmb_dataset_histogram bins where it would be placed in
+             * the [1.0, oo) overflow bin. We are testing against ~U[0,1], not
+             * ~U[0,1) also to allow for samples drawn as x = 1 - cmb_random()
+             * to avoid the possibility of an exact zero value. Then the
+             * possibility of an exact 1.0 comes instead. Allow both. */
             bin = nr - 1u;
         }
         bins[bin]++;
@@ -614,7 +724,7 @@ static void pearson_chisquare_U01(const double *rv,
     cmb_assert_debug(result != NULL);
 
     double lp, lq;
-    incgam_log(0.5 * (double)(num_bins - 1u), 0.5 * x2, &lp, &lq);
+    igamma_log(0.5 * (double)(num_bins - 1u), 0.5 * x2, &lp, &lq);
 
     /* One-sided tail, always <= log(0.5) since min(P,Q) <= 0.5 */
     double ltail = fmin(lp, lq);
@@ -706,7 +816,7 @@ static void neyman_smooth_U01(const double *rv,
     const double rem = x2 - sumv2;
     const unsigned rdof = num_bins - 1u - NEYMAN_K;
     double rlp, rlq;
-    incgam_log(0.5 * (double)rdof, 0.5 * rem, &rlp, &rlq);
+    igamma_log(0.5 * (double)rdof, 0.5 * rem, &rlp, &rlq);
 
     double rtail = fmin(rlp, rlq);
     if (rtail > -M_LN2) {
@@ -733,7 +843,7 @@ static void neyman_smooth_U01(const double *rv,
 
     double flp, flq;
     const unsigned fisher_dof = 2u * (NEYMAN_K + 1u);
-    incgam_log(0.5 * (double)fisher_dof, 0.5 * fisher, &flp, &flq);
+    igamma_log(0.5 * (double)fisher_dof, 0.5 * fisher, &flp, &flq);
     double ftail = fmin(flp, flq);
     if (ftail > -M_LN2) {
         ftail = -M_LN2;
@@ -793,6 +903,9 @@ static void anderson_darling_U01(const struct cmb_dataset *dsp,
     result->n_clamped = nclamp;
     if ((double)nclamp > sqrt(dn / 3670.0)) {
         result->status = CMI_TEST_SATURATED;
+
+        /* A^2 is meaningless; don't compute a p-value, just bail out */
+        return;
     }
 
     /* Calculate the limiting probability distribution and adjust for finite n */
@@ -825,6 +938,7 @@ double cmi_test_u01(const struct cmb_dataset *dsp, struct cmi_test_outcome *resu
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->count > 0u);
+    /* This will also catch any NaNs */
     cmb_assert_release(dsp->max >= dsp->min);
     cmb_assert_release(result != NULL);
 
@@ -837,22 +951,17 @@ double cmi_test_u01(const struct cmb_dataset *dsp, struct cmi_test_outcome *resu
     result->nparts = 0u;
 
     double sigma;
-    if (dsp->min < test_min_value) {
+    if ((dsp->min < test_min_value) || (dsp->max > test_max_value)) {
         /* Can be rejected out of hand. It is surely not ~U(0,1) */
         result->status = CMI_TEST_OUT_OF_RANGE;
-        sigma = NAN;
-    }
-    else if (dsp->max > test_max_value) {
-        /* Can be rejected out of hand. It is surely not ~U(0,1) */
-        result->status = CMI_TEST_OUT_OF_RANGE;
-        sigma = NAN;
+        sigma = INFINITY;
     }
     else if (dsp->count < test_min_count) {
         /* Can not make a judgement */
         result->status = CMI_TEST_TOO_FEW;
         sigma = NAN;
     }
-    else if (fabs(dsp->max - dsp->min) <= test_min_range) {
+    else if (dsp->max - dsp->min <= test_min_range) {
         /* Can not make a judgement */
         result->status = CMI_TEST_DEGENERATE;
         sigma = NAN;
@@ -1100,7 +1209,7 @@ static void test_chisq_logcdf(void)
 
     for (int i = 0; i < n; i++) {
         double lp, lq;
-        incgam_log(logcdf_ref[i].a, logcdf_ref[i].x, &lp, &lq);
+        igamma_log(logcdf_ref[i].a, logcdf_ref[i].x, &lp, &lq);
         if (logcdf_ref[i].logp > -1e300) {
             const double e = fabs(lp - logcdf_ref[i].logp) / fmax(fabs(logcdf_ref[i].logp), 1.0);
             if (e > worst_p) {
@@ -1127,7 +1236,7 @@ static void test_chisq_logcdf(void)
     cmi_test_print_line("-");
     for (int i = 0; i < 7; i++) {
         double lp, lq;
-        incgam_log(dfs[i] / 2.0, xs[i] / 2.0, &lp, &lq);
+        igamma_log(dfs[i] / 2.0, xs[i] / 2.0, &lp, &lq);
         printf("%4.0f\t%10.4f\t%8.4g\t%8.4g\t", dfs[i], xs[i], lp, lq);
         const double ltail = (lq < lp) ? lq : lp;
         if (ltail > -700.0) {
@@ -1143,7 +1252,7 @@ static void test_chisq_logcdf(void)
     cmi_test_print_line("-");
     for (int i = 0; i < 7; i++) {
         double lp, lq;
-        incgam_log(dfs[i] / 2.0, xs[i] / 2.0, &lp, &lq);
+        igamma_log(dfs[i] / 2.0, xs[i] / 2.0, &lp, &lq);
         const double sigma = chisq_sigma(dfs[i], xs[i]);
         const char *str = cmi_test_interpretation(sigma);
         printf("%s\n", str);
@@ -1154,4 +1263,15 @@ static void test_chisq_logcdf(void)
 void cmi_test_selftests()
 {
     test_chisq_logcdf();
+}
+
+void cmi_test_log_incomplete_gamma(const double a, const double x,
+                                   double *logp, double *logq)
+{
+    igamma_log(a, x, logp, logq);
+}
+void cmi_test_log_incomplete_beta(const double a, const double b, const double x,
+                                  double *logp, double *logq)
+{
+    ibeta_log(a, b, x, logp, logq);
 }
