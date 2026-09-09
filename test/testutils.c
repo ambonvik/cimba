@@ -491,7 +491,11 @@ static double bin_residuals(const struct cmb_dataset *dsp,
     const double binsz = 1.0 / (double)nr;
 
     for (uint64_t ui = 0; ui < un; ui++) {
-        const unsigned bin = (unsigned)(dsp->xa[ui] / binsz);
+        unsigned bin = (unsigned)(dsp->xa[ui] * (double)nr);
+        if (bin >= nr) {
+            /* x == 1.0 belongs in the top bin here */
+            bin = nr - 1u;
+        }
         bins[bin]++;
     }
 
