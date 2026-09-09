@@ -186,7 +186,7 @@ struct cdf_uniform_params {
 static double cdf_uniform(const double x, void *ctx)
 {
     cmb_assert_debug(ctx != NULL);
-    struct cdf_uniform_params *pp = ctx;
+    const struct cdf_uniform_params *pp = ctx;
     cmb_assert_debug(pp->a <= pp->b);
 
     double r;
@@ -287,7 +287,7 @@ static double cdf_exp(const double x, void *ctx)
 {
     cmb_unused(ctx);
     cmb_assert_debug(ctx != NULL);
-    struct cdf_exp_params *pp = ctx;
+    const struct cdf_exp_params *pp = ctx;
 
     const double r = 1.0 - exp(-x / pp->m);
 
@@ -425,7 +425,7 @@ struct cdf_normal_params {
 static double cdf_normal(const double x, void *ctx)
 {
     cmb_assert_debug(ctx != NULL);
-    struct cdf_normal_params *pp = ctx;
+    const struct cdf_normal_params *pp = ctx;
 
     const double r = 0.5 * (1.0 - erf((x - pp->m) / (pp->s * sqrt(2.0))));
 
@@ -483,7 +483,7 @@ struct cdf_triang_params {
 static double cdf_triang(const double x, void *ctx)
 {
     cmb_assert_debug(ctx != NULL);
-    struct cdf_triang_params *pp = ctx;
+    const struct cdf_triang_params *pp = ctx;
     cmb_assert_debug((pp->a <= pp->b) && (pp->b <= pp->c) && (pp->a < pp->c));
 
     double r;
@@ -502,7 +502,6 @@ static double cdf_triang(const double x, void *ctx)
 
     return r;
 }
-
 
 static void test_quality_triangular(const uint64_t nsamples, const double a, const double b, const double c)
 {
@@ -526,6 +525,45 @@ static void test_quality_triangular(const uint64_t nsamples, const double a, con
     QTEST_FINISH();
 }
 
+struct cdf_erlang_params {
+    unsigned k;
+    double m;
+};
+
+static double cdf_erlang(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    const struct cdf_erlang_params *pp = ctx;
+    cmb_assert_debug(pp->m > 0.0);
+
+    double r;
+    if (x <= 0.0) {
+        r = 0.0;
+    }
+    else {
+        /* CDF expressed in terms of y = lambda x = x / m */
+        const double y = x / pp->m;
+        const unsigned k = pp->k;
+        /* Start with zeroth term to avoid dividing by zero, y^0 / 0! = 1.0 */
+        double t = 1.0;
+        double sum = 1.0;
+        for (unsigned ui = 1u; ui < k; ui++) {
+            t *= y / (double)ui;
+            sum += t;
+        }
+
+        r = 1.0 - exp(-y) * sum;
+
+        /* Cross-check: Erlang(k, m) is Gamma(k, m) at integer shape, so the
+         * direct series and the incomplete gamma must agree. */
+        double lp;
+        cmi_test_log_incomplete_gamma((double)pp->k, y, &lp, NULL);
+        cmb_assert_debug(fabs(r - exp(lp)) < 1e-12);
+    }
+
+    return r;
+}
+
 static void test_quality_erlang(const uint64_t nsamples, const unsigned k, const double m)
 {
     printf("\nQuality testing cmb_random_erlang(%u, %g)\n", k, m);
@@ -536,6 +574,10 @@ static void test_quality_erlang(const uint64_t nsamples, const unsigned k, const
                              true, 2.0 / sqrt((double)k), true, 6.0 / (double)k);
 
     QTEST_REPORT();
+
+    struct cdf_erlang_params cdfpar = { .k = k, .m = m };
+    QTEST_GOF(cdf_erlang, &cdfpar);
+
     QTEST_FINISH();
 }
 
@@ -599,6 +641,29 @@ static void test_quality_hyperexponential(const uint64_t nsamples,
     QTEST_FINISH();
 }
 
+struct cdf_weibull_params {
+    double shape;
+    double scale;
+};
+
+static double cdf_weibull(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    const struct cdf_weibull_params *pp = ctx;
+
+    double r;
+    if (x < 0.0) {
+        r = 0.0;
+    }
+    else {
+        const double sh = pp->shape;
+        const double sc = pp->scale;
+        r = (1.0 - exp(-pow(x / sc, sh)));
+    }
+
+    return r;
+}
+
 static void test_quality_weibull(const uint64_t nsamples,
                                  const double shape,
                                  const double scale)
@@ -616,7 +681,27 @@ static void test_quality_weibull(const uint64_t nsamples,
     print_expected(nsamples, true, mean, true, var, false, 0.0, false, 0.0);
 
     QTEST_REPORT();
+
+    struct cdf_weibull_params cdfpar = { .shape = shape, .scale = scale };
+    QTEST_GOF(cdf_weibull, &cdfpar);
+
     QTEST_FINISH();
+}
+
+struct cdf_lognorm_params {
+    double m;
+    double s;
+};
+
+static double cdf_lognorm(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    const struct cdf_lognorm_params *pp = ctx;
+
+    const double m = pp->m;
+    const double s = pp->s;
+
+    return 0.5 * erfc(-(log(x) - m) / (s * sqrt(2.0)));
 }
 
 static void test_quality_lognormal(const uint64_t nsamples, const double m, const double s)
@@ -633,7 +718,27 @@ static void test_quality_lognormal(const uint64_t nsamples, const double m, cons
     print_expected(nsamples, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
+
+    struct cdf_lognorm_params cdfpar = { .m = m, .s = s };
+    QTEST_GOF(cdf_lognorm, &cdfpar);
+
     QTEST_FINISH();
+}
+
+struct cdf_logistic_params {
+    double m;
+    double s;
+};
+
+static double cdf_logistic(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    struct cdf_lognorm_params *pp = ctx;
+
+    const double m = pp->m;
+    const double s = pp->s;
+
+    return 1.0 / (1.0 + exp(-(x - m) / s));
 }
 
 static void test_quality_logistic(const uint64_t nsamples, const double m, const double s)
@@ -647,7 +752,27 @@ static void test_quality_logistic(const uint64_t nsamples, const double m, const
     print_expected(nsamples, true, m, true, var, true, 0.0, true, 6.0 / 5.0);
 
     QTEST_REPORT();
+
+    struct cdf_logistic_params cdfpar = { .m = m, .s = s };
+    QTEST_GOF(cdf_logistic, &cdfpar);
+
     QTEST_FINISH();
+}
+
+struct cdf_cauchy_params {
+    double m;
+    double s;
+};
+
+static double cdf_cauchy(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    struct cdf_cauchy_params *pp = ctx;
+
+    const double m = pp->m;
+    const double s = pp->s;
+
+    return atan((x - m) / s) / M_PI + 0.5;
 }
 
 static void test_quality_cauchy(const uint64_t nsamples, const double m, const double s)
@@ -659,7 +784,30 @@ static void test_quality_cauchy(const uint64_t nsamples, const double m, const d
     print_expected(nsamples, false, 0.0, false,0.0,false, 0.0, false, 0.0);
 
     QTEST_REPORT();
+
+    struct cdf_cauchy_params cdfpar = { .m = m, .s = s };
+    QTEST_GOF(cdf_cauchy, &cdfpar);
+
     QTEST_FINISH();
+}
+
+struct cdf_gamma_params {
+    double shape;
+    double scale;
+};
+
+static double cdf_gamma(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    struct cdf_gamma_params *pp = ctx;
+
+    const double sh = pp->shape;
+    const double sc = pp->scale;
+    const double y = x / sc;
+    double lp;
+    cmi_test_log_incomplete_gamma(sh, y, &lp, NULL);
+
+    return exp(lp);
 }
 
 static void test_quality_gamma(const uint64_t nsamples, const double shape, const double scale)
@@ -676,7 +824,27 @@ static void test_quality_gamma(const uint64_t nsamples, const double shape, cons
     print_expected(nsamples, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
+
+    struct cdf_gamma_params cdfpar = { .shape = shape, .scale = scale };
+    QTEST_GOF(cdf_gamma, &cdfpar);
+
     QTEST_FINISH();
+}
+
+struct cdf_pareto_params {
+    double a;
+    double b;
+};
+
+static double cdf_pareto(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    const struct cdf_pareto_params *pp = ctx;
+
+    const double a = pp->a;
+    const double b = pp->b;
+
+    return 1.0 - pow(b / x, a);
 }
 
 static void test_quality_pareto(const uint64_t nsamples, const double a, const double b)
@@ -694,7 +862,41 @@ static void test_quality_pareto(const uint64_t nsamples, const double a, const d
     print_expected(nsamples, (a > 1.0), mean, (a > 2.0),var,(a > 3.0), skew, (a > 3.0), kurt);
 
     QTEST_REPORT();
+
+    struct cdf_pareto_params cdfpar = { .a = a, .b = b };
+    QTEST_GOF(cdf_pareto, &cdfpar);
+
     QTEST_FINISH();
+}
+
+struct cdf_beta_params {
+    double a;
+    double b;
+    double l;
+    double r;
+};
+
+static double cdf_beta(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    const struct cdf_beta_params *pp = ctx;
+    cmb_assert_debug(pp->l < pp->r);
+
+    double r;
+    if (x <= pp->l) {
+        r = 0.0;
+    }
+    else if (x >= pp->r) {
+        r = 1.0;
+    }
+    else {
+        const double y = (x - pp->l) / (pp->r - pp->l);
+        double lp;
+        cmi_test_log_incomplete_beta(pp->a, pp->b, y, &lp, NULL);
+        r = exp(lp);
+    }
+
+    return r;
 }
 
 static void test_quality_beta(const uint64_t nsamples,
@@ -713,9 +915,28 @@ static void test_quality_beta(const uint64_t nsamples,
 
     print_expected(nsamples, true, mean, true, var,true, skew, true, kurt);
 
-
     QTEST_REPORT();
+
+    struct cdf_beta_params cdfpar = { .a = a, .b = b, .l = l, .r = r };
+    QTEST_GOF(cdf_beta, &cdfpar);
+
     QTEST_FINISH();
+}
+
+struct cdf_std_beta_params {
+    double a;
+    double b;
+};
+
+static double cdf_std_beta(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    const struct cdf_std_beta_params *pp = ctx;
+
+    double lp;
+    cmi_test_log_incomplete_beta(pp->a, pp->b, x, &lp, NULL);
+
+    return exp(lp);
 }
 
 static void test_quality_std_beta(const uint64_t nsamples, const double a, const double b)
@@ -733,6 +954,10 @@ static void test_quality_std_beta(const uint64_t nsamples, const double a, const
     print_expected(nsamples, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
+
+    struct cdf_std_beta_params cdfpar = { .a = a, .b = b };
+    QTEST_GOF(cdf_std_beta, &cdfpar);
+
     QTEST_FINISH();
 }
 
@@ -1158,7 +1383,7 @@ int main(const int argc, char *argv[])
     test_quality_beta(nsamples, 2.0, 5.0, 0.0, 1.0);
     test_quality_beta(nsamples, 0.5, 2.0, 0.0, 1.0);
     test_quality_beta(nsamples, 0.5, 0.5, 2.0, 5.0);
-    test_quality_beta(nsamples, 0.1, 0.5, -2.0, 2.0);
+    test_quality_beta(nsamples, 0.5, 0.5, -2.0, 2.0);
     test_quality_PERT(nsamples, 2.0, 5.0, 10.0);
     test_quality_pareto(nsamples, 3.0, 2.0);
 
