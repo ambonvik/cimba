@@ -63,8 +63,6 @@
     struct cmb_dataset ts = { 0 }; \
     cmb_dataset_initialize(&ts); \
     cmi_test_transform(&ts, &ds, cdf, ctx); \
-    printf("Transformed dataset, CDF(x):\n"); \
-    cmb_dataset_histogram_print(&ts, stdout, 20, 0.0, 0.0); \
     printf("Testing transformed dataset for Goodness of Fit to U(0,1) distribution\n"); \
     struct cmi_test_outcome result = { 0 }; \
     cmi_test_u01(&ts, &result); \
@@ -961,6 +959,21 @@ static void test_quality_std_beta(const uint64_t nsamples, const double a, const
     QTEST_FINISH();
 }
 
+/* PERT is Beta(alpha, beta) scaled to [left, right].  Lambda weights the
+ * mode: lambda = 4 gives the classic PERT, larger values concentrate the
+ * distribution more tightly around the mode. */
+static void pert_shapes(const double left, const double mode, const double right,
+                        const double lambda, double *alpha, double *beta)
+{
+    cmb_assert_debug(left < right);
+    cmb_assert_debug((mode >= left) && (mode <= right));
+    cmb_assert_debug(lambda > 0.0);
+
+    const double w = right - left;
+    *alpha = 1.0 + lambda * (mode - left) / w;
+    *beta  = 1.0 + lambda * (right - mode) / w;
+}
+
 static void test_quality_PERT(const uint64_t nsamples,
                               const double left, const double mode, const double right)
 {
@@ -968,16 +981,14 @@ static void test_quality_PERT(const uint64_t nsamples,
     QTEST_PREPARE();
     QTEST_EXECUTE(cmb_random_PERT(left, mode, right), (x >= left) && (x <= right));
 
-    const double a = left;
-    const double b = mode;
-    const double c = right;
+    double alpha;
+    double beta;
+    pert_shapes(left, mode, right, 4.0, &alpha, &beta);
 
-    const double alpha = (4.0 * b + c - 5.0 * a) / (c - a);
-    const double beta = (5.0 * c - a - 4.0 * b) / (c - a);
-    const double mu = (a + 4.0 * b + c) / 6.0;
-
-    const double mean = mu;
-    const double var = (mu - a) * (c - mu) / 7.0;
+    const double s = alpha + beta;
+    const double mean = left + (right - left) * alpha / s;
+    const double var  = (right - left) * (right - left) * alpha * beta
+                      / (s * s * (s + 1.0));
     const double skew = 2.0 * ((beta - alpha) * sqrt(alpha + beta + 1.0))
                         / ((alpha + beta + 2.0) * sqrt(alpha * beta));
     const double kurt = 6.0 * ((alpha - beta) * (alpha - beta) * (alpha + beta + 1.0)
@@ -987,7 +998,63 @@ static void test_quality_PERT(const uint64_t nsamples,
     print_expected(nsamples, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
+
+    struct cdf_beta_params cdfpar = { .a = alpha, .b = beta, .l = left, .r = right };
+    QTEST_GOF(cdf_beta, &cdfpar);
+
     QTEST_FINISH();
+}
+
+static void test_quality_PERT_mod(const uint64_t nsamples,
+                              const double left, const double mode, const double right,
+                              const double lambda)
+{
+    printf("\nQuality testing modified PERT distribution, left %g, mode %g, right %g, lambda %g\n",
+            left, mode, right, lambda);
+    QTEST_PREPARE();
+    QTEST_EXECUTE(cmb_random_PERT_mod(left, mode, right, lambda), (x >= left) && (x <= right));
+
+    double alpha;
+    double beta;
+    pert_shapes(left, mode, right, lambda, &alpha, &beta);
+
+    const double s = alpha + beta;
+    const double mean = left + (right - left) * alpha / s;
+    const double var  = (right - left) * (right - left) * alpha * beta
+                      / (s * s * (s + 1.0));
+    const double skew = 2.0 * ((beta - alpha) * sqrt(alpha + beta + 1.0))
+                        / ((alpha + beta + 2.0) * sqrt(alpha * beta));
+    const double kurt = 6.0 * ((alpha - beta) * (alpha - beta) * (alpha + beta + 1.0)
+                                   - alpha * beta * (alpha + beta + 2.0))
+                            / (alpha * beta * (alpha + beta + 2.0) * (alpha + beta + 3.0));
+
+    print_expected(nsamples, true, mean, true,var,true, skew, true, kurt);
+
+    QTEST_REPORT();
+
+    struct cdf_beta_params cdfpar = { .a = alpha, .b = beta, .l = left, .r = right };
+    QTEST_GOF(cdf_beta, &cdfpar);
+
+    QTEST_FINISH();
+}
+
+
+struct cdf_chisq_params {
+    double v;
+};
+
+static double cdf_chisq(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    struct cdf_chisq_params *pp = ctx;
+
+    const double v = pp->v;
+    const double a = v / 2.0;
+    const double b = x / 2.0;
+    double lp;
+    cmi_test_log_incomplete_gamma(a, b, &lp, NULL);
+
+    return exp(lp);
 }
 
 static void test_quality_chisquare(const uint64_t nsamples, const double v)
@@ -999,7 +1066,30 @@ static void test_quality_chisquare(const uint64_t nsamples, const double v)
     print_expected(nsamples, true, v, true, 2.0 * v,
                                  true, sqrt(8.0 / v), true, 12.0 / v);
     QTEST_REPORT();
+
+    struct cdf_chisq_params cdfpar = { .v = v };
+    QTEST_GOF(cdf_chisq, &cdfpar);
+
     QTEST_FINISH();
+}
+
+struct cdf_f_params {
+    double a;
+    double b;
+};
+
+static double cdf_f(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    const struct cdf_f_params *pp = ctx;
+    const double a = 0.5 * pp->a;
+    const double b = 0.5 * pp->b;
+    const double y = a * x / (a * x + b);
+
+    double lp;
+    cmi_test_log_incomplete_beta(a, b, y, &lp, NULL);
+
+    return exp(lp);
 }
 
 static void test_quality_f_dist(const uint64_t nsamples, const double a, const double b) {
@@ -1015,7 +1105,29 @@ static void test_quality_f_dist(const uint64_t nsamples, const double a, const d
     print_expected(nsamples, (b > 2.0), mean, (b > 4.0),var,(b > 6.0), skew, false, 0.0);
 
     QTEST_REPORT();
+
+    struct cdf_f_params cdfpar = { .a = a, .b = b };
+    QTEST_GOF(cdf_f, &cdfpar);
+
     QTEST_FINISH();
+}
+
+struct cdf_stdt_params {
+    double v;
+};
+
+static double cdf_stdt(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    const struct cdf_stdt_params *pp = ctx;
+    const double v = pp->v;
+
+    const double y = v / (v + x * x);
+    double lp;
+    cmi_test_log_incomplete_beta(0.5 * v, 0.5, y, &lp, NULL);
+
+    const double half = 0.5 * exp(lp);
+    return (x > 0.0) ? (1.0 - half) : half;
 }
 
 static void test_quality_std_t_dist(const uint64_t nsamples, const double v)
@@ -1032,7 +1144,36 @@ static void test_quality_std_t_dist(const uint64_t nsamples, const double v)
     print_expected(nsamples, (v > 1.0), mean, (v > 2.0),var,(v > 3.0), skew, (v > 4.0), kurt);
 
     QTEST_REPORT();
+
+    struct cdf_stdt_params cdfpar = { .v = v };
+    QTEST_GOF(cdf_stdt, &cdfpar);
+
     QTEST_FINISH();
+}
+
+struct cdf_t_params {
+    double m;
+    double s;
+    double v;
+};
+
+static double cdf_t(double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    const struct cdf_t_params *pp = ctx;
+    const double m = pp->m;
+    const double s = pp->s;
+    const double v = pp->v;
+
+    const double a = 0.5 * v;
+    const double b = 0.5;
+    const double z = (x - m) / s;
+    const double y = v / (v + z * z);
+    double lp;
+    cmi_test_log_incomplete_beta(a, b, y, &lp, NULL);
+
+    const double half = 0.5 * exp(lp);
+    return (z > 0.0) ? (1.0 - half) : half;
 }
 
 static void test_quality_t_dist(const uint64_t nsamples,
@@ -1048,7 +1189,32 @@ static void test_quality_t_dist(const uint64_t nsamples,
     print_expected(nsamples, (v > 1.0), mean, (v > 2.0),var,false, 0.0, false, 0.0);
 
     QTEST_REPORT();
+
+    struct cdf_t_params cdfpar = { .m = m, .s = s, .v = v };
+    QTEST_GOF(cdf_t, &cdfpar);
+
     QTEST_FINISH();
+}
+
+struct cdf_rayleigh_params {
+    double s;
+};
+
+static double cdf_rayleigh(const double x, void *ctx)
+{
+    cmb_assert_debug(ctx != NULL);
+    struct cdf_rayleigh_params *pp = ctx;
+    const double s = pp->s;
+
+    double r;
+    if (x <= 0.0) {
+        r = 0.0;
+    }
+    else {
+        r = 1.0 - exp(-x * x / (2.0 * s * s));
+    }
+
+    return r;
 }
 
 static void test_quality_rayleigh(const uint64_t nsamples, const double s)
@@ -1065,9 +1231,12 @@ static void test_quality_rayleigh(const uint64_t nsamples, const double s)
     print_expected(nsamples, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
+
+    struct cdf_rayleigh_params cdfpar = { .s = s };
+    QTEST_GOF(cdf_rayleigh, &cdfpar);
+
     QTEST_FINISH();
 }
-
 
 static void test_quality_flip(const uint64_t nsamples)
 {
@@ -1385,6 +1554,8 @@ int main(const int argc, char *argv[])
     test_quality_beta(nsamples, 0.5, 0.5, 2.0, 5.0);
     test_quality_beta(nsamples, 0.5, 0.5, -2.0, 2.0);
     test_quality_PERT(nsamples, 2.0, 5.0, 10.0);
+    test_quality_PERT_mod(nsamples, 2.0, 5.0, 10.0, 5.0);
+    test_quality_PERT_mod(nsamples, 2.0, 3.0, 5.0, 2.0);
     test_quality_pareto(nsamples, 3.0, 2.0);
 
     test_quality_chisquare(nsamples, 4);
