@@ -286,14 +286,17 @@ static double ppnd16(const double p)
 /**** Chi squared utilities ****/
 
 /****
- * Log space chi squared CDF. When handling actual deviations, the sample could
+ * Log space chi squared CDF, aka regularized incomplete Gamma function,
+ * calculated in logs. When handling actual deviations, the sample could
  * be extremely unlikely under the null hypothesis ~U(0,1).  We need a way to
- * express these very small probabilities without underflowing to zero, also
+ * express these very small probabilities without underflow to zero, also
  * because we want to state the odds 1/p even for very small p. So we express
- * the chi squared CDF in log(p) to capture the far tails. Several functions.
+ * the chi squared CDF in log(p) to capture the far tails. Consists of three
+ * functions, one for continued fractions, one for asymptotic series, and a
+ * wrapper choosing which to use in each case.
  ****/
 
-/* Calculate log(P(a,x)) as incomplete gamma series
+/* Calculate log(P(a,x)) as incomplete gamma asymptotic series,
  * sum_{n>=0} x^n / (a(a+1)...(a+n)), valid for x < a+1. */
 static double igamma_log_series(const double a, const double x)
 {
@@ -386,18 +389,21 @@ static void igamma_log(const double a, const double x, double *logp, double *log
     }
 }
 
-/* Regularized incomplete beta function I_x(a,b), evaluated in log space.
+/*
+ * Regularized incomplete beta function evaluated in log space.
+ * Working in logs keep tail probabilities far below DBL_MIN representable.
  *
- * Uses the continued fraction of Abramowitz & Stegun 26.5.8, evaluated by
- * the modified Lentz method, with the symmetry I_x(a,b) = 1 - I_{1-x}(b,a)
- * to stay in the region where the fraction converges quickly.
+ * See NIST Digital Library of Mathematical Functions, §8.17(v)
+ *      https://dlmf.nist.gov/8.17
  *
- * Working in logs keeps tail probabilities far below DBL_MIN representable:
- * I_0.9(0.5, 50) has a complement of about e^-117, which as a linear double
- * would be indistinguishable from zero. */
-
-/* Continued fraction for the regularized incomplete beta (modified Lentz).
- * Converges quickly for x < (a+1)/(a+b+2); the caller ensures this. */
+ * Effectively the continuing fraction branch only from:
+ *   Vera Egorova, Amparo Gil, Javier Segura, and Nico M. Temme (2023):
+ *   "Computation of the regularized incomplete Beta function",
+ *   Dolomites Research Notes on Approximation, Special Issue FAATNA20>22:
+ *   Functional Analysis, Approximation Theory and Numerical Analysis
+ *   Vol 16, pp 10–16
+ *      https://ir.cwi.nl/pub/33570/33570.pdf
+ */
 static double ibeta_cf_log(const double a, const double b, const double x)
 {
     const int itmax = 100000;
@@ -412,9 +418,10 @@ static double ibeta_cf_log(const double a, const double b, const double x)
     if (fabs(d) < tiny) {
         d = tiny;
     }
+
     d = 1.0 / d;
     double h = d;
-
+    bool converged = false;
     for (int m = 1; m < itmax; m++) {
         const double dm = (double)m;
         const double m2 = 2.0 * dm;
@@ -422,43 +429,60 @@ static double ibeta_cf_log(const double a, const double b, const double x)
         /* Even step */
         double aa = dm * (b - dm) * x / ((qam + m2) * (a + m2));
         d = 1.0 + aa * d;
-        if (fabs(d) < tiny) { d = tiny; }
+        if (fabs(d) < tiny) {
+            d = tiny;
+        }
+
         c = 1.0 + aa / c;
-        if (fabs(c) < tiny) { c = tiny; }
+        if (fabs(c) < tiny) {
+            c = tiny;
+        }
+
         d = 1.0 / d;
         h *= d * c;
 
         /* Odd step */
         aa = -(a + dm) * (qab + dm) * x / ((a + m2) * (qap + m2));
         d = 1.0 + aa * d;
-        if (fabs(d) < tiny) { d = tiny; }
+        if (fabs(d) < tiny) {
+            d = tiny;
+        }
+
         c = 1.0 + aa / c;
-        if (fabs(c) < tiny) { c = tiny; }
+        if (fabs(c) < tiny) {
+            c = tiny;
+        }
+
         d = 1.0 / d;
         const double del = d * c;
         h *= del;
 
         if (fabs(del - 1.0) < DBL_EPSILON) {
+            converged = true;
             break;
         }
     }
 
+    /* If this fires, we need to finish implementing the EGST algorithm below
+     * to handle the other cases of large x and/or large a and b */
+    cmb_assert_debug(converged);
     return log(h);
 }
 
-/*
- * Writes log I_x(a,b) and log(1 - I_x(a,b)); either pointer may be NULL.
- * Requires a > 0, b > 0, 0 <= x <= 1.
- */
+/* Writes log I_x(a,b) and log(1 - I_x(a,b)); either pointer may be NULL.
+ * Requires a > 0, b > 0, 0 <= x <= 1. */
 void ibeta_log(const double a, const double b, const double x,
                double *logp, double *logq)
 {
     cmb_assert_debug((a > 0.0) && (b > 0.0));
     cmb_assert_debug((x >= 0.0) && (x <= 1.0));
+    cmb_assert_debug((logp != NULL) || (logq != NULL));
 
     double lp;
     double lq;
 
+    /* Catch exact 0 and 1, plus situations where NDEBUG is defined and the
+     * above assertions are compiled out */
     if (x <= 0.0) {
         lp = -INFINITY;
         lq = 0.0;
@@ -473,11 +497,10 @@ void ibeta_log(const double a, const double b, const double x,
         const double pfwd = a * log(x) + b * log1p(-x) - log(a) - lbeta;
         const double prev = b * log(y) + a * log1p(-y) - log(b) - lbeta;
 
-        if (x < (a + 1.0) / (a + b + 2.0)) {
+        const double xt = a / (a + b);
+        if (x < xt) {
             lp = pfwd + ibeta_cf_log(a, b, x);
             if (lp > -1.0e-8) {
-                /* I is indistinguishable from 1; get the small tail directly
-                 * rather than by a complement that has nothing left to cancel */
                 lq = prev + ibeta_cf_log(b, a, y);
                 lp = log1mexp(lq);
             }
@@ -497,9 +520,81 @@ void ibeta_log(const double a, const double b, const double x,
         }
     }
 
-    if (logp != NULL) { *logp = lp; }
-    if (logq != NULL) { *logq = lq; }
+    if (logp != NULL) {
+        *logp = lp;
+    }
+
+    if (logq != NULL) {
+        *logq = lq;
+    }
 }
+
+#if false
+/*
+ * Work in progress:
+ * Regularized incomplete Beta according to Egorova, Gil, Segura & Temme (2023)
+ * https://ir.cwi.nl/pub/33570/33570.pdf
+ * Writes log I_x(a,b) and log(1 - I_x(a,b)); either pointer may be NULL.
+ * Requires a > 0, b > 0, 0 <= x <= 1.
+ *
+ * TODO: Series expansion for x > xt, error function approximation for large a, b
+ */
+static void ibeta_log_EGST(const double a, const double b, const double x,
+                           double *logp, double *logq)
+{
+    cmb_assert_debug((a > 0.0) && (b > 0.0));
+    cmb_assert_debug((x >= 0.0) && (x <= 1.0));
+    cmb_assert_debug((logp != NULL) || (logq != NULL));
+
+    double lp;
+    double lq;
+
+    /* Catch exact 0 and 1, plus situations where NDEBUG is defined and the
+     * above assertions are compiled out */
+    if (x <= 0.0) {
+        lp = -INFINITY;
+        lq = 0.0;
+    }
+    else if (x >= 1.0) {
+        lp = 0.0;
+        lq = -INFINITY;
+    }
+    else {
+        /* Compute the transition point xt */
+        const double xt = a / (a + b);
+        if ((a > 50.0) && (b > 50.0) && (a + b > 700) && (fabs(x - xt) < 0.2)) {
+            /* Not yet implemented the error function approximation from EGST sec 2.3.1.
+             * Just print a note to see if this ever fires in intended usage. */
+            printf("Warning: Should use error function approx, a = %g, b = %g\n", a, b);
+        }
+
+        if ((a > 100.0) && (b < 10)) {
+            if (x < 0.85) {
+                /* Use the series expansion, eq. (10) */
+            }
+            else {
+                /* Use the continued fraction, eq. (5) */
+            }
+        }
+        else {
+            if (b > (1.0 - x) * a / x) {
+                /* Use the continued fraction, eq. (5) */
+            }
+            else {
+                /* Use the series expansion, eq. (11) */
+            }
+        }
+
+        if (logp != NULL) {
+            *logp = lp;
+        }
+
+        if (logq != NULL) {
+            *logq = lq;
+        }
+    }
+}
+#endif
 
 /* Chi-square tails in log space; DoF may be odd or even, no special cases needed. */
 CMB_MAYBE_UNUSED
@@ -1100,11 +1195,7 @@ const char *cmi_test_interpretation(const double sigma)
     /* Two-sided probabilities */
     const double ltail = normal_logsf(sigabs) + M_LN2;
     int nw = 0;
-    if (ltail >= 0.0) {
-        nw = snprintf(buf, CMI_TEST_BUF_SIZE,
-                    "No evidence against uniformity\n");
-    }
-    else if (ltail > -700.0) {
+    if (ltail > -700.0) {
         nw = snprintf(buf, CMI_TEST_BUF_SIZE,
                       "Sigma: %#.4g\tOdds: 1 in %.2g\t%s%s",
                       sigma, exp(-ltail), d, a);
