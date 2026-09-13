@@ -563,12 +563,9 @@ static void ibeta_log_EGST(const double a, const double b, const double x,
         /* Compute the transition point xt */
         const double xt = a / (a + b);
         if ((a > 50.0) && (b > 50.0) && (a + b > 700) && (fabs(x - xt) < 0.2)) {
-            /* Not yet implemented the error function approximation from EGST sec 2.3.1.
-             * Just print a note to see if this ever fires in intended usage. */
-            printf("Warning: Should use error function approx, a = %g, b = %g\n", a, b);
+            /* Use the error function approximation from EGST sec 2.3.1.*/
         }
-
-        if ((a > 100.0) && (b < 10)) {
+        else if ((a > 100.0) && (b < 10)) {
             if (x < 0.85) {
                 /* Use the series expansion, eq. (10) */
             }
@@ -1029,34 +1026,43 @@ static const double test_max_value = 1.0;
 static const uint64_t test_min_count = 100u;
 static const double test_min_range = 1e-12;
 
-double cmi_test_u01(const struct cmb_dataset *dsp, struct cmi_test_outcome *result)
+double cmi_test_gof_cont(cmi_test_transform_func *cdf,
+                         void *cdf_arg,
+                         const struct cmb_dataset *dsp,
+                         struct cmi_test_outcome *result)
 {
+    cmb_assert_debug(cdf != NULL);
+    /* The CDF argument can be NULL, e.g. for a standard normal CDF, no params needed */
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->count > 0u);
     /* This will also catch any NaNs */
     cmb_assert_release(dsp->max >= dsp->min);
     cmb_assert_release(result != NULL);
 
+    struct cmb_dataset ts = { 0 };
+    cmb_dataset_initialize(&ts);
+    cmi_test_transform(&ts, dsp, cdf, cdf_arg);
+
     result->type = CMI_TEST_GOF_U01;
-    result->n = dsp->count;
-    result->min = dsp->min;
-    result->max = dsp->max;
+    result->n = ts.count;
+    result->min = ts.min;
+    result->max = ts.max;
     result->combined_lp = 0.0;
     result->combined_sigma = 0.0;
     result->nparts = 0u;
 
     double sigma;
-    if ((dsp->min < test_min_value) || (dsp->max > test_max_value)) {
+    if ((ts.min < test_min_value) || (ts.max > test_max_value)) {
         /* Can be rejected out of hand. It is surely not ~U(0,1) */
         result->status = CMI_TEST_OUT_OF_RANGE;
         sigma = INFINITY;
     }
-    else if (dsp->count < test_min_count) {
+    else if (ts.count < test_min_count) {
         /* Can not make a judgement */
         result->status = CMI_TEST_TOO_FEW;
         sigma = NAN;
     }
-    else if (dsp->max - dsp->min <= test_min_range) {
+    else if (ts.max - ts.min <= test_min_range) {
         /* Can not make a judgement */
         result->status = CMI_TEST_DEGENERATE;
         sigma = NAN;
@@ -1067,10 +1073,10 @@ double cmi_test_u01(const struct cmb_dataset *dsp, struct cmi_test_outcome *resu
 
         /* Calculate the residuals vector, ensure a multiple of Pearson, and
          * the corresponding chi squared statistic. */
-        const unsigned nb_raw  = clamp_u(dsp->count / 500u, 32u, 256u);
+        const unsigned nb_raw  = clamp_u(ts.count / 500u, 32u, 256u);
         const unsigned nb_fine = (nb_raw / PEARSON_GROUP) * PEARSON_GROUP;
         double *rv_fine = cmi_calloc(nb_fine, sizeof(*rv_fine));
-        const double x2_fine = bin_residuals(dsp, nb_fine, rv_fine);
+        const double x2_fine = bin_residuals(&ts, nb_fine, rv_fine);
 
         /* Calculate a coarse-grained residuals vector for Pearson, grouping
          * PEARSON_GROUP bins into each coarse bin, and its chi square stat. */
@@ -1100,13 +1106,13 @@ double cmi_test_u01(const struct cmb_dataset *dsp, struct cmi_test_outcome *resu
 
         /* Anderson-Darling is partly independent, based on the Empirical
          * Distribution Function instead of the residuals vector */
-        anderson_darling_U01(dsp, result);
+        anderson_darling_U01(&ts, result);
 
         /* Combine Neyman and Anderson-Darling results into an overall verdict.
          * We know that the combined Neyman is in partial result 1, A-D in 7 */
-        struct cmi_test_partial *rp_ns = &(result->p[1]);
-        struct cmi_test_partial *rp_ad = &(result->p[7]);
-        double lmin = (rp_ad->lp < rp_ns->lp)? rp_ad->lp : rp_ns->lp;
+        const struct cmi_test_partial *rp_ns = &(result->p[1]);
+        const struct cmi_test_partial *rp_ad = &(result->p[7]);
+        const double lmin = (rp_ad->lp < rp_ns->lp)? rp_ad->lp : rp_ns->lp;
 
         /* Bonferroni: p_family = min(1, k * p_min).  Valid under arbitrary
          * dependence, which is what we need here. */
@@ -1116,7 +1122,23 @@ double cmi_test_u01(const struct cmb_dataset *dsp, struct cmi_test_outcome *resu
         result->combined_sigma = sigma;
     }
 
+    cmb_dataset_terminate(&ts);
     return sigma;
+}
+
+double cmi_test_gof_disc(const uint64_t n,
+                         double p_vec[n + 2],
+                         double v_vec[n + 2],
+                         const struct cmb_dataset *dsp,
+                         struct cmi_test_outcome *result)
+{
+    cmb_unused(n);
+    cmb_unused(p_vec);
+    cmb_unused(v_vec);
+    cmb_unused(dsp);
+    cmb_unused(result);
+
+    return 0.0;
 }
 
 void cmi_test_transform(struct cmb_dataset *tgt,
@@ -1178,10 +1200,10 @@ const char *cmi_test_interpretation(const double sigma)
             a = "Failed";
         }
         else if (sigabs > 5.0) {
-            a = "Malodorous";
+            a = "Very suspect";
         }
         else if (sigabs > 4.0) {
-            a = "Suspicious";
+            a = "Suspect";
         }
         else {
             a = "Unusual";

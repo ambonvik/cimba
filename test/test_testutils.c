@@ -84,6 +84,24 @@ static void test_transform(const uint64_t nsamples)
     cmb_dataset_terminate(&ods);
 }
 
+static double cdf_u01(const double x, void *ctx)
+{
+    cmb_unused(ctx);
+
+    double r;
+    if (x <= 0.0) {
+        r = 0;
+    }
+    if (x >= 1.0) {
+        r = 1.0;
+    }
+    else {
+        r = x;
+    }
+
+    return r;
+}
+
 /* Test goodness of fit against a know good and a known bad example */
 static void test_gof(const uint64_t nsamples)
 {
@@ -108,7 +126,7 @@ static void test_gof(const uint64_t nsamples)
     cmb_dataset_histogram_print(&ds_good, stdout, 20, 0.0, 1.0);
 
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
-    cmi_test_u01(&ds_good, result);
+    cmi_test_gof_cont(cdf_u01, NULL, &ds_good, result);
     cmi_test_outcome_print(result, stdout);
 
     cmb_datasummary_terminate(&dsu);
@@ -128,7 +146,7 @@ static void test_gof(const uint64_t nsamples)
     cmb_datasummary_print(&dsu, stdout, true);
     cmb_dataset_histogram_print(&ds_bad, stdout, 20, 0.0, 1.0);
 
-    cmi_test_u01(&ds_bad, result);
+    cmi_test_gof_cont(cdf_u01, NULL, &ds_bad, result);
     cmi_test_outcome_print(result, stdout);
 
     cmb_datasummary_terminate(&dsu);
@@ -141,7 +159,7 @@ static void test_gof(const uint64_t nsamples)
     cmb_datasummary_print(&dsu, stdout, true);
     cmb_dataset_histogram_print(&ds_poisoned, stdout, 20, 0.0, 1.0);
 
-    cmi_test_u01(&ds_poisoned, result);
+    cmi_test_gof_cont(cdf_u01, NULL, &ds_poisoned, result);
     cmi_test_outcome_print(result, stdout);
 
     cmb_datasummary_terminate(&dsu);
@@ -158,7 +176,7 @@ static void test_gof(const uint64_t nsamples)
     cmb_datasummary_print(&dsu, stdout, true);
     cmb_dataset_histogram_print(&ds_poisoned, stdout, 20, 0.0, 1.0);
 
-    cmi_test_u01(&ds_poisoned, result);
+    cmi_test_gof_cont(cdf_u01, NULL, &ds_poisoned, result);
     cmi_test_outcome_print(result, stdout);
 
     cmb_datasummary_terminate(&dsu);

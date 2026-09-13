@@ -26,15 +26,6 @@
 #include "cmb_assert.h"
 #include "cmb_dataset.h"
 
-extern void cmi_test_fnprint_line(FILE *fp, const char *str, const unsigned n);
-
-CMB_MAYBE_UNUSED
-static inline void cmi_test_print_line(const char *str)
-{
-    cmb_assert_release(str != NULL);
-    cmi_test_fnprint_line(stdout, str, 80u);
-}
-
 enum cmi_test_type {
     CMI_TEST_GOF_U01,
     CMI_TEST_TWO_SAMPLE
@@ -74,30 +65,6 @@ struct cmi_test_outcome {
 typedef double (cmi_test_transform_func)(double, void*);
 
 /*
- * Goodness-of-fit test: Is the dataset ~U(0,1)?
- * Returns a sigma value where a high sigma indicates improbability.
- */
-extern double cmi_test_u01(const struct cmb_dataset *dsp,
-                           struct cmi_test_outcome *result);
-
-/*
- * Two-sample test: Are the two datasets taken for the same distribution?
- * Returns a sigma value where a high sigma indicates improbability.
- */
-extern double cmi_test_ts(struct cmb_dataset *x, struct cmb_dataset *y,
-                          struct cmi_test_outcome *r);
-
-/*
- * Print a short report of the test outcome
- */
-extern void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp);
-
-/*
- * Return a text string with an interpretation of a sigma value.
- */
-extern const char *cmi_test_interpretation(double sigma);
-
-/*
  * Transform a data set according to a mapping function double -> double.
  * The target can be the same as the source, overwriting previous values.
  * Used for converting other distributions to U(0,1) for testing.
@@ -107,11 +74,53 @@ extern void cmi_test_transform(struct cmb_dataset *tgt,
                                cmi_test_transform_func *map,
                                void *arg);
 
-/* Log of the incomplete gamma function */
+/*
+ * Goodness-of-fit test for continuous-valued distributions: Is the dataset
+ * distributed according to the CDF? Returns a sigma value (standard deviations
+ * of the standard normal distribution) where a high absolute value of sigma
+ * indicates improbability and the sign the direction from the expected value.
+ */
+extern double cmi_test_gof_cont(cmi_test_transform_func *cdf,
+                                void *cdf_arg,
+                                const struct cmb_dataset *dsp,
+                                struct cmi_test_outcome *result);
+
+/*
+ * Goodness-of-fit test for discrete-valued distributions: is the dataset
+* distributed according to the PMF? Returns a sigma value (standard deviations
+ * of the standard normal distribution) where a high absolute value of sigma
+ * indicates improbability and the sign the direction from the expected value.
+ */
+extern double cmi_test_gof_disc(uint64_t n,
+                                double p_vec[n + 2],
+                                double v_vec[n + 2],
+                                const struct cmb_dataset *dsp,
+                                struct cmi_test_outcome *result);
+
+/* Return a text string with an interpretation of a sigma value. */
+extern const char *cmi_test_interpretation(double sigma);
+
+/* Print a short report of a test outcome */
+extern void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp);
+
+/* Utility: Log of the incomplete gamma function */
 extern void cmi_test_log_incomplete_gamma(double a, double x,
                                           double *logp, double *logq);
-/* Log of the incomplete beta function */
+/* Utility: Log of the incomplete beta function */
 extern void cmi_test_log_incomplete_beta(double a, double b, double x,
                                           double *logp, double *logq);
+
+/* Utility: Print n characters by repeating the string str, ending with a newline */
+extern void cmi_test_fnprint_line(FILE *fp, const char *str, const unsigned n);
+
+CMB_MAYBE_UNUSED
+static inline void cmi_test_print_line(const char *str)
+{
+    cmb_assert_release(str != NULL);
+
+    cmi_test_fnprint_line(stdout, str, 80u);
+}
+
+
 
 #endif /* CIMBA_TESTUTILS_H */

@@ -59,17 +59,12 @@
     cmb_dataset_histogram_print(&ds, stdout, 20, 0.0, 0.0); \
     cmb_datasummary_terminate(&dsu)
 
-#define QTEST_GOF(cdf, ctx) \
-    struct cmb_dataset ts = { 0 }; \
-    cmb_dataset_initialize(&ts); \
-    cmi_test_transform(&ts, &ds, cdf, ctx); \
-    printf("Testing transformed dataset for Goodness of Fit to U(0,1) distribution\n"); \
+#define QTEST_GOF_CONT(cdf, ctx) \
     struct cmi_test_outcome result = { 0 }; \
-    cmi_test_u01(&ts, &result); \
+    cmi_test_gof_cont(cdf, ctx, &ds, &result); \
     cmi_test_outcome_print(&result, stdout); \
     cmb_assert_always((result.status == CMI_TEST_OK) \
-                  && (fabs(result.combined_sigma) < 6.0)); \
-    cmb_dataset_terminate(&ts)
+                  && (fabs(result.combined_sigma) < 6.0))
 
 
 #define QTEST_REPORT_ACFS() \
@@ -120,6 +115,24 @@ static void print_expected(const uint64_t n,
 
 /**** Start of test scripts ****/
 
+static double cdf_u01(const double x, void *ctx)
+{
+    cmb_unused(ctx);
+
+    double r;
+    if (x <= 0.0) {
+        r = 0;
+    }
+    if (x >= 1.0) {
+        r = 1.0;
+    }
+    else {
+        r = x;
+    }
+
+    return r;
+}
+
 static void test_quality_random(const uint64_t nsamples)
 {
     printf("\nQuality testing basic random number generator cmb_random(), uniform on [0,1)\n");
@@ -168,7 +181,7 @@ static void test_quality_random(const uint64_t nsamples)
     /* Run goodness-of-fit test battery, no CDF transform needed */
     printf("Testing Goodness of Fit vs the U(0,1) distribution\n");
     struct cmi_test_outcome result = { 0 };
-    cmi_test_u01(&ds, &result);
+    cmi_test_gof_cont(cdf_u01, NULL, &ds, &result);
     cmi_test_outcome_print(&result, stdout);
     cmb_assert_always((result.status == CMI_TEST_OK)
                       && (fabs(result.combined_sigma) < 6.0));
@@ -214,7 +227,7 @@ static void test_quality_uniform(const uint64_t nsamples, const double a, const 
     QTEST_REPORT();
 
     struct cdf_uniform_params cdfpar = { .a = a, .b = b };
-    QTEST_GOF(cdf_uniform, &cdfpar);
+    QTEST_GOF_CONT(cdf_uniform, &cdfpar);
     QTEST_FINISH();
 }
 
@@ -237,7 +250,7 @@ static void test_quality_std_exponential(const uint64_t nsamples)
 
     QTEST_REPORT();
     QTEST_REPORT_ACFS();
-    QTEST_GOF(cdf_std_exp, NULL);
+    QTEST_GOF_CONT(cdf_std_exp, NULL);
     QTEST_FINISH();
 }
 
@@ -303,7 +316,7 @@ static void test_quality_exponential(const uint64_t nsamples, const double m)
     QTEST_REPORT();
 
     struct cdf_exp_params pp = { .m = m };
-    QTEST_GOF(cdf_exp, &pp);
+    QTEST_GOF_CONT(cdf_exp, &pp);
     QTEST_FINISH();
 }
 
@@ -411,7 +424,7 @@ static void test_quality_std_normal(const uint64_t nsamples)
 
     }
 
-    QTEST_GOF(cdf_std_normal, NULL);
+    QTEST_GOF_CONT(cdf_std_normal, NULL);
     QTEST_FINISH();
 }
 
@@ -440,7 +453,7 @@ static void test_quality_normal(const uint64_t nsamples, const double m, const d
 
     QTEST_REPORT();
     struct cdf_normal_params pp = { .m = m, .s = s };
-    QTEST_GOF(cdf_normal, &pp);
+    QTEST_GOF_CONT(cdf_normal, &pp);
     QTEST_FINISH();
 }
 
@@ -518,7 +531,7 @@ static void test_quality_triangular(const uint64_t nsamples, const double a, con
     QTEST_REPORT();
 
     struct cdf_triang_params cdfpar = { .a = a, .b = b, .c = c };
-    QTEST_GOF(cdf_triang, &cdfpar);
+    QTEST_GOF_CONT(cdf_triang, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -574,7 +587,7 @@ static void test_quality_erlang(const uint64_t nsamples, const unsigned k, const
     QTEST_REPORT();
 
     struct cdf_erlang_params cdfpar = { .k = k, .m = m };
-    QTEST_GOF(cdf_erlang, &cdfpar);
+    QTEST_GOF_CONT(cdf_erlang, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -681,7 +694,7 @@ static void test_quality_weibull(const uint64_t nsamples,
     QTEST_REPORT();
 
     struct cdf_weibull_params cdfpar = { .shape = shape, .scale = scale };
-    QTEST_GOF(cdf_weibull, &cdfpar);
+    QTEST_GOF_CONT(cdf_weibull, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -718,7 +731,7 @@ static void test_quality_lognormal(const uint64_t nsamples, const double m, cons
     QTEST_REPORT();
 
     struct cdf_lognorm_params cdfpar = { .m = m, .s = s };
-    QTEST_GOF(cdf_lognorm, &cdfpar);
+    QTEST_GOF_CONT(cdf_lognorm, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -752,7 +765,7 @@ static void test_quality_logistic(const uint64_t nsamples, const double m, const
     QTEST_REPORT();
 
     struct cdf_logistic_params cdfpar = { .m = m, .s = s };
-    QTEST_GOF(cdf_logistic, &cdfpar);
+    QTEST_GOF_CONT(cdf_logistic, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -784,7 +797,7 @@ static void test_quality_cauchy(const uint64_t nsamples, const double m, const d
     QTEST_REPORT();
 
     struct cdf_cauchy_params cdfpar = { .m = m, .s = s };
-    QTEST_GOF(cdf_cauchy, &cdfpar);
+    QTEST_GOF_CONT(cdf_cauchy, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -824,7 +837,7 @@ static void test_quality_gamma(const uint64_t nsamples, const double shape, cons
     QTEST_REPORT();
 
     struct cdf_gamma_params cdfpar = { .shape = shape, .scale = scale };
-    QTEST_GOF(cdf_gamma, &cdfpar);
+    QTEST_GOF_CONT(cdf_gamma, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -862,7 +875,7 @@ static void test_quality_pareto(const uint64_t nsamples, const double a, const d
     QTEST_REPORT();
 
     struct cdf_pareto_params cdfpar = { .a = a, .b = b };
-    QTEST_GOF(cdf_pareto, &cdfpar);
+    QTEST_GOF_CONT(cdf_pareto, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -916,7 +929,7 @@ static void test_quality_beta(const uint64_t nsamples,
     QTEST_REPORT();
 
     struct cdf_beta_params cdfpar = { .a = a, .b = b, .l = l, .r = r };
-    QTEST_GOF(cdf_beta, &cdfpar);
+    QTEST_GOF_CONT(cdf_beta, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -954,7 +967,7 @@ static void test_quality_std_beta(const uint64_t nsamples, const double a, const
     QTEST_REPORT();
 
     struct cdf_std_beta_params cdfpar = { .a = a, .b = b };
-    QTEST_GOF(cdf_std_beta, &cdfpar);
+    QTEST_GOF_CONT(cdf_std_beta, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -1000,7 +1013,7 @@ static void test_quality_PERT(const uint64_t nsamples,
     QTEST_REPORT();
 
     struct cdf_beta_params cdfpar = { .a = alpha, .b = beta, .l = left, .r = right };
-    QTEST_GOF(cdf_beta, &cdfpar);
+    QTEST_GOF_CONT(cdf_beta, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -1033,7 +1046,7 @@ static void test_quality_PERT_mod(const uint64_t nsamples,
     QTEST_REPORT();
 
     struct cdf_beta_params cdfpar = { .a = alpha, .b = beta, .l = left, .r = right };
-    QTEST_GOF(cdf_beta, &cdfpar);
+    QTEST_GOF_CONT(cdf_beta, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -1068,7 +1081,7 @@ static void test_quality_chisquare(const uint64_t nsamples, const double v)
     QTEST_REPORT();
 
     struct cdf_chisq_params cdfpar = { .v = v };
-    QTEST_GOF(cdf_chisq, &cdfpar);
+    QTEST_GOF_CONT(cdf_chisq, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -1107,7 +1120,7 @@ static void test_quality_f_dist(const uint64_t nsamples, const double a, const d
     QTEST_REPORT();
 
     struct cdf_f_params cdfpar = { .a = a, .b = b };
-    QTEST_GOF(cdf_f, &cdfpar);
+    QTEST_GOF_CONT(cdf_f, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -1146,7 +1159,7 @@ static void test_quality_std_t_dist(const uint64_t nsamples, const double v)
     QTEST_REPORT();
 
     struct cdf_stdt_params cdfpar = { .v = v };
-    QTEST_GOF(cdf_stdt, &cdfpar);
+    QTEST_GOF_CONT(cdf_stdt, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -1191,7 +1204,7 @@ static void test_quality_t_dist(const uint64_t nsamples,
     QTEST_REPORT();
 
     struct cdf_t_params cdfpar = { .m = m, .s = s, .v = v };
-    QTEST_GOF(cdf_t, &cdfpar);
+    QTEST_GOF_CONT(cdf_t, &cdfpar);
 
     QTEST_FINISH();
 }
@@ -1233,7 +1246,7 @@ static void test_quality_rayleigh(const uint64_t nsamples, const double s)
     QTEST_REPORT();
 
     struct cdf_rayleigh_params cdfpar = { .s = s };
-    QTEST_GOF(cdf_rayleigh, &cdfpar);
+    QTEST_GOF_CONT(cdf_rayleigh, &cdfpar);
 
     QTEST_FINISH();
 }
