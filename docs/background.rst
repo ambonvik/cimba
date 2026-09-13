@@ -896,98 +896,98 @@ expected values:
     ********************************************************************************
     ************** Testing random number generators and distributions **************
     ********************************************************************************
-    Using seed: 0x47c62bcb9a24782d
+    Using seed: 0x6aa1da69c441b03f
 
     Quality testing basic random number generator cmb_random(), uniform on [0,1)
     Drawing 1000000 samples...
-
-    Expected: N  1000000  Mean   0.5000  StdDev   0.2887  Variance  0.08333  Skewness    0.000  Kurtosis   -1.200
-    Actual:   N  1000000  Mean   0.5001  StdDev   0.2887  Variance  0.08337  Skewness -0.0002640  Kurtosis   -1.200
+    Expected vs actual:
+    Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
+    1.000e+06	  0.5000	  0.2887	 0.08333	   0.000	  -1.200
+    1.000e+06	  0.4999	  0.2887	 0.08334	0.0003149	  -1.200
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
     [     0.000,    0.05000)   |#################################################=
     [   0.05000,     0.1000)   |#################################################=
-    [    0.1000,     0.1500)   |#################################################-
+    [    0.1000,     0.1500)   |#################################################=
     [    0.1500,     0.2000)   |#################################################-
     [    0.2000,     0.2500)   |#################################################=
     [    0.2500,     0.3000)   |#################################################=
     [    0.3000,     0.3500)   |#################################################=
-    [    0.3500,     0.4000)   |#################################################-
+    [    0.3500,     0.4000)   |##################################################
     [    0.4000,     0.4500)   |#################################################=
     [    0.4500,     0.5000)   |#################################################=
     [    0.5000,     0.5500)   |#################################################-
-    [    0.5500,     0.6000)   |#################################################-
+    [    0.5500,     0.6000)   |#################################################=
     [    0.6000,     0.6500)   |#################################################=
-    [    0.6500,     0.7000)   |##################################################
+    [    0.6500,     0.7000)   |#################################################=
     [    0.7000,     0.7500)   |#################################################=
     [    0.7500,     0.8000)   |#################################################=
     [    0.8000,     0.8500)   |#################################################=
     [    0.8500,     0.9000)   |#################################################=
-    [    0.9000,     0.9500)   |#################################################=
+    [    0.9000,     0.9500)   |#################################################-
     [    0.9500,      1.000)   |#################################################=
-    [     1.000,      1.050)   |
-    [     1.050,   Infinity)   |
+    [     1.000,   Infinity)   |
     --------------------------------------------------------------------------------
 
     Autocorrelation factors (expected 0.0):
                -1.0                              0.0                              1.0
     --------------------------------------------------------------------------------
-       1  -0.000                                 -|
-       2  -0.000                                 -|
+       1   0.001                                  |-
+       2  -0.001                                 -|
        3  -0.001                                 -|
-       4   0.001                                  |-
-       5  -0.000                                 -|
-       6  -0.000                                 -|
-       7  -0.001                                 -|
-       8  -0.001                                 -|
-       9  -0.001                                 -|
-      10  -0.001                                 -|
-      11   0.001                                  |-
-      12  -0.000                                 -|
-      13   0.001                                  |-
-      14   0.002                                  |-
-      15   0.001                                  |-
+       4   0.002                                  |-
+       5   0.002                                  |-
+       6   0.000                                  |-
+       7  -0.000                                 -|
+       8   0.001                                  |-
+       9  -0.000                                 -|
+      10   0.001                                  |-
+      11  -0.001                                 -|
+      12   0.000                                  |-
+      13  -0.000                                 -|
+      14  -0.000                                 -|
+      15   0.000                                  |-
     --------------------------------------------------------------------------------
 
     Partial autocorrelation factors (expected 0.0):
                -1.0                              0.0                              1.0
     --------------------------------------------------------------------------------
-       1  -0.000                                 -|
-       2  -0.000                                 -|
+       1   0.001                                  |-
+       2  -0.001                                 -|
        3  -0.001                                 -|
-       4   0.001                                  |-
-       5  -0.000                                 -|
-       6  -0.000                                 -|
-       7  -0.001                                 -|
-       8  -0.001                                 -|
-       9  -0.001                                 -|
-      10  -0.001                                 -|
-      11   0.001                                  |-
-      12  -0.000                                 -|
-      13   0.001                                  |-
-      14   0.002                                  |-
+       4   0.002                                  |-
+       5   0.002                                  |-
+       6   0.000                                  |-
+       7  -0.000                                 -|
+       8   0.001                                  |-
+       9  -0.000                                 -|
+      10   0.001                                  |-
+      11  -0.001                                 -|
+      12   0.000                                  |-
+      13  -0.000                                 -|
+      14  -0.000                                 -|
       15   0.000                                  |-
     --------------------------------------------------------------------------------
 
     Raw moment:   Expected:   Actual:   Error:
     --------------------------------------------------------------------------------
-        1             0.5     0.50007    0.015 %
-        2         0.33333     0.33345    0.034 %
-        3            0.25     0.25013    0.050 %
-        4             0.2     0.20013    0.064 %
-        5         0.16667     0.16679    0.077 %
-        6         0.14286     0.14298    0.088 %
-        7           0.125     0.12512    0.099 %
-        8         0.11111     0.11123    0.109 %
-        9             0.1     0.10012    0.119 %
-       10        0.090909    0.091026    0.128 %
-       11        0.083333    0.083448    0.138 %
-       12        0.076923    0.077037    0.148 %
-       13        0.071429    0.071541    0.157 %
-       14        0.066667    0.066777    0.166 %
-       15          0.0625     0.06261    0.175 %
+        1             0.5     0.49992   -0.016 %
+        2         0.33333     0.33326   -0.021 %
+        3            0.25     0.24994   -0.024 %
+        4             0.2     0.19995   -0.026 %
+        5         0.16667     0.16662   -0.029 %
+        6         0.14286     0.14281   -0.032 %
+        7           0.125     0.12496   -0.035 %
+        8         0.11111     0.11107   -0.039 %
+        9             0.1    0.099958   -0.042 %
+       10        0.090909    0.090868   -0.045 %
+       11        0.083333    0.083294   -0.047 %
+       12        0.076923    0.076886   -0.048 %
+       13        0.071429    0.071394   -0.049 %
+       14        0.066667    0.066634   -0.049 %
+       15          0.0625     0.06247   -0.048 %
     --------------------------------------------------------------------------------
-    ================================================================================
+
 
 Another way to check the quality is to generate a million successive :math:`(x, y)` pairs
 from :c:func:`cmb_random()` and plot them. The human eye is pretty good at detecting
@@ -1010,15 +1010,15 @@ similar to this:
     ------------------------------------------------------------------------------------------------------------------------
     Test:                                	Act.:   	Exp.:   	Interpretation:
     ------------------------------------------------------------------------------------------------------------------------
-    Pearson's chi squared test          	    19.5	      15	Sigma: 0.8669	Odds: 1 in 5.2
-    Neyman's smooth test combined       	      14	      10	Sigma: 0.9508	Odds: 1 in 5.9
-        Neyman V1: mean                 	    -1.7	       0	Sigma: -1.697	Odds: 1 in 22
-        Neyman V2: variance             	  -0.457	       0	Sigma: -0.4569	Odds: 1 in 3.1
-        Neyman V3: skewness             	   -1.96	       0	Sigma: -1.964	Odds: 1 in 40
-        Neyman V4: kurtosis             	   0.763	       0	Sigma: 0.7631	Odds: 1 in 4.5
-        Neyman remainder: fine structure	     242	     251	Sigma: -0.3923	Odds: 1 in 2.9
-    Anderson-Darling EDF test            	    1.98	       1	Sigma: 1.316	Odds: 1 in 11
-    Combined assessment, Bonferroni on Neyman + Anderson-Darling:	Sigma: 0.8847	Odds: 1 in 5.3
+    Pearson's chi squared test          	    12.5	      15	Sigma: -0.3575	Odds: 1 in 1.4
+    Neyman's smooth test combined       	    5.18	      10	Sigma: -1.168	Odds: 1 in 4.1
+        Neyman V1: mean                 	  -0.273	       0	Sigma: -0.2727	Odds: 1 in 1.3
+        Neyman V2: variance             	  0.0978	       0	Sigma: 0.09775	Odds: 1 in 1.1
+        Neyman V3: skewness             	 -0.0292	       0	Sigma: -0.02917	Odds: 1 in 1
+        Neyman V4: kurtosis             	  -0.329	       0	Sigma: -0.3289	Odds: 1 in 1.3
+        Neyman remainder: fine structure	     285	     251	Sigma: 1.466	Odds: 1 in 7
+    Anderson-Darling EDF test           	   0.246	       1	Sigma: -1.921	Odds: 1 in 18
+    Combined assessment, Bonferroni on Neyman + Anderson-Darling:	Sigma: 1.601	Odds: 1 in 9.1
     ------------------------------------------------------------------------------------------------------------------------
 
 To demonstrate the sensitivity of the test battery, we can try feeding it data that
@@ -1032,15 +1032,15 @@ test battery in several different ways:
     ------------------------------------------------------------------------------------------------------------------------
     Test:                                	Act.:   	Exp.:   	Interpretation:
     ------------------------------------------------------------------------------------------------------------------------
-    Pearson's chi squared test          	      73	      15	Sigma: 5.959	Odds: 1 in 7.9e+08	High : Malodorous
-    Neyman's smooth test combined       	    83.2	      10	Sigma: 7.329	Odds: 1 in 8.6e+12	High : Failed!
-        Neyman V1: mean                 	    1.01	       0	Sigma: 1.009	Odds: 1 in 6.4
-        Neyman V2: variance             	    7.62	       0	Sigma: 7.622	Odds: 1 in 8e+13	High : Failed!
-        Neyman V3: skewness             	  0.0716	       0	Sigma: 0.07161	Odds: 1 in 2.1
-        Neyman V4: kurtosis             	    3.69	       0	Sigma: 3.690	Odds: 1 in 8.9e+03	High : Unusual
-        Neyman remainder: fine structure	     265	     251	Sigma: 0.6493	Odds: 1 in 3.9
-    Anderson-Darling EDF test            	    11.3	       1	Sigma: 4.495	Odds: 1 in 2.9e+05	High : Suspicious
-    Combined assessment, Bonferroni on Neyman + Anderson-Darling:	Sigma: 7.236	Odds: 1 in 4.3e+12	High : Failed!
+    Pearson's chi squared test          	    92.2	      15	Sigma: 7.170	Odds: 1 in 1.3e+12	High : Failed!
+    Neyman's smooth test combined       	     103	      10	Sigma: 8.447	Odds: 1 in 3.3e+16	High : Failed!!
+        Neyman V1: mean                 	    1.78	       0	Sigma: 1.778	Odds: 1 in 13
+        Neyman V2: variance             	     8.9	       0	Sigma: 8.901	Odds: 1 in 1.8e+18	High : Failed!!
+        Neyman V3: skewness             	  0.0996	       0	Sigma: 0.09957	Odds: 1 in 1.1
+        Neyman V4: kurtosis             	    3.14	       0	Sigma: 3.143	Odds: 1 in 6e+02	High : Unusual
+        Neyman remainder: fine structure	     243	     251	Sigma: -0.3234	Odds: 1 in 1.3
+    Anderson-Darling EDF test           	    15.5	       1	Sigma: 5.354	Odds: 1 in 1.2e+07	High : Very suspect
+    Combined assessment, Bonferroni on Neyman + Anderson-Darling:	Sigma: 8.366	Odds: 1 in 1.7e+16	High : Failed!!
     ------------------------------------------------------------------------------------------------------------------------
 
 As expected, it detects the bias towards high and low values most strongly as too-high
@@ -1062,8 +1062,8 @@ The verbal scale used for the interpretation is:
     ------------------------
     < 3.0
     > 3.0   Unusual
-    > 4.0   Suspicious
-    > 5.0   Malodorous
+    > 4.0   Suspect
+    > 5.0   Very suspect
     > 6.0   Failed
     > 7.0   Failed!
     > 8.0   Failed!!
@@ -1076,8 +1076,17 @@ of automated tests, and at conventional thresholds a clean run would flag somewh
 almost every time (probability about 0.9 for each clean CI run). Large sample sizes make
 this affordable: At :math:n = 10^6 a genuine defect typically registers at tens of
 sigma rather than at two, so raising the threshold from 1.96 to 6 sigma costs very little
-detection power while eliminating routine false alarms. That lets us focus on any actual
-defects rather than fruitlessly chasing noise.
+detection power while eliminating most false alarms. That lets us focus on any actual
+defects rather than chasing noise.
+
+We can use this goodness-of-fit test against the uniform distribution on [0,1]
+also to test the other distributions, as long as we can compute the cumulative density
+function :math:`F(x)`. This transformation of the sample :math:`x` *is* distributed
+uniformly on [0,1]. To see why, note that :math:`y = F(x)` is a mapping from the real
+numbers to the range [0,1]. Many random number distributions use the same
+transformation in inverse to generate a variate :math:`x` according to some
+distribution by first generating a uniform variate :math:`u` on [0,1] and then
+transforming it as :math:`x = F^{-1}(u)`.
 
 The various pseudo-random number distributions build on the `sfc64` generator, shaping its
 output to match the required probability density functions. The algorithms used are
@@ -1093,9 +1102,9 @@ The gamma distribution uses `an algorithm due to Marsaglia and Tsang <https://dl
 the Ziggurat algorithm, but with a continuous function instead of the stepped rectangles
 of the Ziggurat.
 
-Many other distributions are built on top of these, as sums, products, or ratios of
-samples. For example, the infamous Cauchy distribution is simply the ratio of two normal
-variates, suitably scaled and shifted.
+Many other distributions are in turn built on top of these, as sums, products, or
+ratios of samples. For example, the infamous Cauchy distribution is the ratio
+of two normal variates, suitably scaled and shifted.
 
 Cimba also provides a collection of discrete-valued distributions, starting from the
 simple unbiased coin flip in :c:func:`cmb_random_flip`. It also provides Bernoulli trials
