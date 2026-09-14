@@ -102,8 +102,8 @@ static double cdf_u01(const double x, void *ctx)
     return r;
 }
 
-/* Test goodness of fit against a know good and a known bad example */
-static void test_gof(const uint64_t nsamples)
+/* Test goodness of fit against a known good and a known bad example */
+static void test_gof_cont(const uint64_t nsamples)
 {
     struct cmb_dataset ds_good = { 0 };
     struct cmb_dataset ds_bad = { 0 };
@@ -111,7 +111,7 @@ static void test_gof(const uint64_t nsamples)
     struct cmb_datasummary dsu = { 0 };
 
     cmi_test_print_line("-");
-    printf("Testing goodness-of-fit\n");
+    printf("Testing goodness-of-fit, continuous distribution\n");
     cmb_dataset_initialize(&ds_good);
     cmb_datasummary_initialize(&dsu);
 
@@ -168,7 +168,7 @@ static void test_gof(const uint64_t nsamples)
     printf("Creating another poisoned sample\n");
     cmb_dataset_initialize(&ds_poisoned);
     cmb_dataset_copy(&ds_poisoned, &ds_good);
-    for (unsigned ui = 0; ui < 5; ui++) {
+    for (unsigned ui = 0; ui < 10; ui++) {
         cmb_dataset_add(&ds_poisoned, 0.0);
         cmb_dataset_add(&ds_poisoned, 1.0);
     }
@@ -184,6 +184,58 @@ static void test_gof(const uint64_t nsamples)
     cmb_dataset_terminate(&ds_bad);
     cmb_dataset_terminate(&ds_good);
     cmi_free(result);
+}
+
+/* Test goodness of fit against a known good and a known bad example */
+static void test_gof_disc(const uint64_t nsamples)
+{
+    struct cmb_dataset ds_good = { 0 };
+    struct cmb_datasummary dsu = { 0 };
+
+    cmi_test_print_line("-");
+    printf("Testing goodness-of-fit, discrete distribution\n");
+    cmb_dataset_initialize(&ds_good);
+    cmb_datasummary_initialize(&dsu);
+
+    printf("Generating %" PRIu64 " actual U(0,9) samples\n", nsamples);
+    const uint64_t m = 10u;
+    for (uint64_t ui = 0u; ui < nsamples; ui++) {
+        const double x = cmb_random_discrete_uniform(m);
+        cmb_dataset_add(&ds_good, x);
+    }
+
+    cmb_dataset_summarize(&ds_good, &dsu);
+    cmb_datasummary_print(&dsu, stdout, true);
+    cmb_dataset_histogram_print(&ds_good, stdout, 20, 0.0, 0.0);
+
+    const double p_vec[12] = {       0.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.0      };
+    const double v_vec[12] = { -INFINITY, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, INFINITY };
+
+    struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(m, p_vec, v_vec, &ds_good, result);
+    cmi_test_outcome_print(result, stdout);
+
+    printf("Creating a poisoned sample\n");
+    struct cmb_dataset ds_poisoned = { 0 };
+    cmb_dataset_initialize(&ds_poisoned);
+    cmb_dataset_copy(&ds_poisoned, &ds_good);
+    for (unsigned ui = 0; ui < 10000u; ui++) {
+        const double y = cmb_random_dice(1u, 4u);
+        cmb_dataset_add(&ds_poisoned, y);
+    }
+
+    cmb_dataset_summarize(&ds_poisoned, &dsu);
+    cmb_datasummary_print(&dsu, stdout, true);
+    cmb_dataset_histogram_print(&ds_poisoned, stdout, 20, 0.0, 0.0);
+
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(m, p_vec, v_vec, &ds_poisoned, result);
+    cmi_test_outcome_print(result, stdout);
+
+    cmb_datasummary_terminate(&dsu);
+    cmb_dataset_terminate(&ds_poisoned);
+    cmb_dataset_terminate(&ds_good);
 }
 
 /* Deterministic internal tests against reference values for static functions */
@@ -228,7 +280,8 @@ int main(const int argc, char *argv[])
 
     cmi_test_selftests();
     test_transform(nsamples);
-    test_gof(nsamples);
+    test_gof_cont(nsamples);
+    test_gof_disc(nsamples);
 
     cmb_random_terminate();
 

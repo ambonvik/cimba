@@ -83,51 +83,82 @@ static double log1mexp(const double x)
     return ret;
 }
 
-/* Orthogonalize basis vectors by a modified Gram-Schmidt process, see
- * https://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process#Numerical_stability */
-static void mod_gram_schmidt(double *basis, const unsigned k, const unsigned n)
+/*
+ * Modified Gram-Schmidt process: Orthogonalize k basis vectors in a
+ * n-dimensional space, where k < n, see
+ * https://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process#Numerical_stability
+ */
+static void mgs_init_uniform(double *basis, const unsigned k, const unsigned n_bins)
 {
     cmb_assert_debug(basis != NULL);
-    cmb_assert_debug(k < n);
+    cmb_assert_debug(k < n_bins);
 
-    /* Initialize */
-    for (unsigned i = 0; i < n; i++) {
-        const double xj = 2.0 * ((double)i + 0.5) / (double)n - 1.0;
+    for (unsigned i = 0; i < n_bins; i++) {
+        const double xj = 2.0 * ((double)i + 0.5) / (double)n_bins - 1.0;
         double p = 1.0;
         for (unsigned j = 0; j <= k; j++) {
             basis[i * (k + 1) + j] = p;
             p *= xj;
         }
     }
+}
 
-    /* Orthogonalize */
+static void mgs_init_weighted(double *basis, const unsigned k, const unsigned n_bins,
+                              const double xvec[n_bins], const double pvec[n_bins])
+{
+    cmb_assert_debug(basis != NULL);
+    cmb_assert_debug(n_bins >= k + 2u);
+    cmb_assert_debug(xvec != NULL);
+    cmb_assert_debug(pvec != NULL);
+
+    const double lo = xvec[0];
+    const double hi = xvec[n_bins - 1u];
+    cmb_assert_debug(hi > lo);
+
+    for (unsigned i = 0; i < n_bins; i++) {
+        const double z = 2.0 * (xvec[i] - lo) / (hi - lo) - 1.0;
+        cmb_assert_debug(pvec[i] > 0.0);
+        const double sp = sqrt(pvec[i]);
+        double t = sp;
+        for (unsigned j = 0; j <= k; j++) {
+            basis[i * (k + 1) + j] = t;
+            t *= z;
+        }
+    }
+}
+
+static void mgs_orthogonalize(double *basis, const unsigned k, const unsigned n_bins)
+{
+    cmb_assert_debug(basis != NULL);
+    cmb_assert_debug(k < n_bins);
+
     for (unsigned l = 0; l <= k; l++) {
         for (unsigned j = 0; j < l; j++) {
             double dot = 0.0;
-            for (unsigned i = 0; i < n; i++) {
+            for (unsigned i = 0; i < n_bins; i++) {
                 dot += basis[i * (k + 1) + j] * basis[i * (k + 1) + l];
             }
 
-            for (unsigned i = 0; i < n; i++) {
+            for (unsigned i = 0; i < n_bins; i++) {
                 basis[i * (k + 1) + l] -= dot * basis[i * (k + 1) + j];
             }
         }
 
         double nrm = 0.0;
-        for (unsigned i = 0; i < n; i++) {
+        for (unsigned i = 0; i < n_bins; i++) {
             nrm += basis[i * (k + 1) + l] * basis[i * (k + 1) + l];
         }
 
         nrm = sqrt(nrm);
-        for (unsigned i = 0; i < n; i++) {
+        for (unsigned i = 0; i < n_bins; i++) {
             basis[i * (k + 1) + l] /= nrm;
         }
 
         if (l > 0u) {
             /* Normalize, ensuring correct sign */
             double s = 0.0;
-            for (unsigned i = 0; i < n; i++) {
-                const double xi = 2.0 * ((double)i + 0.5) / (double)n - 1.0;
+            for (unsigned i = 0; i < n_bins; i++) {
+                const double xi = 2.0 * ((double)i + 0.5) / (double)n_bins - 1.0;
                 double xp = 1.0;
                 for (unsigned e = 0; e < l; e++) {
                     xp *= xi;
@@ -135,28 +166,34 @@ static void mod_gram_schmidt(double *basis, const unsigned k, const unsigned n)
                 s += basis[i * (k + 1) + l] * xp;
             }
             if (s < 0.0) {
-                for (unsigned i = 0; i < n; i++) {
+                for (unsigned i = 0; i < n_bins; i++) {
                     basis[i * (k + 1) + l] = -basis[i * (k + 1) + l];
                 }
             }
         }
     }
+}
 
-    /* Validate correctness */
-    for (unsigned a = 1; a <= k; a++) {
-        double col = 0.0;
-        for (unsigned i = 0; i < n; i++) {
-            col += basis[i * (k + 1) + a];
+static void mgs_validate(double *basis, const unsigned k, const unsigned n_bins)
+{
+    cmb_assert_debug(basis != NULL);
+    cmb_assert_debug(k < n_bins);
+
+    for (unsigned a = 1u; a <= k; a++) {
+        double c0 = 0.0;
+        for (unsigned i = 0; i < n_bins; i++) {
+            c0 += basis[i * (k + 1u)] * basis[i * (k + 1u) + a];
         }
 
-        cmb_assert_debug(fabs(col) < 1e-12);
-        for (unsigned b = 1; b <= k; b++) {
+        cmb_assert_debug(fabs(c0) < 1e-12);
+
+        for (unsigned b = 1u; b <= k; b++) {
             double d = 0.0;
-            for (unsigned i = 0; i < n; i++) {
-                d += basis[i * (k + 1) + a] *basis[i * (k + 1) + b];
+            for (unsigned i = 0; i < n_bins; i++) {
+                d += basis[i * (k + 1u) + a] * basis[i * (k + 1u) + b];
             }
 
-            cmb_assert_debug(fabs(d - (a == b ? 1.0 : 0.0)) < 1e-12);
+            cmb_assert_debug(fabs(d - ((a == b) ? 1.0 : 0.0)) < 1e-12);
         }
     }
 }
@@ -675,45 +712,6 @@ static double normal_logsf(const double z)
     return r;
 }
 
-/* Fill residuals vector rv with (O_j - E)/sqrt(E), calculate and
- * return Pearson's chi-square statistic in the same pass. */
-static double bin_residuals(const struct cmb_dataset *dsp,
-                            const unsigned nr, double *rv)
-{
-    cmb_assert_debug(dsp != NULL);
-    cmb_assert_debug(rv != NULL);
-
-    uint64_t *bins = cmi_calloc(nr, sizeof(*bins));
-
-    const uint64_t un = dsp->count;
-
-    for (uint64_t ui = 0; ui < un; ui++) {
-        unsigned bin = (unsigned)(dsp->xa[ui] * (double)nr);
-        if (bin >= nr) {
-            /* x == 1.0 belongs in the top bin here, intentionally different
-             * from the cmb_dataset_histogram bins where it would be placed in
-             * the [1.0, oo) overflow bin. We are testing against ~U[0,1], not
-             * ~U[0,1) also to allow for samples drawn as x = 1 - cmb_random()
-             * to avoid the possibility of an exact zero value. Then the
-             * possibility of an exact 1.0 comes instead. Allow both. */
-            bin = nr - 1u;
-        }
-        bins[bin]++;
-    }
-
-    const double e  = (double)un / (double)nr;
-    const double se = sqrt(e);
-    double x2 = 0.0;
-    for (unsigned i = 0; i < nr; i++) {
-        rv[i] = ((double)bins[i] - e) / se;
-        x2  += rv[i] * rv[i];
-    }
-
-    cmi_free(bins);
-
-    return x2;
-}
-
 /*
  * Anderson-Darling limiting distribution, following G Marsaglia and
  * J C W Marsaglia (2004), "Evaluating the Anderson-Darling Distribution",
@@ -800,18 +798,16 @@ double ad_errfix(const uint64_t un, const double x)
 /**** Hypothesis tests ****/
 
 /*
- * Perform a Pearson chi squared test on the dataset residuals vector, using the
+ * Perform a Pearson chi squared test on the dataset residuals, using the
  * specified number of bins. Should have at least 10 samples per bin on average,
  * i.e.,  * dsp->count / num_bins > 10. Returns the log of the p-value to
  * capture values in the far tails without loss of numerical precision.
  */
-static void pearson_chisquare_U01(const double *rv,
-                                    const double x2,
-                                    const unsigned num_bins,
-                                    struct cmi_test_outcome *result)
+static void pearson_chisquare(const double x2,
+                              const unsigned num_bins,
+                              struct cmi_test_outcome *result)
 {
-    cmb_assert_debug(rv != NULL);
-    cmb_assert_debug(x2 > 0.0);
+     cmb_assert_debug(x2 >= 0.0);
     cmb_assert_debug(num_bins > 0u);
     cmb_assert_debug(result != NULL);
 
@@ -825,7 +821,7 @@ static void pearson_chisquare_U01(const double *rv,
     }
 
     /* Return detailed results */
-    cmb_assert_debug(result->nparts < CMI_TEST_U01_PARTS);
+    cmb_assert_debug(result->nparts < CMI_TEST_PARTS);
     struct cmi_test_partial *rp = &(result->p[result->nparts]);
     rp->name = "Pearson's chi squared test          ";
     rp->level = 0u;
@@ -836,10 +832,9 @@ static void pearson_chisquare_U01(const double *rv,
     result->nparts++;
 }
 
-
 /* Orthogonal basis vectors, only depending on the number of bins */
 #define NEYMAN_K 4
-static CMB_THREAD_LOCAL double *neyman_basis = NULL;
+static CMB_THREAD_LOCAL double *neyman_basis_cache = NULL;
 static CMB_THREAD_LOCAL unsigned neyman_m = 0u;
 
 static const char *const nm[NEYMAN_K + 2] = {
@@ -848,37 +843,17 @@ static const char *const nm[NEYMAN_K + 2] = {
     "Neyman V3: skewness             ",
     "Neyman V4: kurtosis             ",
     "Neyman remainder: fine structure",
-    "Neyman's smooth test combined       "
+    "Neyman's smooth test                "
 };
 
-/* Perform a Neyman's smooth test on the dataset residuals vector, using the
- * specified number of bins. Returns the log of the Fisher-combined p-value to
- * capture values in the far tails without loss of numerical precision. */
-static void neyman_smooth_U01(const double *rv,
-                                const double x2,
-                                const unsigned num_bins,
-                                struct cmi_test_outcome *result)
+static void neyman_smooth(const double *basis,
+                          const double *rv,
+                          double x2,
+                          unsigned num_bins,
+                          struct cmi_test_outcome *result)
 {
-    cmb_assert_debug(rv != NULL);
-    cmb_assert_debug(x2 > 0.0);
-    cmb_assert_debug(num_bins > 0u);
-    cmb_assert_debug(result != NULL);
-
-    if ((neyman_basis != NULL) && (neyman_m != num_bins)) {
-        /* Different m, invalidate cache */
-        cmi_free(neyman_basis);
-        neyman_basis = NULL;
-    }
-
-    if (neyman_basis == NULL) {
-        /* Lazy allocation and initialization of basis */
-        neyman_m = num_bins;
-        /* For now, memory will be leaked on thread exit, no corresponding free() call */
-        neyman_basis = cmi_calloc(neyman_m * (NEYMAN_K + 1), sizeof(double));
-        mod_gram_schmidt(neyman_basis, NEYMAN_K, num_bins);
-    }
-
     /* Reserve a spot for the combined result */
+    cmb_assert_debug(result->nparts < CMI_TEST_PARTS);
     struct cmi_test_partial *rp_com = &(result->p[result->nparts++]);
 
     /* Work out the K tests mean, variance, skewness, and kurtosis */
@@ -887,13 +862,13 @@ static void neyman_smooth_U01(const double *rv,
     for (unsigned kk = 1u; kk <= NEYMAN_K; kk++) {
         double v = 0.0;
         for (unsigned i = 0; i < num_bins; i++) {
-            v += neyman_basis[i * (NEYMAN_K + 1) + kk] * rv[i];
+            v += basis[i * (NEYMAN_K + 1) + kk] * rv[i];
         }
 
         sumv2 += v * v;
         logp[kk - 1u] = fmin(M_LN2 + normal_logsf(fabs(v)), 0.0);
 
-        cmb_assert_debug(result->nparts < CMI_TEST_U01_PARTS);
+        cmb_assert_debug(result->nparts < CMI_TEST_PARTS);
         struct cmi_test_partial *rp = &(result->p[result->nparts]);
         rp->name = nm[kk - 1u];
         rp->level = 1u;
@@ -905,7 +880,8 @@ static void neyman_smooth_U01(const double *rv,
     }
 
     /* Remainder: everything the first K components do not explain */
-    const double rem = x2 - sumv2;
+    const double rem = fmax(x2 - sumv2, 0.0);
+    cmb_assert_debug(num_bins >= NEYMAN_K + 2u);
     const unsigned rdof = num_bins - 1u - NEYMAN_K;
     double rlp, rlq;
     igamma_log(0.5 * (double)rdof, 0.5 * rem, &rlp, &rlq);
@@ -917,7 +893,7 @@ static void neyman_smooth_U01(const double *rv,
 
     logp[NEYMAN_K] = fmin(M_LN2 + rtail, 0.0);
 
-    cmb_assert_debug(result->nparts < CMI_TEST_U01_PARTS);
+    cmb_assert_debug(result->nparts < CMI_TEST_PARTS);
     struct cmi_test_partial *rp = &(result->p[result->nparts]);
     rp->name = nm[NEYMAN_K];
     rp->level = 1u;
@@ -952,9 +928,60 @@ static void neyman_smooth_U01(const double *rv,
     cmb_assert_debug(fabs(x2 - (sumv2 + rem)) < 1e-9 * x2);
 }
 
+/* Perform a Neyman's smooth test on the dataset residuals vector, using the
+ * specified number of bins. Returns the log of the Fisher-combined p-value to
+ * capture values in the far tails without loss of numerical precision. */
+static void neyman_smooth_uniform(const double *rv,
+                                  const double x2,
+                                  const unsigned n_bins,
+                                  struct cmi_test_outcome *result)
+{
+    cmb_assert_debug(rv != NULL);
+    cmb_assert_debug(x2 >= 0.0);
+    cmb_assert_debug(n_bins > 0u);
+    cmb_assert_debug(result != NULL);
+
+    if ((neyman_basis_cache != NULL) && (neyman_m != n_bins)) {
+        /* Different m, invalidate cache */
+        cmi_free(neyman_basis_cache);
+        neyman_basis_cache = NULL;
+    }
+
+    if (neyman_basis_cache == NULL) {
+        /* Lazy allocation and initialization of basis */
+        neyman_m = n_bins;
+        /* For now, memory will be leaked on thread exit, no corresponding free() call */
+        neyman_basis_cache = cmi_calloc(neyman_m * (NEYMAN_K + 1), sizeof(double));
+        mgs_init_uniform(neyman_basis_cache, NEYMAN_K, n_bins);
+        mgs_orthogonalize(neyman_basis_cache, NEYMAN_K, n_bins);
+        mgs_validate(neyman_basis_cache, NEYMAN_K, n_bins);
+    }
+
+    neyman_smooth(neyman_basis_cache, rv, x2, n_bins, result);
+}
+
+static void neyman_smooth_weighted(const double *rv,
+                                  const double x2,
+                                  const unsigned n_bins,
+                                  const double *xvec,
+                                  const double *pvec,
+                                  struct cmi_test_outcome *result)
+{
+    /* No cache, data dependent basis */
+    double *basis = cmi_calloc(n_bins * (NEYMAN_K + 1u), sizeof(*basis));
+
+    mgs_init_weighted(basis, NEYMAN_K, n_bins, xvec, pvec);
+    mgs_orthogonalize(basis, NEYMAN_K, n_bins);
+    mgs_validate(basis, NEYMAN_K, n_bins);
+
+    neyman_smooth(basis, rv, x2, n_bins, result);
+
+    cmi_free(basis);
+}
+
 /* Perform Anderson-Darling EDF test on the data set, sorting a copy */
-static void anderson_darling_U01(const struct cmb_dataset *dsp,
-                                 struct cmi_test_outcome *result)
+static void anderson_darling_uniform(const struct cmb_dataset *dsp,
+                                     struct cmi_test_outcome *result)
 {
     cmb_assert_debug(dsp != NULL);
     cmb_assert_debug(result != NULL);
@@ -1009,7 +1036,7 @@ static void anderson_darling_U01(const struct cmb_dataset *dsp,
     const double ltail = fmin(log(p_z), log(q_z));
 
     /* Fill in the results */
-    cmb_assert_debug(result->nparts < CMI_TEST_U01_PARTS);
+    cmb_assert_debug(result->nparts < CMI_TEST_PARTS);
     struct cmi_test_partial *rp = &(result->p[result->nparts]);
     rp->name = "Anderson-Darling EDF test           ";
     rp->level = 0u;
@@ -1042,8 +1069,10 @@ double cmi_test_gof_cont(cmi_test_transform_func *cdf,
     struct cmb_dataset ts = { 0 };
     cmb_dataset_initialize(&ts);
     cmi_test_transform(&ts, dsp, cdf, cdf_arg);
+    /* Only acting on ts from here on */
+    dsp = NULL;
 
-    result->type = CMI_TEST_GOF_U01;
+    result->type = CMI_TEST_GOF_CONTINUOUS;
     result->n = ts.count;
     result->min = ts.min;
     result->max = ts.max;
@@ -1076,7 +1105,27 @@ double cmi_test_gof_cont(cmi_test_transform_func *cdf,
         const unsigned nb_raw  = clamp_u(ts.count / 500u, 32u, 256u);
         const unsigned nb_fine = (nb_raw / PEARSON_GROUP) * PEARSON_GROUP;
         double *rv_fine = cmi_calloc(nb_fine, sizeof(*rv_fine));
-        const double x2_fine = bin_residuals(&ts, nb_fine, rv_fine);
+
+        uint64_t *bins = cmi_calloc(nb_fine, sizeof(*bins));
+        const uint64_t un = ts.count;
+        for (uint64_t ui = 0; ui < un; ui++) {
+            unsigned bin = (unsigned)(ts.xa[ui] * (double)nb_fine);
+            if (bin >= nb_fine) {
+                /* Allow x == 1.0 in case we have x = 1.0 - cmb_random() */
+                bin = nb_fine - 1u;
+            }
+            bins[bin]++;
+        }
+
+        const double e = (double)un / (double)nb_fine;
+        const double se = sqrt(e);
+        double x2_fine = 0.0;
+        for (unsigned i = 0; i < nb_fine; i++) {
+            rv_fine[i] = ((double)bins[i] - e) / se;
+            x2_fine  += rv_fine[i] * rv_fine[i];
+        }
+
+        cmi_free(bins);
 
         /* Calculate a coarse-grained residuals vector for Pearson, grouping
          * PEARSON_GROUP bins into each coarse bin, and its chi square stat. */
@@ -1098,15 +1147,15 @@ double cmi_test_gof_cont(cmi_test_transform_func *cdf,
         /* Run Pearson chi square and Neyman smooth tests, not to be combined
          * later since they use the exact same data */
         cmb_assert_debug((x2_coarse >= 0.0) && (x2_coarse <= x2_fine + 1e-9));
-        pearson_chisquare_U01(rv_coarse, x2_coarse, nb_coarse, result);
-        neyman_smooth_U01(rv_fine, x2_fine, nb_fine, result);
+        pearson_chisquare(x2_coarse, nb_coarse, result);
+        neyman_smooth_uniform(rv_fine, x2_fine, nb_fine, result);
 
         cmi_free(rv_coarse);
         cmi_free(rv_fine);
 
         /* Anderson-Darling is partly independent, based on the Empirical
          * Distribution Function instead of the residuals vector */
-        anderson_darling_U01(&ts, result);
+        anderson_darling_uniform(&ts, result);
 
         /* Combine Neyman and Anderson-Darling results into an overall verdict.
          * We know that the combined Neyman is in partial result 1, A-D in 7 */
@@ -1126,19 +1175,159 @@ double cmi_test_gof_cont(cmi_test_transform_func *cdf,
     return sigma;
 }
 
-double cmi_test_gof_disc(const uint64_t n,
-                         double p_vec[n + 2],
-                         double v_vec[n + 2],
+double cmi_test_gof_disc(const uint64_t m,
+                         const double pmf_vec[m + 2],
+                         const double val_vec[m + 2],
                          const struct cmb_dataset *dsp,
                          struct cmi_test_outcome *result)
 {
-    cmb_unused(n);
-    cmb_unused(p_vec);
-    cmb_unused(v_vec);
-    cmb_unused(dsp);
-    cmb_unused(result);
+    /* Verify validity: Probabilities sum to 1.0, strictly ascending values */
+    cmb_assert_release(m >= 2u);
+    for (uint64_t i = 1u; i < m + 2u; i++) {
+        cmb_assert_release(val_vec[i] > val_vec[i-1]);
+    }
 
-    return 0.0;
+    double p_sum = 0.0;
+    for (uint64_t ui = 0u; ui < m + 2; ui++) {
+        cmb_assert_release((pmf_vec[ui] >= 0.0) && (pmf_vec[ui] <= 1.0));
+        p_sum += pmf_vec[ui];
+    }
+
+    cmb_assert_release(fabs(1.0 - p_sum) < 1e-12);
+
+    /* Bin the data set */
+    bool found_invalid_sample = false;
+    uint64_t *bins_raw = cmi_calloc(m + 2u, sizeof(*bins_raw));
+    const uint64_t n = dsp->count;
+    for (uint64_t ui = 0; ui < n; ui++) {
+        const double x = dsp->xa[ui];
+        if (x < val_vec[1]) {
+            bins_raw[0]++;
+        }
+        else if (x > val_vec[m]) {
+            bins_raw[m + 1u]++;
+        }
+        else {
+            bool found = false;
+            for (uint64_t uj = 1; uj <= m; uj++) {
+                if (x == val_vec[uj]) {
+                    bins_raw[uj]++;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found != true) {
+                /* That sample value is not in the supporting set, raise flag */
+                found_invalid_sample = true;
+            }
+        }
+    }
+
+    result->type = CMI_TEST_GOF_DISCRETE;
+    result->n = dsp->count;
+    result->min = dsp->min;
+    result->max = dsp->max;
+    result->combined_lp = 0.0;
+    result->combined_sigma = 0.0;
+    result->nparts = 0u;
+
+    double sigma;
+    if (((dsp->min < val_vec[1u]) && (pmf_vec[0u] == 0.0))
+        || ((dsp->max > val_vec[m]) && (pmf_vec[m + 1u] == 0.0))) {
+        /* Can be rejected out of hand. It is surely not ~U(0,1) */
+        result->status = CMI_TEST_OUT_OF_RANGE;
+        sigma = INFINITY;
+    }
+    else if (found_invalid_sample == true) {
+        /* Something inbetween valid support values */
+        result->status = CMI_TEST_INVALID_VALUE;
+        sigma = INFINITY;
+    }
+    else if (dsp->count < test_min_count) {
+        /* Can not make a judgement */
+        result->status = CMI_TEST_TOO_FEW;
+        sigma = NAN;
+    }
+    else {
+        /* Lumping: Combine any bins that are too small for a reliable result */
+        uint64_t *bins_lumped = cmi_calloc(m + 2u, sizeof(*bins_lumped));
+        double *pvec_lumped =  cmi_calloc(m + 2u, sizeof(*pvec_lumped));
+        double *xvec_lumped = cmi_calloc(m + 2u, sizeof(*xvec_lumped));
+        uint64_t ui_rcv = 0u;
+        for (uint64_t ui_src = 0u; ui_src < m + 2u; ui_src++) {
+            bins_lumped[ui_rcv] += bins_raw[ui_src];
+            pvec_lumped[ui_rcv] += pmf_vec[ui_src];
+            if (pmf_vec[ui_src] > 0.0) {
+                cmb_assert_release(isfinite(val_vec[ui_src]));
+                xvec_lumped[ui_rcv] += pmf_vec[ui_src] * val_vec[ui_src];
+            }
+
+            if (pvec_lumped[ui_rcv] * (double)n > 10.0) {
+                 ui_rcv++;
+            }
+        }
+
+        /* Merge any under-threshold remainder back into the previous cell */
+        if ((pvec_lumped[ui_rcv] > 0.0) || (bins_lumped[ui_rcv] > 0u)) {
+            if (ui_rcv > 0u) {
+                pvec_lumped[ui_rcv - 1u] += pvec_lumped[ui_rcv];
+                bins_lumped[ui_rcv - 1u] += bins_lumped[ui_rcv];
+                xvec_lumped[ui_rcv - 1u] += xvec_lumped[ui_rcv];
+                pvec_lumped[ui_rcv] = 0.0;
+                bins_lumped[ui_rcv] = 0u;
+            }
+            else {
+                /* Degenerate case, all in one cell */
+                ui_rcv++;
+            }
+        }
+
+        const uint64_t n_bins = ui_rcv;
+        for (uint64_t ui = 0u; ui < n_bins; ui++) {
+            cmb_assert_debug(pvec_lumped[ui] > 0.0);
+            xvec_lumped[ui] /= pvec_lumped[ui];
+        }
+
+        uint64_t sum_n = 0u;
+        double sum_p = 0.0;
+        for (uint64_t ui = 0u; ui < n_bins; ui++) {
+            sum_n += bins_lumped[ui];
+            sum_p += pvec_lumped[ui];
+        }
+
+        cmb_assert_debug(sum_n == n);
+        cmb_assert_debug(fabs(sum_p - 1.0) < 1e-12);
+
+        /* Calculate residuals and chi squared statistic */
+        double x2 = 0.0;
+        double *rv = cmi_calloc(n_bins, sizeof(*rv));
+        for (uint64_t ui = 0u; ui < n_bins; ui++) {
+            const double e = (double)n * pvec_lumped[ui];
+            const double se = sqrt(e);
+            rv[ui] = ((double)bins_lumped[ui] - e) / se;
+            x2 += rv[ui] * rv[ui];
+        }
+
+        /* Run Pearson and Neyman */
+        pearson_chisquare(x2, n_bins, result);
+        neyman_smooth_weighted(rv, x2, n_bins, xvec_lumped, pvec_lumped, result);
+
+        /* Use the combined Neyman for top level result */
+        result->combined_lp = result->p[1].s;
+        result->combined_sigma = result->p[1].s;
+
+        sigma = result->combined_sigma;
+
+        cmi_free(xvec_lumped);
+        cmi_free(pvec_lumped);
+        cmi_free(bins_lumped);
+    }
+
+    cmi_free(bins_raw);
+    printf("Returns sigma = %f\n", sigma);
+
+    return sigma;
 }
 
 void cmi_test_transform(struct cmb_dataset *tgt,
@@ -1239,7 +1428,8 @@ void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp)
     cmb_assert_release(r != NULL);
     cmb_assert_release(fp != NULL);
 
-    if (r->type == CMI_TEST_GOF_U01) {
+    if ((r->type == CMI_TEST_GOF_CONTINUOUS)
+        || (r->type == CMI_TEST_GOF_DISCRETE)) {
         if (r->status == CMI_TEST_OK) {
             cmi_test_fnprint_line(fp, "-", 120u);
             fprintf(fp, "Test:                                "
@@ -1260,8 +1450,14 @@ void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp)
                             r->n_clamped, r->n, ldexp((double)r->n, -53));
             }
 
-            fprintf(fp, "Combined assessment, Bonferroni on Neyman + Anderson-Darling:\t%s\n",
-                cmi_test_interpretation(r->combined_sigma));
+            if (r->type == CMI_TEST_GOF_CONTINUOUS) {
+                fprintf(fp, "Combined assessment, Bonferroni on Neyman + Anderson-Darling:\t%s\n",
+                    cmi_test_interpretation(r->combined_sigma));
+            }
+            else {
+                fprintf(fp, "Combined assessment (Neyman only due to the discrete data):  \t%s\n",
+                    cmi_test_interpretation(r->combined_sigma));
+            }
         }
         else if (r->status == CMI_TEST_TOO_FEW) {
             fprintf(fp, "Too few samples, n = %" PRIu64 ", needs at least %" PRIu64 "\n",

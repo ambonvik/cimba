@@ -27,14 +27,15 @@
 #include "cmb_dataset.h"
 
 enum cmi_test_type {
-    CMI_TEST_GOF_U01,
-    CMI_TEST_TWO_SAMPLE
+    CMI_TEST_GOF_CONTINUOUS,
+    CMI_TEST_GOF_DISCRETE
 };
 
 enum cmi_test_status {
     CMI_TEST_OK = 0,
     CMI_TEST_TOO_FEW,        /* Not enough samples per bin */
-    CMI_TEST_OUT_OF_RANGE,   /* Sample outside [0,1] */
+    CMI_TEST_OUT_OF_RANGE,   /* Sample value(s) outside support */
+    CMI_TEST_INVALID_VALUE,  /* Invalid sample values(s) found, e.g, fractional values in an integer distribution */
     CMI_TEST_DEGENERATE,     /* All samples near identical, NaN present */
     CMI_TEST_SATURATED       /* Too many exact 0.0 and 1.0 samples */
 };
@@ -48,7 +49,7 @@ struct cmi_test_partial {
     double s;       /* Sigmas from expected */
 };
 
-#define CMI_TEST_U01_PARTS 10
+#define CMI_TEST_PARTS 10
 struct cmi_test_outcome {
     enum cmi_test_type type;
     enum cmi_test_status status;
@@ -59,7 +60,7 @@ struct cmi_test_outcome {
     double combined_lp;
     double combined_sigma;
     unsigned nparts;
-    struct cmi_test_partial p[CMI_TEST_U01_PARTS];
+    struct cmi_test_partial p[CMI_TEST_PARTS];
 };
 
 typedef double (cmi_test_transform_func)(double, void*);
@@ -86,14 +87,14 @@ extern double cmi_test_gof_cont(cmi_test_transform_func *cdf,
                                 struct cmi_test_outcome *result);
 
 /*
- * Goodness-of-fit test for discrete-valued distributions: is the dataset
-* distributed according to the PMF? Returns a sigma value (standard deviations
+ * Goodness-of-fit test for discrete-valued distributions: Is the dataset
+ * distributed according to the PMF? Returns a sigma value (standard deviations
  * of the standard normal distribution) where a high absolute value of sigma
  * indicates improbability and the sign the direction from the expected value.
  */
-extern double cmi_test_gof_disc(uint64_t n,
-                                double p_vec[n + 2],
-                                double v_vec[n + 2],
+extern double cmi_test_gof_disc(uint64_t m,
+                                const double pmf_vec[m + 2],
+                                const double val_vec[m + 2],
                                 const struct cmb_dataset *dsp,
                                 struct cmi_test_outcome *result);
 

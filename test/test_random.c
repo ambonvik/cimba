@@ -66,7 +66,6 @@
     cmb_assert_always((result.status == CMI_TEST_OK) \
                   && (fabs(result.combined_sigma) < 6.0))
 
-
 #define QTEST_REPORT_ACFS() \
     printf("\nAutocorrelation factors (expected 0.0):\n"); \
     double acf[ACFS + 1] = { 0.0 }; \

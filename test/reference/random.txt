@@ -97,7 +97,7 @@ Testing Goodness of Fit vs the U(0,1) distribution
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    11.5	      15	Sigma: -0.5741	Odds: 1 in 1.8	
-Neyman's smooth test combined       	    4.67	      10	Sigma: -1.355	Odds: 1 in 5.7	
+Neyman's smooth test                	    4.67	      10	Sigma: -1.355	Odds: 1 in 5.7	
 	Neyman V1: mean                 	  -0.269	       0	Sigma: -0.2688	Odds: 1 in 1.3	
 	Neyman V2: variance             	   0.184	       0	Sigma: 0.1835	Odds: 1 in 1.2	
 	Neyman V3: skewness             	   0.779	       0	Sigma: 0.7792	Odds: 1 in 2.3	
@@ -136,7 +136,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    10.8	      15	Sigma: -0.7322	Odds: 1 in 2.2	
-Neyman's smooth test combined       	    6.09	      10	Sigma: -0.8694	Odds: 1 in 2.6	
+Neyman's smooth test                	    6.09	      10	Sigma: -0.8694	Odds: 1 in 2.6	
 	Neyman V1: mean                 	 0.00253	       0	Sigma: 0.002530	Odds: 1 in 1	
 	Neyman V2: variance             	  -0.593	       0	Sigma: -0.5934	Odds: 1 in 1.8	
 	Neyman V3: skewness             	    1.35	       0	Sigma: 1.353	Odds: 1 in 5.7	
@@ -180,7 +180,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    21.9	      15	Sigma: 1.223	Odds: 1 in 4.5	
-Neyman's smooth test combined       	      11	      10	Sigma: 0.3726	Odds: 1 in 1.4	
+Neyman's smooth test                	      11	      10	Sigma: 0.3726	Odds: 1 in 1.4	
 	Neyman V1: mean                 	   0.342	       0	Sigma: 0.3424	Odds: 1 in 1.4	
 	Neyman V2: variance             	    1.11	       0	Sigma: 1.108	Odds: 1 in 3.7	
 	Neyman V3: skewness             	   0.927	       0	Sigma: 0.9271	Odds: 1 in 2.8	
@@ -283,7 +283,7 @@ Raw moment:     Expected:     Actual:     Error:        Actual:     Error:
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    21.5	      15	Sigma: 1.172	Odds: 1 in 4.1	
-Neyman's smooth test combined       	    4.14	      10	Sigma: -1.561	Odds: 1 in 8.4	
+Neyman's smooth test                	    4.14	      10	Sigma: -1.561	Odds: 1 in 8.4	
 	Neyman V1: mean                 	   0.216	       0	Sigma: 0.2163	Odds: 1 in 1.2	
 	Neyman V2: variance             	   0.763	       0	Sigma: 0.7628	Odds: 1 in 2.2	
 	Neyman V3: skewness             	  -0.328	       0	Sigma: -0.3281	Odds: 1 in 1.3	
@@ -318,7 +318,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    21.5	      15	Sigma: 1.164	Odds: 1 in 4.1	
-Neyman's smooth test combined       	    18.7	      10	Sigma: 1.706	Odds: 1 in 11	
+Neyman's smooth test                	    18.7	      10	Sigma: 1.706	Odds: 1 in 11	
 	Neyman V1: mean                 	   0.757	       0	Sigma: 0.7571	Odds: 1 in 2.2	
 	Neyman V2: variance             	    1.54	       0	Sigma: 1.536	Odds: 1 in 8	
 	Neyman V3: skewness             	   -2.36	       0	Sigma: -2.361	Odds: 1 in 55	
@@ -395,7 +395,7 @@ Partial autocorrelation factors (expected 0.0):
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    15.4	      15	Sigma: 0.1978	Odds: 1 in 1.2	
-Neyman's smooth test combined       	    13.9	      10	Sigma: 0.9220	Odds: 1 in 2.8	
+Neyman's smooth test                	    13.9	      10	Sigma: 0.9220	Odds: 1 in 2.8	
 	Neyman V1: mean                 	    -1.4	       0	Sigma: -1.398	Odds: 1 in 6.2	
 	Neyman V2: variance             	   0.152	       0	Sigma: 0.1519	Odds: 1 in 1.1	
 	Neyman V3: skewness             	   0.899	       0	Sigma: 0.8990	Odds: 1 in 2.7	
@@ -433,7 +433,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    9.54	      15	Sigma: -1.026	Odds: 1 in 3.3	
-Neyman's smooth test combined       	    6.12	      10	Sigma: -0.8596	Odds: 1 in 2.6	
+Neyman's smooth test                	    6.12	      10	Sigma: -0.8596	Odds: 1 in 2.6	
 	Neyman V1: mean                 	  -0.901	       0	Sigma: -0.9006	Odds: 1 in 2.7	
 	Neyman V2: variance             	  -0.392	       0	Sigma: -0.3915	Odds: 1 in 1.4	
 	Neyman V3: skewness             	   0.114	       0	Sigma: 0.1137	Odds: 1 in 1.1	
@@ -470,7 +470,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    11.3	      15	Sigma: -0.6164	Odds: 1 in 1.9	
-Neyman's smooth test combined       	    6.95	      10	Sigma: -0.6144	Odds: 1 in 1.9	
+Neyman's smooth test                	    6.95	      10	Sigma: -0.6144	Odds: 1 in 1.9	
 	Neyman V1: mean                 	  -0.869	       0	Sigma: -0.8691	Odds: 1 in 2.6	
 	Neyman V2: variance             	  -0.829	       0	Sigma: -0.8292	Odds: 1 in 2.5	
 	Neyman V3: skewness             	   0.834	       0	Sigma: 0.8342	Odds: 1 in 2.5	
@@ -564,7 +564,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	      20	      15	Sigma: 0.9489	Odds: 1 in 2.9	
-Neyman's smooth test combined       	      26	      10	Sigma: 2.677	Odds: 1 in 1.3e+02	
+Neyman's smooth test                	      26	      10	Sigma: 2.677	Odds: 1 in 1.3e+02	
 	Neyman V1: mean                 	   0.619	       0	Sigma: 0.6189	Odds: 1 in 1.9	
 	Neyman V2: variance             	   0.987	       0	Sigma: 0.9869	Odds: 1 in 3.1	
 	Neyman V3: skewness             	  0.0538	       0	Sigma: 0.05380	Odds: 1 in 1	
@@ -608,7 +608,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    23.2	      15	Sigma: 1.404	Odds: 1 in 6.2	
-Neyman's smooth test combined       	    14.6	      10	Sigma: 1.055	Odds: 1 in 3.4	
+Neyman's smooth test                	    14.6	      10	Sigma: 1.055	Odds: 1 in 3.4	
 	Neyman V1: mean                 	   0.229	       0	Sigma: 0.2293	Odds: 1 in 1.2	
 	Neyman V2: variance             	    1.85	       0	Sigma: 1.847	Odds: 1 in 15	
 	Neyman V3: skewness             	    1.22	       0	Sigma: 1.219	Odds: 1 in 4.5	
@@ -647,7 +647,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    30.7	      15	Sigma: 2.344	Odds: 1 in 52	
-Neyman's smooth test combined       	    8.97	      10	Sigma: -0.08842	Odds: 1 in 1.1	
+Neyman's smooth test                	    8.97	      10	Sigma: -0.08842	Odds: 1 in 1.1	
 	Neyman V1: mean                 	    1.46	       0	Sigma: 1.465	Odds: 1 in 7	
 	Neyman V2: variance             	  -0.438	       0	Sigma: -0.4385	Odds: 1 in 1.5	
 	Neyman V3: skewness             	  -0.524	       0	Sigma: -0.5243	Odds: 1 in 1.7	
@@ -684,7 +684,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    18.4	      15	Sigma: 0.6995	Odds: 1 in 2.1	
-Neyman's smooth test combined       	    7.15	      10	Sigma: -0.5567	Odds: 1 in 1.7	
+Neyman's smooth test                	    7.15	      10	Sigma: -0.5567	Odds: 1 in 1.7	
 	Neyman V1: mean                 	  -0.509	       0	Sigma: -0.5092	Odds: 1 in 1.6	
 	Neyman V2: variance             	   0.116	       0	Sigma: 0.1164	Odds: 1 in 1.1	
 	Neyman V3: skewness             	   0.156	       0	Sigma: 0.1562	Odds: 1 in 1.1	
@@ -719,7 +719,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    24.4	      15	Sigma: 1.563	Odds: 1 in 8.5	
-Neyman's smooth test combined       	    10.5	      10	Sigma: 0.2551	Odds: 1 in 1.3	
+Neyman's smooth test                	    10.5	      10	Sigma: 0.2551	Odds: 1 in 1.3	
 	Neyman V1: mean                 	  -0.404	       0	Sigma: -0.4036	Odds: 1 in 1.5	
 	Neyman V2: variance             	  -0.795	       0	Sigma: -0.7947	Odds: 1 in 2.3	
 	Neyman V3: skewness             	   -1.87	       0	Sigma: -1.868	Odds: 1 in 16	
@@ -759,7 +759,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    15.6	      15	Sigma: 0.2354	Odds: 1 in 1.2	
-Neyman's smooth test combined       	    11.2	      10	Sigma: 0.3996	Odds: 1 in 1.5	
+Neyman's smooth test                	    11.2	      10	Sigma: 0.3996	Odds: 1 in 1.5	
 	Neyman V1: mean                 	 -0.0405	       0	Sigma: -0.04053	Odds: 1 in 1	
 	Neyman V2: variance             	   -1.52	       0	Sigma: -1.516	Odds: 1 in 7.7	
 	Neyman V3: skewness             	    -1.6	       0	Sigma: -1.597	Odds: 1 in 9.1	
@@ -798,7 +798,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    23.3	      15	Sigma: 1.423	Odds: 1 in 6.5	
-Neyman's smooth test combined       	    12.8	      10	Sigma: 0.7290	Odds: 1 in 2.1	
+Neyman's smooth test                	    12.8	      10	Sigma: 0.7290	Odds: 1 in 2.1	
 	Neyman V1: mean                 	    2.64	       0	Sigma: 2.637	Odds: 1 in 1.2e+02	
 	Neyman V2: variance             	   0.419	       0	Sigma: 0.4190	Odds: 1 in 1.5	
 	Neyman V3: skewness             	  -0.945	       0	Sigma: -0.9450	Odds: 1 in 2.9	
@@ -843,7 +843,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    20.8	      15	Sigma: 1.062	Odds: 1 in 3.5	
-Neyman's smooth test combined       	    27.3	      10	Sigma: 2.855	Odds: 1 in 2.3e+02	
+Neyman's smooth test                	    27.3	      10	Sigma: 2.855	Odds: 1 in 2.3e+02	
 	Neyman V1: mean                 	   -1.39	       0	Sigma: -1.386	Odds: 1 in 6	
 	Neyman V2: variance             	  -0.638	       0	Sigma: -0.6384	Odds: 1 in 1.9	
 	Neyman V3: skewness             	  -0.214	       0	Sigma: -0.2138	Odds: 1 in 1.2	
@@ -887,7 +887,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    15.6	      15	Sigma: 0.2227	Odds: 1 in 1.2	
-Neyman's smooth test combined       	    6.04	      10	Sigma: -0.8840	Odds: 1 in 2.7	
+Neyman's smooth test                	    6.04	      10	Sigma: -0.8840	Odds: 1 in 2.7	
 	Neyman V1: mean                 	   0.177	       0	Sigma: 0.1775	Odds: 1 in 1.2	
 	Neyman V2: variance             	   -1.31	       0	Sigma: -1.310	Odds: 1 in 5.3	
 	Neyman V3: skewness             	   0.209	       0	Sigma: 0.2092	Odds: 1 in 1.2	
@@ -931,7 +931,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    9.13	      15	Sigma: -1.130	Odds: 1 in 3.9	
-Neyman's smooth test combined       	    11.8	      10	Sigma: 0.5220	Odds: 1 in 1.7	
+Neyman's smooth test                	    11.8	      10	Sigma: 0.5220	Odds: 1 in 1.7	
 	Neyman V1: mean                 	  -0.873	       0	Sigma: -0.8731	Odds: 1 in 2.6	
 	Neyman V2: variance             	   0.241	       0	Sigma: 0.2411	Odds: 1 in 1.2	
 	Neyman V3: skewness             	   -1.01	       0	Sigma: -1.005	Odds: 1 in 3.2	
@@ -975,7 +975,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	     4.3	      15	Sigma: -2.705	Odds: 1 in 1.5e+02	
-Neyman's smooth test combined       	    4.72	      10	Sigma: -1.335	Odds: 1 in 5.5	
+Neyman's smooth test                	    4.72	      10	Sigma: -1.335	Odds: 1 in 5.5	
 	Neyman V1: mean                 	  -0.719	       0	Sigma: -0.7192	Odds: 1 in 2.1	
 	Neyman V2: variance             	  -0.183	       0	Sigma: -0.1831	Odds: 1 in 1.2	
 	Neyman V3: skewness             	  -0.601	       0	Sigma: -0.6014	Odds: 1 in 1.8	
@@ -1014,7 +1014,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	      13	      15	Sigma: -0.2605	Odds: 1 in 1.3	
-Neyman's smooth test combined       	    2.97	      10	Sigma: -2.099	Odds: 1 in 28	
+Neyman's smooth test                	    2.97	      10	Sigma: -2.099	Odds: 1 in 28	
 	Neyman V1: mean                 	  0.0966	       0	Sigma: 0.09663	Odds: 1 in 1.1	
 	Neyman V2: variance             	   0.219	       0	Sigma: 0.2187	Odds: 1 in 1.2	
 	Neyman V3: skewness             	  -0.298	       0	Sigma: -0.2979	Odds: 1 in 1.3	
@@ -1058,7 +1058,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    9.76	      15	Sigma: -0.9716	Odds: 1 in 3	
-Neyman's smooth test combined       	     7.5	      10	Sigma: -0.4616	Odds: 1 in 1.6	
+Neyman's smooth test                	     7.5	      10	Sigma: -0.4616	Odds: 1 in 1.6	
 	Neyman V1: mean                 	    0.55	       0	Sigma: 0.5498	Odds: 1 in 1.7	
 	Neyman V2: variance             	   -0.28	       0	Sigma: -0.2800	Odds: 1 in 1.3	
 	Neyman V3: skewness             	   0.862	       0	Sigma: 0.8621	Odds: 1 in 2.6	
@@ -1098,7 +1098,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    14.8	      15	Sigma: 0.09335	Odds: 1 in 1.1	
-Neyman's smooth test combined       	    6.38	      10	Sigma: -0.7802	Odds: 1 in 2.3	
+Neyman's smooth test                	    6.38	      10	Sigma: -0.7802	Odds: 1 in 2.3	
 	Neyman V1: mean                 	   0.513	       0	Sigma: 0.5125	Odds: 1 in 1.6	
 	Neyman V2: variance             	  -0.372	       0	Sigma: -0.3721	Odds: 1 in 1.4	
 	Neyman V3: skewness             	  -0.987	       0	Sigma: -0.9872	Odds: 1 in 3.1	
@@ -1138,7 +1138,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    20.3	      15	Sigma: 0.9859	Odds: 1 in 3.1	
-Neyman's smooth test combined       	    18.5	      10	Sigma: 1.671	Odds: 1 in 11	
+Neyman's smooth test                	    18.5	      10	Sigma: 1.671	Odds: 1 in 11	
 	Neyman V1: mean                 	    1.85	       0	Sigma: 1.850	Odds: 1 in 16	
 	Neyman V2: variance             	   -2.42	       0	Sigma: -2.416	Odds: 1 in 64	
 	Neyman V3: skewness             	    0.29	       0	Sigma: 0.2898	Odds: 1 in 1.3	
@@ -1177,7 +1177,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    10.1	      15	Sigma: -0.8954	Odds: 1 in 2.7	
-Neyman's smooth test combined       	    7.74	      10	Sigma: -0.3979	Odds: 1 in 1.4	
+Neyman's smooth test                	    7.74	      10	Sigma: -0.3979	Odds: 1 in 1.4	
 	Neyman V1: mean                 	  -0.607	       0	Sigma: -0.6067	Odds: 1 in 1.8	
 	Neyman V2: variance             	  -0.928	       0	Sigma: -0.9284	Odds: 1 in 2.8	
 	Neyman V3: skewness             	   -0.26	       0	Sigma: -0.2605	Odds: 1 in 1.3	
@@ -1220,7 +1220,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	      15	      15	Sigma: 0.1279	Odds: 1 in 1.1	
-Neyman's smooth test combined       	    11.8	      10	Sigma: 0.5231	Odds: 1 in 1.7	
+Neyman's smooth test                	    11.8	      10	Sigma: 0.5231	Odds: 1 in 1.7	
 	Neyman V1: mean                 	  -0.524	       0	Sigma: -0.5240	Odds: 1 in 1.7	
 	Neyman V2: variance             	  -0.544	       0	Sigma: -0.5438	Odds: 1 in 1.7	
 	Neyman V3: skewness             	   -1.52	       0	Sigma: -1.517	Odds: 1 in 7.7	
@@ -1262,7 +1262,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	      17	      15	Sigma: 0.4658	Odds: 1 in 1.6	
-Neyman's smooth test combined       	    11.7	      10	Sigma: 0.5101	Odds: 1 in 1.6	
+Neyman's smooth test                	    11.7	      10	Sigma: 0.5101	Odds: 1 in 1.6	
 	Neyman V1: mean                 	   -1.58	       0	Sigma: -1.583	Odds: 1 in 8.8	
 	Neyman V2: variance             	  -0.355	       0	Sigma: -0.3549	Odds: 1 in 1.4	
 	Neyman V3: skewness             	  -0.838	       0	Sigma: -0.8375	Odds: 1 in 2.5	
@@ -1306,7 +1306,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    14.6	      15	Sigma: 0.05568	Odds: 1 in 1	
-Neyman's smooth test combined       	    13.8	      10	Sigma: 0.9012	Odds: 1 in 2.7	
+Neyman's smooth test                	    13.8	      10	Sigma: 0.9012	Odds: 1 in 2.7	
 	Neyman V1: mean                 	   0.536	       0	Sigma: 0.5356	Odds: 1 in 1.7	
 	Neyman V2: variance             	   -1.25	       0	Sigma: -1.246	Odds: 1 in 4.7	
 	Neyman V3: skewness             	    2.15	       0	Sigma: 2.155	Odds: 1 in 32	
@@ -1350,7 +1350,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    11.8	      15	Sigma: -0.5146	Odds: 1 in 1.6	
-Neyman's smooth test combined       	    10.3	      10	Sigma: 0.2231	Odds: 1 in 1.2	
+Neyman's smooth test                	    10.3	      10	Sigma: 0.2231	Odds: 1 in 1.2	
 	Neyman V1: mean                 	   0.264	       0	Sigma: 0.2645	Odds: 1 in 1.3	
 	Neyman V2: variance             	    1.95	       0	Sigma: 1.946	Odds: 1 in 19	
 	Neyman V3: skewness             	   0.376	       0	Sigma: 0.3758	Odds: 1 in 1.4	
@@ -1395,7 +1395,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	      11	      15	Sigma: -0.6828	Odds: 1 in 2	
-Neyman's smooth test combined       	    7.54	      10	Sigma: -0.4499	Odds: 1 in 1.5	
+Neyman's smooth test                	    7.54	      10	Sigma: -0.4499	Odds: 1 in 1.5	
 	Neyman V1: mean                 	   -1.03	       0	Sigma: -1.031	Odds: 1 in 3.3	
 	Neyman V2: variance             	   0.979	       0	Sigma: 0.9792	Odds: 1 in 3.1	
 	Neyman V3: skewness             	  -0.534	       0	Sigma: -0.5342	Odds: 1 in 1.7	
@@ -1436,7 +1436,7 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 Test:                                	Act.:   	Exp.:   	Interpretation:
 ------------------------------------------------------------------------------------------------------------------------
 Pearson's chi squared test          	    23.8	      15	Sigma: 1.484	Odds: 1 in 7.3	
-Neyman's smooth test combined       	    8.23	      10	Sigma: -0.2695	Odds: 1 in 1.3	
+Neyman's smooth test                	    8.23	      10	Sigma: -0.2695	Odds: 1 in 1.3	
 	Neyman V1: mean                 	  -0.471	       0	Sigma: -0.4713	Odds: 1 in 1.6	
 	Neyman V2: variance             	  -0.777	       0	Sigma: -0.7772	Odds: 1 in 2.3	
 	Neyman V3: skewness             	   0.226	       0	Sigma: 0.2259	Odds: 1 in 1.2	
