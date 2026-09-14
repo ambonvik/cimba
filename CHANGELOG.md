@@ -4,6 +4,12 @@ Note: Version numbers are MAJOR.MINOR.PATCH per [Semantic Versioning](https://se
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
+### 2026-09-xx: 3.0.0-rc3 Release Candidate 3 - in progress
+* Minor bug fixes and performance improvements, especially for data collector edge
+  cases (such as taking the median of an empty set).
+* Comprehensive statistical tests for pseudo-random number generators and 
+  distributions, all passing multiple quality tests.
+
 ### 2026-08-30: 3.0.0-rc2 Release Candidate 2
 * Minor bug fixes and performance improvements.
 * Faster random number algorithms for integer-valued distributions (Poisson, binomial, 
