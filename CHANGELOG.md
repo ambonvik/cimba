@@ -5,10 +5,12 @@ We will only summarize new features, changes, and bug fixes below. For complete 
 see the git commit history.
 
 ### 2026-09-xx: 3.0.0-rc3 Release Candidate 3 - in progress
-* Minor bug fixes and performance improvements, especially for data collector edge
-  cases (such as taking the median of an empty set).
+* Minor bug fixes and performance improvements
+  * Data collector edge cases (such as taking the median of an empty set).
 * Comprehensive statistical tests for pseudo-random number generators and 
   distributions, all passing multiple quality tests.
+  * Surfaced and fixed a small bias for normal and exponential distributions, 
+    underrepresenting sample values close to zero (exponential) or the mean (normal).
 
 ### 2026-08-30: 3.0.0-rc2 Release Candidate 2
 * Minor bug fixes and performance improvements.
