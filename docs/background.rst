@@ -601,7 +601,7 @@ processes do not promise. They *demand*.
 Data sets and summaries
 -----------------------
 
-As we saw in the previous section, Cimba provides a simple set of statistics utilities
+Cimba provides a limited set of statistics utilities
 for debugging and simple reporting. The most basic class is the :c:struct:`cmb_dataset`,
 simply a conveniently resizing array of sample values. It provides methods that require
 the individual values, such as calculating the median, quartiles, autocorrelation factors,
@@ -617,7 +617,7 @@ and Meng (https://arxiv.org/pdf/1510.04923).
 The reason for this is that we do not always need to keep all individual sample values,
 so we do not want to take the memory penalty of storing them if a simple summary is
 enough. In those cases, just adding the successive samples to a
-:c:struct:`cmb_datasummary` is more efficient. If we need both, collect the samples in
+:c:struct:`cmb_datasummary` is more efficient. If both are needed, collect the samples in
 a :c:struct:`cmb_dataset` and use the function :c:func:`cmb_dataset_summarize` to
 calculate a data summary object from the complete data set in a single pass.
 
