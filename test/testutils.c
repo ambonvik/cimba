@@ -847,11 +847,15 @@ static const char *const nm[NEYMAN_K + 2] = {
 };
 
 static void neyman_smooth(const double *basis,
+                          const unsigned k_eff,
                           const double *rv,
-                          double x2,
-                          unsigned num_bins,
+                          const double x2,
+                          const unsigned num_bins,
                           struct cmi_test_outcome *result)
 {
+    cmb_assert_debug(basis != NULL);
+    cmb_assert_debug(k_eff <= NEYMAN_K);
+
     /* Reserve a spot for the combined result */
     cmb_assert_debug(result->nparts < CMI_TEST_PARTS);
     struct cmi_test_partial *rp_com = &(result->p[result->nparts++]);
@@ -859,10 +863,10 @@ static void neyman_smooth(const double *basis,
     /* Work out the K tests mean, variance, skewness, and kurtosis */
     double sumv2 = 0.0;
     double logp[NEYMAN_K + 1];
-    for (unsigned kk = 1u; kk <= NEYMAN_K; kk++) {
+    for (unsigned kk = 1u; kk <= k_eff; kk++) {
         double v = 0.0;
         for (unsigned i = 0; i < num_bins; i++) {
-            v += basis[i * (NEYMAN_K + 1) + kk] * rv[i];
+            v += basis[i * (k_eff + 1) + kk] * rv[i];
         }
 
         sumv2 += v * v;
@@ -881,8 +885,8 @@ static void neyman_smooth(const double *basis,
 
     /* Remainder: everything the first K components do not explain */
     const double rem = fmax(x2 - sumv2, 0.0);
-    cmb_assert_debug(num_bins >= NEYMAN_K + 2u);
-    const unsigned rdof = num_bins - 1u - NEYMAN_K;
+    cmb_assert_debug(num_bins >= k_eff + 2u);
+    const unsigned rdof = num_bins - 1u - k_eff;
     double rlp, rlq;
     igamma_log(0.5 * (double)rdof, 0.5 * rem, &rlp, &rlq);
 
@@ -891,7 +895,7 @@ static void neyman_smooth(const double *basis,
         rtail = -M_LN2;
     }
 
-    logp[NEYMAN_K] = fmin(M_LN2 + rtail, 0.0);
+    logp[k_eff] = fmin(M_LN2 + rtail, 0.0);
 
     cmb_assert_debug(result->nparts < CMI_TEST_PARTS);
     struct cmi_test_partial *rp = &(result->p[result->nparts]);
@@ -905,12 +909,12 @@ static void neyman_smooth(const double *basis,
 
     /* Combine the K+1 tests into one overall score */
     double fisher = 0.0;
-    for (unsigned i = 0; i <= NEYMAN_K; i++) {
+    for (unsigned i = 0; i <= k_eff; i++) {
         fisher += -2.0 * logp[i];
     }
 
     double flp, flq;
-    const unsigned fisher_dof = 2u * (NEYMAN_K + 1u);
+    const unsigned fisher_dof = 2u * (k_eff + 1u);
     igamma_log(0.5 * (double)fisher_dof, 0.5 * fisher, &flp, &flq);
     double ftail = fmin(flp, flq);
     if (ftail > -M_LN2) {
@@ -920,9 +924,12 @@ static void neyman_smooth(const double *basis,
     rp_com->name = nm[NEYMAN_K + 1];
     rp_com->level = 0u;
     rp_com->v = fisher;
-    rp_com->e = 2.0 * (double)(NEYMAN_K + 1u);
+    rp_com->e = 2.0 * (double)(k_eff + 1u);
     rp_com->lp = fmin(M_LN2 + ftail, 0.0);
     rp_com->s  = (flq < flp) ?  logp_to_sigma(ftail)  : -logp_to_sigma(ftail);
+
+    result->n_bins = num_bins;
+    result->k_eff = k_eff;
 
     /* Parseval's theorem must hold to a small rounding error */
     cmb_assert_debug(fabs(x2 - (sumv2 + rem)) < 1e-9 * x2);
@@ -957,10 +964,11 @@ static void neyman_smooth_uniform(const double *rv,
         mgs_validate(neyman_basis_cache, NEYMAN_K, n_bins);
     }
 
-    neyman_smooth(neyman_basis_cache, rv, x2, n_bins, result);
+    neyman_smooth(neyman_basis_cache, NEYMAN_K, rv, x2, n_bins, result);
 }
 
-static void neyman_smooth_weighted(const double *rv,
+static void neyman_smooth_weighted(const unsigned k_eff,
+                                  const double *rv,
                                   const double x2,
                                   const unsigned n_bins,
                                   const double *xvec,
@@ -970,11 +978,11 @@ static void neyman_smooth_weighted(const double *rv,
     /* No cache, data dependent basis */
     double *basis = cmi_calloc(n_bins * (NEYMAN_K + 1u), sizeof(*basis));
 
-    mgs_init_weighted(basis, NEYMAN_K, n_bins, xvec, pvec);
-    mgs_orthogonalize(basis, NEYMAN_K, n_bins);
-    mgs_validate(basis, NEYMAN_K, n_bins);
+    mgs_init_weighted(basis, k_eff, n_bins, xvec, pvec);
+    mgs_orthogonalize(basis, k_eff, n_bins);
+    mgs_validate(basis, k_eff, n_bins);
 
-    neyman_smooth(basis, rv, x2, n_bins, result);
+    neyman_smooth(basis, k_eff, rv, x2, n_bins, result);
 
     cmi_free(basis);
 }
@@ -1299,6 +1307,12 @@ double cmi_test_gof_disc(const uint64_t m,
         cmb_assert_debug(sum_n == n);
         cmb_assert_debug(fabs(sum_p - 1.0) < 1e-12);
 
+        printf("Lumped\n");
+        printf("x\tp\tn\n");
+        for (unsigned ui = 0; ui < n_bins; ui++) {
+            printf("%g\t%g\t%" PRIu64 "\n", xvec_lumped[ui], pvec_lumped[ui], bins_lumped[ui]);
+        }
+
         /* Calculate residuals and chi squared statistic */
         double x2 = 0.0;
         double *rv = cmi_calloc(n_bins, sizeof(*rv));
@@ -1309,9 +1323,13 @@ double cmi_test_gof_disc(const uint64_t m,
             x2 += rv[ui] * rv[ui];
         }
 
+        const unsigned k_eff = (n_bins >= NEYMAN_K + 2u)
+                     ? NEYMAN_K : (unsigned)(n_bins - 2u);
+        printf("K_eff: %u\n", k_eff);
+
         /* Run Pearson and Neyman */
         pearson_chisquare(x2, n_bins, result);
-        neyman_smooth_weighted(rv, x2, n_bins, xvec_lumped, pvec_lumped, result);
+        neyman_smooth_weighted(k_eff, rv, x2, n_bins, xvec_lumped, pvec_lumped, result);
 
         /* Use the combined Neyman for top level result */
         result->combined_lp = result->p[1].s;
@@ -1444,6 +1462,12 @@ void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp)
 
                  fprintf(fp, "%s\t%8.3g\t%8.3g\t%s\n",
                     rp->name, rp->v, rp->e, cmi_test_interpretation(rp->s));
+            }
+
+            if (r->k_eff < NEYMAN_K) {
+                fprintf(fp, "\tNote: Neyman order reduced to %u dimension%s, only %u bins remaining after data lumping.\n",
+                    r->k_eff, ((r->k_eff == 1u) ? "" : "s"), r->n_bins);
+
             }
 
             if (r->n_clamped > 0u) {

@@ -53,12 +53,14 @@ struct cmi_test_partial {
 struct cmi_test_outcome {
     enum cmi_test_type type;
     enum cmi_test_status status;
-    uint64_t n_clamped;
     uint64_t n;
     double min;
     double max;
     double combined_lp;
     double combined_sigma;
+    uint64_t n_clamped;     /* A-D: Number of samples on exact edge values */
+    unsigned n_bins;        /* Neyman: Number of bins after lumping */
+    unsigned k_eff;         /* Neyman: Effective K after binning and lumping */
     unsigned nparts;
     struct cmi_test_partial p[CMI_TEST_PARTS];
 };
