@@ -236,6 +236,8 @@ static void test_gof_disc(const uint64_t nsamples)
     cmb_datasummary_terminate(&dsu);
     cmb_dataset_terminate(&ds_poisoned);
     cmb_dataset_terminate(&ds_good);
+
+    cmi_free(result);
 }
 
 /* Deterministic internal tests against reference values for static functions */

@@ -1322,6 +1322,7 @@ double cmi_test_gof_disc(const uint64_t m,
         cmi_free(xvec_lumped);
         cmi_free(pvec_lumped);
         cmi_free(bins_lumped);
+        cmi_free(rv);
     }
 
     cmi_free(bins_raw);
