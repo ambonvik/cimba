@@ -261,7 +261,8 @@ double cmi_random_exp_not_hot(int64_t i_cand_x)
         /* We are in one of the leftover pieces, alias sample for which one. */
         int64_t i_cand_y = zig_sample63();
         uint8_t jdx = i_cand_y & 0xff;
-        jdx = (i_cand_x >= exp_zig_i_prob[jdx]) ? exp_zig_alias[jdx] : jdx;
+        const int64_t i_coin = zig_sample63();
+        jdx = (i_coin >= exp_zig_i_prob[jdx]) ? exp_zig_alias[jdx] : jdx;
         if (jdx > 0) {
             /* Not in tail, rejection sample from within this right triangular
              * overhang only.
@@ -403,7 +404,8 @@ double cmi_random_nor_not_hot(int64_t i_cand_x)
     /* Alias sample to find out which overhang area */
     int64_t i_cand_y = zig_sample63();
     uint8_t jdx = i_cand_y & 0xff;
-    jdx = (i_cand_x >= nor_zig_i_prob[jdx]) ? nor_zig_alias[jdx] : jdx;
+    const int64_t i_coin = zig_sample63();
+    jdx = (i_coin >= nor_zig_i_prob[jdx]) ? nor_zig_alias[jdx] : jdx;
     if (jdx > nor_zig_inflection) {
         /* Convex overhang */
         for (;;) {
