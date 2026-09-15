@@ -319,6 +319,66 @@ static void test_quality_exponential(const uint64_t nsamples, const double m)
     QTEST_FINISH();
 }
 
+static void test_tail_std_exponential(const uint64_t nsamples)
+{
+    const double t[] = {0.0005, 0.001, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1 };
+    const unsigned n_t = sizeof t / sizeof t[0];
+
+    struct cmb_dataset ds_z = { 0 };
+    struct cmb_dataset ds_i = { 0 };
+    cmb_dataset_initialize(&ds_z);
+    cmb_dataset_initialize(&ds_i);
+
+    for (uint64_t ui = 0; ui < nsamples; ui++) {
+        const double x = cmb_random_std_exponential();
+        cmb_dataset_add(&ds_z, x);
+        const double y = exponential_inv(1.0);
+        cmb_dataset_add(&ds_i, y);
+    }
+
+    printf("\nBinomial tail test, standard exponential, n = %" PRIu64 "\n", nsamples);
+    printf("t        expected      obs (zig)      deficit      sigma      obs (inv)      deficit      sigma\n");
+
+    double sigma_max = 0.0;
+    for (unsigned ut = 0; ut < n_t; ut++) {
+        uint64_t cnt_z = 0u;
+        uint64_t cnt_i = 0u;
+        for (uint64_t ui = 0; ui < ds_z.count; ui++) {
+            const double x = ds_z.xa[ui];
+            if (x <= t[ut]) {
+                cnt_z++;
+            }
+
+            const double y = ds_i.xa[ui];
+            if (y <= t[ut]) {
+                cnt_i++;
+            }
+        }
+
+        const double p  = 1.0 - exp(-t[ut]);
+        const double e  = (double)nsamples * p;
+        const double sd = sqrt((double)nsamples * p * (1.0 - p));
+        const double zz  = ((double)cnt_z - e) / sd;
+        const double zi  = ((double)cnt_i - e) / sd;
+
+        printf("%-8.3f %12.1f %12" PRIu64 " %10.4f%% %10.2f %12" PRIu64 " %10.4f%% %10.2f\n",
+               t[ut], e,
+               cnt_z, 100.0 * (e - (double)cnt_z) / e, zz,
+               cnt_i, 100.0 * (e - (double)cnt_i) / e, zi);
+
+        const double sig_abs = fabs(zz);
+        if (sig_abs > sigma_max) {
+            sigma_max = sig_abs;
+        }
+    }
+
+    cmb_dataset_terminate(&ds_i);
+    cmb_dataset_terminate(&ds_z);
+
+    cmb_assert_always(sigma_max < 5.0);
+}
+
+
 /* Normal distribution using Box-Muller approach for comparison purposes */
 static double normal_bm(const double m, const double s)
 {
@@ -482,6 +542,65 @@ static void test_speed_normal(const uint64_t nsamples, const double m, const dou
            ti / tz, 100.0 * (ti - tz) / ti);
 
     cmi_test_print_line("=");
+}
+
+static void test_tail_std_normal(const uint64_t nsamples)
+{
+    const double t[] = {0.0005, 0.001, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1 };
+    const unsigned n_t = sizeof t / sizeof t[0];
+
+    struct cmb_dataset ds_z = { 0 };
+    struct cmb_dataset ds_i = { 0 };
+    cmb_dataset_initialize(&ds_z);
+    cmb_dataset_initialize(&ds_i);
+
+    for (uint64_t ui = 0; ui < nsamples; ui++) {
+        const double x = cmb_random_std_normal();
+        cmb_dataset_add(&ds_z, x);
+        const double y = normal_bm(0.0, 1.0);
+        cmb_dataset_add(&ds_i, y);
+    }
+
+    printf("\nBinomial tail test, standard normal, n = %" PRIu64 "\n", nsamples);
+    printf("t        expected      obs (zig)      deficit      sigma      obs (B-M)      deficit      sigma\n");
+
+    double sigma_max = 0.0;
+    for (unsigned ut = 0; ut < n_t; ut++) {
+        uint64_t cnt_z = 0u;
+        uint64_t cnt_i = 0u;
+        for (uint64_t ui = 0; ui < ds_z.count; ui++) {
+            const double x = ds_z.xa[ui];
+            if (fabs(x) <= t[ut]) {
+                cnt_z++;
+            }
+
+            const double y = ds_i.xa[ui];
+            if (fabs(y) <= t[ut]) {
+                cnt_i++;
+            }
+        }
+
+        const double p  = erf(t[ut] / sqrt(2.0));
+        const double e  = (double)nsamples * p;
+        const double sd = sqrt((double)nsamples * p * (1.0 - p));
+        const double zz  = ((double)cnt_z - e) / sd;
+        const double zi  = ((double)cnt_i - e) / sd;
+
+        printf("%-8.4f %12.1f %12" PRIu64 " %10.4f%% %10.2f %12" PRIu64 " %10.4f%% %10.2f\n",
+               t[ut], e,
+               cnt_z, 100.0 * (e - (double)cnt_z) / e, zz,
+               cnt_i, 100.0 * (e - (double)cnt_i) / e, zi);
+
+        const double sig_abs = fabs(zz);
+        if (sig_abs > sigma_max) {
+            sigma_max = sig_abs;
+        }
+    }
+
+    cmb_dataset_terminate(&ds_i);
+    cmb_dataset_terminate(&ds_z);
+
+    cmb_assert_always(sigma_max < 5.0);
 }
 
 struct cdf_triang_params {
@@ -1529,6 +1648,8 @@ int main(const int argc, char *argv[])
     test_quality_triangular(nsamples, -1.0, 2.0, 3.0);
 
     test_quality_std_normal(nsamples);
+    test_tail_std_normal(10u * nsamples);
+
     test_quality_normal(nsamples, 2.0, 1.0);
     if (fixed_seed == false) {
         /* Probably trying to compare outputs, and this one is not deterministic */
@@ -1536,7 +1657,12 @@ int main(const int argc, char *argv[])
     }
 
     test_quality_std_exponential(nsamples);
+    test_tail_std_exponential(10u * nsamples);
+
     test_quality_exponential(nsamples, 2.0);
+    test_quality_exponential(nsamples, 0.01);
+    test_quality_exponential(nsamples, 1.0e6);
+
     if (fixed_seed == false) {
          test_speed_exponential(nsamples, 2.0);
     }
