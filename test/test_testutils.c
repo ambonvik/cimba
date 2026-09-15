@@ -198,9 +198,8 @@ static void test_gof_disc(const uint64_t nsamples)
     cmb_datasummary_initialize(&dsu);
 
     printf("Generating %" PRIu64 " actual U(0,9) samples\n", nsamples);
-    const uint64_t m = 10u;
     for (uint64_t ui = 0u; ui < nsamples; ui++) {
-        const double x = cmb_random_discrete_uniform(m);
+        const double x = cmb_random_discrete_uniform(10u);
         cmb_dataset_add(&ds_good, x);
     }
 
@@ -208,12 +207,12 @@ static void test_gof_disc(const uint64_t nsamples)
     cmb_datasummary_print(&dsu, stdout, true);
     cmb_dataset_histogram_print(&ds_good, stdout, 20, 0.0, 0.0);
 
-    const double p_vec[12] = {       0.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.0      };
-    const double v_vec[12] = { -INFINITY, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, INFINITY };
+    const double pu_vec[12] = {       0.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.0      };
+    const double vu_vec[12] = { -INFINITY, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, INFINITY };
 
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
-    cmi_test_gof_disc(m, p_vec, v_vec, &ds_good, result);
+    cmi_test_gof_disc(10u, pu_vec, vu_vec, &ds_good, result);
     cmi_test_outcome_print(result, stdout);
 
     printf("Creating a poisoned sample\n");
@@ -230,7 +229,49 @@ static void test_gof_disc(const uint64_t nsamples)
     cmb_dataset_histogram_print(&ds_poisoned, stdout, 20, 0.0, 0.0);
 
     cmi_memset(result, 0, sizeof(*result));
-    cmi_test_gof_disc(m, p_vec, v_vec, &ds_poisoned, result);
+    cmi_test_gof_disc(10u, pu_vec, vu_vec, &ds_poisoned, result);
+    cmi_test_outcome_print(result, stdout);
+
+    cmb_datasummary_reset(&dsu);
+    cmb_dataset_reset(&ds_poisoned);
+    cmb_dataset_reset(&ds_good);
+
+    printf("Creating a geometric sample\n");
+    const double p_g = 0.01;
+    for (uint64_t ui = 0u; ui < nsamples; ui++) {
+        const double x = cmb_random_geometric(p_g);
+        cmb_dataset_add(&ds_good, x);
+    }
+
+    cmb_dataset_summarize(&ds_good, &dsu);
+    cmb_datasummary_print(&dsu, stdout, true);
+    cmb_dataset_histogram_print(&ds_good, stdout, 20, 0.0, 0.0);
+
+    double pg_vec[22] = { 0 };
+    double vg_vec[22] = { 0 };
+
+    pg_vec[0] = 0.0;
+    vg_vec[0] = 0.0;
+
+    double pg_tmp = p_g;
+    double pg_sum = 0.0;
+    for (unsigned ui = 1u; ui <= 20u; ui++) {
+        pg_vec[ui] = pg_tmp;
+        vg_vec[ui] = (double)ui;
+        pg_sum += pg_tmp;
+        pg_tmp *= (1.0 - p_g);
+    }
+    pg_vec[21] = 1.0 - pg_sum;
+    vg_vec[21] = 20.0 + 1.0 / p_g;
+
+    printf("Geometric, p = %f\n", p_g);
+    printf("x\tp\n");
+    for (unsigned ui = 0; ui < 22; ui++) {
+        printf("%g\t%g\n", vg_vec[ui], pg_vec[ui]);
+    }
+
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(20u, pg_vec, vg_vec, &ds_good, result);
     cmi_test_outcome_print(result, stdout);
 
     cmb_datasummary_terminate(&dsu);
