@@ -841,8 +841,9 @@ even for just drawing a single `sfc64` sample for every `fmix64` hash and
 output from the periodic reinitializations.
 
 The tests above each pulled 137.4 billion samples without finding any non-random
-patterns in the data. In an attempt to find its limit, we let one run (with one million
-samples per reseeding, more representative of actual use) continue to 32 terabytes:
+patterns in the data. In an attempt to find its limit, we let one run continue to
+32 terabytes, using one million samples per reseeding to represent the expected usage
+pattern:
 
 .. code-block:: none
 
