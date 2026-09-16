@@ -13,8 +13,8 @@ see the git commit history.
   * Surfaced and fixed a small bias for normal and exponential distributions, 
     underrepresenting sample values close to zero (exponential) or to the mean 
     (normal). Measured bias -3.1 % for t <= 0.001, affecting all versions of Cimba 
-    before Sep 19, 2026 (fixed in commit d80a2ea)
-* Expanded documentation section on pseudo-random number generator verification
+    before Sep 15, 2026 (fixed in commit d80a2ea)
+* Expanded documentation section on pseudo-random number generator verification.
 
 ### 2026-08-30: 3.0.0-rc2 Release Candidate 2
 * Minor bug fixes and performance improvements.
