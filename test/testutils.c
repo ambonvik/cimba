@@ -1191,8 +1191,10 @@ double cmi_test_gof_disc(const uint64_t m,
 {
     /* Verify validity: Probabilities sum to 1.0, strictly ascending values */
     cmb_assert_release(m >= 2u);
-    for (uint64_t i = 1u; i < m + 2u; i++) {
-        cmb_assert_release(val_vec[i] > val_vec[i-1]);
+    for (uint64_t ui = 1u; ui < m + 2u; ui++) {
+        const double v_this = val_vec[ui];
+        const double v_prev = val_vec[ui - 1u];
+        cmb_assert_release(v_this > v_prev);
     }
 
     double p_sum = 0.0;
@@ -1201,7 +1203,7 @@ double cmi_test_gof_disc(const uint64_t m,
         p_sum += pmf_vec[ui];
     }
 
-    cmb_assert_release(fabs(1.0 - p_sum) < 1e-12);
+    cmb_assert_release(fabs(1.0 - p_sum) < 1e-14 * (double)m);
 
     /* Bin the data set */
     bool found_invalid_sample = false;
@@ -1305,13 +1307,7 @@ double cmi_test_gof_disc(const uint64_t m,
         }
 
         cmb_assert_debug(sum_n == n);
-        cmb_assert_debug(fabs(sum_p - 1.0) < 1e-12);
-
-        printf("Lumped\n");
-        printf("x\tp\tn\n");
-        for (unsigned ui = 0; ui < n_bins; ui++) {
-            printf("%g\t%g\t%" PRIu64 "\n", xvec_lumped[ui], pvec_lumped[ui], bins_lumped[ui]);
-        }
+        cmb_assert_release(fabs(sum_p - 1.0) < fmax(1e-12, 1e-14 * (double)(m + 2u)));
 
         /* Calculate residuals and chi squared statistic */
         double x2 = 0.0;
@@ -1325,17 +1321,25 @@ double cmi_test_gof_disc(const uint64_t m,
 
         const unsigned k_eff = (n_bins >= NEYMAN_K + 2u)
                      ? NEYMAN_K : (unsigned)(n_bins - 2u);
-        printf("K_eff: %u\n", k_eff);
 
         /* Run Pearson and Neyman */
         pearson_chisquare(x2, n_bins, result);
-        neyman_smooth_weighted(k_eff, rv, x2, n_bins, xvec_lumped, pvec_lumped, result);
+        if (k_eff >= 1) {
+            neyman_smooth_weighted(k_eff, rv, x2, n_bins, xvec_lumped, pvec_lumped, result);
 
-        /* Use the combined Neyman for top level result */
-        result->combined_lp = result->p[1].s;
-        result->combined_sigma = result->p[1].s;
+            /* Use the combined Neyman for top level result */
+            result->combined_lp = result->p[1].s;
+            result->combined_sigma = result->p[1].s;
 
-        sigma = result->combined_sigma;
+            sigma = result->combined_sigma;
+        }
+        else {
+            /* Use the Pearson only for top level result */
+            result->combined_lp = result->p[0].s;
+            result->combined_sigma = result->p[0].s;
+
+            sigma = result->combined_sigma;
+        }
 
         cmi_free(xvec_lumped);
         cmi_free(pvec_lumped);
@@ -1344,7 +1348,6 @@ double cmi_test_gof_disc(const uint64_t m,
     }
 
     cmi_free(bins_raw);
-    printf("Returns sigma = %f\n", sigma);
 
     return sigma;
 }
@@ -1427,12 +1430,12 @@ const char *cmi_test_interpretation(const double sigma)
     int nw = 0;
     if (ltail > -700.0) {
         nw = snprintf(buf, CMI_TEST_BUF_SIZE,
-                      "Sigma: %#.4g\tOdds: 1 in %.2g\t%s%s",
+                      "Sigma: %#+6.4g\tOdds: 1 in %#4.3g\t%s%s",
                       sigma, exp(-ltail), d, a);
     }
     else {
         nw = snprintf(buf, CMI_TEST_BUF_SIZE,
-                      "Sigma: %#.4g \tOdds: 1 in 10^%.0f\t%s%s",
+                      "Sigma: %#+7.4g \tOdds: 1 in 10^%.0f\t%s%s",
                       sigma, -ltail / M_LN10, d, a);
     }
 
@@ -1451,8 +1454,8 @@ void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp)
         || (r->type == CMI_TEST_GOF_DISCRETE)) {
         if (r->status == CMI_TEST_OK) {
             cmi_test_fnprint_line(fp, "-", 120u);
-            fprintf(fp, "Test:                                "
-                        "\tAct.:   \tExp.:   \tInterpretation:\n");
+            fprintf(fp, "Goodness-of-fit test:                "
+                        "\tActual: \tExpected:\tInterpretation:\n");
             cmi_test_fnprint_line(fp, "-", 120u);
             for (unsigned ui = 0; ui < r->nparts; ui++) {
                 const struct cmi_test_partial *rp = &(r->p[ui]);
@@ -1464,7 +1467,7 @@ void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp)
                     rp->name, rp->v, rp->e, cmi_test_interpretation(rp->s));
             }
 
-            if (r->k_eff < NEYMAN_K) {
+            if ((r->k_eff >= 1u) && (r->k_eff < NEYMAN_K)) {
                 fprintf(fp, "\tNote: Neyman order reduced to %u dimension%s, only %u bins remaining after data lumping.\n",
                     r->k_eff, ((r->k_eff == 1u) ? "" : "s"), r->n_bins);
 
@@ -1477,11 +1480,15 @@ void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp)
 
             if (r->type == CMI_TEST_GOF_CONTINUOUS) {
                 fprintf(fp, "Combined assessment, Bonferroni on Neyman + Anderson-Darling:\t%s\n",
-                    cmi_test_interpretation(r->combined_sigma));
+                            cmi_test_interpretation(r->combined_sigma));
+            }
+            else if (r->k_eff >= 1u) {
+                fprintf(fp, "Combined assessment (Neyman only due to the discrete data):  \t%s\n",
+                            cmi_test_interpretation(r->combined_sigma));
             }
             else {
-                fprintf(fp, "Combined assessment (Neyman only due to the discrete data):  \t%s\n",
-                    cmi_test_interpretation(r->combined_sigma));
+                fprintf(fp, "Combined assessment (Pearson only due to few discrete values):\t%s\n",
+                            cmi_test_interpretation(r->combined_sigma));
             }
         }
         else if (r->status == CMI_TEST_TOO_FEW) {
