@@ -261,14 +261,9 @@ static void test_gof_disc(const uint64_t nsamples)
         pg_sum += pg_tmp;
         pg_tmp *= (1.0 - p_g);
     }
+
     pg_vec[21] = 1.0 - pg_sum;
     vg_vec[21] = 20.0 + 1.0 / p_g;
-
-    printf("Geometric, p = %f\n", p_g);
-    printf("x\tp\n");
-    for (unsigned ui = 0; ui < 22; ui++) {
-        printf("%g\t%g\n", vg_vec[ui], pg_vec[ui]);
-    }
 
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(20u, pg_vec, vg_vec, &ds_good, result);
