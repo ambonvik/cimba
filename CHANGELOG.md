@@ -10,7 +10,9 @@ see the git commit history.
 * Comprehensive statistical tests for pseudo-random number generators and 
   distributions, all passing multiple quality tests.
   * Surfaced and fixed a small bias for normal and exponential distributions, 
-    underrepresenting sample values close to zero (exponential) or to the mean (normal).
+    underrepresenting sample values close to zero (exponential) or to the mean 
+    (normal). Measured bias -3.1 % for t <= 0.001, affecting all versions of Cimba 
+    before Sep 19, 2026 (fixed in commit d80a2ea)
 
 ### 2026-08-30: 3.0.0-rc2 Release Candidate 2
 * Minor bug fixes and performance improvements.
