@@ -1131,6 +1131,12 @@ and destroyed with :c:func:`cmb_random_alias_destroy()`. (In this case, we have 
 the allocation and initialization steps into a single ``_create()`` function, and the
 termination and deallocation steps into the ``_destroy()`` function.)
 
+All of these distributions are tested for goodness-of-fit using the Pearsson chi
+squared test, the Neyman smooth test, and for continuous-valued distributions the
+Anderson-Darling empirical density function test. All pass the test battery with no
+indications of trouble. You can run the test battery as `build/test/test_random` to
+verify.
+
 
 .. _background_trials:
 

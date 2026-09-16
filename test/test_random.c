@@ -366,6 +366,7 @@ static void test_tail_std_exponential(const uint64_t nsamples)
                cnt_z, 100.0 * (e - (double)cnt_z) / e, zz,
                cnt_i, 100.0 * (e - (double)cnt_i) / e, zi);
 
+        /* Focus on the quality of the production code, track ziggurat only */
         const double sig_abs = fabs(zz);
         if (sig_abs > sigma_max) {
             sigma_max = sig_abs;
@@ -591,6 +592,7 @@ static void test_tail_std_normal(const uint64_t nsamples)
                cnt_z, 100.0 * (e - (double)cnt_z) / e, zz,
                cnt_i, 100.0 * (e - (double)cnt_i) / e, zi);
 
+        /* Focus on the quality of the production code, track ziggurat only */
         const double sig_abs = fabs(zz);
         if (sig_abs > sigma_max) {
             sigma_max = sig_abs;
@@ -1383,6 +1385,16 @@ static void test_quality_flip(const uint64_t nsamples)
     print_expected(nsamples, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
+
+    const double p_vec[4] = {       0.0, 0.5, 0.5, 0.0      };
+    const double v_vec[4] = { -INFINITY, 0.0, 1.0, INFINITY };
+
+    struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(2u, p_vec, v_vec, &ds, result);
+    cmi_test_outcome_print(result, stdout);
+    cmi_free(result);
+
     QTEST_FINISH();
 }
 
@@ -1401,6 +1413,16 @@ static void test_quality_bernoulli(const uint64_t nsamples, const double p)
     print_expected(nsamples, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
+
+    const double p_vec[4] = {       0.0,  q,   p,   0.0      };
+    const double v_vec[4] = { -INFINITY, 0.0, 1.0, INFINITY };
+
+    struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(2u, p_vec, v_vec, &ds, result);
+    cmi_test_outcome_print(result, stdout);
+    cmi_free(result);
+
     QTEST_FINISH();
 }
 
@@ -1419,6 +1441,31 @@ static void test_quality_geometric(const uint64_t nsamples, const double p)
     print_expected(nsamples, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
+
+    double pg_vec[22] = { 0 };
+    double vg_vec[22] = { 0 };
+
+    pg_vec[0] = 0.0;
+    vg_vec[0] = 0.0;
+
+    double pg_tmp = p;
+    double pg_sum = 0.0;
+    for (unsigned ui = 1u; ui <= 20u; ui++) {
+        pg_vec[ui] = pg_tmp;
+        vg_vec[ui] = (double)ui;
+        pg_sum += pg_tmp;
+        pg_tmp *= q;
+    }
+
+    pg_vec[21] = 1.0 - pg_sum;
+    vg_vec[21] = 20.0 + 1.0 / p;
+
+    struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(20u, pg_vec, vg_vec, &ds, result);
+    cmi_test_outcome_print(result, stdout);
+    cmi_free(result);
+
     QTEST_FINISH();
 }
 
@@ -1437,12 +1484,41 @@ static void test_quality_binomial(const uint64_t nsamples, const unsigned n, con
     print_expected(nsamples, true, mean, true, var,true, skew, true, kurt);
 
     QTEST_REPORT();
+
+    const unsigned m = n + 1u;
+    double *p_vec = cmi_calloc(m + 2u, sizeof(*p_vec));
+    double *v_vec = cmi_calloc(m + 2u, sizeof(*v_vec));
+
+    p_vec[0] = 0.0;
+    v_vec[0] = -INFINITY;
+
+    const double lgn = lgamma((double)n + 1.0);
+    for (unsigned k = 0u; k <= n; k++) {
+        const double lpk = lgn - lgamma((double)k + 1.0)
+                               - lgamma((double)(n - k) + 1.0)
+                         + (double)k * log(p)
+                         + (double)(n - k) * log1p(-p);
+        p_vec[k + 1u] = exp(lpk);
+        v_vec[k + 1u] = (double)k;
+    }
+
+    p_vec[m + 1u] = 0.0;
+    v_vec[m + 1u] = INFINITY;
+
+    struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(m, p_vec, v_vec, &ds, result);
+    cmi_test_outcome_print(result, stdout);
+    cmi_free(result);
+    cmi_free(v_vec);
+    cmi_free(p_vec);
+
     QTEST_FINISH();
 }
 
-static void test_quality_pascal(const uint64_t nsamples, const unsigned m, const double p)
+static void test_quality_pascal(const uint64_t nsamples, const uint64_t m, const double p)
 {
-    printf("\nQuality testing negative binomial (Pascal) distribution, m = %d, p = %g\n", m, p);
+    printf("\nQuality testing negative binomial (Pascal) distribution, m = %" PRIu64 ", p = %g\n", m, p);
     QTEST_PREPARE();
     QTEST_EXECUTE((double)cmb_random_pascal(m, p), x >= 0);
 
@@ -1455,20 +1531,95 @@ static void test_quality_pascal(const uint64_t nsamples, const unsigned m, const
     print_expected(nsamples, true, mean, true, var, true, skew, true, kurt);
 
     QTEST_REPORT();
+
+    const unsigned kmax = (unsigned)ceil(m * q / p + 12.0 * sqrt(m * q) / p) + 20u;
+
+    double *p_vec = cmi_calloc(kmax + 3u, sizeof(*p_vec));
+    double *v_vec = cmi_calloc(kmax + 3u, sizeof(*v_vec));
+
+    p_vec[0] = 0.0;
+    v_vec[0] = -INFINITY;
+
+    const double c = (double)m * log(p) - lgamma((double)m);
+    double psum = 0.0;
+    double wsum = 0.0;
+    for (unsigned k = 0u; k <= kmax; k++) {
+        const double lpk = c + lgamma((double)k + (double)m)
+                             - lgamma((double)k + 1.0)
+                             + (double)k * log1p(-p);
+        p_vec[k + 1u] = exp(lpk);
+        v_vec[k + 1u] = (double)k;
+        psum += p_vec[k + 1u];
+    }
+
+    double tail_p = 0.0;
+    for (unsigned k = kmax + 1u; k < kmax + 2000u; k++) {
+        const double pk = exp(c + lgamma((double)k + (double)m)
+                                - lgamma((double)k + 1.0)
+                                + (double)k * log1p(-p));
+        tail_p += pk;
+        wsum   += (double)k * pk;
+    }
+
+    p_vec[kmax + 2u] = 1.0 - psum;
+    v_vec[kmax + 2u] = (tail_p > 0.0) ? (wsum / tail_p) : ((double)kmax + 1.0);
+
+    struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(kmax + 1u, p_vec, v_vec, &ds, result);
+    cmi_test_outcome_print(result, stdout);
+
+    cmi_free(result);
+    cmi_free(v_vec);
+    cmi_free(p_vec);
+
     QTEST_FINISH();
 }
 
-
-static void test_quality_poisson(const uint64_t nsamples, const double r)
+static void test_quality_poisson(const uint64_t nsamples, const double rate)
 {
-    printf("\nQuality testing Poisson distribution, r = %g\n", r);
+    printf("\nQuality testing Poisson distribution, rate = %g\n", rate);
 
     QTEST_PREPARE();
-    QTEST_EXECUTE((double)cmb_random_poisson(r), x >= 0);
+    QTEST_EXECUTE((double)cmb_random_poisson(rate), x >= 0);
 
-    print_expected(nsamples, true, r, true, r, true, 1.0 / sqrt(r), true, 1.0 / r);
+    print_expected(nsamples, true, rate, true, rate, true, 1.0 / sqrt(rate), true, 1.0 / rate);
 
     QTEST_REPORT();
+
+    /* Unbounded support: truncate well above the mean, and give the overflow
+     * cell the remaining probability with its own conditional mean. */
+    const unsigned kmax = (unsigned)ceil(rate + 15.0 * sqrt(rate)) + 20u;
+
+    double *p_vec = cmi_calloc(kmax + 3u, sizeof(*p_vec));
+    double *v_vec = cmi_calloc(kmax + 3u, sizeof(*v_vec));
+
+    p_vec[0] = 0.0;
+    v_vec[0] = -INFINITY;
+
+    const double llam = log(rate);
+    for (unsigned k = 0u; k <= kmax; k++) {
+        const double lpk = (double)k * llam - rate - lgamma((double)k + 1.0);
+        p_vec[k + 1u] = exp(lpk);
+        v_vec[k + 1u] = (double)k;
+    }
+
+    double lt0, lt1;
+    cmi_test_log_incomplete_gamma((double)kmax + 1.0, rate, &lt0, NULL);
+    cmi_test_log_incomplete_gamma((double)kmax, rate, &lt1, NULL);
+
+    p_vec[kmax + 2u] = exp(lt0);
+    v_vec[kmax + 2u] = rate * exp(lt1 - lt0);
+
+    struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(kmax + 1u, p_vec, v_vec, &ds, result);
+    cmi_test_outcome_print(result, stdout);
+
+    cmi_free(result);
+    cmi_free(v_vec);
+    cmi_free(p_vec);
+
     QTEST_FINISH();
 }
 
@@ -1481,12 +1632,37 @@ static void test_quality_dice(const uint64_t nsamples, const long a, const long 
     const double mean = (double)(a + b) / 2.0;
     const double var = ((double)(b - a + 1) * (double)(b - a + 1) - 1.0) / 12.0;
     const double skew = 0.0;
-    const double n = (double)(b - a + 1);
-    const double kurt = - (6.0 *(n * n  + 1.0)) / (5.0 * ((n * n - 1.0)));
+    const double dn = (double)(b - a + 1);
+    const double kurt = - (6.0 * (dn * dn  + 1.0)) / (5.0 * ((dn * dn - 1.0)));
 
     print_expected(nsamples, true, mean, true,var,true, skew, true, kurt);
 
     QTEST_REPORT();
+
+    const uint64_t n = b - a + 1u;
+    double *p_vec = cmi_calloc(n + 2u, sizeof(*p_vec));
+    double *v_vec = cmi_calloc(n + 2u, sizeof(*v_vec));
+    p_vec[0] = 0.0;
+    v_vec[0] = -INFINITY;
+
+    const double p = 1.0 / dn;
+    for (uint64_t ui = 1u; ui <= n; ui++) {
+        p_vec[ui] = p;
+        v_vec[ui] = (double)a + (double)(ui - 1u);
+    }
+
+    p_vec[n + 1] = 0.0;
+    v_vec[n + 1] = INFINITY;
+
+    struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(n, p_vec, v_vec, &ds, result);
+    cmi_test_outcome_print(result, stdout);
+
+    cmi_free(result);
+    cmi_free(v_vec);
+    cmi_free(p_vec);
+
     QTEST_FINISH();
 }
 
@@ -1532,6 +1708,29 @@ static void test_quality_loaded_dice(const uint64_t nsamples, const unsigned n, 
     print_discrete_expects(nsamples, n, pa);
 
     QTEST_REPORT();
+
+    double *p_vec = cmi_calloc(n + 2u, sizeof(*p_vec));
+    double *v_vec = cmi_calloc(n + 2u, sizeof(*v_vec));
+    p_vec[0] = 0.0;
+    v_vec[0] = -INFINITY;
+
+    for (uint64_t ui = 1u; ui <= n; ui++) {
+        p_vec[ui] = pa[ui - 1u];
+        v_vec[ui] = (double)(ui - 1u);
+    }
+
+    p_vec[n + 1] = 0.0;
+    v_vec[n + 1] = INFINITY;
+
+    struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(n, p_vec, v_vec, &ds, result);
+    cmi_test_outcome_print(result, stdout);
+
+    cmi_free(result);
+    cmi_free(v_vec);
+    cmi_free(p_vec);
+
     QTEST_FINISH();
 }
 
@@ -1545,7 +1744,31 @@ static void test_quality_vose_alias(const uint64_t nsamples, const unsigned n, c
     print_discrete_expects(nsamples, n, pa);
 
     QTEST_REPORT();
+
+    double *p_vec = cmi_calloc(n + 2u, sizeof(*p_vec));
+    double *v_vec = cmi_calloc(n + 2u, sizeof(*v_vec));
+    p_vec[0] = 0.0;
+    v_vec[0] = -INFINITY;
+
+    for (uint64_t ui = 1u; ui <= n; ui++) {
+        p_vec[ui] = pa[ui - 1u];
+        v_vec[ui] = (double)(ui - 1u);
+    }
+
+    p_vec[n + 1] = 0.0;
+    v_vec[n + 1] = INFINITY;
+
+    struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
+    cmi_memset(result, 0, sizeof(*result));
+    cmi_test_gof_disc(n, p_vec, v_vec, &ds, result);
+    cmi_test_outcome_print(result, stdout);
+
+    cmi_free(result);
+    cmi_free(v_vec);
+    cmi_free(p_vec);
+
     cmb_random_alias_destroy(alp);
+
     QTEST_FINISH();
 }
 
@@ -1705,21 +1928,34 @@ int main(const int argc, char *argv[])
     printf("************************* Integer-valued distributions *************************\n");
 
     test_quality_flip(nsamples);
+
+    test_quality_bernoulli(nsamples, 0.1);
     test_quality_bernoulli(nsamples, 0.6);
+
     test_quality_geometric(nsamples, 0.1);
+    test_quality_geometric(nsamples, 0.6);
+
     test_quality_binomial(nsamples, 10, 0.1);
     test_quality_binomial(nsamples, 100, 0.5);
+    test_quality_binomial(nsamples, 50, 0.7);
+
     test_quality_pascal(nsamples, 10, 0.1);
+    test_quality_pascal(nsamples, 50, 0.7);
+    test_quality_pascal(nsamples, 1, 0.1);
 
     test_quality_poisson(nsamples, 5.0);
-    test_quality_poisson(nsamples, 50.0);
-    test_quality_poisson(nsamples, 1.0e13);
+    test_quality_poisson(nsamples, 16.9);
+    test_quality_poisson(nsamples, 17.1);
+    test_quality_poisson(nsamples, 100.0);
+    test_quality_poisson(nsamples, 5000.0);
 
     test_quality_dice(nsamples, 1, 6);
+    test_quality_dice(nsamples, -1, 5);
 
     double q[7] = { 0.05, 0.05, 0.1, 0.1, 0.2, 0.2, 0.3 };
     test_quality_loaded_dice(nsamples, 7, q);
     test_quality_vose_alias(nsamples, 7, q);
+
     if (fixed_seed == false) {
         test_speed_vose_alias(nsamples, 5, 50, 5);
     }
