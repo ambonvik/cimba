@@ -4,15 +4,17 @@ Note: Version numbers are MAJOR.MINOR.PATCH per [Semantic Versioning](https://se
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
-### 2026-09-xx: 3.0.0-rc3 Release Candidate 3 - in progress
+### 2026-09-16: 3.0.0-rc3 Release Candidate 3 - in progress
 * Minor bug fixes and performance improvements
   * Data collector edge cases (such as taking the median of an empty set).
+  * Faster dataset sorting in debug builds
 * Comprehensive statistical tests for pseudo-random number generators and 
   distributions, all passing multiple quality tests.
   * Surfaced and fixed a small bias for normal and exponential distributions, 
     underrepresenting sample values close to zero (exponential) or to the mean 
     (normal). Measured bias -3.1 % for t <= 0.001, affecting all versions of Cimba 
     before Sep 19, 2026 (fixed in commit d80a2ea)
+* Expanded documentation section on pseudo-random number generator verification
 
 ### 2026-08-30: 3.0.0-rc2 Release Candidate 2
 * Minor bug fixes and performance improvements.

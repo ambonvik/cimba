@@ -13,13 +13,13 @@ It is currently implemented for both Linux and Windows on the x86-64 architectur
 with other platforms planned.
 
 #### Important status note for Release Candidate 1 (Aug 2026): 
-From 3.0.0 RC1, the Cimba object lifecycle Create - Initialize - Terminate - Destroy is
-enforced more strictly than in the Beta versions. This means that all objects in the 
-`cmb_ `namespace _must_ be initialized before they can be used, and that they _must_ be 
-terminated before going out of scope. This also goes for objects with automatic 
-storage duration, i.e., local objects declared on the stack. Also, every 
-`cmb_X_initialize()` for some class `X` _must_ be matched by a `cmb_X_terminate()`, and 
-every `cmb_X_create()` by a `cmb_X_destroy()`. 
+From 3.0.0 RC1 onwards, the Cimba object lifecycle Create - Initialize - Terminate - 
+Destroy is enforced more strictly than in the Beta versions. This means that all 
+objects in the `cmb_ `namespace _must_ be initialized before they can be used, and
+that they _must_ be terminated before going out of scope. This also goes for 
+objects with automatic storage duration, i.e., local objects declared on the stack.
+Also, every `cmb_X_initialize()` for some class `X` _must_ be matched by a
+`cmb_X_terminate()`, and every `cmb_X_create()` by a `cmb_X_destroy()`. 
 
 Previously, omitting `_terminate` or `_destroy` would be a silent memory leak. This 
 will naturally happen when a trial is abandoned midway by calling `cmb_logger_error()`. 
@@ -96,8 +96,10 @@ It is powerful, fast, reliable, and free.
     distributed across many physical cores.
     [Fujimoto (2015)](https://informs-sim.org/wsc15papers/004.pdf) states that performance
     for the PDES algorithms has leveled out at around 250 K events/second/core
-    on massively parallel supercomputers due to inherent clock speed limitations on each core. Further 
-    performance improvement in recent years only comes from increasing the number of cores. 
+    on massively parallel supercomputers due to inherent clock speed limitations on 
+    each core. Further performance improvement in recent years only comes from 
+    increasing the number of cores. 
+  
     *Cimba runs two orders of magnitude faster than this on a per-core basis.* The CPU used 
     in the benchmark above has 32 _physical_ cores, running two threads per physical core.
     Cimba runs about 42 M events/sec on a single core and about 28 M events/second/core on 32
@@ -116,20 +118,23 @@ It is powerful, fast, reliable, and free.
   * The code is written with liberal use of assertions 
     to enforce preconditions, invariants, and postconditions in each function. The 
     assertions act as self-enforcing documentation on expected inputs to and outputs from 
-    the Cimba functions. About 13 % of all code lines are assertions, a very high density.
+    the Cimba functions. About 15 % of all code lines are assertions, a very high density.
   
-  * There are unit tests for each module. Running the unit test battery in debug mode (all
-    assertions active) verifies the correct operation in great detail. You can do that 
-    by the one-liner ``meson test -C build`` from the terminal command line. 
+  * There are unit tests for each module, including comprehensive statistical 
+    goodness-of-fit tests for the pesudo-random number distributions. Running the unit 
+    test battery in a debug build (all assertions active) verifies the correct 
+    operation in great detail. You can do that by the one-liner ``meson test -C 
+    build`` from the terminal command line. 
   
-  * Cimba is compatible with sanitizers for undefined behavior (UBSan), memory address safety 
-    (ASan), thread safety (TSan), and memory leaks (LeakSan). These sanitizers are executed automatically as 
-    GitHub runners on every push to the repository as public verification of our reliability 
-    claim, right here: https://github.com/ambonvik/cimba/actions
+  * Cimba is compatible with sanitizers for undefined behavior (UBSan), memory 
+    address safety (ASan), thread safety (TSan), and memory leaks (LeakSan). These 
+    sanitizers are executed  utomatically as GitHub runners on every push to the 
+    repository as public verification of our reliability claim, right 
+    here: https://github.com/ambonvik/cimba/actions
 
   * The code is routinely reviewed by the latest and greatest AI tools as they become 
-    available, most recently Anthropic Claude Fable 5 (July 2026) and Claude Opus 5
-    (August 2026). Any bugs identified by these reviews are fixed and a follow-up review 
+    available, most recently Anthropic Claude Fable 5 (August 2026) and Opus 5 
+    (September 2026). Any bugs identified by these reviews are fixed and a follow-up review 
     done. The latest reviews can be found here: https://github.com/ambonvik/cimba/tree/main/code_reviews
 
 * *Free*: Cimba should fit well into the budget of most research groups.
@@ -445,9 +450,9 @@ semantics in the model code.
 The C code is liberally sprinkled with `assert` statements testing for preconditions,
 invariants, and postconditions wherever possible, applying 
 [Design by Contract](https://en.wikipedia.org/wiki/Design_by_contract) 
-principles for high reliability. The Cimba library contains 958 asserts in 7132 lines of 
-C code, for a very high assert density of 13.4 %. These are custom-written 
-assert macros that will report 
+principles for high reliability. The Cimba repository contains about 19 500 lines of 
+code. There are 2957 `assert` statements in the codebase, for a very high assert density 
+of 15.1 %. These are custom-written assert macros that will report 
 what trial, what process, the simulated time, the function and line number, and even the 
 random number seed used, if anything should go wrong. All time-consuming invariants and 
 postconditions are debug asserts, while the release asserts mostly check preconditions 
