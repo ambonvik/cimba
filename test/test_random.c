@@ -1449,15 +1449,13 @@ static void test_quality_geometric(const uint64_t nsamples, const double p)
     vg_vec[0] = 0.0;
 
     double pg_tmp = p;
-    double pg_sum = 0.0;
     for (unsigned ui = 1u; ui <= 20u; ui++) {
         pg_vec[ui] = pg_tmp;
         vg_vec[ui] = (double)ui;
-        pg_sum += pg_tmp;
         pg_tmp *= q;
     }
 
-    pg_vec[21] = 1.0 - pg_sum;
+    pg_vec[21] = pow(1.0 - p, 20.0);
     vg_vec[21] = 20.0 + 1.0 / p;
 
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
@@ -1541,28 +1539,20 @@ static void test_quality_pascal(const uint64_t nsamples, const uint64_t m, const
     v_vec[0] = -INFINITY;
 
     const double c = (double)m * log(p) - lgamma((double)m);
-    double psum = 0.0;
-    double wsum = 0.0;
     for (unsigned k = 0u; k <= kmax; k++) {
         const double lpk = c + lgamma((double)k + (double)m)
                              - lgamma((double)k + 1.0)
                              + (double)k * log1p(-p);
         p_vec[k + 1u] = exp(lpk);
         v_vec[k + 1u] = (double)k;
-        psum += p_vec[k + 1u];
     }
 
-    double tail_p = 0.0;
-    for (unsigned k = kmax + 1u; k < kmax + 2000u; k++) {
-        const double pk = exp(c + lgamma((double)k + (double)m)
-                                - lgamma((double)k + 1.0)
-                                + (double)k * log1p(-p));
-        tail_p += pk;
-        wsum   += (double)k * pk;
-    }
+    double lt0, lt1;
+    cmi_test_log_incomplete_beta((double)kmax + 1.0, (double)m,       q, &lt0, NULL);
+    cmi_test_log_incomplete_beta((double)kmax,       (double)m + 1.0, q, &lt1, NULL);
 
-    p_vec[kmax + 2u] = 1.0 - psum;
-    v_vec[kmax + 2u] = (tail_p > 0.0) ? (wsum / tail_p) : ((double)kmax + 1.0);
+    p_vec[kmax + 2u] = exp(lt0);
+    v_vec[kmax + 2u] = ((double)m * q / p) * exp(lt1 - lt0);
 
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
