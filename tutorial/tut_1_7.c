@@ -2,7 +2,9 @@
  * tutorial/tut_1_7.c
  *
  * A complete version of the code from tutorial 1 in its final parallelized
- * version with additional inline comments for documentation.
+ * version with additional inline comments for documentation. Note that the
+ * warmup and duration command line arguments now are multiples of the system
+ * relaxation time rather than fixed numbers of time units.
  *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
@@ -49,7 +51,7 @@ struct trial {
     double arr_rate;
     double srv_rate;
     double warmup_s;
-    double duration_h;
+    double duration_s;
     /* Results */
     uint64_t seed_used;
     double avg_queue_length;
@@ -191,7 +193,7 @@ void run_MM1_trial(void *vtrl)
     /* Schedule the simulation control events */
     double t = trl->warmup_s;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
-    t += trl->duration_h;
+    t += trl->duration_s;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
     /* Set a large negative priority for the stop event to ensure normal events go first */
     cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
@@ -230,8 +232,9 @@ int main(const int argc, char *argv[])
     bool timing_enabled = false;
     uint64_t master_seed = cmb_random_hwseed();
     uint32_t n_reps = 10;
-    double warmup_time = 1000.0;
-    double duration = 1.0e6;
+    /* Multiples of relaxation times, can be set on command line */
+    double warmup_rts = 1000.0;
+    double duration_rts = 100000.0;
 
     /* Not yet added to command line params */
     const unsigned n_rhos = 39;
@@ -245,8 +248,8 @@ int main(const int argc, char *argv[])
         switch (opt) {
             case 'd': {
                 errno = 0;
-                duration = strtod(optarg, NULL);
-                if (errno != 0 || duration <= 0.0) {
+                duration_rts = strtod(optarg, NULL);
+                if (errno != 0 || duration_rts <= 0.0) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     return EXIT_FAILURE;
                 }
@@ -276,15 +279,15 @@ int main(const int argc, char *argv[])
             }
             case 'w': {
                 errno = 0;
-                warmup_time = (double)strtod(optarg, NULL);
-                if (errno != 0 || warmup_time < 0.0) {
+                warmup_rts = (double)strtod(optarg, NULL);
+                if (errno != 0 || warmup_rts < 0.0) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     return EXIT_FAILURE;
                 }
                 break;
             }
             default: {
-                fprintf(stderr, "Usage: %s [-d <duration>][-n <num_replications>][-s <seed>][-t][-w <warmup_time>]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-d <duration>][-n <num_replications>][-s <seed>][-t][-w <warmup>]\n", argv[0]);
                 return EXIT_FAILURE;
             }
         }
@@ -304,11 +307,12 @@ int main(const int argc, char *argv[])
     uint64_t ui_exp = 0u;
     double rho = rho_start;
     for (unsigned ui_rho = 0u; ui_rho < n_rhos; ui_rho++) {
+        const double relaxation_s =  1.0 / ((1.0 - rho) * (1.0 - rho));
         for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
             experiment[ui_exp].arr_rate = rho * srv_rate;
             experiment[ui_exp].srv_rate = srv_rate;
-            experiment[ui_exp].warmup_s = warmup_time;
-            experiment[ui_exp].duration_h = duration;
+            experiment[ui_exp].warmup_s = warmup_rts * relaxation_s;
+            experiment[ui_exp].duration_s = duration_rts * relaxation_s;
             experiment[ui_exp].seed_used = cmb_random_fmix64(master_seed, ui_exp);
             experiment[ui_exp].avg_queue_length = 0.0;
 

@@ -1177,12 +1177,27 @@ Each trial can now use its pre-assigned seed:
 
         cmb_random_initialize(trl->seed_used);
 
+Moreover, if we look *very* carefully at the graph from the previous simulation, there
+may be a slight downward bias in the queue length for the highest utilization. This
+would not be unexpected, since the initial transient decays much more slowly at high
+utilization than at low, and no single fixed warmup period would fit all possible
+utilization levels. We know from the diffusion equations for the queuing system that
+the relaxation time is proportional to :math:`1 / (1 - \rho)^{2}`, i.e., as the square
+of the average queue length.
+
+To allow for this, we redefine our warmup and duration parameters as *multiples of the
+relaxation time calculated from the given service and arrival times* instead of as
+absolute values. This increases the warmup and data collection times by a factor of 100
+for :math:`\rho = 0.9` and 400 for :math:`\rho = 0.95`. We set the default warmup time
+to 1000 relaxation times and the default data collection duration to 100000 relaxation
+times.
+
 We can then type, e.g.:
 
 .. code-block:: none
 
-    [ambonvik@Threadripper tutorial]$ ./tut_1_7 -s 0x123456789abcd0 -d 1e7 -n 15 -w 1e6
-    Cimba version 3.0.0-RC1
+    [ambonvik@Threadripper tutorial]$ ./tut_1_7 -s 0x123456789abcd0 -n 15
+    Cimba version 3.0.0-RC3
     Setting up experiment
     Master seed: 0x123456789abcd0
     Executing experiment
@@ -3310,7 +3325,7 @@ In the first case, rejection sampling or similar, one would probably call
 would rather call ``cmb_logger_error()`` with its ``printf``-style formatted message.
 It will call ``cimba_trial_abandon()`` internally after printing the log entry.
 
-Either way, Cimba will call the necessary destructors on all abandoned ``cmb_ ``objects
+Either way, Cimba will call the necessary destructors on all abandoned ``cmb_`` objects
 in the trial. Any memory that is directly allocated in user code is its own
 responsibility to free. Cimba also provides a callback hook to register a
 clanup-handler for this, avoiding the need to add code for memory cleanup just before
