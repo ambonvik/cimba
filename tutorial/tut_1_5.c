@@ -14,7 +14,7 @@ struct trial {
     double arr_rate;
     double srv_rate;
     double warmup_s;
-    double duration_h;
+    double duration_s;
     /* Results */
     double avg_queue_length;
 };
@@ -132,7 +132,7 @@ void run_MM1_trial(void *vtrl)
 
     double t = trl->warmup_s;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
-    t += trl->duration_h;
+    t += trl->duration_s;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
     cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
 
@@ -166,7 +166,7 @@ int main(void)
     trl.arr_rate = 0.75;
     trl.srv_rate = 1.0;
     trl.warmup_s = 1000.0;
-    trl.duration_h = 1e6;
+    trl.duration_s = 1e6;
 
     run_MM1_trial(&trl);
 

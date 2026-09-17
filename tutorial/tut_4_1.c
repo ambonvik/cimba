@@ -75,7 +75,7 @@ struct trial {
     double unloading_time_avg[2];
 
     /* Control parameters */
-    double warmup_s;
+    double warmup_h;
     double duration_h;
 
     /* Results */
@@ -382,7 +382,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
                         ((struct cmb_process *)shp)->name,
                         *t_sys_p);
 
-        if (cmb_time() > trlp->warmup_s) {
+        if (cmb_time() > trlp->warmup_h) {
             /* Add it to the statistics */
             cmb_dataset_add(simp->time_in_system[shp->size], *t_sys_p);
         }
@@ -509,7 +509,7 @@ void run_trial(void *vtrl)
     cmi_slist_initialize(&(sim.departed_ships));
 
     /* Schedule the simulation control events */
-    double t = trlp->warmup_s;
+    double t = trlp->warmup_h;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
     t += trlp->duration_h;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
@@ -624,8 +624,8 @@ void load_params(struct trial *trlp)
     trlp->unloading_time_avg[SMALL] = 8.0;
     trlp->unloading_time_avg[LARGE] = 12.0;
 
-    trlp->warmup_s = 24.0 * 30;
-    trlp->duration_h = 24.0 * 365;
+    trlp->warmup_h = 30.0 * 24.0;
+    trlp->duration_h = 365.0 * 24.0;
 }
 
 /* The minimal single-threaded main function */

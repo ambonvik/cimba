@@ -37,12 +37,13 @@
 /*
  * Simulation parameters - can be global because const and because only used
  * outside the multithreading when loading the experiment array with trials.
+ * Rates per time unit minute.
  */
-const double arrival_rate = 0.5;
+const double arrival_rate = 1.0;
 const double percent_goldcards = 0.25;
-const double duration_h = 16 * 60.0;
+const double duration_m = 16.0 * 60.0;
 
-/* All multiplied by each visitors patience */
+/* All subject to each visitor's patience */
 const unsigned balking_threshold = 10;
 const double jockeying_threshold = 5.0;
 const double reneging_threshold = 10.0;
@@ -96,6 +97,7 @@ const unsigned num_servers_per_q[NUM_ATTRACTIONS + 2] =
 const unsigned batch_sizes[NUM_ATTRACTIONS + 2] =
     { 0, 1, 5, 5, 1, 10, 5, 8, 1, 1, 0 };
 
+/* Ride durations in minutes */
 const double min_durations[NUM_ATTRACTIONS + 2] =
     { 0.0, 3.0, 5.0, 4.0, 15.0,  8.0, 5.0, 5.0, 6.0, 3.0, 0.0 };
 
@@ -154,7 +156,7 @@ struct simulation {
 
 /* A single trial is defined by these parameters and generates these results. */
 struct trial {
-    double duration_h;
+    double duration_m;
     uint64_t seed_used;
     double avg_time_in_park;
     double avg_time_riding;
@@ -212,7 +214,8 @@ void *serverfunc(struct cmb_process *me, void *vctx)
             struct visitor *vip = batch[ui];
             vip->riding_time += dur;
             struct cmb_process *pp = (struct cmb_process *)vip;
-            cmb_logger_user(stdout, LOGFLAG_SERVICE, "Resuming visitor %s", cmb_process_name(pp));
+            cmb_logger_user(stdout, LOGFLAG_SERVICE,
+                            "Resuming visitor %s", cmb_process_name(pp));
             cmb_process_resume(pp, CMB_PROCESS_SUCCESS);
         }
     }
@@ -294,7 +297,9 @@ void attraction_initialize(struct attraction *ap, const unsigned ui)
             struct server *sp = server_create();
             server_initialize(sp, namebuf, pq,
                               batch_sizes[ui],
-                              min_durations[ui], mode_durations[ui], max_durations[ui]);
+                              min_durations[ui],
+                              mode_durations[ui],
+                              max_durations[ui]);
             ap->servers[qi * num_servers_per_q[ui] + si] = sp;
             server_start(sp);
         }
@@ -437,7 +442,8 @@ void *visitor_proc(struct cmb_process *me, void *vctx)
                     cmb_assert_release(sig == CMB_PROCESS_SUCCESS);
                     vip->num_attractions_visited++;
                     cmb_logger_user(stdout, LOGFLAG_VISITOR,
-                                    "Yay! Leaving attraction %u", vip->current_attraction);
+                                    "Yay! Leaving attraction %u",
+                                    vip->current_attraction);
                     break;
                 }
             }
@@ -630,7 +636,7 @@ void run_trial(void *vtrl)
     cmb_process_initialize(sim.departures, "Departures", departure_proc, &ctx, 0);
     cmb_process_start(sim.departures);
 
-    cmb_event_schedule(end_sim, NULL, &ctx, duration_h, 0);
+    cmb_event_schedule(end_sim, NULL, &ctx, duration_m, 0);
 
     /* Run this trial */
     cmb_event_queue_execute();
@@ -685,7 +691,7 @@ void load_params(struct trial *trlp)
 {
     cmb_assert_release(trlp != NULL);
 
-    trlp->duration_h = duration_h;
+    trlp->duration_m = duration_m;
 }
 
 /*

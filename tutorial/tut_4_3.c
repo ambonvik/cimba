@@ -46,8 +46,8 @@ const unsigned num_berths[N_SIZES][N_LEVELS] = { { 6, 7, 8, 9, 10 },
                                                  { 3, 4, 5, 6, 7 } };
 const double unloading_time_avg[N_SIZES] = { 8.0, 12.0 };
 
-const double warmup_h = 24.0 * 30;
-const double duration_h = 24.0 * 365;
+const double warmup_h = 24.0 * 30.0;
+const double duration_h = 24.0 * 365.0;
 
 /* This implicitly assumes that N_SIZES == 2 */
 enum ship_size {
@@ -104,7 +104,7 @@ struct trial {
     double unloading_time_avg[N_SIZES];
 
     /* Control parameters */
-    double warmup_s;
+    double warmup_h;
     double duration_h;
 
     /* Results */
@@ -320,7 +320,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
     const double docking_time = cmb_random_PERT(0.4, 0.5, 0.8);
     cmb_process_hold(docking_time);
 
-    /* Simulate a trial-abandoning error condition */
+    /* Simulate a trial-abandoning error condition, once every blue moon */
     if (cmb_random_bernoulli(1e-5)) {
         cmb_logger_error(stdout, "Randomly abandoning trial");
     }
@@ -435,7 +435,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
                         ((struct cmb_process *)shp)->name,
                         *t_sys_p);
 
-        if (cmb_time() > trlp->warmup_s) {
+        if (cmb_time() > trlp->warmup_h) {
             /* Add it to the statistics */
             cmb_dataset_add(simp->time_in_system[shp->size], *t_sys_p);
         }
@@ -617,7 +617,7 @@ void run_trial(void *vtrl)
     cmi_slist_initialize(&(simp->departed_ships));
 
     /* Schedule the simulation control events */
-    double t = trlp->warmup_s;
+    double t = trlp->warmup_h;
     cmb_event_schedule(start_rec, NULL, ctxp, t, 0);
     t += trlp->duration_h;
     cmb_event_schedule(stop_rec, NULL, ctxp, t, 0);
@@ -711,7 +711,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
                 experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
@@ -739,7 +739,7 @@ int main(void)
                 experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
                 experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
 
-                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
                 ui_trl++;
@@ -764,7 +764,7 @@ int main(void)
                 experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
                 experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
 
-                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
                 ui_trl++;
@@ -789,7 +789,7 @@ int main(void)
                 experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
                 experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
 
-                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
                 ui_trl++;

@@ -105,7 +105,7 @@ struct trial {
     double unloading_time_avg[N_SIZES];
 
     /* Control parameters */
-    double warmup_s;
+    double warmup_h;
     double duration_h;
 
     /* Results */
@@ -431,7 +431,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
                         ((struct cmb_process *)shp)->name,
                         *t_sys_p);
 
-        if (cmb_time() > trlp->warmup_s) {
+        if (cmb_time() > trlp->warmup_h) {
             /* Add it to the statistics */
             cmb_dataset_add(simp->time_in_system[shp->size], *t_sys_p);
         }
@@ -567,7 +567,7 @@ void run_trial(void *vtrl)
     cmi_slist_initialize(&(sim.departed_ships));
 
     /* Schedule the simulation control events */
-    double t = trlp->warmup_s;
+    double t = trlp->warmup_h;
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
     t += trlp->duration_h;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
@@ -656,7 +656,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
                 ui_trl++;
@@ -678,7 +678,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
                 ui_trl++;
@@ -700,7 +700,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
                 ui_trl++;
@@ -722,7 +722,7 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].warmup_s = warmup_h;
+                experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
                 ui_trl++;
