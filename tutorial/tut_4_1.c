@@ -397,7 +397,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
 }
 
 /* Event to close down the simulation. */
-void end_sim(void *subject, void *object)
+void end_sim_evnt(void *subject, void *object)
 {
     cmb_unused(subject);
 
@@ -514,7 +514,7 @@ void run_trial(void *vtrl)
     t += trlp->duration_h;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
     /* Set a large negative priority for the stop event to ensure normal events go first */
-    cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
+    cmb_event_schedule(end_sim_evnt, NULL, &ctx, t, -100);
 
     /* Create the arrival and departure processes */
     sim.arrivals = cmb_process_create();

@@ -9,7 +9,7 @@ struct simulation {
     struct cmb_process *srv;
 };
 
-void end_sim(void *subject, void *object)
+void end_sim_evnt(void *subject, void *object)
 {
     cmb_unused(subject);
     cmb_assert_debug(object != NULL);
@@ -78,7 +78,7 @@ int main(void)
     cmb_process_initialize(sim.srv, "Server", service_proc, sim.que, 0);
     cmb_process_start(sim.srv);
 
-    cmb_event_schedule(end_sim, NULL, &sim, 1.0e6, 0);
+    cmb_event_schedule(end_sim_evnt, NULL, &sim, 1.0e6, 0);
     cmb_event_queue_execute();
 
     cmb_buffer_recording_stop(sim.que);

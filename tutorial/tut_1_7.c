@@ -69,7 +69,7 @@ struct context {
 /*
  * Event to close down the simulation.
  */
-void end_sim(void *subject, void *object)
+void end_sim_evnt(void *subject, void *object)
 {
     cmb_unused(subject);
 
@@ -196,7 +196,7 @@ void run_MM1_trial(void *vtrl)
     t += trl->duration_s;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
     /* Set a large negative priority for the stop event to ensure normal events go first */
-    cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
+    cmb_event_schedule(end_sim_evnt, NULL, &ctx, t, -100);
 
     /* Run this trial */
     cmb_event_queue_execute();
@@ -234,7 +234,7 @@ int main(const int argc, char *argv[])
     uint32_t n_reps = 10;
     /* Multiples of relaxation times, can be set on command line */
     double warmup_rts = 1000.0;
-    double duration_rts = 100000.0;
+    double duration_rts = 10000.0;
 
     /* Not yet added to command line params */
     const unsigned n_rhos = 39;
@@ -307,7 +307,8 @@ int main(const int argc, char *argv[])
     uint64_t ui_exp = 0u;
     double rho = rho_start;
     for (unsigned ui_rho = 0u; ui_rho < n_rhos; ui_rho++) {
-        const double relaxation_s =  1.0 / ((1.0 - rho) * (1.0 - rho));
+        const double rmo = 1.0 - sqrt(rho);
+        const double relaxation_s =  1.0  / (rmo * rmo);
         for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
             experiment[ui_exp].arr_rate = rho * srv_rate;
             experiment[ui_exp].srv_rate = srv_rate;
@@ -381,6 +382,7 @@ void write_gnuplot_commands(void)
     fprintf(cmdfp, "set yrange [0:50]\n");
     fprintf(cmdfp, "f(x) = x**2 / (1.0 - x)\n");
     fprintf(cmdfp, "datafile = 'tut_1_7.dat'\n");
+    fprintf(cmdfp, "set samples 500\n");
     fprintf(cmdfp, "plot datafile with yerrorbars lc rgb \"black\", \\\n");
     fprintf(cmdfp, "        f(x) title \"M/M/1\" with lines lw 2 lc rgb \"gray\"\n");
 

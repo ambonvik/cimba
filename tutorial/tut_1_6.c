@@ -28,7 +28,7 @@ struct context {
     struct trial *trl;
 };
 
-void end_sim(void *subject, void *object)
+void end_sim_evnt(void *subject, void *object)
 {
     cmb_unused(subject);
     cmb_assert_debug(object != NULL);
@@ -140,7 +140,7 @@ void run_MM1_trial(void *vtrl)
     cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
     t += trl->duration_s;
     cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
-    cmb_event_schedule(end_sim, NULL, &ctx, t, -100);
+    cmb_event_schedule(end_sim_evnt, NULL, &ctx, t, -100);
 
     cmb_event_queue_execute();
 

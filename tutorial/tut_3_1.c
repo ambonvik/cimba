@@ -583,7 +583,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
 }
 
 /* Event to close down the simulation. */
-void end_sim(void *subject, void *object)
+void end_sim_evnt(void *subject, void *object)
 {
     cmb_unused(subject);
 
@@ -636,7 +636,7 @@ void run_trial(void *vtrl)
     cmb_process_initialize(sim.departures, "Departures", departure_proc, &ctx, 0);
     cmb_process_start(sim.departures);
 
-    cmb_event_schedule(end_sim, NULL, &ctx, duration_m, 0);
+    cmb_event_schedule(end_sim_evnt, NULL, &ctx, duration_m, 0);
 
     /* Run this trial */
     cmb_event_queue_execute();

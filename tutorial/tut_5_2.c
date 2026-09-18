@@ -781,7 +781,7 @@ struct trial {
 /*
  * Event to close down the simulation.
  */
-void end_sim(void *subject, void *object)
+void end_sim_evnt(void *subject, void *object)
 {
     cmb_unused(object);
 
@@ -943,7 +943,7 @@ void run_trial(void *vtrl)
     /* Schedule the simulation control events */
     printf("Scheduling end event\n");
     double t_end_s = trl->duration_s;
-    cmb_event_schedule(end_sim, &sim, NULL, t_end_s, 0);
+    cmb_event_schedule(end_sim_evnt, &sim, NULL, t_end_s, 0);
 
     /* Process to write output events */
     sim.HDF5_output = cmb_process_create();
