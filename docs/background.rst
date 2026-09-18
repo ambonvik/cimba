@@ -111,8 +111,8 @@ Coroutines received significant academic interest in the early years, but were t
 overshadowed by the object-oriented inheritance mechanisms. It seems that current
 trends are turning away from the more complex inheritance mechanisms, in many cases
 using composition instead of (multiple) inheritance, and also reviving the interest in
-coroutines. One fairly recent article is
-https://www.cs.tufts.edu/~nr/cs257/archive/roberto-ierusalimschy/revisiting-coroutines.pdf
+coroutines. One fairly recent article is `Moura & Ierusalemsky (2009) "Revisiting Coroutines"
+<https://www.cs.tufts.edu/~nr/cs257/archive/roberto-ierusalimschy/revisiting-coroutines.pdf>`_.
 
 Unfortunately, when C++ finally got "coroutines" as a part of the language in 2020,
 these turned out to be both less powerful and less efficient than expected. (See
@@ -671,6 +671,9 @@ from the beginning, since the obvious way to code a PRNG is to keep its state in
 variables between calls. To be able to guarantee this property, Cimba contains its own
 PRNG and distributions.
 
+The core pseudo-random number generator `sfc64`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 The PRNG in Cimba is an implementation of Chris Doty-Humphrey's `sfc64`. It
 provides 64-bit output and maintains a 256-bit state. It is certain to have a cycle
 period of at least :math:`2^{64}`, and is both faster and higher statistical quality than
@@ -728,8 +731,11 @@ We initialize the PRNG in a three-stage bootstrapping process:
 The result is a pseudo-random number sequence that cannot be distinguished from true
 randomness by any currently available statistical methods.
 
-As evidence for this statement,we built a small test program to feed the
-:c:func:`cmb_random_sfc64` output to
+Validating `sfc64`
+^^^^^^^^^^^^^^^^^^
+
+As evidence for the above statement, we built a small test program to feed
+:c:func:`cmb_random_sfc64` output to the test suite
 `PractRand <https://pracrand.sourceforge.net>`_,
 including periodic reinitializations with `splitmix64` like what would happen in a
 multi-trial experiment:
@@ -886,6 +892,9 @@ where various entities can carry around their own streams of randomness, but mor
 a property of the simulated world. It just *is*. The simulated entities can obtain
 sample values from it as needed according to whatever distribution is needed.
 
+Validating the basic `cmb_random()` U[0,1) distribution
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 The basic :c:func:`cmb_random_sfc64()` returns an unsigned 64-bit bit pattern from the PRNG.
 This is a bit spartan for most purposes. The function :c:func:`cmb_random()` instead returns
 the sample as a ``double`` between zero and one, strictly :math:`[0,1)`. The first unit
@@ -1009,17 +1018,17 @@ similar to this:
 .. code:: none
 
     ------------------------------------------------------------------------------------------------------------------------
-    Test:                                	Act.:   	Exp.:   	Interpretation:
+    Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
     ------------------------------------------------------------------------------------------------------------------------
-    Pearson's chi squared test          	    12.5	      15	Sigma: -0.3575	Odds: 1 in 1.4
-    Neyman's smooth test combined       	    5.18	      10	Sigma: -1.168	Odds: 1 in 4.1
-        Neyman V1: mean                 	  -0.273	       0	Sigma: -0.2727	Odds: 1 in 1.3
-        Neyman V2: variance             	  0.0978	       0	Sigma: 0.09775	Odds: 1 in 1.1
-        Neyman V3: skewness             	 -0.0292	       0	Sigma: -0.02917	Odds: 1 in 1
-        Neyman V4: kurtosis             	  -0.329	       0	Sigma: -0.3289	Odds: 1 in 1.3
-        Neyman remainder: fine structure	     285	     251	Sigma: 1.466	Odds: 1 in 7
-    Anderson-Darling EDF test           	   0.246	       1	Sigma: -1.921	Odds: 1 in 18
-    Combined assessment, Bonferroni on Neyman + Anderson-Darling:	Sigma: 1.601	Odds: 1 in 9.1
+    Pearson's chi squared test                  10.4          15    Sigma: -0.8140  Odds: 1 in 2.41
+    Neyman's smooth test                        8.23          10    Sigma: -0.2691  Odds: 1 in 1.27
+        Neyman V1: mean                       -0.761           0    Sigma: -0.7612  Odds: 1 in 2.24
+        Neyman V2: variance                    0.989           0    Sigma: +0.9888  Odds: 1 in 3.10
+        Neyman V3: skewness                   0.0976           0    Sigma: +0.0976  Odds: 1 in 1.08
+        Neyman V4: kurtosis                    0.528           0    Sigma: +0.5283  Odds: 1 in 1.67
+        Neyman remainder: fine structure         223         251    Sigma: -1.2666  Odds: 1 in 4.87
+    Anderson-Darling EDF test                  0.692           1    Sigma: -0.1659  Odds: 1 in 1.15
+    Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma: -0.0000  Odds: 1 in 1.00    Unremarkable
     ------------------------------------------------------------------------------------------------------------------------
 
 To demonstrate the sensitivity of the test battery, we can try feeding it data that
@@ -1031,17 +1040,17 @@ test battery in several different ways:
 .. code:: none
 
     ------------------------------------------------------------------------------------------------------------------------
-    Test:                                	Act.:   	Exp.:   	Interpretation:
+    Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
     ------------------------------------------------------------------------------------------------------------------------
-    Pearson's chi squared test          	    92.2	      15	Sigma: 7.170	Odds: 1 in 1.3e+12	High : Failed!
-    Neyman's smooth test combined       	     103	      10	Sigma: 8.447	Odds: 1 in 3.3e+16	High : Failed!!
-        Neyman V1: mean                 	    1.78	       0	Sigma: 1.778	Odds: 1 in 13
-        Neyman V2: variance             	     8.9	       0	Sigma: 8.901	Odds: 1 in 1.8e+18	High : Failed!!
-        Neyman V3: skewness             	  0.0996	       0	Sigma: 0.09957	Odds: 1 in 1.1
-        Neyman V4: kurtosis             	    3.14	       0	Sigma: 3.143	Odds: 1 in 6e+02	High : Unusual
-        Neyman remainder: fine structure	     243	     251	Sigma: -0.3234	Odds: 1 in 1.3
-    Anderson-Darling EDF test           	    15.5	       1	Sigma: 5.354	Odds: 1 in 1.2e+07	High : Very suspect
-    Combined assessment, Bonferroni on Neyman + Anderson-Darling:	Sigma: 8.366	Odds: 1 in 1.7e+16	High : Failed!!
+    Pearson's chi squared test                  79.7          15    Sigma:  +6.40  Odds: 1 in 6.4e+09    Failed
+    Neyman's smooth test                          74          10    Sigma:  +6.75  Odds: 1 in 6.9e+10    Failed
+        Neyman V1: mean                       -0.506           0    Sigma:  -0.51  Odds: 1 in    1.6
+        Neyman V2: variance                     7.59           0    Sigma:  +7.59  Odds: 1 in 3.2e+13    Failed
+        Neyman V3: skewness                   -0.911           0    Sigma:  -0.91  Odds: 1 in    2.8
+        Neyman V4: kurtosis                     2.35           0    Sigma:  +2.35  Odds: 1 in    53.
+        Neyman remainder: fine structure         261         251    Sigma:  +0.46  Odds: 1 in    1.6
+    Anderson-Darling EDF test                   10.3           1    Sigma:  +4.27  Odds: 1 in 5.2e+04    Suspect
+    Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +6.65  Odds: 1 in 3.4e+10    Failed
     ------------------------------------------------------------------------------------------------------------------------
 
 As expected, it detects the bias towards high and low values most strongly as too-high
@@ -1061,14 +1070,10 @@ The verbal scale used for the interpretation is:
 
     |Sigma|  Interpretation
     ------------------------
-    < 3.0
+    < 3.0   Unremarkable (only shown for the overall assessment, otherwise blank)
     > 3.0   Unusual
     > 4.0   Suspect
-    > 5.0   Very suspect
-    > 6.0   Failed
-    > 7.0   Failed!
-    > 8.0   Failed!!
-    > 9.0   Failed!!!
+    > 5.0   Failed
 
 For comparison, a :math:`p = 0.05` level in a two-sided test corresponds
 to a sigma of 1.96. Our scale will first start declaring something "unusual" at two-sided
@@ -1080,37 +1085,35 @@ sigma rather than at two, so raising the threshold from 1.96 to 6 sigma costs ve
 detection power while eliminating most false alarms. That lets us focus on any actual
 defects rather than chasing noise.
 
-We can use this goodness-of-fit test against the uniform distribution on [0,1]
-also to test the other distributions, as long as we can compute the cumulative density
-function :math:`F(x)`. This transformation of the sample :math:`x` *is* distributed
-uniformly on [0,1]. To see why, note that :math:`y = F(x)` is a mapping from the real
-numbers to the range [0,1]. Many random number distributions use the same
-transformation in inverse to generate a variate :math:`x` according to some
-distribution by first generating a uniform variate :math:`u` on [0,1] and then
-transforming it as :math:`x = F^{-1}(u)`.
+Building and validating the other distributions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The various pseudo-random number distributions build on the `sfc64` generator, shaping its
 output to match the required probability density functions. The algorithms used are
-selected for speed and accuracy. Please run
-`the unit test <https://github.com/ambonvik/cimba/blob/main/test/test_random.c>`_
-for verification of the individual distributions versus expected values.
+selected for speed and accuracy. We will only give a brief overview here, please
+refer to the linked articles below and the well-commented source code in ``cmb_random.c``
+for additional detail.
 
-The exponential and normal distributions are implementations of `Chris McFarland's
-improved Ziggurat algorithms <https://arxiv.org/pdf/1403.6870>`_.
+The exponential and normal distributions are implementations of
+`Chris McFarland's improved Ziggurat algorithms <https://arxiv.org/pdf/1403.6870>`_.
+These are fast rejection sampling methods where the inner aprt of the distribution PDF is
+represented by an easily sampled "ziggurat" of rectangles, while the outside of the PDF is
+covered by a tightly fitting set of triangles. As a result, there are very few cases where
+the actual PDF function needs to be evaluated, and the sampling process becomes very fast.
 
-The gamma distribution uses `an algorithm due to Marsaglia and Tsang <https://dl.acm
-.org/doi/10.1145/358407.358414>`_. It uses a similar rejection sampling approach as
-the Ziggurat algorithm, but with a continuous function instead of the stepped rectangles
-of the Ziggurat.
+The gamma distribution uses
+`an algorithm due to Marsaglia and Tsang <https://dl.acm.org/doi/10.1145/358407.358414>`_.
+It uses a similar rejection sampling approach as the ziggurat algorithm, but with a
+continuous function instead of the stepped rectangles of the ziggurat.
 
-Many other distributions are in turn built on top of these, as sums, products, or
-ratios of samples. For example, the infamous Cauchy distribution is the ratio
+Many other distributions are in turn built on top of these three a special cases, sums,
+products, or ratios of samples. For example, the infamous Cauchy distribution is the ratio
 of two normal variates, suitably scaled and shifted.
 
 Cimba also provides a collection of discrete-valued distributions, starting from the
-simple unbiased coin flip in :c:func:`cmb_random_flip`. It also provides Bernoulli trials
-(biased coin flips, if such a thing exists), fair and loaded dice, geometric, Poisson and
-Pascal distributions, and so forth.
+simple unbiased coin flip in :c:func:`cmb_random_flip()`. It also provides Bernoulli
+trials (biased coin flips, if such a thing exists), fair and loaded dice, geometric,
+Poisson and Pascal distributions, and so forth.
 
 The binomial distribution is an implementation of `Wolfgang Hörmann's BTRD algorithm
 <https://research.wu.ac.at/en/publications/the-generation-of-binomial-random-variates-6/>`_
@@ -1119,25 +1122,203 @@ and the Poisson algorithm his `PTRD algorithm
 These are also fast rejection-type algorithms.
 
 In some cases, a model needs to sample based on some empirical, discrete-valued set of
-probabilities. The probabilities can be given as an array *p[n]*, where *p[i]* is the
-probability of outcome *i*, for *0 <= i < n*. A clever algorithm for this is the
-Vose alias method, see https://www.keithschwarz.com/darts-dice-coins/
+probabilities. The probabilities can be given as an array :math:`p[n]`, where
+:math:`p[i]` is the probability of outcome :math:`i`, for :math:`0 <= i < n`. A clever
+algorithm for this is the Vose alias method, see https://www.keithschwarz.com/darts-dice-coins/
 
 The alias method requires an initial step of setting up an alias table, but provides fast
-O(1) sampling thereafter. This is worthwhile for *n* larger than seven or so, and about
-three times faster than the basic O(n) method for *n = 30*. In Cimba, the alias table
-is created by calling :c:func:`cmb_random_alias_create()`, sampled with
+:math:`O(1)` sampling thereafter. This is worthwhile for *n* larger than seven or so, and
+about three times faster than the basic :math:`O(n)` method for :math:`n = 30`. In Cimba,
+the alias table is created by calling :c:func:`cmb_random_alias_create()`, sampled with
 :c:func:`cmb_random_alias_sample()`,
 and destroyed with :c:func:`cmb_random_alias_destroy()`. (In this case, we have bundled
 the allocation and initialization steps into a single ``_create()`` function, and the
 termination and deallocation steps into the ``_destroy()`` function.)
 
-All of these distributions are tested for goodness-of-fit using the Pearsson chi
-squared test, the Neyman smooth test, and for continuous-valued distributions the
-Anderson-Darling empirical density function test. All pass the test battery with no
-indications of trouble. You can run the test battery as `build/test/test_random` to
-verify.
+We can use the same goodness-of-fit test against the uniform distribution on [0,1]
+also to test the other distributions, as long as we can compute the cumulative density
+function :math:`F(x)`. This transformation of the sample :math:`x` *is* distributed
+uniformly on [0,1]. To see why, note that :math:`y = F(x)` is a mapping from the real
+numbers to the range [0,1]. Many random number distributions use the same
+transformation in inverse to generate a variate :math:`x` according to some
+distribution by first generating a uniform variate :math:`u` on [0,1] and then
+transforming it as :math:`x = F^{-1}(u)`.
 
+As an example, this is the (wholly unremarkable) test report for a modified PERT
+distribution:
+
+.. code-block:: none
+
+    Drawing 1000000 samples...
+    Expected vs actual:
+    Count           Mean            StdDev          Variance        Skewness        Excess kurtosis
+    1.000e+06          5.333           1.491           2.222          0.2236         -0.6000
+    1.000e+06          5.335           1.491           2.222          0.2236         -0.5982
+    --------------------------------------------------------------------------------
+    ( -Infinity,      2.000)   |
+    [     2.000,      2.500)   |###=
+    [     2.500,      3.000)   |################-
+    [     3.000,      3.500)   |############################=
+    [     3.500,      4.000)   |######################################=
+    [     4.000,      4.500)   |##############################################=
+    [     4.500,      5.000)   |#################################################=
+    [     5.000,      5.500)   |##################################################
+    [     5.500,      6.000)   |##############################################=
+    [     6.000,      6.500)   |#########################################=
+    [     6.500,      7.000)   |##################################-
+    [     7.000,      7.500)   |##########################-
+    [     7.500,      8.000)   |##################-
+    [     8.000,      8.500)   |###########-
+    [     8.500,      9.000)   |#####-
+    [     9.000,      9.500)   |#=
+    [     9.500,      10.00)   |-
+    [     10.00,   Infinity)   |
+    --------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------------------------------
+    Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
+    ------------------------------------------------------------------------------------------------------------------------
+    Pearson's chi squared test                    15          15    Sigma: +0.11  Odds: 1 in    1.1
+    Neyman's smooth test                        12.2          10    Sigma: +0.60  Odds: 1 in    1.8
+        Neyman V1: mean                         1.19           0    Sigma: +1.19  Odds: 1 in    4.3
+        Neyman V2: variance                   -0.725           0    Sigma: -0.73  Odds: 1 in    2.1
+        Neyman V3: skewness                    0.825           0    Sigma: +0.83  Odds: 1 in    2.4
+        Neyman V4: kurtosis                      1.1           0    Sigma: +1.10  Odds: 1 in    3.7
+        Neyman remainder: fine structure         222         251    Sigma: -1.31  Odds: 1 in    5.3
+    Anderson-Darling EDF test                   1.11           1    Sigma: +0.51  Odds: 1 in    1.6
+    Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma: -0.00  Odds: 1 in    1.0    Unremarkable
+    ------------------------------------------------------------------------------------------------------------------------
+
+
+The test battery performs this goodness-of-fit test for all distributions, all passing
+with no indications of trouble. You can run
+`the full unit test <https://github.com/ambonvik/cimba/blob/main/test/test_random.c>`_
+as``build/test/test_random`` to verify.
+
+Validating a Cimba M/M/1 queueing model
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We can take this validation even further: Our :ref:`first tutorial <tut_1>` built a
+simulation of a M/M/1 queue. Theory predicts that the number of customers in the system
+:math:`N` is exactly geometrically distributed with :math:`P(N = n) = (1-\rho) \rho^{n}`
+for :math:`n = { 0, 1, 2, 3, ... }`. We also know that the time spent in the system
+is exponentially distributed with rate :math:`\mu - \lambda`. We already know from the
+tutorial that the average number of customers in the system seems to pass the eyeball
+test:
+
+.. image:: ../images/tut_1_7.png
+
+However, armed with the statistical Goodness-of-Fit machinery, we can construct a more
+rigorous test. We collect independent samples of the number of customers in the system
+by running the simulation to some multiple of the relaxation time and taking a single
+sample there. Similarly, we can pretermine that we sample the time in the system of the
+:math:`n`'th customer to pass through, where :math:`n` also is determined from a
+sufficent number of relaxation times. These are unbiased samples, independent of the
+situation in the system at the sampling point.
+
+Having built that model, we can run it, e.g., a million times, all with different
+pseudo-random number seeds to get a large data set of independent samples of each
+of the two distributions. One small twist is that the queuing theoretic geometric
+distribution has support from zero (empty queue), while ours has support from one (at
+least one trial before the first success), so we transform the samples by adding
+one to align the distributions. We feed those data sets separatelyto the Goodness-of-Fit
+machinery for discrete and continuous variates, respectively, and get results like these:
+
+.. code-block:: none
+
+    [ambonvik@Threadripper cimba]$ build/test/test_MM1 -n 1000000
+    Cimba version 3.0.0-RC3
+    Master seed: 0x6a227a039c87cb21
+    Utilization: 0.900000
+    Relaxation time: 379.737
+    Duration until collecting number of customers in system: 37973.665961
+    Target customer for collecting time in system ssn 34176
+    Running 1000000 trials...
+    --------------------------------------------------------------------------------
+    Queue lengths:
+    Count           Mean            StdDev          Variance        Skewness        Excess kurtosis
+    1.000e+06          9.017           9.519           90.60           2.013           6.132
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      7.000)   |##################################################
+    [     7.000,      14.00)   |#######################=
+    [     14.00,      21.00)   |###########-
+    [     21.00,      28.00)   |#####-
+    [     28.00,      35.00)   |##=
+    [     35.00,      42.00)   |#-
+    [     42.00,      49.00)   |=
+    [     49.00,      56.00)   |-
+    [     56.00,      63.00)   |-
+    [     63.00,      70.00)   |-
+    [     70.00,      77.00)   |-
+    [     77.00,      84.00)   |-
+    [     84.00,      91.00)   |-
+    [     91.00,      98.00)   |-
+    [     98.00,      105.0)   |-
+    [     105.0,      112.0)   |-
+    [     112.0,      119.0)   |-
+    [     119.0,      126.0)   |-
+    [     126.0,      133.0)   |-
+    [     133.0,      140.0)   |-
+    [     140.0,   Infinity)   |
+    --------------------------------------------------------------------------------
+    Assumed shifted geometric distribution, p = 0.100000, testing...
+    ------------------------------------------------------------------------------------------------------------------------
+    Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
+    ------------------------------------------------------------------------------------------------------------------------
+    Pearson's chi squared test                  26.3          20    Sigma: +1.01  Odds: 1 in    3.2
+    Neyman's smooth test                        13.3          10    Sigma: +0.82  Odds: 1 in    2.4
+        Neyman V1: mean                         1.48           0    Sigma: +1.48  Odds: 1 in    7.2
+        Neyman V2: variance                     1.75           0    Sigma: +1.75  Odds: 1 in    13.
+        Neyman V3: skewness                   -0.826           0    Sigma: -0.83  Odds: 1 in    2.4
+        Neyman V4: kurtosis                    0.442           0    Sigma: +0.44  Odds: 1 in    1.5
+        Neyman remainder: fine structure        20.2          16    Sigma: +0.80  Odds: 1 in    2.4
+    Combined assessment (Neyman only due to the discrete data):     Sigma: +0.82  Odds: 1 in    2.4    Unremarkable
+    ------------------------------------------------------------------------------------------------------------------------
+    --------------------------------------------------------------------------------
+    Time in system:
+    Count           Mean            StdDev          Variance        Skewness        Excess kurtosis
+    1.000e+06          10.02           10.02           100.4           1.994           5.929
+    --------------------------------------------------------------------------------
+    ( -Infinity,      0.000)   |
+    [     0.000,      8.000)   |##################################################
+    [     8.000,      16.00)   |######################-
+    [     16.00,      24.00)   |##########-
+    [     24.00,      32.00)   |####=
+    [     32.00,      40.00)   |##-
+    [     40.00,      48.00)   |=
+    [     48.00,      56.00)   |-
+    [     56.00,      64.00)   |-
+    [     64.00,      72.00)   |-
+    [     72.00,      80.00)   |-
+    [     80.00,      88.00)   |-
+    [     88.00,      96.00)   |-
+    [     96.00,      104.0)   |-
+    [     104.0,      112.0)   |-
+    [     112.0,      120.0)   |-
+    [     120.0,      128.0)   |-
+    [     128.0,      136.0)   |
+    [     136.0,      144.0)   |-
+    [     144.0,   Infinity)   |
+    --------------------------------------------------------------------------------
+    Assumed exponential distribution, m = 10.000000,  testing...
+    ------------------------------------------------------------------------------------------------------------------------
+    Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
+    ------------------------------------------------------------------------------------------------------------------------
+    Pearson's chi squared test                  12.3          15    Sigma: -0.41  Odds: 1 in    1.5
+    Neyman's smooth test                        14.7          10    Sigma: +1.07  Odds: 1 in    3.5
+        Neyman V1: mean                        0.752           0    Sigma: +0.75  Odds: 1 in    2.2
+        Neyman V2: variance                     1.49           0    Sigma: +1.49  Odds: 1 in    7.3
+        Neyman V3: skewness                     2.29           0    Sigma: +2.29  Odds: 1 in    45.
+        Neyman V4: kurtosis                   -0.612           0    Sigma: -0.61  Odds: 1 in    1.8
+        Neyman remainder: fine structure         246         251    Sigma: -0.19  Odds: 1 in    1.2
+    Anderson-Darling EDF test                   1.21           1    Sigma: +0.63  Odds: 1 in    1.9
+    Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma: +0.57  Odds: 1 in    1.8    Unremarkable
+    ------------------------------------------------------------------------------------------------------------------------
+
+We are of course not able to prove correctness, and we are not giving any warranties
+anyway (see the `LICENSE <https://github.com/ambonvik/cimba/blob/main/LICENSE>`_), but
+we have been looking very hard to find any indications of non-correctness here, with a
+notable lack of success in finding any.
 
 .. _background_trials:
 

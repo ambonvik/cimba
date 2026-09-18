@@ -139,6 +139,17 @@ test_logger = executable('test_logger',
 
 test('logger', test_logger)
 
+test_MM1 = executable('test_MM1',
+                          files('test_MM1.c', 'testutils.c'),
+                          include_directories : [inc_api, inc_int],
+                          link_with : cimba_lib,
+                          dependencies : [project_deps],
+                          install : false,
+                          native : true
+)
+
+test('MM1', test_MM1)
+
 test_mempool = executable('test_mempool',
                          files('test_mempool.c', 'testutils.c'),
                          include_directories : [inc_api, inc_int],

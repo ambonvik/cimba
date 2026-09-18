@@ -1189,7 +1189,7 @@ To allow for this, we redefine our warmup and duration parameters as *multiples 
 relaxation time calculated from the given service and arrival times* instead of as
 absolute values. This increases the warmup and data collection times by a factor of 100
 for :math:`\rho = 0.9` and 400 for :math:`\rho = 0.95`. We set the default warmup time
-to 1000 relaxation times and the default data collection duration to 100000 relaxation
+to 1000 relaxation times and the default data collection duration to 10000 relaxation
 times.
 
 We can then type, e.g.:
@@ -1234,7 +1234,7 @@ We can then type, e.g.:
 The chart looks similar, but since we used longer run times and more replications, our
 confidence intervals are tighter:
 
-    .. image:: ../images/tut_1_7.png
+.. image:: ../images/tut_1_7.png
 
 This concludes our first tutorial. We have followed the development steps from a
 first minimal model with basic process interactions to a complete parallelized
