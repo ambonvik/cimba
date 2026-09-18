@@ -50,10 +50,10 @@ static void test_action(void *subject, void *object)
 }
 
 /* Another event: Closes the bar for good */
-static void end_sim(void *subject, void *object)
+static void end_sim_evnt(void *subject, void *object)
 {
-    cmb_logger_user(stdout, USERFLAG, "%s", event_formatter(end_sim, subject, object));
-    cmb_logger_user(stdout, USERFLAG, "===> end_sim: game over <===");
+    cmb_logger_user(stdout, USERFLAG, "%s", event_formatter(end_sim_evnt, subject, object));
+    cmb_logger_user(stdout, USERFLAG, "===> end_sim_evnt: game over <===");
     cmb_event_queue_clear();
 }
 
@@ -65,7 +65,7 @@ struct sym_tab_item {
 
 struct sym_tab_item sym_tab[] = {
     { "test_action", test_action },
-    { "end_sim", end_sim }
+    { "end_sim_evnt", end_sim_evnt }
 };
 
 static const char *evstrs[] = {"foo", "bar", "yuk"};
@@ -118,7 +118,7 @@ void test_events(const uint64_t seed)
     }
 
     printf("Scheduling end event\n");
-    uint64_t handle = cmb_event_schedule(end_sim, NULL, NULL, 100.0, 0);
+    uint64_t handle = cmb_event_schedule(end_sim_evnt, NULL, NULL, 100.0, 0);
     cmb_assert_always(handle != 0u);
     cmb_assert_always(cmb_event_is_scheduled(handle));
     cmb_event_queue_print(stdout, event_formatter);
