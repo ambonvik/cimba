@@ -115,7 +115,7 @@ static void test_gof_cont(const uint64_t nsamples)
     cmb_dataset_initialize(&ds_good);
     cmb_datasummary_initialize(&dsu);
 
-    printf("Generating %" PRIu64 " actual U(0,1) samples\n", nsamples);
+    printf("Generating %" PRIu64 " actual U[0,1) samples\n", nsamples);
     for (uint64_t ui = 0u; ui < nsamples; ui++) {
         const double x = cmb_random();
         cmb_dataset_add(&ds_good, x);
@@ -135,7 +135,7 @@ static void test_gof_cont(const uint64_t nsamples)
 
     const double alpha = 0.99;
     const double beta = 0.99;
-    printf("Generating %" PRIu64 " not quite U(0,1) samples - Beta(%g,%g)\n",
+    printf("Generating %" PRIu64 " not quite U[0,1) samples - Beta(%g,%g)\n",
             nsamples, alpha, beta);
     for (uint64_t ui = 0u; ui < nsamples; ui++) {
         const double x = cmb_random_std_beta(alpha, beta);
