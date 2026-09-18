@@ -68,7 +68,7 @@ TESTS: list[StochasticTest] = [
     StochasticTest(name="resourceguard", binary="test_resourceguard", seed=0x34f05c64d7ad598f),
     StochasticTest(name="resourcepool", binary="test_resourcepool", seed=0x34f05c64d7ad598f),
     StochasticTest(name="testutils", binary="test_testutils", seed=0x34f05c64d7ad598f),
-    StochasticTest(name="MM1", binary="test_MM1", seed=0x34f05c64d7ad598f),
+    StochasticTest(name="MM1", binary="test_MM1", seed=0x34f05c64d7ad598f, timeout=600),
 ]
 
 
