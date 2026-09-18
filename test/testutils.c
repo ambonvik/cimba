@@ -1389,29 +1389,16 @@ double cmi_test_ts(struct cmb_dataset *x,
 }
 
 /* Interpretations inspired by PractRand, somewhat simplified */
-const char *cmi_test_interpretation(const double sigma)
+const char *cmi_test_interpretation(const double sigma, bool comment)
 {
     #define CMI_TEST_BUF_SIZE 120
     static CMB_THREAD_LOCAL char buf[CMI_TEST_BUF_SIZE];
 
-    const char *d, *a;
+    const char *a;
     const double sigabs = fabs(sigma);
     if (sigabs > 3.0) {
-        d = (sigma > 0) ? "High : " : "Low  : ";
-        if (sigabs > 9.0) {
-            a = "Failed!!!";
-        }
-        else if (sigabs > 8.0) {
-            a = "Failed!!";
-        }
-        else if (sigabs > 7.0) {
-            a = "Failed!";
-        }
-        else if (sigabs > 6.0) {
+        if (sigabs > 5.0) {
             a = "Failed";
-        }
-        else if (sigabs > 5.0) {
-            a = "Very suspect";
         }
         else if (sigabs > 4.0) {
             a = "Suspect";
@@ -1421,8 +1408,7 @@ const char *cmi_test_interpretation(const double sigma)
         }
     }
     else {
-        d = "";
-        a = "";
+        a = (comment == true) ? "Unremarkable" : "";
     }
 
     /* Two-sided probabilities */
@@ -1430,13 +1416,13 @@ const char *cmi_test_interpretation(const double sigma)
     int nw = 0;
     if (ltail > -700.0) {
         nw = snprintf(buf, CMI_TEST_BUF_SIZE,
-                      "Sigma: %#+6.4g\tOdds: 1 in %#4.3g\t%s%s",
-                      sigma, exp(-ltail), d, a);
+                      "Sigma: %+6.2f  Odds: 1 in %#6.2g    %s",
+                      sigma, exp(-ltail), a);
     }
     else {
         nw = snprintf(buf, CMI_TEST_BUF_SIZE,
-                      "Sigma: %#+7.4g \tOdds: 1 in 10^%.0f\t%s%s",
-                      sigma, -ltail / M_LN10, d, a);
+                      "Sigma: %+6.2f   Odds: 1 in 10^%.0f    %s",
+                      sigma, -ltail / M_LN10, a);
     }
 
     cmb_assert_debug((nw > 0) && (nw < CMI_TEST_BUF_SIZE));
@@ -1455,40 +1441,40 @@ void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp)
         if (r->status == CMI_TEST_OK) {
             cmi_test_fnprint_line(fp, "-", 120u);
             fprintf(fp, "Goodness-of-fit test:                "
-                        "\tActual: \tExpected:\tInterpretation:\n");
+                        "    Actual:   Expected:    Interpretation:\n");
             cmi_test_fnprint_line(fp, "-", 120u);
             for (unsigned ui = 0; ui < r->nparts; ui++) {
                 const struct cmi_test_partial *rp = &(r->p[ui]);
                 for (unsigned l = 0u; l < rp->level; l++) {
-                    fprintf(fp, "\t");
+                    fprintf(fp, "    ");
                 }
 
-                 fprintf(fp, "%s\t%8.3g\t%8.3g\t%s\n",
-                    rp->name, rp->v, rp->e, cmi_test_interpretation(rp->s));
+                 fprintf(fp, "%s    %8.3g    %8.3g    %s\n",
+                    rp->name, rp->v, rp->e, cmi_test_interpretation(rp->s, false));
             }
 
             if ((r->k_eff >= 1u) && (r->k_eff < NEYMAN_K)) {
-                fprintf(fp, "\tNote: Neyman order reduced to %u dimension%s, only %u bins remaining after data lumping.\n",
+                fprintf(fp, "    Note: Neyman order reduced to %u dimension%s, only %u bins remaining after data lumping.\n",
                     r->k_eff, ((r->k_eff == 1u) ? "" : "s"), r->n_bins);
 
             }
 
             if (r->n_clamped > 0u) {
-                fprintf(fp, "\tNote: Found %" PRIu64" exact 0.0 or 1.0 values in %" PRIu64 " samples, expected %g\n",
+                fprintf(fp, "    Note: Found %" PRIu64" exact 0.0 or 1.0 values in %" PRIu64 " samples, expected %g\n",
                             r->n_clamped, r->n, ldexp((double)r->n, -53));
             }
 
             if (r->type == CMI_TEST_GOF_CONTINUOUS) {
-                fprintf(fp, "Combined assessment, Bonferroni on Neyman + Anderson-Darling:\t%s\n",
-                            cmi_test_interpretation(r->combined_sigma));
+                fprintf(fp, "Combined assessment, Bonferroni on Neyman + Anderson-Darling:   %s\n",
+                            cmi_test_interpretation(r->combined_sigma, true));
             }
             else if (r->k_eff >= 1u) {
-                fprintf(fp, "Combined assessment (Neyman only due to the discrete data):  \t%s\n",
-                            cmi_test_interpretation(r->combined_sigma));
+                fprintf(fp, "Combined assessment (Neyman only due to the discrete data):     %s\n",
+                            cmi_test_interpretation(r->combined_sigma, true));
             }
             else {
-                fprintf(fp, "Combined assessment (Pearson only due to few discrete values):\t%s\n",
-                            cmi_test_interpretation(r->combined_sigma));
+                fprintf(fp, "Combined assessment (Pearson only due to few discrete values):  %s\n",
+                            cmi_test_interpretation(r->combined_sigma, true));
             }
         }
         else if (r->status == CMI_TEST_TOO_FEW) {
@@ -1497,22 +1483,14 @@ void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp)
         }
         else if (r->status == CMI_TEST_OUT_OF_RANGE) {
             fprintf(fp, "Value(s) out of range : Surely failed!\n");
-            if (r->min < test_min_value) {
-                fprintf(fp, "\tSmallest sample %f, expected at least %f\n",
-                            r->min, test_min_value);
-            }
-            if (r->max > test_max_value) {
-                fprintf(fp, "\tLargest sample %f, expected at most %f\n",
-                            r->max, test_max_value);
-            }
+                fprintf(fp, "    Observed range: Min %f, max %f\n", r->min, r->max);
         }
         else if (r->status == CMI_TEST_DEGENERATE) {
-            fprintf(fp, "All data values too close, range %f\n",
-                        r->max - r->min);
+            fprintf(fp, "All data values too close, range %f\n", r->max - r->min);
         }
         else if (r->status == CMI_TEST_SATURATED) {
             fprintf(fp, "Too many exact 0.0 and/or 1.0 samples, would bias results.\n");
-            fprintf(fp, "\tFound %" PRIu64" in %" PRIu64 " samples, expected %g\n",
+            fprintf(fp, "    Found %" PRIu64" in %" PRIu64 " samples, expected %g\n",
                         r->n_clamped, r->n, ldexp((double)r->n, -53));
         }
     }
@@ -1573,12 +1551,12 @@ static void test_chisq_logcdf(void)
     const double dfs[] = { 19.0, 20.0, 19.0, 63.0, 63.0, 20.0, 20.0 };
     cmi_test_print_line("-");
 
-    printf("DoF     \tX2    \tlog(P)  \tlog(Q)  \tOdds          \tSigma\n");
+    printf("DoF         X2        log(P)      log(Q)      Odds              Sigma\n");
     cmi_test_print_line("-");
     for (int i = 0; i < 7; i++) {
         double lp, lq;
         igamma_log(dfs[i] / 2.0, xs[i] / 2.0, &lp, &lq);
-        printf("%4.0f\t%10.4f\t%8.4g\t%8.4g\t", dfs[i], xs[i], lp, lq);
+        printf("%4.0f    %10.4f    %8.4g    %8.4g    ", dfs[i], xs[i], lp, lq);
         const double ltail = (lq < lp) ? lq : lp;
         if (ltail > -700.0) {
             printf("1 in %8.4g", exp(-ltail));
@@ -1587,7 +1565,7 @@ static void test_chisq_logcdf(void)
             printf("1 in 10^%.0f  ", -ltail / M_LN10);
         }
 
-        printf("\t%#12.6g\n", chisq_sigma(dfs[i], xs[i]));
+        printf("    %#12.6g\n", chisq_sigma(dfs[i], xs[i]));
     }
 
     cmi_test_print_line("-");
@@ -1595,7 +1573,7 @@ static void test_chisq_logcdf(void)
         double lp, lq;
         igamma_log(dfs[i] / 2.0, xs[i] / 2.0, &lp, &lq);
         const double sigma = chisq_sigma(dfs[i], xs[i]);
-        const char *str = cmi_test_interpretation(sigma);
+        const char *str = cmi_test_interpretation(sigma, false);
         printf("%s\n", str);
     }
 }

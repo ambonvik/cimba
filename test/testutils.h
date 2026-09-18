@@ -100,8 +100,10 @@ extern double cmi_test_gof_disc(uint64_t m,
                                 const struct cmb_dataset *dsp,
                                 struct cmi_test_outcome *result);
 
-/* Return a text string with an interpretation of a sigma value. */
-extern const char *cmi_test_interpretation(double sigma);
+/* Return a text string with an interpretation of a sigma value.
+ * If the arg `comment` is `true`, also includes a "Unremarkable" string for
+ * insignificant results.  */
+extern const char *cmi_test_interpretation(double sigma, bool comment);
 
 /* Print a short report of a test outcome */
 extern void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp);
@@ -121,7 +123,7 @@ static inline void cmi_test_print_line(const char *str)
 {
     cmb_assert_release(str != NULL);
 
-    cmi_test_fnprint_line(stdout, str, 80u);
+    cmi_test_fnprint_line(stdout, str, 120u);
 }
 
 
