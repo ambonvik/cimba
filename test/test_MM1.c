@@ -303,11 +303,12 @@ int main(const int argc, char *argv[])
             }
             case 'r': {
                 errno = 0;
-                arrival_mean = (double)strtod(optarg, NULL);
-                if (errno != 0 || arrival_mean <= 0.0) {
+                const double rhoarg = (double)strtod(optarg, NULL);
+                if (errno != 0 || rhoarg <= 0.0 || rhoarg >= 1.0) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     return EXIT_FAILURE;
                 }
+                arrival_mean = 1.0 / rhoarg;
                 break;
             }
             default: {
@@ -319,6 +320,7 @@ int main(const int argc, char *argv[])
 
     printf("Cimba version %s\n", cimba_version());
     printf("Master seed: 0x%" PRIx64 "\n", master_seed);
+    printf("Average inter-arrival time: %f, average service time: %f\n", arrival_mean, service_mean);
     const double rho = service_mean / arrival_mean;
     printf("Utilization: %f\n", rho);
     const double tmp = 1.0 - sqrt(rho);
