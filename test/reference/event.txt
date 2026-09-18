@@ -24,7 +24,7 @@ time    14.88 prio 2: hash_key 2	test_action	foo	bar
 time    5.306 prio 3: hash_key 7	test_action	yuk	foo
 time    40.91 prio 3: hash_key 1	test_action	foo	foo
 time    8.957 prio 4: hash_key 9	test_action	yuk	yuk
-time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
+time    100.0 prio 0: hash_key 10	end_sim_evnt	<NULL>	<NULL>
 -------------------------------------------------------
 
 Searching for an event (test_action	bar	foo)...found event 4
@@ -40,7 +40,7 @@ time    17.65 prio 1: hash_key 5	test_action	bar	bar
 time    14.88 prio 2: hash_key 2	test_action	foo	bar
 time    5.306 prio 3: hash_key 7	test_action	yuk	foo
 time    40.91 prio 3: hash_key 1	test_action	foo	foo
-time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
+time    100.0 prio 0: hash_key 10	end_sim_evnt	<NULL>	<NULL>
 -------------------------------------------------------
 
 Wildcard search, searching for test action events with subject yuk, any object
@@ -52,7 +52,7 @@ time    4.452 prio 3: hash_key 3	test_action	foo	yuk
 time    17.65 prio 1: hash_key 5	test_action	bar	bar
 time    4.700 prio 4: hash_key 6	test_action	bar	yuk
 time    40.91 prio 3: hash_key 1	test_action	foo	foo
-time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
+time    100.0 prio 0: hash_key 10	end_sim_evnt	<NULL>	<NULL>
 time    14.88 prio 2: hash_key 2	test_action	foo	bar
 -------------------------------------------------------
 
@@ -62,7 +62,7 @@ time    4.452 prio 3: hash_key 3	test_action	foo	yuk
 time    17.65 prio 1: hash_key 5	test_action	bar	bar
 time    4.700 prio 4: hash_key 6	test_action	bar	yuk
 time    20.00 prio 20: hash_key 12	test_action	yuk	bar
-time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
+time    100.0 prio 0: hash_key 10	end_sim_evnt	<NULL>	<NULL>
 time    14.88 prio 2: hash_key 2	test_action	foo	bar
 time    20.00 prio 20: hash_key 11	test_action	yuk	foo
 time    40.91 prio 3: hash_key 1	test_action	foo	foo
@@ -75,7 +75,7 @@ time    4.452 prio 3: hash_key 3	test_action	foo	yuk
 time    17.65 prio 1: hash_key 5	test_action	bar	bar
 time    4.700 prio 4: hash_key 6	test_action	bar	yuk
 time    20.00 prio 20: hash_key 13	test_action	yuk	yuk
-time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
+time    100.0 prio 0: hash_key 10	end_sim_evnt	<NULL>	<NULL>
 time    14.88 prio 2: hash_key 2	test_action	foo	bar
 time    28.00 prio 20: hash_key 11	test_action	yuk	foo
 time    40.91 prio 3: hash_key 1	test_action	foo	foo
@@ -89,7 +89,7 @@ time    4.452 prio 3: hash_key 3	test_action	foo	yuk
 time    17.65 prio 1: hash_key 5	test_action	bar	bar
 time    4.700 prio 4: hash_key 6	test_action	bar	yuk
 time    20.00 prio 20: hash_key 13	test_action	yuk	yuk
-time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
+time    100.0 prio 0: hash_key 10	end_sim_evnt	<NULL>	<NULL>
 time    14.88 prio 2: hash_key 2	test_action	foo	bar
 time    28.00 prio 20: hash_key 11	test_action	yuk	foo
 time    40.91 prio 3: hash_key 1	test_action	foo	foo
@@ -103,7 +103,7 @@ time    4.452 prio 3: hash_key 3	test_action	foo	yuk
 time    20.00 prio 20: hash_key 13	test_action	yuk	yuk
 time    14.88 prio 2: hash_key 2	test_action	foo	bar
 time    20.00 prio 3: hash_key 12	test_action	yuk	bar
-time    100.0 prio 0: hash_key 10	end_sim	<NULL>	<NULL>
+time    100.0 prio 0: hash_key 10	end_sim_evnt	<NULL>	<NULL>
 time    40.91 prio 3: hash_key 1	test_action	foo	foo
 time    28.00 prio 20: hash_key 11	test_action	yuk	foo
 -------------------------------------------------------
@@ -174,8 +174,8 @@ Time:		Type:	Action: 		Subject:		Object:
     97.449	dispatcher	test_action (45):  test_action	foo	bar
     98.962	dispatcher	test_action (45):  test_action	yuk	foo
     99.636	dispatcher	test_action (45):  test_action	yuk	foo
-    100.00	dispatcher	end_sim (55):  end_sim	<NULL>	<NULL>
-    100.00	dispatcher	end_sim (56):  ===> end_sim: game over <===
+    100.00	dispatcher	end_sim_evnt (55):  end_sim_evnt	<NULL>	<NULL>
+    100.00	dispatcher	end_sim_evnt (56):  ===> end_sim_evnt: game over <===
 --------------------------------------------------------------------------------
 --------------------- Event queue ---------------------
 -------------------------------------------------------
