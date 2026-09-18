@@ -123,7 +123,7 @@ static inline void cmi_test_print_line(const char *str)
 {
     cmb_assert_release(str != NULL);
 
-    cmi_test_fnprint_line(stdout, str, 120u);
+    cmi_test_fnprint_line(stdout, str, 80u);
 }
 
 
