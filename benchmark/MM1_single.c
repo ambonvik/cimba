@@ -50,7 +50,7 @@ struct context {
     struct trial *trl;
 };
 
-void *arrivalfunc(struct cmb_process *me, void *vctx)
+void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     const struct context *ctx = vctx;
@@ -68,7 +68,7 @@ void *arrivalfunc(struct cmb_process *me, void *vctx)
     return NULL;
 }
 
-void *servicefunc(struct cmb_process *me, void *vctx)
+void *service_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     const struct context *ctx = vctx;
@@ -104,10 +104,10 @@ void run_trial(void *vtrl)
     cmb_objectqueue_initialize(sim->queue, "Queue", CMB_UNLIMITED);
 
     sim->arrival = cmb_process_create();
-    cmb_process_initialize(sim->arrival, "Arrival", arrivalfunc, ctx, 0);
+    cmb_process_initialize(sim->arrival, "Arrival", arrival_proc, ctx, 0);
     cmb_process_start(sim->arrival);
     sim->service = cmb_process_create();
-    cmb_process_initialize(sim->service, "Service", servicefunc, ctx, 0);
+    cmb_process_initialize(sim->service, "Service", service_proc, ctx, 0);
     cmb_process_start(sim->service);
 
     cmb_event_queue_execute();
