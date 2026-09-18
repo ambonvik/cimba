@@ -1544,8 +1544,9 @@ static void test_chisq_logcdf(void)
         }
     }
 
-    printf("cases = %d   worst rel err: log P = %.2e   log Q = %.2e\n",
-           n, worst_p, worst_q);
+    cmb_assert_release((worst_p < 1e-12) && (worst_q < 1e-12));
+    /* The exact difference will be math lib implementation dependent, still good enough */
+    printf("cases = %u  log P and log Q verified to better than %g\n", n, 1e-12);
 
     const double xs[] = { 19.7933, 10.1652, 76.0, 126.0, 2520.0, 0.30, 2.5 };
     const double dfs[] = { 19.0, 20.0, 19.0, 63.0, 63.0, 20.0, 20.0 };
