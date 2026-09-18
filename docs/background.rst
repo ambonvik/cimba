@@ -1202,7 +1202,7 @@ simulation of a M/M/1 queue. Theory predicts that the number of customers in the
 :math:`N` is exactly geometrically distributed with :math:`P(N = n) = (1-\rho) \rho^{n}`
 for :math:`n = { 0, 1, 2, 3, ... }`. We also know that the time spent in the system
 is exponentially distributed with rate :math:`\mu - \lambda`. We already know from the
-tutorial that the average number of customers in the system seems to pass the eyeball
+tutorial that the average queue length in this system seems to pass the eyeball
 test:
 
 .. image:: ../images/tut_1_7.png
@@ -1220,7 +1220,7 @@ pseudo-random number seeds to get a large data set of independent samples of eac
 of the two distributions. One small twist is that the queuing theoretic geometric
 distribution has support from zero (empty queue), while ours has support from one (at
 least one trial before the first success), so we transform the samples by adding
-one to align the distributions. We feed those data sets separatelyto the Goodness-of-Fit
+one to align the distributions. We feed those data sets separately to the Goodness-of-Fit
 machinery for discrete and continuous variates, respectively, and get results like these:
 
 .. code-block:: none
@@ -1315,9 +1315,12 @@ machinery for discrete and continuous variates, respectively, and get results li
     Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma: +0.57  Odds: 1 in    1.8    Unremarkable
     ------------------------------------------------------------------------------------------------------------------------
 
-We are of course not able to prove correctness, and we are not giving any warranties
-anyway (see the `LICENSE <https://github.com/ambonvik/cimba/blob/main/LICENSE>`_), but
-we have been looking very hard to find any indications of non-correctness here, with a
+This exercises a very large part of Cimba, not just the pseudo-random number generators
+and distributions, but also the core discrete event processing engine, object queues,
+and memory pools. We are of course not able to prove correctness, and we are not giving
+any warranties anyway (see the
+`LICENSE <https://github.com/ambonvik/cimba/blob/main/LICENSE>`_),
+but we have been looking very hard to find any indications of non-correctness, with a
 notable lack of success in finding any.
 
 .. _background_trials:
