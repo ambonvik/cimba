@@ -69,6 +69,7 @@
 #include "cmb_assert.h"
 
 #include "cmi_memregistry.h"
+#include "cmi_memutils.h"
 
 /**
  * @brief Initiate pseudo-random number distribution using a 64-bit seed. Call
@@ -215,7 +216,7 @@ static inline double cmb_random_std_normal(void)
     const uint64_t bits = cmb_random_sfc64();
 
     int64_t i_cand_x;
-    memcpy(&i_cand_x, &bits, sizeof i_cand_x);
+    cmi_memcpy(&i_cand_x, &bits, sizeof i_cand_x);
     const uint8_t idx = i_cand_x & 0xFF;
 
     return (idx <= cmi_random_nor_zig_max) ?
