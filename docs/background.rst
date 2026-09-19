@@ -1192,7 +1192,7 @@ distribution:
 The test battery performs this goodness-of-fit test for all distributions, all passing
 with no indications of trouble. You can run
 `the full unit test <https://github.com/ambonvik/cimba/blob/main/test/test_random.c>`_
-as``build/test/test_random`` to verify.
+as ``build/test/test_random`` to verify.
 
 Validating a Cimba M/M/1 queueing model
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
