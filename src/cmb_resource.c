@@ -324,6 +324,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
 
     int64_t ret;
     struct cmb_process *pp = cmb_process_current();
+    cmb_assert_release(pp != NULL);
     const int64_t myprio = pp->priority;
     struct cmi_holdable *hrp = &(rp->core);
     cmb_logger_info(stdout, "Preempting resource %s", hrp->base.name);
