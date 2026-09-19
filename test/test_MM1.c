@@ -99,7 +99,6 @@ static void log_qlen_evnt(void *subject, void *object)
     }
 }
 
-
 static void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
