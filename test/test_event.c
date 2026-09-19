@@ -43,9 +43,10 @@ static const char *event_formatter(cmb_event_func *a, const void *s, const void 
 static void test_action(void *subject, void *object)
 {
     cmb_logger_user(stdout, USERFLAG, "%s", event_formatter(test_action, subject, object));
-    const uint64_t hdl = cmb_event_schedule(test_action, subject, object,
-                                            cmb_time() + cmb_random_exponential(10),
-                                            (int16_t)cmb_random_dice(1, 5));
+    const double t = cmb_time() + cmb_random_exponential(10.0);
+    const int64_t p = cmb_random_dice(1, 5);
+
+    const uint64_t hdl = cmb_event_schedule(test_action, subject, object, t, p);
     cmb_assert_always(hdl != 0u);
 }
 
