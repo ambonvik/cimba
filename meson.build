@@ -70,6 +70,13 @@ benchopt_gen_flags = [
 buildtype = get_option('buildtype')
 desired_flags = common_flags + buildtype_flags.get(buildtype, [])
 
+# GCC may emit -Wclobbered for glibc's pthread_cleanup_push()
+# implementation (__cancel_routine / __cancel_arg). These variables are
+# internal to the glibc macro, not Cimba. Suppress them.
+if cc.get_id() == 'gcc'
+    desired_flags += ['-Wno-clobbered']
+endif
+
 if get_option('benchopt') == 'generate'
     desired_flags += benchopt_gen_flags
 elif get_option('benchopt') == 'use'
