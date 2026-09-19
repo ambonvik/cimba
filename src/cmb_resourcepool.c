@@ -428,11 +428,12 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
                              const uint64_t req_amount,
                              const bool preempt)
 {
-    cmb_assert_debug(rpp != NULL);
-    cmb_assert_debug(req_amount > 0u);
-    cmb_assert_debug(rpp->in_use <= rpp->capacity);
+    cmb_assert_release(rpp != NULL);
+    cmb_assert_release(req_amount > 0u);
+    cmb_assert_release(rpp->in_use <= rpp->capacity);
 
     struct cmb_process *caller = cmb_process_current();
+    cmb_assert_release(caller != NULL);
 
     /* Does the caller already hold some? */
     uint64_t initially_held = 0u;
