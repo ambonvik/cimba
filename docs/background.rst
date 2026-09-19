@@ -2052,7 +2052,7 @@ time and guarantee the same result as from a sequential simulation.
 One approach is *optimistic synchronization*, where CPUs are allowed to run ahead, but
 anti-events are sent to initiate rollback if a violation of time sequence is detected.
 This may initiate sequences of cascading rollbacks until causality is re-established.
-The best know algorithm for this is Time Warp, e.g., used in
+The best known algorithm for this is Time Warp, e.g., used in
 `ROSS <https://ross-org.github.io/about.html>`_. Other approaches use *conservative
 synchronization*, not allowing any core to proceed unless the event timestamp is
 guaranteed valid.

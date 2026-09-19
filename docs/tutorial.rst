@@ -837,7 +837,7 @@ the viewpoint, parallelizing a discrete event simulation is either terribly
 hard or trivially simple. The *hard* way to do it is to try to parallelize a
 single simulation run. This is difficult and inefficient, since the outcome of each event
 may influence all future events in complex and model-dependent ways. The discrete event
-simulation algorthm itself is heavily serializing.
+simulation algorithm itself is heavily serializing.
 
 The *easy* way is to realize that we rarely do a *single* simulation run. We want to
 run *many* to generate statistically significant answers to questions and/or to test
@@ -935,7 +935,7 @@ We can then run the experiment:
     printf("Executing experiment\n");
     cimba_run(experiment, n_trials, sizeof(*experiment), run_MM1_trial);
 
-The first argument to ``cimba_run()``is the experiment array, the last argument the
+The first argument to ``cimba_run()`` is the experiment array, the last argument the
 simulation driver function we have developed earlier. It will take a pointer to a trial as
 its argument, but the internals of :c:func:`cimba_run()` cannot know the
 detailed structure of your ``struct trial``, so it will be passed as a ``void *``.
