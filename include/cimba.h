@@ -121,7 +121,8 @@ typedef void (cimba_trial_func)(void *trial_struct);
  * pseudo-random number generators. The generators should be initialized with a
  * seed at the start of each trial. If you just want independent trials with no
  * need for reproducibility, call `cmb_random_hwseed()` to get one based on
- * hardware entropy. It will provide each trial with a unique, truly random seed.
+ * hardware entropy. It will provide each trial with a high-entropy seed using
+ * the best available hardware entropy source for the platform.
  *
  * If you need both randomness and reproducibility, call `cmb_random_hwseed()`
  * once in your main program to get a master seed, use `cmb_random_splitmix64()`
