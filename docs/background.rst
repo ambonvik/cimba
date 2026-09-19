@@ -2003,10 +2003,11 @@ again from the same point when control is passed back into that ``cmb_process``.
 makes for a very natural way to express agentic behavior by simulated processes. The
 stackless Python ``generator`` that SimPy processes are based on cannot do this.
 
-We compile the Cimba code for speed, using gcc v 15.2.1 with options ``-O3 -flto=auto
--fuse-linker-plugin -DNDEBUG -DNASSERT -DLOGINFO`` as appropriate for already well-tested
-code (i.e., everything uncommented in
-`the top level meson.build <https://github.com/ambonvik/cimba/blob/main/meson.build>`_).
+We compile the Cimba code with profile-guided optimization for speed, using gcc v 15.2.1
+with options ``-O3 -flto=auto -fuse-linker-plugin -DNDEBUG -DNASSERT -DLOGINFO`` as
+appropriate for already well-tested
+code (i.e., the command line ``meson setup build-pgo --buildtype=release -Dbenchopt=use``
+and then ``meson compile -C build-pgo`` from the ``cimba`` directory).
 For SimPy, we use Python v 3.14.2. The host system is built around a ASRock TRX40
 Taichi motherboard with an AMD Threadripper 3970x CPU and 128 GB RAM. The OS is Arch
 Linux.
