@@ -304,7 +304,7 @@ void cmb_resource_release(struct cmb_resource *rp) {
  */
 static void wakeup_event_preempt(void *vp, void *arg)
 {
-    cmb_assert_debug(vp != NULL);
+    cmb_assert_release(vp != NULL);
 
     struct cmb_process *pp = (struct cmb_process *)vp;
     cmb_logger_info(stdout, "Wakes %s signal %" PRIi64,
