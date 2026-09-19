@@ -17,7 +17,11 @@ jobs:
       fail-fast: false
       matrix:
         compiler: [gcc, clang]
-        buildtype: [debug, release]
+        build:
+          - type: debug
+            lto: false
+          - type: release
+            lto: true
 
     env:
       CC: ${{ matrix.compiler }}
@@ -30,11 +34,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build nasm meson clang
 
-      - name: Configure and Build
+      - name: Configure
         run: |
           meson setup build \
-            --buildtype=${{ matrix.buildtype }} \
+            --buildtype=${{ matrix.build.type }} \
+            -Db_lto=${{ matrix.build.lto }} \
             -Denable_docs=false
+
+      - name: Build
+        run: |
           meson compile -C build
 
       - name: Test

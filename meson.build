@@ -77,17 +77,7 @@ elif get_option('benchopt') == 'use'
 endif
 
 if host_machine.system() == 'linux'
-    # The initial-exec model is faster than the default global-dynamic for TLS
-    # access  and is safe as long as the library is loaded at program startup
-    # (i.e. linked directly, not via dlopen at runtime).
-    # The NASM objects carry no GNU CET property notes, so linking Cimba on
-    # Linux clears IBT/SHSTK and runs the host process without Intel CET.
-    # Intentional, as the hand-rolled context switch isn't CET-safe, and mirrors
-    # -fcf-protection=none on Windows here.
-    desired_flags += ['-ftls-model=initial-exec',
-                      '-flto=auto',
-                      '-fuse-linker-plugin'
-    ]
+    desired_flags += ['-ftls-model=initial-exec' ]
 endif
 
 if host_machine.system() == 'windows'
