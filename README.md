@@ -118,7 +118,7 @@ It is powerful, fast, reliable, and free.
   * The code is written with liberal use of assertions 
     to enforce preconditions, invariants, and postconditions in each function. The 
     assertions act as self-enforcing documentation on expected inputs to and outputs from 
-    the Cimba functions. About 15 % of all code lines are assertions, a very high density.
+    the Cimba functions. 
   
   * There are unit tests for each module, including comprehensive statistical 
     goodness-of-fit tests for the pesudo-random number distributions. Running the unit 
@@ -451,9 +451,9 @@ semantics in the model code.
 The C code is liberally sprinkled with `assert` statements testing for preconditions,
 invariants, and postconditions wherever possible, applying 
 [Design by Contract](https://en.wikipedia.org/wiki/Design_by_contract) 
-principles for high reliability. The Cimba repository contains about 19 500 lines of 
-code. There are 2957 `assert` statements in the codebase, for a very high assert density 
-of 15.1 %. These are custom-written assert macros that will report 
+principles for high reliability. As of v 3.0, the Cimba library contains 9623 
+lines of C code. Of these, there are 1175 assert statements, for a very high assert 
+density of 12 %. These are custom-written assert macros that will report 
 what trial, what process, the simulated time, the function and line number, and even the 
 random number seed used, if anything should go wrong. All time-consuming invariants and 
 postconditions are debug asserts, while the release asserts mostly check preconditions 
