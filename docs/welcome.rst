@@ -184,18 +184,18 @@ experiment will also give identical results to the same trial run singlethreaded
 the same trial seed.
 
 *Same Cimba version, hardware, compiler and math library, different compiler options:*
-Defining the option ``-DNMXCSR`` used, e.g., in a profiler-guided fully speed optimized
-Cimba build will not save and restore the MXCSR register in coroutine context switches.
-This register contains x86-64 SSE/AVX SIMD floating-point control and status bits,
-such as the rounding mode.
+Mostly identical, with one important exception: Defining the option ``-DNMXCSR`` used, e
+.g., in a profiler-guided fully speed optimized Cimba build will not save and restore
+the MXCSR register in coroutine context switches. This register contains x86-64
+SSE/AVX SIMD floating-point control and status bits, such as the rounding mode.
 
 If the ``-DNMXCSR`` is *not* set, this register will be initialized to inherit the
 floating point control bits of the parent and maintained as a per-coroutine value after
 that. At the end of a coroutine, the content of that coroutine's ``MXCSR`` is lost. Any
-NaN's or Inf's generated may still be propagated into trial results, even if the main
-program's ``MXCSR`` will not carry any exception flags. Each coroutine can set its own
-rounding mode or masking bits without changing those of other coroutines. This is the
-default behavior.
+``NaN``'s or ``Inf``'s generated may still be propagated into trial results, even if the
+main program's ``MXCSR`` will not carry any exception flags. Each coroutine can set
+its own rounding mode or masking bits without changing those of other coroutines. This
+is the default behavior.
 
 If the ``-DNMXCSR`` *is* set, the ``MXCSR`` register is *not* initialized or maintained
 per coroutine, but continues to exist as a global state. Any floating point exceptions
@@ -204,8 +204,8 @@ of the coroutine. This may give subtly different numerical values than the defau
 the user program sets specific rounding flags from within the simulated processes.
 
 For full details about the x86-64 ``MXCSR`` register, see the
-  `Intel <https://software.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-1-manual.pdf>`_,
-  section 10.2.3.
+`Intel <https://software.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-1-manual.pdf>`_,
+section 10.2.3.
 
 *Same Cimba version, different hardware (AMD vs Intel CPU, say), different compiler, or
 different versions of the compiler and its libraries:* There may be numerical differences.
@@ -243,8 +243,10 @@ or as
     const double t = cmb_time() + cmb_random_exponential(10.0);
     cmb_event_schedule(test_action, subject, object, t, p);
 
-If two compilers choose different evaluation orders, your simulation will schedule that
-event at different times and with different priorities. Always make the evaluation
+Each ``cmb_random_`` call returns a pseudo-random number. The values returned for ``t``
+and ``p`` will depend on the sequence they are drawn in. If two compilers choose
+different evaluation orders of the embedded function calls, your simulation will schedule
+the event at different times and with different priorities. Always make the evaluation
 order explicit by writing out the sequence as one of the two examples above if you want
 to have identical sequences of events across compilers.
 
