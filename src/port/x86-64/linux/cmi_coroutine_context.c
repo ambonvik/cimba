@@ -31,8 +31,9 @@
 #include "cmi_memutils.h"
 #include "cmi_sanitizer.h"
 
-/* Assembly function, see src/arc/cmi_coroutine_context_*.asm */
+/* Assembly functions, see src/arc/cmi_coroutine_context_*.asm */
 extern void cmi_coroutine_trampoline(void);
+extern uint32_t cmi_coroutine_mxcsr_get(void);
 
 /* First-entry hook, defined in cmi_coroutine.c */
 extern void *cmi_coroutine_launch(struct cmi_coroutine *cp, void *arg);
@@ -191,9 +192,10 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
 #endif
 
     #ifndef NMXCSR
-        /* Default MXCSR value */
+        /* Inherit current control bits from parent, clearing status bits */
+        const uint32_t mxcsr = _mm_getcsr() & ~UINT32_C(0x3F);
         stkptr -= 8u;
-        *(uint32_t *)(stkptr + 4) = 0x1f80u;
+        *(uint32_t *)(stkptr + 4) = mxcsr;
         *(uint32_t *)stkptr = 0u;
     #endif
 
