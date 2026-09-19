@@ -2040,7 +2040,7 @@ Cimba vs Time Warp PDES
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 Looking to the upper side of Cimba's intended usage, there are interesting reference
-points in the literatureon large-scale parallel discrete event simulation (PDES).
+points in the literature on large-scale parallel discrete event simulation (PDES).
 This has been an active research area since around 1980, originally spurred by the limited
 memory capacity of the computers of the day and the resulting need to divide a large
 simulation between several devices. In these frameworks, each simulation run (trial) is
@@ -2064,14 +2064,14 @@ cores have reached a clock rate limit. Further performance improvement comes fro
 the number of cores.
 
 Unfortunately, we do not have a massively parallel supercomputer available for direct
-benhmarking against Cimba, but to the nearest order of magnitude: The PC we used for
+benchmarking against Cimba, but to the nearest order of magnitude: The PC we used for
 the SimPy benchmark above has 32 physical cores, running two threads per physical core.
 Cimba runs about 42 M events/second on a single core and about 28 M events/second/core
 on 32 physical cores for a scaling efficiency of 68 %.
 
 If those numbers are anywhere near comparable to Fujimoto's, it means that *Cimba runs
-two orders of magnitude faster than Time Warp PDES measured in events/second/core*. The
-reason is that keeping our entire event queue in "hot" CPU cache memory is orders of
+about two orders of magnitude faster than Time Warp PDES measured in events/second/core*.
+The reason is that keeping our entire event queue in "hot" CPU cache memory is orders of
 magnitude faster than communicating the events across a link between separate devices,
 no matter how fast that link is.
 
