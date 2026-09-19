@@ -3810,10 +3810,10 @@ We can then create the experiment in the usual way:
     }
 
 Note that we use ``cmb_random_fmix64()`` to generate unique-but-deterministic seeds for
-each trial. We could simply call ``cmb_random_hwseed()`` to obtain unique seeds from
-CPU entropy, but it would not be reproducible. Instead, ``cmb_random_fmix64()`` hashes
-the master seed (from CPU entropy or command line argument) with a per-trial value
-to set the seed to use per trial.
+each trial. We could simply call ``cmb_random_hwseed()`` to obtain independently
+generated high-entropy seeds from hardware, but it would not be reproducible. Instead,
+``cmb_random_fmix64()`` hashes the master seed (from CPU entropy or command line
+argument) with a per-trial value to set the seed to use per trial.
 
 Only one thing remains: The worker threads need to know what CUDA streams to use. Cimba
 provides this critical connection with the function ``cimba_thread_hooks_set()``. It

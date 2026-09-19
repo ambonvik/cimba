@@ -684,8 +684,8 @@ its own sequence of random numbers, independent from any other trials.
 
 We initialize the PRNG in a three-stage bootstrapping process:
 
-* First, a truly random 64-bit seed can be obtained from a suitable hardware source of
-  entropy by calling :c:func:`cmb_random_hwseed`. It will query the CPU for its best
+* First, a high-entropy 64-bit seed can be obtained from a suitable hardware source
+  by calling :c:func:`cmb_random_hwseed`. It will query the CPU for its best
   source of randomness. On the x86-64 architecture, the preferred source is the
   ``RDSEED`` instruction that is available on Intel CPUs since 2014 and AMD CPUs since
   2016. This instruction uses thermal noise from the CPU itself to create a 64-bit
