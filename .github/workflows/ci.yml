@@ -10,25 +10,36 @@ permissions:
   contents: read
 
 jobs:
-  # Linux: build and test in both debug (all asserts live) and release
+  # Linux: build and test with GCC and Clang, in both debug and release
   linux-build:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false            # let debug and release report independently
+      fail-fast: false
       matrix:
+        compiler: [gcc, clang]
         buildtype: [debug, release]
+
+    env:
+      CC: ${{ matrix.compiler }}
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build nasm meson
+          sudo apt-get install -y ninja-build nasm meson clang
+
       - name: Configure and Build
         run: |
-          meson setup build --buildtype=${{ matrix.buildtype }} -Denable_docs=false
+          meson setup build \
+            --buildtype=${{ matrix.buildtype }} \
+            -Denable_docs=false
           meson compile -C build
+
       - name: Test
         run: meson test -C build --print-errorlogs --timeout-multiplier 3
+
 
   # Linux: follow the install guide end to end, then verify that a downstream
   # program builds against the *installed* headers and library only. Guards
@@ -180,7 +191,7 @@ jobs:
       - name: Configure and Build
         shell: msys2 {0}
         run: |
-          meson setup build
+          meson setup build --buildtype=${{ matrix.buildtype }} -Denable_docs=false
           meson compile -C build
       - name: Test
         shell: msys2 {0}
