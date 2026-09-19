@@ -238,9 +238,10 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     cmb_assert_release(rp != NULL);
     const struct cmi_resourcebase *rbp = &(rp->core.base);
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    struct cmb_process *pp = cmb_process_current();
+    cmb_assert_release(pp != NULL);
 
     cmb_logger_info(stdout, "Acquiring resource %s", rbp->name);
-    struct cmb_process *pp = cmb_process_current();
 
     /* On the first attempt we may grab only if no one is already queued, so a
      * new caller never jumps ahead of waiting processes. After we have waited
