@@ -1529,10 +1529,7 @@ model.
 *Release* asserts enforce preconditions, the things that need to be true for some
 function to work correctly. These remain in the code even with ``-DNDEBUG``, since they
 express the contracts towards surrounding code such as valid ranges for input values.
-These are typically simple and fast statements. If you are absolutely certain that your
-model is working correctly and that all your inputs are valid, you can squeeze out another
-slight speed improvement (about 10 %) by defining the preprocessor symbol ``NASSERT`` and
-making these vanish as well.
+These are typically simple and fast statements.
 
 As an illustration, consider the function :c:func:`cmb_random_uniform()`:
 
@@ -1543,7 +1540,7 @@ As an illustration, consider the function :c:func:`cmb_random_uniform()`:
         cmb_assert_release(min < max);
 
         const double r = min + (max - min) * cmb_random();
-        cmb_assert_debug((r >= min) && (r <= max));
+        cmb_assert_debug((r >= min) && (r < max));
 
         return r;
     }
@@ -1566,14 +1563,7 @@ without a single comment in the code. We are not about to prove total correctnes
 strict C.A.R. Hoare sense, but the function shown above does constitute a logical
 `Hoare triple <https://en.wikipedia.org/wiki/Hoare_logic#Hoare_triple>`_.
 
-There is also an ``cmb_assert_always()`` that remains even if ``NASSERT`` is defined. This
-is for use in test programs that need to demonstrate correctness independent of the
-compilation options. Internally in Cimba, this is only used in the ``cmi_memutils.h``
-wrappers for ``malloc()`` and his friends to test for out-of-memory conditions. These
-function calls are slow anyway, and the consequences of an invalid pointer could be
-hard to trace down, so they will be stopped immediately with very little performance cost.
-
-For empirical data on the relationship between assertions and code quality, see,
+For empirical data on the correlation between assert density and code quality, see,
 e.g., https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2006-54.pdf
 or https://www.cs.ucdavis.edu/~filkov/papers/assert-main.pdf
 
