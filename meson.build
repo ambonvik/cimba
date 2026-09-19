@@ -42,8 +42,8 @@ common_flags = [
 # 'debug'    : full asserts and logging, no optimization
 # 'release'  : standard optimized build, release asserts only
 buildtype_flags = {
-    'debug'   : ['-fno-omit-frame-pointer'],
-    'release' : ['-DNDEBUG', '-DNLOGINFO'],
+    'debug'   : ['-fno-omit-frame-pointer', -Og],
+    'release' : ['-DNDEBUG', '-DNLOGINFO', -O3],
     'plain'   : [],
 }
 
