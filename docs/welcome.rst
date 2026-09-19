@@ -191,26 +191,26 @@ such as the rounding mode.
 
 If the ``-DNMXCSR`` is *not* set, this register will be initialized to inherit the
 floating point control bits of the parent and maintained as a per-coroutine value after
-that. At the end of a coroutine, the content of that coroutine's `MXCSR` is lost. Any
+that. At the end of a coroutine, the content of that coroutine's ``MXCSR`` is lost. Any
 NaN's or Inf's generated may still be propagated into trial results, even if the main
-program's `MXCSR` will not carry any exception flags. Each coroutine can set its own
+program's ``MXCSR`` will not carry any exception flags. Each coroutine can set its own
 rounding mode or masking bits without changing those of other coroutines. This is the
 default behavior.
 
-If the ``-DNMXCSR`` *is* set, the `MXCSR` register is *not* initialized or maintained
+If the ``-DNMXCSR`` *is* set, the ``MXCSR`` register is *not* initialized or maintained
 per coroutine, but continues to exist as a global state. Any floating point exceptions
 or control flags raised in one coroutine will affect all others, also after the end
 of the coroutine. This may give subtly different numerical values than the default if
 the user program sets specific rounding flags from within the simulated processes.
 
-For full details about the x86-64 `MXCSR` register, see the
+For full details about the x86-64 ``MXCSR`` register, see the
   `Intel <https://software.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-1-manual.pdf>`_,
   section 10.2.3.
 
 *Same Cimba version, different hardware (AMD vs Intel CPU, say), different compiler, or
 different versions of the compiler and its libraries:* There may be numerical differences.
 For example, transcendental functions like logarithms and exponentials may round
-differently at a scale of 1^e-15 or so. Taking a difference between two almost equal
+differently at a scale of 1e-15 or so. Taking a difference between two almost equal
 numbers calculated this way *will* give different numerical values on e.g., Ubuntu and
 Arch Linux distros.
 
