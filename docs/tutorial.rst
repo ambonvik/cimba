@@ -4006,5 +4006,5 @@ parallel, efficiently utilizing all the compute power available on a recent
 multi-core, multi-GPU desktop PC for discrete event simulation.
 
 For more detailed information about the various features of Cimba, please see
-the in-depth :ref:`the background section <background>` and
+the in-depth :ref:`background section <background>` and
 the detailed :doc:`API reference pages </api/library_root>`.
