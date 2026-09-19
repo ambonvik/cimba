@@ -112,70 +112,62 @@ Executing the simulation, starting time 3.00000
 --------------------------------------------------------------------------------
 Time:		Type:	Action: 		Subject:		Object:
     4.4525	dispatcher	test_action (45):  test_action	foo	yuk
-    7.3102	dispatcher	test_action (45):  test_action	foo	yuk
     14.876	dispatcher	test_action (45):  test_action	foo	bar
-    17.049	dispatcher	test_action (45):  test_action	foo	yuk
-    17.202	dispatcher	test_action (45):  test_action	foo	yuk
+    15.243	dispatcher	test_action (45):  test_action	foo	bar
+    17.867	dispatcher	test_action (45):  test_action	foo	bar
+    19.667	dispatcher	test_action (45):  test_action	foo	yuk
     20.000	dispatcher	test_action (45):  test_action	yuk	yuk
     20.000	dispatcher	test_action (45):  test_action	yuk	bar
-    23.611	dispatcher	test_action (45):  test_action	yuk	yuk
-    26.701	dispatcher	test_action (45):  test_action	foo	bar
-    27.543	dispatcher	test_action (45):  test_action	yuk	bar
+    20.505	dispatcher	test_action (45):  test_action	yuk	bar
+    21.506	dispatcher	test_action (45):  test_action	foo	bar
+    23.003	dispatcher	test_action (45):  test_action	foo	yuk
+    24.701	dispatcher	test_action (45):  test_action	yuk	bar
     28.000	dispatcher	test_action (45):  test_action	yuk	foo
-    28.402	dispatcher	test_action (45):  test_action	foo	yuk
-    29.424	dispatcher	test_action (45):  test_action	yuk	bar
-    31.369	dispatcher	test_action (45):  test_action	yuk	bar
-    35.646	dispatcher	test_action (45):  test_action	foo	yuk
-    35.983	dispatcher	test_action (45):  test_action	foo	bar
-    36.828	dispatcher	test_action (45):  test_action	yuk	foo
-    39.048	dispatcher	test_action (45):  test_action	foo	yuk
+    29.274	dispatcher	test_action (45):  test_action	foo	yuk
+    29.659	dispatcher	test_action (45):  test_action	foo	yuk
+    32.963	dispatcher	test_action (45):  test_action	foo	bar
+    39.483	dispatcher	test_action (45):  test_action	yuk	foo
+    39.720	dispatcher	test_action (45):  test_action	yuk	bar
     40.911	dispatcher	test_action (45):  test_action	foo	foo
-    41.013	dispatcher	test_action (45):  test_action	foo	yuk
-    41.082	dispatcher	test_action (45):  test_action	foo	bar
-    41.214	dispatcher	test_action (45):  test_action	yuk	foo
-    48.833	dispatcher	test_action (45):  test_action	foo	yuk
-    49.221	dispatcher	test_action (45):  test_action	yuk	yuk
-    52.181	dispatcher	test_action (45):  test_action	foo	bar
-    52.526	dispatcher	test_action (45):  test_action	yuk	yuk
-    52.561	dispatcher	test_action (45):  test_action	yuk	yuk
-    53.924	dispatcher	test_action (45):  test_action	foo	bar
-    55.305	dispatcher	test_action (45):  test_action	foo	foo
-    56.853	dispatcher	test_action (45):  test_action	foo	yuk
-    64.667	dispatcher	test_action (45):  test_action	yuk	yuk
-    65.364	dispatcher	test_action (45):  test_action	foo	foo
-    72.773	dispatcher	test_action (45):  test_action	foo	yuk
-    74.106	dispatcher	test_action (45):  test_action	yuk	yuk
-    74.192	dispatcher	test_action (45):  test_action	yuk	foo
-    75.031	dispatcher	test_action (45):  test_action	yuk	foo
-    76.117	dispatcher	test_action (45):  test_action	foo	foo
-    77.845	dispatcher	test_action (45):  test_action	foo	foo
-    78.690	dispatcher	test_action (45):  test_action	yuk	yuk
-    79.168	dispatcher	test_action (45):  test_action	yuk	bar
-    79.660	dispatcher	test_action (45):  test_action	yuk	foo
-    80.576	dispatcher	test_action (45):  test_action	foo	foo
-    81.451	dispatcher	test_action (45):  test_action	foo	foo
-    81.588	dispatcher	test_action (45):  test_action	foo	foo
-    82.105	dispatcher	test_action (45):  test_action	yuk	foo
-    82.347	dispatcher	test_action (45):  test_action	foo	foo
-    83.818	dispatcher	test_action (45):  test_action	foo	yuk
-    83.928	dispatcher	test_action (45):  test_action	foo	foo
-    84.728	dispatcher	test_action (45):  test_action	yuk	bar
-    90.617	dispatcher	test_action (45):  test_action	foo	yuk
-    91.160	dispatcher	test_action (45):  test_action	yuk	yuk
-    91.679	dispatcher	test_action (45):  test_action	foo	yuk
-    92.534	dispatcher	test_action (45):  test_action	foo	bar
-    93.345	dispatcher	test_action (45):  test_action	yuk	foo
-    93.711	dispatcher	test_action (45):  test_action	foo	bar
-    93.761	dispatcher	test_action (45):  test_action	foo	yuk
-    94.539	dispatcher	test_action (45):  test_action	yuk	foo
-    95.093	dispatcher	test_action (45):  test_action	yuk	foo
-    95.147	dispatcher	test_action (45):  test_action	foo	bar
-    96.578	dispatcher	test_action (45):  test_action	yuk	yuk
-    97.449	dispatcher	test_action (45):  test_action	foo	bar
-    98.962	dispatcher	test_action (45):  test_action	yuk	foo
-    99.636	dispatcher	test_action (45):  test_action	yuk	foo
-    100.00	dispatcher	end_sim_evnt (55):  end_sim_evnt	<NULL>	<NULL>
-    100.00	dispatcher	end_sim_evnt (56):  ===> end_sim_evnt: game over <===
+    42.678	dispatcher	test_action (45):  test_action	yuk	bar
+    46.765	dispatcher	test_action (45):  test_action	foo	yuk
+    50.229	dispatcher	test_action (45):  test_action	foo	foo
+    51.307	dispatcher	test_action (45):  test_action	foo	yuk
+    51.671	dispatcher	test_action (45):  test_action	foo	bar
+    53.892	dispatcher	test_action (45):  test_action	yuk	foo
+    54.405	dispatcher	test_action (45):  test_action	foo	foo
+    55.327	dispatcher	test_action (45):  test_action	yuk	foo
+    57.645	dispatcher	test_action (45):  test_action	yuk	foo
+    58.606	dispatcher	test_action (45):  test_action	yuk	yuk
+    58.735	dispatcher	test_action (45):  test_action	yuk	foo
+    59.135	dispatcher	test_action (45):  test_action	yuk	foo
+    60.614	dispatcher	test_action (45):  test_action	yuk	foo
+    63.721	dispatcher	test_action (45):  test_action	foo	foo
+    64.130	dispatcher	test_action (45):  test_action	foo	foo
+    64.943	dispatcher	test_action (45):  test_action	foo	foo
+    65.936	dispatcher	test_action (45):  test_action	yuk	foo
+    67.585	dispatcher	test_action (45):  test_action	yuk	foo
+    70.120	dispatcher	test_action (45):  test_action	yuk	yuk
+    70.354	dispatcher	test_action (45):  test_action	foo	yuk
+    70.983	dispatcher	test_action (45):  test_action	yuk	bar
+    71.013	dispatcher	test_action (45):  test_action	foo	bar
+    73.208	dispatcher	test_action (45):  test_action	foo	foo
+    74.567	dispatcher	test_action (45):  test_action	yuk	yuk
+    76.929	dispatcher	test_action (45):  test_action	yuk	bar
+    77.359	dispatcher	test_action (45):  test_action	foo	bar
+    79.794	dispatcher	test_action (45):  test_action	yuk	bar
+    80.518	dispatcher	test_action (45):  test_action	yuk	foo
+    81.088	dispatcher	test_action (45):  test_action	foo	bar
+    84.976	dispatcher	test_action (45):  test_action	yuk	bar
+    86.860	dispatcher	test_action (45):  test_action	foo	foo
+    86.924	dispatcher	test_action (45):  test_action	foo	yuk
+    89.380	dispatcher	test_action (45):  test_action	foo	foo
+    90.466	dispatcher	test_action (45):  test_action	yuk	foo
+    91.833	dispatcher	test_action (45):  test_action	yuk	yuk
+    92.010	dispatcher	test_action (45):  test_action	foo	foo
+    93.390	dispatcher	test_action (45):  test_action	yuk	foo
+    100.00	dispatcher	end_sim_evnt (56):  end_sim_evnt	<NULL>	<NULL>
+    100.00	dispatcher	end_sim_evnt (57):  ===> end_sim_evnt: game over <===
 --------------------------------------------------------------------------------
 --------------------- Event queue ---------------------
 -------------------------------------------------------
