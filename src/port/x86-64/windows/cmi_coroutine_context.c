@@ -161,9 +161,10 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     *(uint64_t *)stkptr = (uintptr_t)cmi_coroutine_trampoline;
 
     #ifndef NMXCSR
-        /* Set the XMM status register MXCSR, default value (masked fp exceptions) */
+        /* Inherit current control bits from parent, clearing status bits */
+        const uint32_t mxcsr = _mm_getcsr() & ~UINT32_C(0x3F);
         stkptr -= 8u;
-        *(uint32_t *)(stkptr + 4) = 0x1f80u;
+        *(uint32_t *)(stkptr + 4) = mxcsr;
         *(uint32_t *)stkptr = 0u;
     #endif
 
