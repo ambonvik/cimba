@@ -1188,12 +1188,18 @@ uint64_t cmb_random_discrete_uniform (const uint64_t s)
     return m >> 64u;
 }
 
-static const double sum_tolerance = 1.0e-3;
-static bool sums_to_one(const uint64_t n, const double p[n])
+static const double sum_tolerance = 1.0e-12;
+static bool sums_to_one(const uint64_t n, const double pa[n])
 {
+    cmb_assert_debug(n > 0u);
+    cmb_assert_debug(pa != NULL);
+
     double sum = 0.0;
     for (uint64_t ui = 0u; ui < n; ui++) {
-        sum += p[ui];
+        const double p = pa[ui];
+        cmb_assert_debug(!isnan(p) && !isinf(p));
+        cmb_assert_debug((p >= 0.0) && (p <= 1.0));
+        sum += p;
     }
 
     return (fabs(sum - 1.0) <= sum_tolerance) ? true : false;
