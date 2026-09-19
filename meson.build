@@ -35,6 +35,7 @@ common_flags = [
     '-Wno-pedantic',
     '-D_POSIX_C_SOURCE=200809L',
     '-fno-semantic-interposition',
+    '-ffp-contract=off',
 ]
 
 # Flags per build type
@@ -48,7 +49,6 @@ buildtype_flags = {
 
 # No-holds-barred optimized build: meson setup --buildtype=release -Dbenchopt=use
 benchopt_flags = [
-    '-O3',
     '-DNDEBUG',
     '-DNLOGINFO',
     '-DNASSERT',
@@ -59,7 +59,6 @@ benchopt_flags = [
 
 # Need to generate profile before using it
 benchopt_gen_flags = [
-    '-O3',
     '-DNDEBUG',
     '-DNLOGINFO',
     '-DNASSERT',
