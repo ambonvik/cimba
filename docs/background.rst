@@ -2023,8 +2023,8 @@ version takes 25.5 seconds to do the same thing with all available cores in use.
 runs this scenario about *45 times faster* than SimPy. Equivalently, the Cimba running
 time is *97.8 % less* than SimPy's for this simple model.
 
-Cimba processes twice as many simulated events per second *on a single core*
-(approx 32 million events / second) than what SimPy can do if it has all 64 logical cores
+Cimba processes more than twice as many simulated events per second *on a single core*
+(approx 42 million events / second) than what SimPy can do if it has all 64 logical cores
 to itself (approx 16 million events / second).
 
 .. image:: ../images/Speed_test_AMD_3970x.png
@@ -2066,8 +2066,8 @@ the number of cores.
 Unfortunately, we do not have a massively parallel supercomputer available for direct
 benhmarking against Cimba, but to the nearest order of magnitude: The PC we used for
 the SimPy benchmark above has 32 physical cores, running two threads per physical core.
-Cimba runs about 32 M events/second on a single core and about 25 M events/second/core
-on 32 physical cores for a scaling efficiency of 76 %.
+Cimba runs about 42 M events/second on a single core and about 28 M events/second/core
+on 32 physical cores for a scaling efficiency of 68 %.
 
 If those numbers are anywhere near comparable to Fujimoto's, it means that *Cimba runs
 two orders of magnitude faster than Time Warp PDES measured in events/second/core*. The
