@@ -168,6 +168,64 @@ Fibonacci hashing. Although not part of the public Cimba API, these components c
 be used in your model if needed, but be aware that anything in the ``cmi_`` namespace may
 change in future (minor) versions.
 
+Reproducibility
+---------------
+Cimba is built to give reproducible results by controlling the pseudo-random number
+seeds. Running a simulation again with the same seed will give the same result. Still,
+since Cimba uses double precision floating point numbers for its time variables and
+hence the event ordering, it will be subject to rounding errors in the underlying
+floating point math implementation. These can differ between platforms.
+
+It is worth spelling out the exact limits for reproducibility when provided the same seed:
+
+* Same Cimba version, same hardware, same version of the compiler and the math library,
+  same compiler options: Will give identical results. A single trial in a multithreaded
+  experiment will also give identical results to the same trial run singlethreaded with
+  the same trial seed.
+
+* Same Cimba version, hardware, compiler and math library, different compiler options:
+  Defining the option ``-DNMXCSR`` used, e.g., in a profiler-guided fully speed optimized
+  Cimba build will not save and restore the MXCSR register in coroutine context switches.
+  This register contains x86-64 SSE/AVX SIMD floating-point control and status bits,
+  such as the rounding mode.
+
+  If the ``-DNMXCSR`` is *not* set, this register will be initialized to inherit the
+  floating point control bits of the parent and maintained as a per-coroutine value after
+  that. At the end of a coroutine, the content of that coroutine's `MXCSR` is lost. Any
+  NaN's or Inf's generated may still be propagated into trial results, even if the main
+  program's `MXCSR` will not carry any exception flags. Each coroutine can set its own
+  rounding mode or masking bits without changing those of other coroutines. This is the
+  default behavior.
+
+  If the ``-DNMXCSR`` *is* set, the `MXCSR` register is *not* initialized or maintained
+  per   coroutine, but continues to exist as a global state. Any floating point exceptions
+  or control flags raised in one coroutine will affect all others, also after the end
+  of the coroutine. This may give subtly different numerical values than the default if
+  the user program sets specific rounding flags from within the simulated processes.
+
+  For full details about the x86-64 `MXCSR` register, see the
+  `Intel <https://software.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-1-manual.pdf>`_,
+  section 10.2.3.
+
+* Same Cimba version, different hardware (AMD vs Intel CPU, say), or different version
+  of the compiler and its libraries: There may be numerical differences. For example,
+  transcendental functions like logarithms and exponentials may round differently at a
+  scale of 1^e-15 or so. Taking a difference between two almost equal numbers calculated
+  this way *will* give different numerical values on e.g., Ubuntu and Arch Linux distros.
+  If a model schedules events at time values containing the result from such
+  calculations, it might (in rare cases) get different ordering of events between
+  platforms. This is a property of floating point math, not of Cimba as such. See
+  `the Wikipedia article on rounding <https://en.wikipedia.org/wiki/Rounding#Table-maker's_dilemma>`_
+  for more details.
+
+* Different Cimba versions: Results may or may not be identical. In semantic versioning,
+  patch versions are by definition bug fixes. A bug worth fixing probably had some
+  influence on the output of some model, and fixing it produces more correct output.
+  Also, Cimba logging messages include code line numbers. These may change between
+  versions, and model output with detailed logging may not be bitwise identical even if
+  it is logically and numerically identical.
+
+
 Obtaining and installing Cimba
 ------------------------------
 You simply clone the repository from https://github.com/ambonvik/cimba,
