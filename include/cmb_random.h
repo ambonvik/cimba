@@ -173,13 +173,17 @@ CMB_MAYBE_UNUSED
 static inline double cmb_random_uniform(const double min, const double max)
 {
     cmb_assert_release(min < max);
+    cmb_assert_release(isfinite(max - min));
 
-    const double r = min + (max - min) * cmb_random();
+    double r = min + (max - min) * cmb_random();
+    if (r >= max) {
+        /* Clamp it, but not to exact max */
+        r = nextafter(max, min);
+    }
+
     cmb_assert_debug((r >= min) && (r < max));
-
     return r;
 }
-
 /**
  * @brief Triangular distribution on the interval `[min, max)` with peak at
  *        `mode`, where `min <= mode <= max` and `min < max`.
