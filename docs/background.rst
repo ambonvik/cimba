@@ -1225,95 +1225,100 @@ machinery for discrete and continuous variates, respectively, and get results li
 
 .. code-block:: none
 
-    [ambonvik@Threadripper cimba]$ build/test/test_MM1 -n 1000000
+    [ambonvik@Threadripper cimba]$ build/test/test_MM1 -n 1000000 -r 0.98
+    rho = 0.980000
     Cimba version 3.0.0-RC3
-    Master seed: 0x6a227a039c87cb21
-    Utilization: 0.900000
-    Relaxation time: 379.737
-    Duration until collecting number of customers in system: 37973.665961
-    Target customer for collecting time in system ssn 34176
+    Master seed: 0x68d213e472461351
+    Average inter-arrival time: 1.020408, average service time: 1.000000
+    Utilization: 0.980000
+    Relaxation time: 9899.75
+    Duration until collecting number of customers in system: 989974.746831
+    Target customer for collecting time in system ssn 970175
     Running 1000000 trials...
     --------------------------------------------------------------------------------
     Queue lengths:
     Count           Mean            StdDev          Variance        Skewness        Excess kurtosis
-    1.000e+06          9.017           9.519           90.60           2.013           6.132
+    1.000e+06          49.04           49.54           2454.           2.006           6.121
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
-    [     0.000,      7.000)   |##################################################
-    [     7.000,      14.00)   |#######################=
-    [     14.00,      21.00)   |###########-
-    [     21.00,      28.00)   |#####-
-    [     28.00,      35.00)   |##=
-    [     35.00,      42.00)   |#-
-    [     42.00,      49.00)   |=
-    [     49.00,      56.00)   |-
-    [     56.00,      63.00)   |-
-    [     63.00,      70.00)   |-
-    [     70.00,      77.00)   |-
-    [     77.00,      84.00)   |-
-    [     84.00,      91.00)   |-
-    [     91.00,      98.00)   |-
-    [     98.00,      105.0)   |-
-    [     105.0,      112.0)   |-
-    [     112.0,      119.0)   |-
-    [     119.0,      126.0)   |-
-    [     126.0,      133.0)   |-
-    [     133.0,      140.0)   |-
-    [     140.0,   Infinity)   |
+    [     0.000,      42.00)   |##################################################
+    [     42.00,      84.00)   |#####################-
+    [     84.00,      126.0)   |#########-
+    [     126.0,      168.0)   |###=
+    [     168.0,      210.0)   |#=
+    [     210.0,      252.0)   |=
+    [     252.0,      294.0)   |-
+    [     294.0,      336.0)   |-
+    [     336.0,      378.0)   |-
+    [     378.0,      420.0)   |-
+    [     420.0,      462.0)   |-
+    [     462.0,      504.0)   |-
+    [     504.0,      546.0)   |-
+    [     546.0,      588.0)   |-
+    [     588.0,      630.0)   |-
+    [     630.0,      672.0)   |-
+    [     672.0,      714.0)   |-
+    [     714.0,      756.0)   |-
+    [     756.0,      798.0)   |
+    [     798.0,      840.0)   |-
+    [     840.0,   Infinity)   |
     --------------------------------------------------------------------------------
-    Assumed shifted geometric distribution, p = 0.100000, testing...
+    Assumed shifted geometric distribution, p = 0.020000, testing...
     ------------------------------------------------------------------------------------------------------------------------
     Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
     ------------------------------------------------------------------------------------------------------------------------
-    Pearson's chi squared test                  26.3          20    Sigma: +1.01  Odds: 1 in    3.2
-    Neyman's smooth test                        13.3          10    Sigma: +0.82  Odds: 1 in    2.4
-        Neyman V1: mean                         1.48           0    Sigma: +1.48  Odds: 1 in    7.2
-        Neyman V2: variance                     1.75           0    Sigma: +1.75  Odds: 1 in    13.
-        Neyman V3: skewness                   -0.826           0    Sigma: -0.83  Odds: 1 in    2.4
-        Neyman V4: kurtosis                    0.442           0    Sigma: +0.44  Odds: 1 in    1.5
-        Neyman remainder: fine structure        20.2          16    Sigma: +0.80  Odds: 1 in    2.4
-    Combined assessment (Neyman only due to the discrete data):     Sigma: +0.82  Odds: 1 in    2.4    Unremarkable
+    Pearson's chi squared test                  11.7          20    Sigma:  -1.44  Odds: 1 in    6.7
+    Neyman's smooth test                        8.47          10    Sigma:  -0.21  Odds: 1 in    1.2
+        Neyman V1: mean                        0.967           0    Sigma:  +0.97  Odds: 1 in    3.0
+        Neyman V2: variance                   0.0803           0    Sigma:  +0.08  Odds: 1 in    1.1
+        Neyman V3: skewness                      1.1           0    Sigma:  +1.10  Odds: 1 in    3.7
+        Neyman V4: kurtosis                    0.279           0    Sigma:  +0.28  Odds: 1 in    1.3
+        Neyman remainder: fine structure         9.5          16    Sigma:  -1.23  Odds: 1 in    4.6
+    Combined assessment (Neyman only due to the discrete data):     Sigma:  -0.21  Odds: 1 in    1.2    Unremarkable
     ------------------------------------------------------------------------------------------------------------------------
     --------------------------------------------------------------------------------
     Time in system:
     Count           Mean            StdDev          Variance        Skewness        Excess kurtosis
-    1.000e+06          10.02           10.02           100.4           1.994           5.929
+    1.000e+06          50.05           50.05           2505.           2.007           6.139
     --------------------------------------------------------------------------------
     ( -Infinity,      0.000)   |
-    [     0.000,      8.000)   |##################################################
-    [     8.000,      16.00)   |######################-
-    [     16.00,      24.00)   |##########-
-    [     24.00,      32.00)   |####=
-    [     32.00,      40.00)   |##-
-    [     40.00,      48.00)   |=
-    [     48.00,      56.00)   |-
-    [     56.00,      64.00)   |-
-    [     64.00,      72.00)   |-
-    [     72.00,      80.00)   |-
-    [     80.00,      88.00)   |-
-    [     88.00,      96.00)   |-
-    [     96.00,      104.0)   |-
-    [     104.0,      112.0)   |-
-    [     112.0,      120.0)   |-
-    [     120.0,      128.0)   |-
-    [     128.0,      136.0)   |
-    [     136.0,      144.0)   |-
-    [     144.0,   Infinity)   |
+    [     0.000,      43.00)   |##################################################-
+    [     43.00,      86.00)   |#####################-
+    [     86.00,      129.0)   |#########-
+    [     129.0,      172.0)   |###=
+    [     172.0,      215.0)   |#=
+    [     215.0,      258.0)   |=
+    [     258.0,      301.0)   |-
+    [     301.0,      344.0)   |-
+    [     344.0,      387.0)   |-
+    [     387.0,      430.0)   |-
+    [     430.0,      473.0)   |-
+    [     473.0,      516.0)   |-
+    [     516.0,      559.0)   |-
+    [     559.0,      602.0)   |-
+    [     602.0,      645.0)   |-
+    [     645.0,      688.0)   |-
+    [     688.0,      731.0)   |-
+    [     731.0,      774.0)   |
+    [     774.0,      817.0)   |
+    [     817.0,      860.0)   |-
+    [     860.0,   Infinity)   |
     --------------------------------------------------------------------------------
-    Assumed exponential distribution, m = 10.000000,  testing...
+    Assumed exponential distribution, m = 50.000000,  testing...
     ------------------------------------------------------------------------------------------------------------------------
     Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
     ------------------------------------------------------------------------------------------------------------------------
-    Pearson's chi squared test                  12.3          15    Sigma: -0.41  Odds: 1 in    1.5
-    Neyman's smooth test                        14.7          10    Sigma: +1.07  Odds: 1 in    3.5
-        Neyman V1: mean                        0.752           0    Sigma: +0.75  Odds: 1 in    2.2
-        Neyman V2: variance                     1.49           0    Sigma: +1.49  Odds: 1 in    7.3
-        Neyman V3: skewness                     2.29           0    Sigma: +2.29  Odds: 1 in    45.
-        Neyman V4: kurtosis                   -0.612           0    Sigma: -0.61  Odds: 1 in    1.8
-        Neyman remainder: fine structure         246         251    Sigma: -0.19  Odds: 1 in    1.2
-    Anderson-Darling EDF test                   1.21           1    Sigma: +0.63  Odds: 1 in    1.9
-    Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma: +0.57  Odds: 1 in    1.8    Unremarkable
+    Pearson's chi squared test                  8.26          15    Sigma:  -1.36  Odds: 1 in    5.7
+    Neyman's smooth test                        6.47          10    Sigma:  -0.75  Odds: 1 in    2.2
+        Neyman V1: mean                        0.862           0    Sigma:  +0.86  Odds: 1 in    2.6
+        Neyman V2: variance                    0.439           0    Sigma:  +0.44  Odds: 1 in    1.5
+        Neyman V3: skewness                    0.704           0    Sigma:  +0.70  Odds: 1 in    2.1
+        Neyman V4: kurtosis                   -0.627           0    Sigma:  -0.63  Odds: 1 in    1.9
+        Neyman remainder: fine structure         239         251    Sigma:  -0.53  Odds: 1 in    1.7
+    Anderson-Darling EDF test                  0.672           1    Sigma:  -0.21  Odds: 1 in    1.2
+    Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.12  Odds: 1 in    1.1    Unremarkable
     ------------------------------------------------------------------------------------------------------------------------
+
 
 This exercises a very large part of Cimba, not just the pseudo-random number generators
 and distributions, but also the core discrete event processing engine, object queues,
