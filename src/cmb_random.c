@@ -35,6 +35,10 @@
 #include "cmi_config.h"
 #include "cmi_memutils.h"
 
+/* Just a hardware sanity check */
+static_assert(INT64_MIN == (-INT64_MAX - 1),
+              "Cimba requires two's-complement int64_t");
+
 /*
  * Thread-local pseudo-random generator state, i.e., each thread has its own
  * instance, but all coroutines within the thread share from the same stream
@@ -238,7 +242,7 @@ static double zig_convert_y(const double *dpy, const int64_t iy)
 static int64_t zig_sample63(void)
 {
     const uint64_t bits = cmb_random_sfc64();
-    const int64_t r = (*(int64_t *)&bits) & INT64_MAX;
+    const int64_t r = (int64_t)(bits & INT64_MAX);
 
     return r;
 }

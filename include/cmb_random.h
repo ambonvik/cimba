@@ -212,8 +212,10 @@ extern double cmi_random_nor_not_hot(int64_t i_cand_x);
 CMB_MAYBE_UNUSED
 static inline double cmb_random_std_normal(void)
 {
-    uint64_t bits = cmb_random_sfc64();
-    const int64_t i_cand_x = *(int64_t *) &bits;
+    const uint64_t bits = cmb_random_sfc64();
+
+    int64_t i_cand_x;
+    memcpy(&i_cand_x, &bits, sizeof i_cand_x);
     const uint8_t idx = i_cand_x & 0xFF;
 
     return (idx <= cmi_random_nor_zig_max) ?
@@ -330,9 +332,9 @@ extern double cmi_random_exp_not_hot(int64_t i_cand_x);
 CMB_MAYBE_UNUSED
 static inline double cmb_random_std_exponential(void)
 {
-    uint64_t bits = cmb_random_sfc64();
+    const uint64_t bits = cmb_random_sfc64();
     /* Clear the sign bit for 63 useful bits */
-    const int64_t i_cand_x = (*(int64_t *) &bits) & INT64_MAX;
+    const int64_t i_cand_x = (int64_t)(bits & INT64_MAX);
     const uint8_t idx = i_cand_x & 0xFF;
     const double r = (idx <= cmi_random_exp_zig_max) ?
                         cmi_random_exp_zig_pdf_x[idx] * (double) i_cand_x :
