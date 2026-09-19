@@ -1,4 +1,3 @@
-Hey Claude,
 Please review my discrete event simulation library Cimba for design, coding style,
 correctness, reliability, maintainability, and performance.
 

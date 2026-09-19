@@ -134,9 +134,9 @@ It is powerful, fast, reliable, and free.
 
   * The code is routinely reviewed adversially by the latest and greatest AI tools as 
     they become available, most recently Anthropic Claude Fable 5 (August 2026) and 
-    Claude Opus 5 (September 2026). Any bugs identified by these reviews are fixed and 
-    a follow-up verification review is done. The latest reviews can be found 
-    here: https://github.com/ambonvik/cimba/tree/main/code_reviews
+    OpenAI GPT 5.6 Sol (September 2026). Any bugs identified by these reviews are fixed 
+    and a follow-up verification review is done. The reviews can be found here:
+    https://github.com/ambonvik/cimba/tree/main/code_reviews
 
 * *Free*: Cimba should fit well into the budget of most research groups.
 
