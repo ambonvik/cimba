@@ -1193,7 +1193,7 @@ uint64_t cmb_random_discrete_uniform (const uint64_t s)
 }
 
 static const double sum_tolerance = 1.0e-12;
-static bool sums_to_one(const uint64_t n, const double pa[n])
+static bool valid_probability_vector(const uint64_t n, const double pa[n])
 {
     cmb_assert_debug(n > 0u);
     cmb_assert_debug(pa != NULL);
@@ -1201,8 +1201,9 @@ static bool sums_to_one(const uint64_t n, const double pa[n])
     double sum = 0.0;
     for (uint64_t ui = 0u; ui < n; ui++) {
         const double p = pa[ui];
-        cmb_assert_debug(!isnan(p) && !isinf(p));
-        cmb_assert_debug((p >= 0.0) && (p <= 1.0));
+        if (!isfinite(p) || p < 0.0 || p > 1.0) {
+            return false;
+        }
         sum += p;
     }
 
@@ -1217,7 +1218,7 @@ uint64_t cmb_random_discrete_nonuniform(const uint64_t n, const double *pa)
 {
     cmb_assert_release(n > 0);
     cmb_assert_release(pa != NULL);
-    cmb_assert_release(sums_to_one(n, pa));
+    cmb_assert_release(valid_probability_vector(n, pa));
 
     const double x = cmb_random();
 
@@ -1263,7 +1264,8 @@ static inline uint64_t alias_secure(const double p)
 struct cmb_random_alias *cmb_random_alias_create(const uint64_t n,
                                                  const double *pa) {
     cmb_assert_release(n > 0u);
-    cmb_assert_release(sums_to_one(n, pa));
+    cmb_assert_release(pa != NULL);
+    cmb_assert_release(valid_probability_vector(n, pa));
 
     struct cmb_random_alias *ap = NULL;
     double *work = cmi_calloc(n, sizeof(double));
