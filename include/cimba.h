@@ -125,7 +125,7 @@ typedef void (cimba_trial_func)(void *trial_struct);
  * the best available hardware entropy source for the platform.
  *
  * If you need both randomness and reproducibility, call `cmb_random_hwseed()`
- * once in your main program to get a master seed, use `cmb_random_splitmix64()`
+ * once in your main program to get a master seed, use `cmb_random_fmix64()`
  * with that master seed and a running trial counter to get a unique and
  * reproducible seed for each trial, store this trial seed in your trial struct,
  * and then let the trial function use this pre-calculated and stored seed to
