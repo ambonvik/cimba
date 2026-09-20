@@ -396,9 +396,8 @@ and specular multipath. The model uses radar dwell itervals (time steps) of 0.04
 
 The screenshot below shows one frame from this simulation. The size of
 each target is its current radar cross-section, the color is the current detection status.
-The vectors on the sphere representing the AWACS indicate the current direction of the
-platform and the current direction of the radar lobe. The visualization is done in 
-ParaView.
+The vector on the sphere representing the AWACS indicates the current direction of 
+the radar lobe. The visualization is done in [ParaView](https://www.paraview.org).
 
 ![AWACS racetrack](images/tut_5_1c.png)
 
