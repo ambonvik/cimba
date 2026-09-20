@@ -387,7 +387,7 @@ Or, for a more "real" example, see
 [our tutorial 5](https://cimba.readthedocs.io/en/latest/tutorial.html#adding-cuda-gpu-power-for-simulation-physics).
 Using the same 64-core Threadripper and dual RTX 3090 GPUs, it runs 300 trials of an AWACS
 scenario with detailed three-dimensional
-physics in 78 seconds. Each trial is a six-hour simulation of a thousand target
+physics in 73 seconds. Each trial is a six-hour simulation of a thousand target
 processes (coroutines) and one sensor process (coroutine) on a 1000 x 1000 nm
 synthetic terrain with one arcsecond resolution. The sensor process models a scanning S-band 
 surveillance radar including 
