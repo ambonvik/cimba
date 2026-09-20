@@ -13,7 +13,7 @@ see the git commit history.
 * Bug fixes and improvements to the CI test matrix
   * Added clang compiler for Linux cases, fixed some minor portability issues between 
     gcc and clang
-  * Fixed Windows CI matrix bug, previously only running the relase build, not debug.
+  * Fixed Windows CI matrix bug, previously only running the release build, not debug.
   * Added a test case on goodness-of-fit for distributions of number of customers in
     system and customer time in system for an M/M/1 queuing model.
 * Updated benchmark numbers in documentation to reflect current performance.
