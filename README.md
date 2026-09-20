@@ -62,8 +62,8 @@ It is powerful, fast, reliable, and free.
 
     ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
    
-    _Cimba runs more than twice as fast (42M events/sec) on a single CPU core as
-    SimPy does when using all 64 logical cores (16M events/sec combined)._
+    _Cimba runs this benchmark more than twice as fast (42M events/sec) on a single CPU 
+    core as SimPy does when using all 64 logical cores (16M events/sec combined)._
 
     In this benchmark, Cimba reduces the run time by 98 % compared to the
     same model in SimPy using all CPU cores. This translates into doing your simulation
