@@ -388,11 +388,11 @@ Or, for a more "real" example, see
 Using the same 64-core Threadripper and dual RTX 3090 GPUs, it runs 300 trials of an AWACS
 scenario with detailed three-dimensional
 physics in 73 seconds. Each trial is a six-hour simulation of a thousand target
-processes (coroutines) and one sensor process (coroutine) on a 1000 x 1000 nm
-synthetic terrain with one arcsecond resolution. The sensor process models a scanning S-band 
-surveillance radar including 
+processes (coroutines) and one sensor process (coroutine) on a 1000 x 1000 nautical mile
+synthetic terrain with one arcsecond resolution (approximately 30 meters). The sensor 
+process models a scanning S-band surveillance radar including 
 line-of-sight geometry, terrain masking, constant-gamma clutter with CA-CFAR detection, 
-and specular multipath. The model uses radar dwell itervals (time steps) of 0.04 seconds.
+and specular multipath. The model uses radar dwell intervals (time steps) of 0.04 seconds.
 
 The screenshot below shows one frame from this simulation. The size of
 each target is its current radar cross-section, the color is the current detection status.
@@ -401,7 +401,7 @@ the radar lobe. The visualization is done in [ParaView](https://www.paraview.org
 
 ![AWACS racetrack](images/tut_5_1c.png)
 
-Cimba is able to harness all the computing power available in modern computer 
+Cimba is able to harness *all* the computing power available in modern computer 
 architectures for your simulation purposes, whatever they are.
 
 ### What do you mean by "well engineered"?
