@@ -317,7 +317,6 @@ int main(const int argc, char *argv[])
         }
     }
 
-    printf("Cimba version %s\n", cimba_version());
     printf("Master seed: 0x%" PRIx64 "\n", master_seed);
     printf("Average inter-arrival time: %f, average service time: %f\n", arrival_mean, service_mean);
     const double rho = service_mean / arrival_mean;
