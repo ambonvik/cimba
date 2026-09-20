@@ -50,7 +50,7 @@ static_assert(INT64_MIN == (-INT64_MAX - 1),
 
 static CMB_THREAD_LOCAL struct {
     uint64_t a, b, c, d;
-} prng_state = { DUMMY_SEED, DUMMY_SEED, DUMMY_SEED, DUMMY_SEED };
+} prng_state = {.a = DUMMY_SEED, .b = DUMMY_SEED, .c = DUMMY_SEED, .d = DUMMY_SEED};
 
 /* Storage for the seed used in this thread */
 static CMB_THREAD_LOCAL uint64_t initial_seed = DUMMY_SEED;
@@ -835,7 +835,7 @@ static uint64_t cmi_random_binomial_btrd(const uint64_t n, const double p)
 
         /* 2. Generate candidate pair (u, v) */
         if (v >= vr) {
-            /* Range (0.0, 1.0) */
+            /* Range (-0.5, 0.5) */
             u = (1.0 - cmb_random()) - 0.5;
         }
         else {
@@ -896,6 +896,7 @@ static uint64_t cmi_random_binomial_btrd(const uint64_t n, const double p)
         if (v < t - rho) {
             return k;
         }
+
         if (v > t + rho) {
             continue;
         }
@@ -1204,6 +1205,7 @@ static bool valid_probability_vector(const uint64_t n, const double pa[n])
         if (!isfinite(p) || p < 0.0 || p > 1.0) {
             return false;
         }
+
         sum += p;
     }
 
@@ -1273,6 +1275,7 @@ struct cmb_random_alias *cmb_random_alias_create(const uint64_t n,
     for (uint64_t ai = 0; ai < n; ai++) {
         psum += pa[ai];
     }
+
     cmb_assert_debug(fabs(psum - 1.0) <= sum_tolerance);
 
     uint64_t *small = cmi_calloc(n, sizeof(uint64_t));
