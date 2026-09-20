@@ -30,17 +30,15 @@
 #define CIMBA_VERSION_MAJOR 3
 #define CIMBA_VERSION_MINOR 0
 #define CIMBA_VERSION_PATCH 0
-#define CIMBA_VERSION_PRE_RELEASE RC3
 
 #define CMI_STRINGIFY(x) #x
 
-#define CMI_TOSTRING(A, B, C, D) CMI_STRINGIFY(A) "." CMI_STRINGIFY(B) "." \
-                                 CMI_STRINGIFY(C) "-" CMI_STRINGIFY(D)
+#define CMI_TOSTRING(A, B, C) \
+                CMI_STRINGIFY(A) "." CMI_STRINGIFY(B) "." CMI_STRINGIFY(C)
 
 #define CIMBA_VERSION CMI_TOSTRING(CIMBA_VERSION_MAJOR, \
                                    CIMBA_VERSION_MINOR, \
-                                   CIMBA_VERSION_PATCH, \
-                                   CIMBA_VERSION_PRE_RELEASE)
+                                   CIMBA_VERSION_PATCH)
 /** \endcond */
 
 /**

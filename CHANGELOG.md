@@ -4,10 +4,26 @@ Note: Version numbers are MAJOR.MINOR.PATCH per [Semantic Versioning](https://se
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
-### 2026-09-16: 3.0.0-rc3 Release Candidate 3 - in progress
+### 2026-09-20: 3.0.0
+* Minor bug fixes and documentation updates
+  * Promoted some debug asserts to release asserts to enforce function preconditions 
+    also in release builds.
+  * Ensured that new coroutines inherit the floating point control bits (in MXCSR 
+    register) from parent for consistent rounding modes throughout a model.
+* Bug fixes and improvements to the CI test matrix
+  * Added clang compiler for Linux cases, fixed some minor portability issues between 
+    gcc and clang
+  * Fixed Windows CI matrix bug, previously only running the relase build, not debug.
+  * Added a test case on goodness-of-fit for distributions of number of customers in
+    system and customer time in system for an M/M/1 queuing model.
+* Updated benchmark numbers in documentation to reflect current performance.
+* Added a documentation section on result replicability across versions, compilers, and 
+  hardware.
+
+### 2026-09-16: 3.0.0-rc3 Release Candidate 3
 * Minor bug fixes and performance improvements
   * Data collector edge cases (such as taking the median of an empty set).
-  * Faster dataset sorting in debug builds
+  * Faster dataset sorting in debug builds.
 * Comprehensive statistical tests for pseudo-random number generators and 
   distributions, all passing multiple quality tests.
   * Surfaced and fixed a small bias for normal and exponential distributions, 
@@ -63,7 +79,6 @@ see the git commit history.
   GitHub CI runners after each git push.
 * Coroutines adapted for Windows 11 and modern CPUs with improved stack security measures.
 * Added `cmb_random_fmix64()` to bootstrap deterministic thread seeds from a master seed.
-* Added tutorial 5 demonstrating CUDA integration.
 
 ### 2025-12-27: 3.0.0 beta
 * Initial public version

@@ -12,27 +12,6 @@ a similar combination of powerful features and performance.
 It is currently implemented for both Linux and Windows on the x86-64 architecture, 
 with other platforms planned.
 
-#### Important status note for Release Candidate 1 (Aug 2026): 
-From 3.0.0 RC1 onwards, the Cimba object lifecycle Create - Initialize - Terminate - 
-Destroy is enforced more strictly than in the Beta versions. This means that all 
-objects in the `cmb_ `namespace _must_ be initialized before they can be used, and
-that they _must_ be terminated before going out of scope. This also goes for 
-objects with automatic storage duration, i.e., local objects declared on the stack.
-Also, every `cmb_X_initialize()` for some class `X` _must_ be matched by a
-`cmb_X_terminate()`, and every `cmb_X_create()` by a `cmb_X_destroy()`. 
-
-Previously, omitting `_terminate` or `_destroy` would be a silent memory leak. This 
-will naturally happen when a trial is abandoned midway by calling `cmb_logger_error()`. 
-Over a long experiment, this could accumulate to cause an out-of-memory crash. For 
-Cimba RC1, we added automatick tracking of `cmb_` objects with reclaim if the trial 
-is abandoned. Cimba will now pass a Leak Sanitizer (LSan) test also with abandoned 
-trials. To provide this  reliable memory leak detection and recovery, tightened 
-enforcement of (already documented) lifecycle management was needed to avoid 
-corrupting the internal state. It may break existing models that appeared to work correctly 
-until now (including some of our own tutorials). If so, please check for missing 
-steps in the object lifecycles, with a missing `_initialize`or `_terminate` for a 
-`cmb_` object declared as a local variable on the stack as the prime suspect.
-
 ### Why should I use it?
 It is powerful, fast, reliable, and free.
 
@@ -134,7 +113,7 @@ It is powerful, fast, reliable, and free.
 
   * The code is routinely reviewed adversially by the latest and greatest AI tools as 
     they become available, most recently Anthropic Claude Fable 5 (August 2026) and 
-    OpenAI GPT 5.6 Sol (September 2026). Any bugs identified by these reviews are fixed 
+    OpenAI GPT 5.6 Sol (September 2026). Any bugs identified by these reviews are fixed,  
     and a follow-up verification review is done. The reviews can be found here:
     https://github.com/ambonvik/cimba/tree/main/code_reviews
 
@@ -458,8 +437,7 @@ what trial, what process, the simulated time, the function and line number, and 
 random number seed used, if anything should go wrong. All time-consuming invariants and 
 postconditions are debug asserts, while the release asserts mostly check preconditions 
 like function argument validity. Turning off the debug asserts doubles the speed of your
-model when you are ready for it, while turning off the release asserts as well gives 
-a small incremental improvement. (Again, 
+model when you are ready for it. (Again, 
 [more explanation here](https://cimba.readthedocs.io/en/latest/background.html#error-handling-the-loud-crashing-noise).)
 
 Extensive unit testing of each module ensures that
@@ -486,11 +464,11 @@ Hence (like the Linux kernel), we chose the simpler platform for speed, clarity,
 and reliability. If you need to call Cimba from some other language, the C calling
 convention is well-known and well-documented.
 
-### Version 3.0.0, you say. Why haven't I heard about Cimba before?
+### Version 3.0, you say. Why haven't I heard about Cimba before?
 Because it was not made public before. What retrospectively can be called Cimba 1.0
 was implemented in K&R C at MIT in the early 1990's, followed by a parallelized
 version 2.0 in ANSI C and Perl around 1995–96. The present version written in 
-C17 with POSIX pthreads is the third major rebuild, and the first public version.
+C23 with POSIX pthreads is the third major rebuild, and the first public version.
 
 ### You had me at "free." How do I get my hands on Cimba?
 It is right here. You clone the repository, build, and install it. You
