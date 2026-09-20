@@ -1,4 +1,3 @@
-Cimba version 3.0.0-RC3
 Master seed: 0x34f05c64d7ad598f
 Average inter-arrival time: 1.111111, average service time: 1.000000
 Utilization: 0.900000
