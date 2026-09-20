@@ -62,22 +62,23 @@ It is powerful, fast, reliable, and free.
 
     ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
    
-    _Cimba runs this benchmark more than twice as fast (42M events/sec) on a single CPU 
-    core as SimPy does when using all 64 logical cores (16M events/sec combined)._
+    _Cimba runs this benchmark more than twice as fast (42 M events/sec) on a single CPU 
+    core than SimPy does when using all 64 logical cores (16 M events/sec combined)._
 
     In this benchmark, Cimba reduces the run time by 98 % compared to the
-    same model in SimPy using all CPU cores. This translates into doing your simulation
-    experiments in seconds instead of minutes, or in minutes instead of hours. The reason for
-    the performance advantage is simply that compiled C code and hand-rolled assembly will
-    always run much faster than Python code that needs to be interpreted at runtime.
+    same model in SimPy + multiprocessing. This translates into doing your simulation
+    experiments in seconds instead of minutes, or in minutes instead of hours. The 
+    main reason for the performance advantage is simply that compiled C code and  
+    hand-rolled assembly will always run much faster than Python code that needs to 
+    be interpreted at runtime.
 
   * Another performance reference point is found in the literature on large-scale
     parallel discrete event simulation (PDES). In these models, each simulation run is
     distributed across many physical cores.
     [Fujimoto (2015)](https://informs-sim.org/wsc15papers/004.pdf) states that performance
-    for the PDES algorithms has leveled out at around 250 K events/second/core
-    on massively parallel supercomputers due to inherent clock speed limitations on 
-    each core. Further performance improvement in recent years only comes from 
+    for the PDES algorithms has leveled out at around 250 k events/second/core
+    on massively parallel supercomputers due to the inherent clock speed limitations on 
+    each core, and that further performance improvement in recent years comes from 
     increasing the number of cores. 
   
     *Cimba runs two orders of magnitude faster than this on a per-core basis.* The CPU used 
