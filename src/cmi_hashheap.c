@@ -47,7 +47,9 @@ static CMB_THREAD_LOCAL uint64_t match_buf_size = UINT64_C(0);
  */
 struct cmi_hashheap *cmi_hashheap_create(void)
 {
-    struct cmi_hashheap *hp = cmi_malloc(sizeof(*hp));
+    static_assert(sizeof(struct cmi_heap_tag) == 64);
+
+    struct cmi_hashheap *hp = cmi_aligned_alloc(64u, sizeof(*hp));
     cmi_memset(hp, 0u, sizeof(*hp));
 
     return hp;
@@ -150,7 +152,7 @@ void cmi_hashheap_destroy(struct cmi_hashheap *hp)
     cmb_assert_release(hp != NULL);
 
     cmi_hashheap_terminate(hp);
-    cmi_free(hp);
+    cmi_aligned_free(hp);
 }
 
 /*
