@@ -31,7 +31,7 @@ extern uint32_t cmi_cpu_cores(void);
 #define N_SAMPLES 10000000u
 #define N_TRIALS 10u
 #define N_START 0u
-#define N_STEPS 8u
+#define N_STEPS 5u
 #define STEP_SZ 1u
 #define LOOKAHEAD 0.0
 #define MEAN 1.0
