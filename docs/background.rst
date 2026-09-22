@@ -2063,11 +2063,11 @@ The numbers are averaged over 10 runs for each model.
 .. image:: ../images/Speed_test_AMD_3970x.png
 
 Cimba can run its 128 trials in 0.47 seconds, while the SimPy version takes 33.1 seconds
-to do the same thing with all available cores in use. Cimba runs this scenario about
+to do the same thing with all available cores in use. Cimba runs this scenario
 *70 times faster* than SimPy + multiprocessing. Equivalently, the Cimba running time is
 *98.6 % less* than SimPy's for this simple model.
 
-Cimba also runs about 65 times faster than SimPy on a single core. Cimba executes
+Cimba also runs 65 times faster than SimPy on a single core. Cimba executes
 nearly three times as many simulated events per second *on a single core* (43.1 M events
 / second) than what SimPy + multiprocessing can do if it has all 64 logical cores to
 itself (15.5 M events / second).
@@ -2088,9 +2088,10 @@ This has been an active research area since around 1980, originally spurred by t
 memory capacity of the computers of the day and the resulting need to divide a large
 simulation between several devices. In these frameworks, each simulation run (trial) is
 distributed across many physical cores, each representing some logical subsystem of the
-overall simulation. Events are executed by passing messages between the cores. The
-critical design question is how to ensure a strict time-ordering of events in simulated
-time and guarantee the same result as from a sequential simulation.
+overall simulation. Events on different cores are synchronized by passing messages
+between the cores. The critical design question is how to ensure a strict
+time-ordering of events in simulated time and guarantee the same result as from a
+sequential simulation.
 
 One approach is *optimistic synchronization*, where CPUs are allowed to run ahead, but
 anti-events are sent to initiate rollback if a violation of time sequence is detected.
@@ -2123,9 +2124,8 @@ distributing the model across many, is no longer valid. The PC referred to above
 128 GB of memory and can easily fit 64 complete trials in parallel, two per physical core,
 even with thousands of active processes in each trial. The remaining use case for Time Warp
 and similar PDES seems to be for extremely large simulations distributed across the nodes of
-supercomputer clusters, and then mostly
-for cases where the problem can be structured as nearly independent sub-systems
-limiting the amount of message passing between the nodes.
+supercomputer clusters, and then mostly for cases where the problem can be structured
+as nearly independent sub-systems limiting the amount of message passing between the nodes.
 
 (This section will be updated when we have been able to devise a benchmark against
 `ROSS <https://ross-org.github.io>`_.)
