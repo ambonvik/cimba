@@ -28,7 +28,7 @@
 #define NUM_OBJECTS 1000000u
 #define ARRIVAL_RATE 0.9
 #define SERVICE_RATE 1.0
-#define NUM_TRIALS 100
+#define NUM_TRIALS 128
 
 CMB_THREAD_LOCAL struct cmi_mempool objectpool = CMI_MEMPOOL_STATIC_INIT(8u, 512u);
 
@@ -137,10 +137,7 @@ int main(void)
         trl->sum_wait = 0.0;
     }
 
-    cimba_run(experiment,
-                         NUM_TRIALS,
-                         sizeof(*experiment),
-                         run_trial);
+    cimba_run(experiment, NUM_TRIALS, sizeof(*experiment), run_trial);
 
     struct cmb_datasummary summary;
     cmb_datasummary_initialize(&summary);

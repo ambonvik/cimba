@@ -7,7 +7,7 @@ import math
 NUM_OBJECTS = 1000000
 ARRIVAL_RATE = 0.9
 SERVICE_RATE = 1.0
-NUM_TRIALS = 100
+NUM_TRIALS = 128
 
 def arrival_process(env, store, n_limit, arrival_rate):
     for _ in range(n_limit):
