@@ -106,6 +106,11 @@ endif
 math_dep = cc.find_library('m', required : true)
 project_deps = [math_dep]
 
+summary({'PGO'             : get_option('pgo'),
+         'Release asserts' : get_option('pgo') == 'none',
+         'MXCSR isolation' : get_option('pgo') == 'none'},
+        section : 'Optimisation', bool_yn : true)
+
 # Build Cimba
 subdir('include')
 subdir('codegen')
