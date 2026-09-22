@@ -56,16 +56,17 @@ It is powerful, fast, reliable, and free.
   variations.
 
   * A relevant benchmark is the Python simulation package SimPy. Cimba models run 
-    30–60 times faster than SimPy equivalents. The chart below shows the
-    number of simulated events processed per second of wall clock time on a simple M/M/1
-    queue implemented in SimPy and Cimba.
+    much faster than SimPy equivalents. The chart below shows the number of simulated 
+    events processed per second of wall clock time on a simple M/M/1 queue 
+    implemented in SimPy and Cimba.
 
     ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
    
-    _Cimba runs this benchmark more than twice as fast (42 M events/sec) on a single CPU 
-    core than SimPy does when using all 64 logical cores (16 M events/sec combined)._
+    _Cimba runs this benchmark nearly three times faster (43.1 M events/sec) on a 
+    single CPU  core than SimPy does when using all 64 logical cores (15.5 M events/sec 
+    combined)._
 
-    In this benchmark, Cimba reduces the run time by 98 % compared to the
+    In this benchmark, Cimba reduces the run time by 98.6 % compared to the
     same model in SimPy + multiprocessing. This translates into doing your simulation
     experiments in seconds instead of minutes, or in minutes instead of hours. The 
     main reason for the performance advantage is simply that compiled C code and  
@@ -83,7 +84,7 @@ It is powerful, fast, reliable, and free.
   
     *Cimba runs two orders of magnitude faster than this on a per-core basis.* The CPU used 
     in the benchmark above has 32 _physical_ cores, running two threads per physical core.
-    Cimba runs about 42 M events/sec on a single core and about 28 M events/second/core on 32
+    Cimba executed 42 M events/sec on a single core and 34 M events/second/core on 32
     physical cores. The reason is that keeping our entire event queue in "hot" CPU cache memory
     is orders of magnitude faster than communicating the events across a link between separate devices.
 

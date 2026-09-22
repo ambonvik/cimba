@@ -1756,7 +1756,7 @@ adventures. Since the active entities in Cimba are the instances of
 :c:struct:`cmb_process`, this requires each customer to be represented as a process
 or derived class. We will make our customers a derived class from the
 :c:struct:`cmb_process`, inheriting its properties and methods, and adding some more
-specifics. By doing so, we will demonstate both object-oriented inheritance and that
+specifics. By doing so, we will demonstrate both object-oriented inheritance and that
 Cimba processes themselves can spawn other processes.
 
 The use case is to model an amusement park with guests wanting to use various
@@ -2974,9 +2974,8 @@ The departure process is reasonably straightforward, capturing the exit value fr
 the ship process and then recycling the entire ship. A :c:struct:`cmb_condition` is used
 to know that one or more ships have departed, triggering the departure process
 to do something. This actually does exactly the same as using the
-:c:struct:`cmb_objectqueue` in the previous
-example, but demonstrates a different way of doing it (effectively exposing the internal
-workings of a :c:struct:`cmb_objectqueue`).
+:c:struct:`cmb_objectqueue` in the previous example, but demonstrates a different way
+of doing it (effectively exposing the internal workings of a :c:struct:`cmb_objectqueue`).
 
 .. code-block:: c
 
@@ -3288,14 +3287,14 @@ of trials, consisting of parameter variations and replications.
     that typical simulation frameworks are stand-alone tools that run a single trial, not
     well integrated with a programming language. As we have seen, Cimba puts the
     experimental design front and center. When structuring the experiment array, the user
-    will *have* to think through the design. What parameters, how many levels, what values, how many
-    replications for each? Implementing it is then just a simple piece of code, and
-    unpåacking the results its mirror image.
+    will *have* to think through the design. What parameters, how many levels, what
+    values, how many replications for each? Implementing it is then just a simple
+    piece of code, and unpacking the results its mirror image.
 
-We compile and run, and this chart appears, showing our 60
-parameter combinations, the average time in the system for small (blue) and large ships
-(red) under each set of parameters, and tight 95 % confidence intervals based
-on our 10 replications of each parameter combination:
+We compile and run, and this chart appears, showing our 60  arameter combinations, the
+average time in the system for small (blue) and large ships (red) under each set of
+parameters, and tight 95 % confidence intervals based on our 10 replications of each
+parameter combination:
 
 .. image:: ../images/tut_4_2.png
 

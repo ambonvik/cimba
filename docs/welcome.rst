@@ -80,29 +80,26 @@ It is powerful, fast, reliable, and free.
   In a M/M/1 queue benchmark, Cimba runs about *30-60 times faster* than SimPy with all
   available cores in use. This corresponds to a 98 % reduction in run time.
 
-  In fact, *Cimba runs more than twice as fast on a single CPU core (left chart, about 42
-  million events per second) than SimPy does with all 64 logical cores (right chart, about
-  16 million events per second).*
+  In fact, *Cimba runs nearly three times as fast on a single CPU core (left chart, 43.1
+  million events per second) than SimPy does with all 64 logical cores (right chart,
+  15.5 million events per second).*
 
   .. image:: ../images/Speed_test_AMD_3970x.png
-
-  (Cimba built with gcc options `-O3 -fprofile-use -DNDEBUG -DNLOGINFO -DNASSERT
-  -DNMXCSR`, SimPy running on Python 3.14.7, host system AMD Ryzen Threadripper 3970x.)
 
   The reason for this speed difference is that a compiled program in C and hand-rolled
   assembly will always run faster than code that needs to be interpreted on-the-fly at
   runtime.
 
   The CPU used here has 32 *physical* cores, running two threads per physical core.
-  Cimba runs about 42 M events/second on a single core and about 28 M events/second/core
-  on 32 physical cores for a scaling efficiency of 67 %. This also compares favorably to
+  Cimba runs 43 M events/second on a single core and 34 M events/second/core
+  on 32 physical cores for a scaling efficiency of 79 %. This also compares favorably to
   `the literature on large-scale parallel discrete event simulation <https://informs-sim.org/wsc15papers/004.pdf>`_
   (PDES), where each simulation trial is distributed across many physical cores,
   where it seems that  performance for the Time Warp-type PDES algorithms has leveled
   out at around 250 K events/second/core on massively parallel supercomputers.
 
-  *Cimba runs two orders of magnitude faster than Time Warp PDES measured in events per
-  second per core.*
+  *Cimba runs about two orders of magnitude faster than Time Warp PDES measured in events
+  per second per core.*
 
   The reason is that keeping our entire event queue in "hot" CPU cache memory
   is orders of magnitude faster than communicating the same events across a link between
@@ -167,6 +164,8 @@ lists, and hash-heaps combining a binary heap and an open addressing hash map us
 Fibonacci hashing. Although not part of the public Cimba API, these components can also
 be used in your model if needed, but be aware that anything in the ``cmi_`` namespace may
 change in future (minor) versions.
+
+.. _welcome_reproducibility:
 
 Reproducibility
 ---------------

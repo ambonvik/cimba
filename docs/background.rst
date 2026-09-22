@@ -1768,7 +1768,7 @@ It provides similar functionality to Cimba, only with Python as its base languag
 instead of C. SimPy emphasizes ease of use as a main design objective, following the
 overall Python philosophy, while Cimba (being a C library) has a natural emphasis on
 speed. SimPy processes are based on stackless generators, whereas Cimba has its
-stackful coroutine processes. The current SimPy version is 4.1.1.
+stackful coroutine processes.
 
 For comparable multithreading functionality, SimPy needs to be combined with the Python
 ``multiprocessing`` package. In the following, when referring to SimPy in a
@@ -1790,7 +1790,7 @@ A complete multithreaded M/M/1 queue simulation could look like this in SimPy,
     NUM_OBJECTS = 1000000
     ARRIVAL_RATE = 0.9
     SERVICE_RATE = 1.0
-    NUM_TRIALS = 100
+    NUM_TRIALS = 128
 
     def arrival_process(env, store, n_limit, arrival_rate):
         for _ in range(n_limit):
@@ -1840,6 +1840,7 @@ A complete multithreaded M/M/1 queue simulation could look like this in SimPy,
     if __name__ == "__main__":
         main()
 
+
 The same model would look like this in Cimba,
 `benchmark/MM1_multi.c <https://github.com/ambonvik/cimba/blob/main/benchmark/MM1_multi.c>`_:
 
@@ -1848,16 +1849,15 @@ The same model would look like this in Cimba,
     #include <inttypes.h>
     #include <stdio.h>
     #include <stdint.h>
-
     #include <cimba.h>
-
     #include "cmi_mempool.h"
 
     #define NUM_OBJECTS 1000000u
     #define ARRIVAL_RATE 0.9
     #define SERVICE_RATE 1.0
+    #define NUM_TRIALS 128
 
-    CMB_THREAD_LOCAL struct cmi_mempool objectpool = CMI_MEMPOOL_STATIC_INIT(sizeof(void *), 512u);
+    CMB_THREAD_LOCAL struct cmi_mempool objectpool = CMI_MEMPOOL_STATIC_INIT(8u, 512u);
 
     struct simulation {
         struct cmb_process *arrival;
@@ -1878,7 +1878,7 @@ The same model would look like this in Cimba,
         struct trial *trl;
     };
 
-    void *arrivalfunc(struct cmb_process *me, void *vctx)
+    void *arrival_proc(struct cmb_process *me, void *vctx)
     {
         cmb_unused(me);
         const struct context *ctx = vctx;
@@ -1896,7 +1896,7 @@ The same model would look like this in Cimba,
         return NULL;
     }
 
-    void *servicefunc(struct cmb_process *me, void *vctx)
+    void *service_proc(struct cmb_process *me, void *vctx)
     {
         cmb_unused(me);
         const struct context *ctx = vctx;
@@ -1910,7 +1910,8 @@ The same model would look like this in Cimba,
             const double *dblp = object;
             const double t_srv = cmb_random_exponential(mean_srv);
             cmb_process_hold(t_srv);
-            *sum += cmb_time() - *dblp;
+            const double t_sys = cmb_time() - *dblp;
+            *sum += t_sys;
             *cnt += 1u;
             cmi_mempool_free(&objectpool, object);
         }
@@ -1930,12 +1931,11 @@ The same model would look like this in Cimba,
 
         sim->queue = cmb_objectqueue_create();
         cmb_objectqueue_initialize(sim->queue, "Queue", CMB_UNLIMITED);
-
         sim->arrival = cmb_process_create();
-        cmb_process_initialize(sim->arrival, "Arrival", arrivalfunc, ctx, 0);
+        cmb_process_initialize(sim->arrival, "Arrival", arrival_proc, ctx, 0);
         cmb_process_start(sim->arrival);
         sim->service = cmb_process_create();
-        cmb_process_initialize(sim->service, "Service", servicefunc, ctx, 0);
+        cmb_process_initialize(sim->service, "Service", service_proc, ctx, 0);
         cmb_process_start(sim->service);
 
         cmb_event_queue_execute();
@@ -1947,76 +1947,128 @@ The same model would look like this in Cimba,
         cmb_process_destroy(sim->service);
         cmb_objectqueue_terminate(sim->queue);
         cmb_objectqueue_destroy(sim->queue);
-
         cmb_event_queue_terminate();
-        cmb_random_terminate();
-
         free(sim);
         free(ctx);
     }
 
     int main(void)
     {
-        struct trial *trl = malloc(sizeof(*trl));
-        trl->arr_mean = 1.0 / ARRIVAL_RATE;
-        trl->srv_mean = 1.0 / SERVICE_RATE;
-        trl->obj_cnt = 0u;
-        trl->sum_wait = 0.0;
-        run_trial(trl);
+        struct trial *experiment = calloc(NUM_TRIALS, sizeof(*experiment));
+        for (unsigned ui = 0; ui < NUM_TRIALS; ui++) {
+            struct trial *trl = &experiment[ui];
+            trl->arr_mean = 1.0 / ARRIVAL_RATE;
+            trl->srv_mean = 1.0 / SERVICE_RATE;
+            trl->obj_cnt = 0u;
+            trl->sum_wait = 0.0;
+        }
 
-        printf("Average system time %f (expected %f)\n",
-                trl->sum_wait / (double)trl->obj_cnt,
-                1.0 / (SERVICE_RATE - ARRIVAL_RATE));
+        cimba_run(experiment, NUM_TRIALS, sizeof(*experiment), run_trial);
 
-        free(trl);
+        struct cmb_datasummary summary;
+        cmb_datasummary_initialize(&summary);
+        for (unsigned ui = 0; ui < NUM_TRIALS; ui++) {
+            const double avg_tsys = experiment[ui].sum_wait / (double)(experiment[ui].obj_cnt);
+            cmb_datasummary_add(&summary, avg_tsys);
+        }
 
-        return 0;
+        free(experiment);
+
+        const unsigned un = cmb_datasummary_count(&summary);
+        if (un > 1) {
+            const double mean_tsys = cmb_datasummary_mean(&summary);
+            const double sdev_tsys = cmb_datasummary_stddev(&summary);
+            const double serr_tsys = sdev_tsys / sqrt((double)un);
+            const double ci_w = 1.96 * serr_tsys;
+            const double ci_l = mean_tsys - ci_w;
+            const double ci_u = mean_tsys + ci_w;
+
+            /* Note: We did not use a warm-up period, some undershoot bias will occur */
+            printf("Average system time %f (n %u, conf.int. %f - %f, expected %f)\n",
+                   mean_tsys, un, ci_l, ci_u, 1.0 / (SERVICE_RATE - ARRIVAL_RATE));
+
+            return 0;
+        }
     }
 
 
-The Cimba code is significantly longer for this simple example, 139 vs 60 lines. The C
+Both programs produce a one-liner output similar to this:
+
+.. code-block:: none
+
+    Average system time 9.990997 (n 128, conf.int. 9.960142 - 10.021853, expected 10.000000)
+
+The Cimba code is significantly longer for this simple example, 144 vs 59 lines. The C
 base language demands more careful declarations of object types, whereas Python will
 happily try to infer types from context. C requires explicit management of object creation
 and destruction, since it does not have Python's automatic garbage collection. This
 requires some additional code lines.
 
 For a larger model, where the process function could be large, complex, and
-call various other functions, the SimPy code could become much harder to follow. We
-leave it as an exercise for the interested reader to build our :ref:`entertainment park
-tutorial <tut_3>` or :ref:`LNG harbor tutorial <tut_4>` in SimPy for a similar
-benchmarking.
+call various other functions, the SimPy code could become larger and harder to follow.
+Cimba's stackful coroutines allow calls to context-switching functions like
+:c:func:`cmb_process_hold()` or :c:func:`cmb_resource_acquire()` from arbitrary deep
+within function call hierarchies. Control will leave the call stack where it is and
+pick up again from the same point when control is passed back into that
+``cmb_process``. This makes for a very natural way to express agentic behavior by
+simulated processes. The stackless Python ``generator`` that SimPy processes are based
+on cannot do this. We leave it as an exercise for the interested reader to build our
+:ref:`entertainment park tutorial <tut_3>` or :ref:`LNG harbor tutorial <tut_4>` in
+SimPy to compare code sizes there.
 
-Moreover, Cimba's stackful coroutines allow calls to context-switching functions (like
-:c:func:`cmb_process_hold()` or :c:func:`cmb_resource_acquire()`) from arbitrary deep within
-function call hierarchies. Control will leave the call stack where it is and pick up
-again from the same point when control is passed back into that ``cmb_process``. This
-makes for a very natural way to express agentic behavior by simulated processes. The
-stackless Python ``generator`` that SimPy processes are based on cannot do this.
-
-We compile the Cimba code with profile-guided optimization for speed, using gcc v 15.2.1
-with options ``-O3 -flto=auto -fuse-linker-plugin -DNDEBUG -DNASSERT -DLOGINFO`` as
-appropriate for already well-tested
-code (i.e., the command line ``meson setup build-pgo --buildtype=release -Dbenchopt=use``
-and then ``meson compile -C build-pgo`` from the ``cimba`` directory).
-For SimPy, we use Python v 3.14.2. The host system is built around a ASRock TRX40
-Taichi motherboard with an AMD Threadripper 3970x CPU and 128 GB RAM. The OS is Arch
-Linux.
-
-Both programs produce a one-liner output similar to this:
+We compile the Cimba code with profile-guided optimization for maximal speed, like this:
 
 .. code-block:: none
 
-    Average system time 10.000026 (n 100, conf.int. 9.964877 - 10.035176, expected 10.000000)
+    cd cimba
+    mkdir build-pgo
+    meson setup build-pgo --buildtype=release
+    meson configure build-pgo -Dpgo=generate -Denable_docs=false
+    meson compile -C build-pgo              # Build instrumented executables
+    build-pgo/benchmark/MM1_single          # Learning run, will be slow
+    build-pgo/benchmark/MM1_multi           # Learning run, will be slow
+    meson configure build-pgo -Dpgo=use -Denable_docs=false
+    meson compile -C build-pgo              # Build the optimized executables
+    time build-pgo/benchmark/MM1_single     # Actual test run
+    time build-pgo/benchmark/MM1_multi      # Actual test run
 
-However, the Cimba experiment can run its 100 trials in 0.56 seconds, while the SimPy
-version takes 25.5 seconds to do the same thing with all available cores in use. Cimba
-runs this scenario about *57 times faster* than SimPy + multiprocessing. Equivalently,
-the Cimba running time is *98 % less* than SimPy's for this simple model.
+The first run, using the `-Dpgo-generate` configuration, is a learning pass to collect
+profiler data to use in the second compilation. Here, we only run the two M/M/1
+benchmark executables in the learning pass, so the second compilation will issue
+many warnings that it does not have profiler data for all the other executables.
 
-Cimba runs about 58 times faster than SimPy on a single core. Cimba processes more than
-twice as many simulated events per second *on a single core* (approx 42 million events
-/ second) than what SimPy can do if it has all 64 logical cores to itself (approx 16
-million events / second).
+Note that this build type turns off internal logging and function argument checking,
+so it should *only* be used for already well-tested code. It also turns off ``MXCSR``
+save and restore in context switches. Do not use this build type if you need to set
+individual rounding modes or other floating point control bits per simulated
+process. If in doubt, your model are probably OK with it, but see :ref:`our section on
+numerical reproducibility <welcome_reproducibility>` for more details.
+
+For our case here, a small, thoroughly tested model with no special floating point
+numerics, these restrictions are acceptable and a PGO build is warranted. For
+comparison, we will also show the performance of the default release build type in our
+results. In most cases, a PGO build will be overkill and the performance loss from not
+using it will be moderate.
+
+For the results below, we used gcc v 16.2.1 on Cimba v 3.0.1. SimPy is version
+python-simpy-4.1.2-1 from the Arch Linux package repository AUR
+(https://aur.archlinux.org/packages/python-simpy), executed with Python v 3.14.2.
+
+The host system is built around a ASRock TRX40 Taichi motherboard with an AMD
+Threadripper 3970x CPU and 128 GB RAM. The OS is Arch Linux 7.6.2, freshly updated
+with ``pacman -Syyu`` on Sep 21, 2026.
+
+The numbers are averaged over 10 runs for each model.
+
+Cimba can run its 128 trials in 0.47 seconds, while the SimPy version takes 33.1 seconds
+to do the same thing with all available cores in use. Cimba runs this scenario about
+*70 times faster* than SimPy + multiprocessing. Equivalently, the Cimba running time is
+*98.6 % less* than SimPy's for this simple model.
+
+Cimba also runs about 65 times faster than SimPy on a single core. Cimba executes
+nearly three times as many simulated events per second *on a single core* (43.1 M events
+/ second) than what SimPy + multiprocessing can do if it has all 64 logical cores to
+itself (15.5 M events / second).
 
 .. image:: ../images/Speed_test_AMD_3970x.png
 
@@ -2057,8 +2109,8 @@ the number of cores.
 Unfortunately, we do not have a massively parallel supercomputer available for direct
 benchmarking against Cimba, but to the nearest order of magnitude: The PC we used for
 the SimPy benchmark above has 32 physical cores, running two threads per physical core.
-Cimba runs about 42 M events/second on a single core and about 28 M events/second/core
-on 32 physical cores for a scaling efficiency of 68 %.
+Cimba runs 43.1 M events/second on a single core and 33.9 M events/second/core
+on 32 physical cores for a scaling efficiency of 78.7 %.
 
 If those numbers are anywhere near comparable to Fujimoto's, it means that *Cimba runs
 about two orders of magnitude faster than Time Warp PDES measured in events/second/core*.
@@ -2071,9 +2123,12 @@ distributing the model across many, is no longer valid. The PC referred to above
 128 GB of memory and can easily fit 64 complete trials in parallel, two per physical core,
 even with thousands of active processes in each trial. The remaining use case for Time Warp
 and similar PDES seems to be for extremely large simulations distributed across the nodes of
-`Beowulf clusters <https://en.wikipedia.org/wiki/Beowulf_cluster>`_, and then mostly
+supercomputer clusters, and then mostly
 for cases where the problem can be structured as nearly independent sub-systems
 limiting the amount of message passing between the nodes.
+
+(This section will be updated when we have been able to devise a benchmark against
+`ROSS <https://ross-org.github.io>`_.)
 
 .. _background_name:
 
