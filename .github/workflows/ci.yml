@@ -143,7 +143,7 @@ jobs:
       - name: Test
         run: meson test -C build-tsan --print-errorlogs --timeout-multiplier 100
 
-  # Linux only: the all-out profile-guided build (-Dbenchopt).
+  # Linux only: the all-out profile-guided optimizwer build (-Dpgo).
   linux-pgo:
     runs-on: ubuntu-latest
     steps:
@@ -154,7 +154,7 @@ jobs:
           sudo apt-get install -y ninja-build nasm meson
       - name: Phase 1 — build instrumented
         run: |
-          meson setup build-pgo --buildtype=release -Denable_docs=false -Dbenchopt=generate
+          meson setup build-pgo --buildtype=release -Denable_docs=false -Dpgo=generate
           meson compile -C build-pgo
       - name: Phase 1 — training workload
         run: |
@@ -164,7 +164,7 @@ jobs:
       - name: Phase 2 — rebuild using the profiles (same directory)
         run: |
           set -o pipefail
-          meson configure build-pgo -Dbenchopt=use
+          meson configure build-pgo -Dpgo=use
           meson compile -C build-pgo 2>&1 | tee pgo-use.log
       - name: Verify the profiles were actually consumed
         run: |
