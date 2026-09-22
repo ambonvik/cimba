@@ -2060,6 +2060,8 @@ with ``pacman -Syyu`` on Sep 21, 2026.
 
 The numbers are averaged over 10 runs for each model.
 
+.. image:: ../images/Speed_test_AMD_3970x.png
+
 Cimba can run its 128 trials in 0.47 seconds, while the SimPy version takes 33.1 seconds
 to do the same thing with all available cores in use. Cimba runs this scenario about
 *70 times faster* than SimPy + multiprocessing. Equivalently, the Cimba running time is
@@ -2069,8 +2071,6 @@ Cimba also runs about 65 times faster than SimPy on a single core. Cimba execute
 nearly three times as many simulated events per second *on a single core* (43.1 M events
 / second) than what SimPy + multiprocessing can do if it has all 64 logical cores to
 itself (15.5 M events / second).
-
-.. image:: ../images/Speed_test_AMD_3970x.png
 
 This speed difference is mostly due to the difference between Cimba's compiled C
 and assembly code vs SimPy's interpreted Python code, where a difference of around this
