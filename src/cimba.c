@@ -299,13 +299,13 @@ static void *thread_worker_func(void *arg)
             }
 
             /* Continuing after a normal exit from the trial function */
-            if (!cmi_dlist_is_empty(&cmi_memregistry)) {
+            if (!cmi_memregistry_is_empty()) {
                 /* Some cmb_ object was not properly terminated and/or
                  * destroyed during the trial, just flush registry without
                  * calling registered teardown functions - may be intentional
                  * from the user, do not override.    */
                 (void)__atomic_fetch_add(&leaking_trials, 1, __ATOMIC_RELAXED);
-                while (!cmi_dlist_is_empty(&cmi_memregistry)) {
+                while (!cmi_memregistry_is_empty()) {
                     (void)cmi_dlist_remove_first(&cmi_memregistry);
                     (void)__atomic_fetch_add(&leaked_objects, 1, __ATOMIC_RELAXED);
                 }
