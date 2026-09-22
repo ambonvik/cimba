@@ -47,8 +47,8 @@ buildtype_flags = {
     'plain'   : [],
 }
 
-# No-holds-barred optimized build: meson setup --buildtype=release -Dbenchopt=use
-benchopt_flags = [
+# No-holds-barred optimized build: meson setup --buildtype=release -Dpgo=use
+pgo_flags = [
     '-DNDEBUG',
     '-DNLOGINFO',
     '-DNASSERT',
@@ -58,7 +58,7 @@ benchopt_flags = [
 ]
 
 # Need to generate profile before using it
-benchopt_gen_flags = [
+pgo_gen_flags = [
     '-DNDEBUG',
     '-DNLOGINFO',
     '-DNASSERT',
@@ -70,17 +70,15 @@ benchopt_gen_flags = [
 buildtype = get_option('buildtype')
 desired_flags = common_flags + buildtype_flags.get(buildtype, [])
 
-# GCC may emit -Wclobbered for glibc's pthread_cleanup_push()
-# implementation (__cancel_routine / __cancel_arg). These variables are
-# internal to the glibc macro, not Cimba. Suppress them.
 if cc.get_id() == 'gcc'
-    desired_flags += ['-Wno-clobbered']
+    # Suppress spurious gcc warnings related to its own glibc macros
+     desired_flags += ['-Wno-clobbered']
 endif
 
-if get_option('benchopt') == 'generate'
-    desired_flags += benchopt_gen_flags
-elif get_option('benchopt') == 'use'
-    desired_flags += benchopt_flags
+if get_option('pgo') == 'generate'
+    desired_flags += pgo_gen_flags
+elif get_option('pgo') == 'use'
+    desired_flags += pgo_flags
 endif
 
 if host_machine.system() == 'linux'
