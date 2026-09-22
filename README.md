@@ -69,7 +69,7 @@ It is powerful, fast, reliable, and free.
     In this benchmark, Cimba reduces the run time by 98.6 % compared to the
     same model in SimPy + multiprocessing. This translates into doing your simulation
     experiments in seconds instead of minutes, or in minutes instead of hours. The 
-    main reason for the performance advantage is simply that compiled C code and  
+    main reason for the performance advantage is simply that compiled C code and 
     hand-rolled assembly will always run much faster than Python code that needs to 
     be interpreted at runtime.
 
@@ -425,7 +425,7 @@ can find [more details here](https://cimba.readthedocs.io/en/latest/background.h
 
 The stackful coroutines for simulated processes are combined with a higher
 level of concurrency in the Posix pthreads managing the trials and replications in an
-experiment design, and with a lower level of massive parallelism in GPGPU-based
+experiment design, and with a lower level of massive parallelism in GP GPU-based
 physics calculations. These three layers of concurrency have clearly separated
 semantics in the model code.
 
