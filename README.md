@@ -58,7 +58,8 @@ It is powerful, fast, reliable, and free.
   * A relevant benchmark is the Python simulation package SimPy. Cimba models run 
     much faster than SimPy equivalents. The chart below shows the number of simulated 
     events processed per second of wall clock time on a simple M/M/1 queue 
-    implemented in SimPy and Cimba.
+    implemented in SimPy and Cimba. Cimba is shown both with a default release build 
+    and a profiler-guided optimizer (PGO) maximum speed build.
 
     ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
    
@@ -71,7 +72,8 @@ It is powerful, fast, reliable, and free.
     experiments in seconds instead of minutes, or in minutes instead of hours. The 
     main reason for the performance advantage is simply that compiled C code and 
     hand-rolled assembly will always run much faster than Python code that needs to 
-    be interpreted at runtime.
+    be interpreted at runtime. See [the documentation](https://cimba.readthedocs.io/en/latest/background.html#benchmarking-cimba-performance) 
+    for the technical details on this benchmark. 
 
   * Another performance reference point is found in the literature on large-scale
     parallel discrete event simulation (PDES). In these models, each simulation run is
