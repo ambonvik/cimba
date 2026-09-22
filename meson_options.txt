@@ -10,9 +10,15 @@ option('enable_cuda_tutorials',
        description : 'Build the CUDA tutorial examples (tut_5_2, tut_5_3)'
 )
 
-option('benchopt',
+option('pgo',
        type    : 'combo',
        choices : ['none', 'generate', 'use'],
        value   : 'none',
        description : 'Profile-guided optimisation: generate profiles, use them, or neither'
+)
+
+option('lto',
+       type        : 'feature',
+       value       : 'auto',
+       description : 'Link-time optimisation of libcimba: auto = release builds only'
 )
