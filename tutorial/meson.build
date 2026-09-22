@@ -133,7 +133,7 @@ else
     message('Skipping tut_5_1: HDF5 not found.')
 endif
 
-if get_option('enable_cuda_tutorials') and get_option('benchopt') == 'none' \
+if get_option('enable_cuda_tutorials') and get_option('pgo') == 'none' \
     and hdf5_dep.found() and cuda_dep.found()
     cuda_inc = include_directories('/opt/cuda/include', is_system : true)
 
@@ -158,7 +158,7 @@ else
 endif
 
 
-if get_option('enable_cuda_tutorials') and get_option('benchopt') == 'none' \
+if get_option('enable_cuda_tutorials') and get_option('pgo') == 'none' \
     and cuda_dep.found()
     cuda_inc = include_directories('/opt/cuda/include', is_system : true)
 
