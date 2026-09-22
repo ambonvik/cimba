@@ -53,6 +53,17 @@ if host_machine.system() == 'windows'
     cimba_link_args += ['-static-libgcc', '-static']
 endif
 
+# Link-time optimisation of the library, by default in release builds only
+cimba_lto = []
+cimba_lto_args = []
+lto_feature = get_option('lto')
+if lto_feature.enabled() or (lto_feature.auto() and get_option('buildtype').startswith('release'))
+    cimba_lto = ['b_lto=true']
+    if get_option('default_library') != 'shared'
+        cimba_lto_args = ['-ffat-lto-objects']
+    endif
+endif
+
 cimba_lib = library('cimba',
                     sources,
                     include_directories : [inc_api, inc_int],
@@ -61,7 +72,9 @@ cimba_lib = library('cimba',
                     install : true,
                     version : meson.project_version(),
                     soversion : '1',
-                    native : true
+                    native : true,
+                    c_args : cimba_lto_args,
+                    override_options : cimba_lto
 )
 
 my_lib_dep = declare_dependency(
