@@ -70,6 +70,7 @@ elif lto_feature.enabled() or (lto_feature.auto() and get_option('buildtype').st
     endif
 endif
 
+# Print a configuration summary
 summary({'LTO (libcimba)' : cimba_lto.contains('b_lto=true')}, section : 'Optimisation')
 
 cimba_lib = library('cimba',
