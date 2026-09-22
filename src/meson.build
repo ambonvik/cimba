@@ -54,10 +54,16 @@ if host_machine.system() == 'windows'
 endif
 
 # Link-time optimisation of the library, by default in release builds only
+# Not available on Windows due to the usual DLL issues
 cimba_lto = []
 cimba_lto_args = []
 lto_feature = get_option('lto')
-if lto_feature.enabled() or (lto_feature.auto() and get_option('buildtype').startswith('release'))
+if host_machine.system() == 'windows'
+    cimba_lto = ['b_lto=false']
+    if lto_feature.enabled()
+        warning('-Dlto=enabled is ignored on Windows: LTO breaks MinGW DLL exports')
+    endif
+elif lto_feature.enabled() or (lto_feature.auto() and get_option('buildtype').startswith('release'))
     cimba_lto = ['b_lto=true']
     if get_option('default_library') != 'shared'
         cimba_lto_args = ['-ffat-lto-objects']
