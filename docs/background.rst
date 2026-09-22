@@ -2076,8 +2076,8 @@ This speed difference is mostly due to the difference between Cimba's compiled C
 and assembly code vs SimPy's interpreted Python code, where a difference of around this
 magnitude should be expected. There exist other and more powerful Python simulation
 tools, such as `Salabim <https://www.salabim.org/manual/index.html>`_. We have not
-benchmarked Cimba vs Salabim yet, but expect to see similar speed diffences there for the
-same reason.
+benchmarked Cimba vs Salabim yet, but expect to see similar speed differences there for
+the same reason.
 
 Cimba vs Time Warp PDES
 ^^^^^^^^^^^^^^^^^^^^^^^
