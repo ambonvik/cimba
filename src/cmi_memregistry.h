@@ -72,4 +72,14 @@ extern void cmi_memregistry_remove(struct cmi_memregistry_item *item);
  */
 extern void cmi_memregistry_cleanup(void);
 
+/*
+ * cmi_memregistry_is_empty - true if nothing is currently registered, also if
+ *    nothing ever was registered and no lazy allocation has taken place.
+ */
+CMB_MAYBE_UNUSED
+static inline bool cmi_memregistry_is_empty(void)
+{
+    return (cmi_memregistry.next == NULL) || cmi_dlist_is_empty(&cmi_memregistry);
+}
+
 #endif /* CIMBA_CMI_MEMREGISTRY_H */
