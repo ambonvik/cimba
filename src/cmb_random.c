@@ -269,8 +269,7 @@ double cmi_random_exp_not_hot(int64_t i_cand_x)
         jdx = (i_coin >= exp_zig_i_prob[jdx]) ? exp_zig_alias[jdx] : jdx;
         if (jdx > 0) {
             /* Not in tail, rejection sample from within this right triangular
-             * overhang only.
-             */
+             * overhang only.       */
             for (;;) {
                 /* First time through we still have 56 bits of unused randomness
                  * in i_cand_x, now re-interpreted as an X value along the base
