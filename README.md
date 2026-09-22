@@ -105,7 +105,7 @@ It is powerful, fast, reliable, and free.
     the Cimba functions. 
   
   * There are unit tests for each module, including comprehensive statistical 
-    goodness-of-fit tests for the pesudo-random number distributions. Running the unit 
+    goodness-of-fit tests for the pseudo-random number distributions. Running the unit 
     test battery in a debug build (all assertions active) verifies the correct 
     operation in great detail. You can do that by the one-liner ``meson test -C 
     build`` from the terminal command line. 
