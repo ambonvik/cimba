@@ -92,8 +92,7 @@ test_data = executable( 'test_data',
                         native : true
 )
 
-# may take a while
-test('data', test_data, timeout : 0)
+test('data', test_data)
 
 test_event = executable('test_event',
                         files('test_event.c', 'testutils.c'),
@@ -116,6 +115,17 @@ test_hashheap = executable('test_hashheap',
 )
 
 test('hashheap', test_hashheap)
+
+test_hold = executable('test_hold',
+                           files('test_hold.c', 'testutils.c'),
+                           include_directories : [inc_api, inc_int],
+                           link_with : cimba_lib,
+                           dependencies : [project_deps],
+                           install : false,
+                           native : true
+)
+
+test('hold', test_hold, timeout : 0)
 
 test_lists = executable('test_lists',
                            files('test_lists.c', 'testutils.c'),
@@ -148,7 +158,7 @@ test_MM1 = executable('test_MM1',
                           native : true
 )
 
-test('MM1', test_MM1)
+test('MM1', test_MM1, timeout : 0)
 
 test_mempool = executable('test_mempool',
                          files('test_mempool.c', 'testutils.c'),
