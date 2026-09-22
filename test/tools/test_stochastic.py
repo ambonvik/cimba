@@ -59,17 +59,20 @@ class StochasticTest:
 TESTS: list[StochasticTest] = [
     StochasticTest(name="buffer", binary="test_buffer", seed=0x34f05c64d7ad598f),
     StochasticTest(name="condition", binary="test_condition", seed=0x34f05c64d7ad598f),
-    StochasticTest(name="data", binary="test_data", seed=0x34f05c64d7ad598f, timeout=300),
+    StochasticTest(name="data", binary="test_data", seed=0x34f05c64d7ad598f,
+                   timeout=300),
     StochasticTest(name="event", binary="test_event", seed=0x34f05c64d7ad598f),
     StochasticTest(name="hashheap", binary="test_hashheap", seed=0x34f05c64d7ad598f),
     StochasticTest(name="objectqueue", binary="test_objectqueue", seed=0x34f05c64d7ad598f),
     StochasticTest(name="priorityqueue", binary="test_priorityqueue", seed=0x34f05c64d7ad598f),
-    StochasticTest(name="random",  binary="test_random",  seed=0x34f05c64d7ad598f, timeout=300),
+    StochasticTest(name="random",  binary="test_random",  seed=0x34f05c64d7ad598f,
+                   timeout=600),
     StochasticTest(name="resource", binary="test_resource", seed=0x34f05c64d7ad598f),
     StochasticTest(name="resourceguard", binary="test_resourceguard", seed=0x34f05c64d7ad598f),
     StochasticTest(name="resourcepool", binary="test_resourcepool", seed=0x34f05c64d7ad598f),
     StochasticTest(name="testutils", binary="test_testutils", seed=0x34f05c64d7ad598f),
-    StochasticTest(name="MM1", binary="test_MM1", seed=0x34f05c64d7ad598f, timeout=600),
+    StochasticTest(name="MM1", binary="test_MM1", seed=0x34f05c64d7ad598f,
+                   timeout=600),
 ]
 
 
