@@ -4,6 +4,13 @@ Note: Version numbers are MAJOR.MINOR.PATCH per [Semantic Versioning](https://se
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
+### 2026-09-22: 3.0.1
+* Bug fix: A multithreaded, purely event-based model would fire an assert from the 
+  memory registry. Added a clause for initialization in the is_empty predicate function.
+* Performance improvement: Aligned hashheap arrays to 64-byte memory addresses. 
+* Updated benchmark cases in documentation: Now runs the multithreaded M/M/1 benchmark 
+  case 70 times faster than SimPy, 65 times faster single-threaded.
+
 ### 2026-09-20: 3.0.0
 * Minor bug fixes and documentation updates
   * Promoted some debug asserts to release asserts to enforce function preconditions 
