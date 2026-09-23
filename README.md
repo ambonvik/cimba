@@ -63,17 +63,17 @@ It is powerful, fast, reliable, and free.
 
     ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
    
-    _Cimba runs this benchmark nearly three times faster (43.1 M events/sec) on a 
-    single CPU  core than SimPy does when using all 64 logical cores (15.5 M events/sec 
-    combined)._
+    _Cimba runs this benchmark 70 times faster than SimPy._ Also, the throughput for 
+    Cimba is nearly three times higher (43.1 M events/sec) _on a single CPU core_ than 
+    SimPy using all 64 logical cores (15.5 M events/sec combined).
 
-    In this benchmark, Cimba reduces the run time by 98.6 % compared to the
-    same model in SimPy + multiprocessing. This translates into doing your simulation
-    experiments in seconds instead of minutes, or in minutes instead of hours. The 
-    main reason for the performance advantage is simply that compiled C code and 
-    hand-rolled assembly will always run much faster than Python code that needs to 
-    be interpreted at runtime. See [the documentation](https://cimba.readthedocs.io/en/latest/background.html#benchmarking-cimba-performance) 
-    for the technical details on this benchmark. 
+    Running multithreadedc, Cimba reduces the run time by 98.6 % compared to the
+    same model in SimPy. This translates into doing your simulation experiments in 
+    seconds instead of minutes, or in minutes instead of hours. The main reason for 
+    the performance advantage is simply that compiled C code and hand-rolled assembly 
+    will always run much faster than Python code that needs to be interpreted at 
+    runtime. See [the documentation](https://cimba.readthedocs.io/en/latest/background.html#benchmarking-cimba-performance) 
+    for technical details on this benchmark. 
 
   * Another performance reference point is found in the literature on large-scale
     parallel discrete event simulation (PDES). In these models, each simulation run is
