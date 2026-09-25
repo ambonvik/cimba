@@ -63,11 +63,11 @@ It is powerful, fast, reliable, and free.
 
     ![Speed_test_AMD_3970x.png](images/Speed_test_AMD_3970x.png)
    
-    _Cimba runs this benchmark 70 times faster than SimPy._ Also, the throughput for 
+    _Cimba runs this benchmark 70 times faster than SimPy._ In fact, the throughput for 
     Cimba is nearly three times higher (43.1 M events/sec) _on a single CPU core_ than 
     SimPy using all 64 logical cores (15.5 M events/sec combined).
 
-    Running multithreadedc, Cimba reduces the run time by 98.6 % compared to the
+    Running multithreaded, Cimba reduces the run time by 98.6 % compared to the
     same model in SimPy. This translates into doing your simulation experiments in 
     seconds instead of minutes, or in minutes instead of hours. The main reason for 
     the performance advantage is simply that compiled C code and hand-rolled assembly 
@@ -364,12 +364,12 @@ demonstrating that it is fairly self-explanatory. See
 [our tutorial](https://cimba.readthedocs.io/en/latest/tutorial.html) at ReadTheDocs for more usage examples with explanations.
 
 ### So, what can I use all that speed for?
-As shown above, it is some 45 times faster than SimPy in a relevant benchmark. It means 
+As shown above, it is some 70 times faster than SimPy in a relevant benchmark. It means 
 getting your results almost immediately rather than after a "go brew a pot of coffee" 
 delay breaking your line of thought.
 
 If you can run, say, 10 replications with SimPy within a certain budget for time and 
-computing resources, you can run 450 with Cimba. That will tighten the confidence 
+computing resources, you can run 700 with Cimba. That will tighten the confidence 
 intervals in your results by a factor of about 8. The details are in our 
 blog post on the topic, 
 [Speed is (statistical) power](https://ambonvik.github.io/speed-is-power/).
