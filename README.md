@@ -374,7 +374,7 @@ intervals in your results by a factor of nearly 10. The details are in our
 blog post on the topic, 
 [Speed is (statistical) power](https://ambonvik.github.io/speed-is-power/).
 
-Or you can do many more parameter variations. For another illustration of how to benefit from the sheer speed, the experiment in 
+Or you can do many more parameter variations. The experiment in 
 [test_cimba.c](test/test_cimba.c)
 simulates an M/G/1 queue at four different levels of 
 service process variability. For each variability level, it tries 
@@ -382,7 +382,7 @@ five system utilization levels. There are ten replications for each parameter
 combination, in total 4 * 5 * 10 = 200 trials. Each trial lasts for one million 
 time units, where the average service time always is 1.0 time units. 
 
-This entire simulation runs in *about 1.5 seconds* on an AMD Threadripper 3970X with 
+This entire simulation runs in *about one second* on an AMD Threadripper 3970X with 
 Arch Linux and produces the chart below.
 
 ![M/G/1 queue](images/MG1%20example.png)
