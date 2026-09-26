@@ -370,11 +370,11 @@ delay breaking your line of thought.
 
 If you can run, say, 10 replications with SimPy within a certain budget for time and 
 computing resources, you can run 700 with Cimba. That will tighten the confidence 
-intervals in your results by a factor of about 8. The details are in our 
+intervals in your results by a factor of nearly 10. The details are in our 
 blog post on the topic, 
 [Speed is (statistical) power](https://ambonvik.github.io/speed-is-power/).
 
-For another illustration of how to benefit from the sheer speed, the experiment in 
+Or you can do many more parameter variations. For another illustration of how to benefit from the sheer speed, the experiment in 
 [test_cimba.c](test/test_cimba.c)
 simulates an M/G/1 queue at four different levels of 
 service process variability. For each variability level, it tries 
