@@ -3333,7 +3333,7 @@ each call to ``cmb_logger_error()``.
 We modify our ``tut_4_2.c`` slightly. First, we change the local stack-allocated
 objects ``env``, ``sim``, and ``ctx`` in ``run_trial()`` to heap-allocated with
 ``malloc()``. Unless freed by a matching call to ``free``, this memory will be
-leaked in an abandoned call. Over a long experiment with may trials, several of them
+leaked in an abandoned call. Over a long experiment with many trials, several of them
 abandoned, that leakage may add up to an out-of-memory crash. We will ensure that this
 does not occur.
 
