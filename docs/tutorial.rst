@@ -3405,7 +3405,7 @@ We need to take responsibility for all our ``malloc`` calls, including those in 
 derived classes such as ``ship``, and for any direct use of Cimba internal ``cmi_``
 objects like the ``cmi_hashheap`` and ``cmi_slist`` here.
 
-We register ``trial_cleanup` as the trial cleanup handler in ``run_trial``, just after
+We register ``trial_cleanup`` as the trial cleanup handler in ``run_trial``, just after
 allocating the context struct:
 
 .. code-block:: c
