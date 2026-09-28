@@ -18,9 +18,12 @@
  * limitations under the License.
  */
 
-#include <cimba.h>
+#include <errno.h>
 #include <stdio.h>
 #include <time.h>
+#include <unistd.h>
+
+#include <cimba.h>
 
 /* Bit masks to distinguish between two types of user-defined logging messages. */
 #define USERFLAG1 0x00000001
@@ -31,7 +34,7 @@
 #define N_PARAMS    4u
 #define N_LEVELS    5u
 #define N_SIZES     2u
-#define N_REPS      10u
+#define N_REPS      32u
 
 /*
  * Baseline parameters - can be global because const and because only used
@@ -39,15 +42,16 @@
  */
 const double mean_wind = 5.0;
 const double arrival_rate[N_SCENARIOS] = { 0.5, 0.55, 0.625 };
-const double percent_large = 0.25;
 const double ref_depth[N_LEVELS] = { 15.0, 15.5, 16.0, 16.5, 17.0 };
 const unsigned num_tugs[N_LEVELS] = { 10u, 11u, 12u, 13u, 14u };
 const unsigned num_berths[N_SIZES][N_LEVELS] = { { 6, 7, 8, 9, 10 },
                                                  { 3, 4, 5, 6, 7 } };
 const double unloading_time_avg[N_SIZES] = { 8.0, 12.0 };
 
-const double warmup_h = 24.0 * 30.0;
-const double duration_h = 24.0 * 365.0;
+/* Can overrule these params by command line options */
+double percent_large = 0.25;
+double warmup_h = 24.0 * 30.0;
+double duration_h = 24.0 * 365.0;
 
 /* This implicitly assumes that N_SIZES == 2 */
 enum ship_size {
@@ -106,9 +110,9 @@ struct trial {
     /* Control parameters */
     double warmup_h;
     double duration_h;
+    uint64_t seed;
 
     /* Results */
-    uint64_t seed_used;
     double avg_time_in_system[N_SIZES];
 };
 
@@ -132,8 +136,8 @@ struct ship {
 struct ship *ship_create(void)
 {
     struct ship *shpp = malloc(sizeof(struct ship));
-    memset(shpp, 0, sizeof(*shpp));
     cmb_assert_release(shpp != NULL);
+    memset(shpp, 0, sizeof(*shpp));
 
     return shpp;
 }
@@ -492,7 +496,7 @@ static void stop_rec(void *subject, void *object)
     const struct context *ctxp = object;
     const struct simulation *simp = ctxp->sim;
 
-    cmb_resourcepool_start_recording(simp->tugs);
+    cmb_resourcepool_stop_recording(simp->tugs);
     for (int i = 0; i < 2; i++) {
         cmb_resourcepool_stop_recording(simp->berths[i]);
     }
@@ -561,16 +565,15 @@ void run_trial(void *vtrl)
     cmb_logger_flags_off(CMB_LOGGER_INFO);
     cmb_logger_flags_off(USERFLAG1);
     cmb_event_queue_initialize(0.0);
-    trlp->seed_used = cmb_random_hwseed();
-    cmb_random_initialize(trlp->seed_used);
+    cmb_random_initialize(trlp->seed);
 
-    cmb_logger_user(stdout, USERFLAG2, "Started, seed 0x%016" PRIx64, trlp->seed_used);
+    cmb_logger_user(stdout, USERFLAG2, "Started, seed 0x%016" PRIx64, trlp->seed);
 
     /* Create and initialize the statistics collectors */
     for (unsigned i = 0; i < N_SIZES; i++) {
         simp->time_in_system[i] = cmb_dataset_create();
         cmb_dataset_initialize(simp->time_in_system[i]);
-        trlp->avg_time_in_system[i] = 0.0;
+        trlp->avg_time_in_system[i] = -1.0;
     }
 
     /* Create weather and tide processes, ensuring that weather goes first */
@@ -632,7 +635,10 @@ void run_trial(void *vtrl)
         struct cmb_datasummary dstmp;
         cmb_datasummary_initialize(&dstmp);
         cmb_dataset_summarize(simp->time_in_system[i], &dstmp);
-        trlp->avg_time_in_system[i] = cmb_datasummary_mean(&dstmp);
+        if (cmb_datasummary_count(&dstmp) > 0u) {
+            trlp->avg_time_in_system[i] = cmb_datasummary_mean(&dstmp);
+        }
+
         cmb_datasummary_terminate(&dstmp);
     }
 
@@ -675,20 +681,70 @@ void run_trial(void *vtrl)
 
     cmb_logger_user(stdout, USERFLAG2,
                     "Finished normally, seed 0x%016" PRIx64,
-                    trlp->seed_used);
+                    trlp->seed);
 }
 
 void write_gnuplot_commands(void);
 double t_crit_95(uint32_t n);
 
-int main(void)
+int main(const int argc, char *argv[])
 {
+    uint64_t master_seed = cmb_random_hwseed();
+    unsigned int n_reps = N_REPS;
+
+    int opt;
+    while ((opt = getopt(argc, argv, "d:n:s:w:")) != -1) {
+        switch (opt) {
+            case 'd': {
+                errno = 0;
+                duration_h = strtod(optarg, NULL);
+                if (errno != 0 || duration_h <= 0.0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
+                break;
+            }
+            case 'n': {
+                errno = 0;
+                n_reps = (uint64_t)strtoull(optarg, NULL, 0);
+                if (errno != 0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
+                break;
+            }
+            case 's': {
+                errno = 0;
+                master_seed = (uint64_t)strtoull(optarg, NULL, 0);
+                if (errno != 0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
+                break;
+            }
+            case 'w': {
+                errno = 0;
+                warmup_h = strtod(optarg, NULL);
+                if (errno != 0 || warmup_h <= 0.0) {
+                    fprintf(stderr, "Invalid argument %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
+                break;
+            }
+            default: {
+                fprintf(stderr, "Usage: %s [-d <duration_hours][-n <n_replications>][-s <master_seed>][-w warmup_hours]\n", argv[0]);
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+
     printf("Cimba version %s\n", cimba_version());
     struct timespec start_time;
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
     printf("Setting up experiment\n");
-    const unsigned n_trials = N_SCENARIOS * N_PARAMS * N_LEVELS * N_REPS;
+    const unsigned n_trials = N_SCENARIOS * N_PARAMS * N_LEVELS * n_reps;
     struct trial *experiment = calloc(n_trials, sizeof(*experiment));
     cmb_assert_release(experiment != NULL);
 
@@ -700,7 +756,7 @@ int main(void)
         for (unsigned ui_dr = 0; ui_dr < N_LEVELS; ui_dr++) {
             const double lvl_dr = ref_depth[ui_dr];
             /* The replications, everything else baseline */
-            for (unsigned ui_rp = 0u; ui_rp < N_REPS; ui_rp++) {
+            for (unsigned ui_rp = 0u; ui_rp < n_reps; ui_rp++) {
                 experiment[ui_trl].mean_wind = mean_wind;
                 experiment[ui_trl].reference_depth = lvl_dr;
                 experiment[ui_trl].arrival_rate = sc_arr_rate;
@@ -713,7 +769,7 @@ int main(void)
 
                 experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
-
+                experiment[ui_trl].seed = cmb_random_fmix64(master_seed, ui_rp);
                 experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
                 experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
 
@@ -725,7 +781,7 @@ int main(void)
         for (unsigned ui_nt = 0; ui_nt < N_LEVELS; ui_nt++) {
             const unsigned lvl_ntugs = num_tugs[ui_nt];
             /* The replications, everything else baseline */
-            for (unsigned ui_rp = 0u; ui_rp < N_REPS; ui_rp++) {
+            for (unsigned ui_rp = 0u; ui_rp < n_reps; ui_rp++) {
                 experiment[ui_trl].mean_wind = mean_wind;
                 experiment[ui_trl].reference_depth = ref_depth[0];
                 experiment[ui_trl].arrival_rate = sc_arr_rate;
@@ -736,11 +792,13 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
-                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
-
                 experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
+                /* Using the same sequence of trial seeds as for the first series */
+                experiment[ui_trl].seed = cmb_random_fmix64(master_seed, ui_rp);
+
+                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
+                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
 
                 ui_trl++;
             }
@@ -750,7 +808,7 @@ int main(void)
         for (unsigned ui_nsb = 0; ui_nsb < N_LEVELS; ui_nsb++) {
             const unsigned lvl_nsb = num_berths[SMALL][ui_nsb];
             /* The replications, everything else baseline */
-            for (unsigned ui_rp = 0u; ui_rp < N_REPS; ui_rp++) {
+            for (unsigned ui_rp = 0u; ui_rp < n_reps; ui_rp++) {
                 experiment[ui_trl].mean_wind = mean_wind;
                 experiment[ui_trl].reference_depth = ref_depth[0];
                 experiment[ui_trl].arrival_rate = sc_arr_rate;
@@ -763,6 +821,8 @@ int main(void)
 
                 experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
                 experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
+                /* Using the same sequence of trial seeds as for the first series */
+                experiment[ui_trl].seed = cmb_random_fmix64(master_seed, ui_rp);
 
                 experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
@@ -775,7 +835,7 @@ int main(void)
         for (unsigned ui_nlb = 0; ui_nlb < N_LEVELS; ui_nlb++) {
             const unsigned lvl_nlb = num_berths[LARGE][ui_nlb];
             /* The replications, everything else baseline */
-            for (unsigned ui_rp = 0u; ui_rp < N_REPS; ui_rp++) {
+            for (unsigned ui_rp = 0u; ui_rp < n_reps; ui_rp++) {
                 experiment[ui_trl].mean_wind = mean_wind;
                 experiment[ui_trl].reference_depth = ref_depth[0];
                 experiment[ui_trl].arrival_rate = sc_arr_rate;
@@ -788,6 +848,8 @@ int main(void)
 
                 experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
                 experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
+                /* Using the same sequence of trial seeds as for the first series */
+                experiment[ui_trl].seed = cmb_random_fmix64(master_seed, ui_rp);
 
                 experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
@@ -819,29 +881,39 @@ int main(void)
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
-                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
+            for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+                const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
+                if (ts_small != -1.0) {
+                    cmb_datasummary_add(&ds_small, ts_small);
+                }
+
+                const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
+                if (ts_large != -1.0) {
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
+
                 ui_trl++;
             }
 
-            const double smpl_cnt_small = cmb_datasummary_count(&ds_small);
+            const uint64_t n_small = cmb_datasummary_count(&ds_small);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
-            const double t_crit_small = t_crit_95(smpl_cnt_small);
+            const uint32_t t_df_small = (n_small > 1u) ? n_small - 1u : 0;
+            const double t_crit_small = (t_df_small > 0) ? t_crit_95(n_small - 1u) : 0.0;
+            const double conf_int_small = t_crit_small * smpl_sd_small / sqrt((double)n_small);
 
-            const double smpl_cnt_large = cmb_datasummary_count(&ds_large);
+            const uint64_t n_large = cmb_datasummary_count(&ds_large);
             const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
-            const double t_crit_large = t_crit_95(smpl_cnt_large);
+            const uint32_t t_df_large = (n_large > 1u) ? n_large - 1u : 0;
+            const double t_crit_large = (t_df_large > 0) ? t_crit_95(n_large - 1u) : 0.0;
+            const double conf_int_large = t_crit_large * smpl_sd_large / sqrt((double)n_large);
 
-            fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
+            fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%" PRIu64 "\t%f\t%f\t%" PRIu64 "\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit_small * smpl_sd_small,
-                    smpl_avg_large, t_crit_large * smpl_sd_large);
+                    n_small, smpl_avg_small, conf_int_small,
+                    n_large, smpl_avg_large, conf_int_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
@@ -860,29 +932,39 @@ int main(void)
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
-                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
+            for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+                const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
+                if (ts_small != -1.0) {
+                    cmb_datasummary_add(&ds_small, ts_small);
+                }
+
+                const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
+                if (ts_large != -1.0) {
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
+
                 ui_trl++;
             }
 
-            const double smpl_cnt_small = cmb_datasummary_count(&ds_small);
+            const uint64_t n_small = cmb_datasummary_count(&ds_small);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
-            const double t_crit_small = t_crit_95(smpl_cnt_small);
+            const uint32_t t_df_small = (n_small > 1u) ? n_small - 1u : 0;
+            const double t_crit_small = (t_df_small > 0) ? t_crit_95(n_small - 1u) : 0.0;
+            const double conf_int_small = t_crit_small * smpl_sd_small / sqrt((double)n_small);
 
-            const double smpl_cnt_large = cmb_datasummary_count(&ds_large);
+            const uint64_t n_large = cmb_datasummary_count(&ds_large);
             const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
-            const double t_crit_large = t_crit_95(smpl_cnt_large);
+            const uint32_t t_df_large = (n_large > 1u) ? n_large - 1u : 0;
+            const double t_crit_large = (t_df_large > 0) ? t_crit_95(n_large - 1u) : 0.0;
+            const double conf_int_large = t_crit_large * smpl_sd_large / sqrt((double)n_large);
 
-            fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
+            fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%" PRIu64 "\t%f\t%f\t%" PRIu64 "\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit_small * smpl_sd_small,
-                    smpl_avg_large, t_crit_large * smpl_sd_large);
+                    n_small, smpl_avg_small, conf_int_small,
+                    n_large, smpl_avg_large, conf_int_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
@@ -901,29 +983,39 @@ int main(void)
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
-                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
+            for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+                const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
+                if (ts_small != -1.0) {
+                    cmb_datasummary_add(&ds_small, ts_small);
+                }
+
+                const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
+                if (ts_large != -1.0) {
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
+
                 ui_trl++;
             }
 
-            const double smpl_cnt_small = cmb_datasummary_count(&ds_small);
+            const uint64_t n_small = cmb_datasummary_count(&ds_small);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
-            const double t_crit_small = t_crit_95(smpl_cnt_small);
+            const uint32_t t_df_small = (n_small > 1u) ? n_small - 1u : 0;
+            const double t_crit_small = (t_df_small > 0) ? t_crit_95(n_small - 1u) : 0.0;
+            const double conf_int_small = t_crit_small * smpl_sd_small / sqrt((double)n_small);
 
-            const double smpl_cnt_large = cmb_datasummary_count(&ds_large);
+            const uint64_t n_large = cmb_datasummary_count(&ds_large);
             const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
-            const double t_crit_large = t_crit_95(smpl_cnt_large);
+            const uint32_t t_df_large = (n_large > 1u) ? n_large - 1u : 0;
+            const double t_crit_large = (t_df_large > 0) ? t_crit_95(n_large - 1u) : 0.0;
+            const double conf_int_large = t_crit_large * smpl_sd_large / sqrt((double)n_large);
 
-            fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
+            fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%" PRIu64 "\t%f\t%f\t%" PRIu64 "\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit_small * smpl_sd_small,
-                    smpl_avg_large, t_crit_large * smpl_sd_large);
+                    n_small, smpl_avg_small, conf_int_small,
+                    n_large, smpl_avg_large, conf_int_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
@@ -942,29 +1034,39 @@ int main(void)
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
-                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
+            for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+                const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
+                if (ts_small != -1.0) {
+                    cmb_datasummary_add(&ds_small, ts_small);
+                }
+
+                const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
+                if (ts_large != -1.0) {
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
+
                 ui_trl++;
             }
 
-            const double smpl_cnt_small = cmb_datasummary_count(&ds_small);
+            const uint64_t n_small = cmb_datasummary_count(&ds_small);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
-            const double t_crit_small = t_crit_95(smpl_cnt_small);
+            const uint32_t t_df_small = (n_small > 1u) ? n_small - 1u : 0;
+            const double t_crit_small = (t_df_small > 0) ? t_crit_95(n_small - 1u) : 0.0;
+            const double conf_int_small = t_crit_small * smpl_sd_small / sqrt((double)n_small);
 
-            const double smpl_cnt_large = cmb_datasummary_count(&ds_large);
+            const uint64_t n_large = cmb_datasummary_count(&ds_large);
             const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
-            const double t_crit_large = t_crit_95(smpl_cnt_large);
+            const uint32_t t_df_large = (n_large > 1u) ? n_large - 1u : 0;
+            const double t_crit_large = (t_df_large > 0) ? t_crit_95(n_large - 1u) : 0.0;
+            const double conf_int_large = t_crit_large * smpl_sd_large / sqrt((double)n_large);
 
-            fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
+            fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%" PRIu64 "\t%f\t%f\t%" PRIu64 "\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit_small * smpl_sd_small,
-                    smpl_avg_large, t_crit_large * smpl_sd_large);
+                    n_small, smpl_avg_small, conf_int_small,
+                    n_large, smpl_avg_large, conf_int_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
@@ -1043,21 +1145,22 @@ void write_gnuplot_commands(void)
                         "set key at screen 0.95,0.965 top right opaque box spacing 1.0 "
                         "font 'Helvetica,10'\n");
                 fprintf(cmdfp,
-                        "plot datafile using %u:6:7 index %u with errorbars title 'Small ships' "
+                        "plot datafile using %u:7:8 index %u with errorbars title 'Small ships' "
                         "lc rgb \"black\",\\\n",
                         param + 2u, index);
                 fprintf(cmdfp,
-                        "     datafile using %u:8:9 index %u with errorbars title 'Large ships' "
+                        "     datafile using %u:10:11 index %u with errorbars title 'Large ships' "
                         "lc rgb \"red\"\n",
                         param + 2u, index);
                 fprintf(cmdfp, "unset key\n");
-            } else {
+            }
+            else {
                 fprintf(cmdfp,
-                        "plot datafile using %u:6:7 index %u with errorbars notitle "
+                        "plot datafile using %u:7:8 index %u with errorbars notitle "
                         "lc rgb \"black\",\\\n",
                         param + 2u, index);
                 fprintf(cmdfp,
-                        "     datafile using %u:8:9 index %u with errorbars notitle "
+                        "     datafile using %u:10:11 index %u with errorbars notitle "
                         "lc rgb \"red\"\n",
                         param + 2u, index);
             }
@@ -1076,6 +1179,7 @@ void write_gnuplot_commands(void)
 /*
  * Table lookup for the critical values for two-sided 95 % confidence intervals,
  * see https://www.stat.purdue.edu/~lfindsen/stat503/t-Dist.pdf
+ * The argument n is the degrees of freedom for the t distribution.
  */
 double t_crit_95(const uint32_t n)
 {
@@ -1113,9 +1217,9 @@ double t_crit_95(const uint32_t n)
             const double t_range = t_vals[ui] - t_vals[ui - 1];
             const double frac = (double)(n - n_vals[ui - 1]) / (double)n_range;
             cmb_assert_debug(frac >= 0.0 && frac <= 1.0);
-            const double t_ret = t_vals[ui] - frac * t_range;
+            const double t_ret = t_vals[ui - 1u] + frac * t_range;
 
-            cmb_assert_debug((t_ret >= t_vals[ui -1]) && (t_ret <= t_vals[ui]));
+            cmb_assert_debug((t_ret <= t_vals[ui - 1u]) && (t_ret >= t_vals[ui]));
             return t_ret;
         }
     }

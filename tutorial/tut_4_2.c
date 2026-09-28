@@ -31,7 +31,7 @@
 #define N_PARAMS    4u
 #define N_LEVELS    5u
 #define N_SIZES     2u
-#define N_REPS      10u
+#define N_REPS      32u
 
 /*
  * Baseline parameters - can be global because const and because only used
@@ -133,8 +133,8 @@ struct ship {
 struct ship *ship_create(void)
 {
     struct ship *shpp = malloc(sizeof(struct ship));
-    memset(shpp, 0, sizeof(*shpp));
     cmb_assert_release(shpp != NULL);
+    memset(shpp, 0, sizeof(*shpp));
 
     return shpp;
 }
@@ -520,7 +520,7 @@ void run_trial(void *vtrl)
     for (unsigned i = 0; i < N_SIZES; i++) {
         sim.time_in_system[i] = cmb_dataset_create();
         cmb_dataset_initialize(sim.time_in_system[i]);
-        trlp->avg_time_in_system[i] = 0.0;
+        trlp->avg_time_in_system[i] = -1.0;
     }
 
     /* Create weather and tide processes, ensuring that weather goes first */
@@ -582,7 +582,10 @@ void run_trial(void *vtrl)
         struct cmb_datasummary dstmp;
         cmb_datasummary_initialize(&dstmp);
         cmb_dataset_summarize(sim.time_in_system[i], &dstmp);
-        trlp->avg_time_in_system[i] = cmb_datasummary_mean(&dstmp);
+        if (cmb_datasummary_count(&dstmp) > 0u) {
+            trlp->avg_time_in_system[i] = cmb_datasummary_mean(&dstmp);
+        }
+
         cmb_datasummary_terminate(&dstmp);
     }
 
@@ -752,21 +755,35 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-                cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
+                if (ts_small != -1.0) {
+                    cmb_datasummary_add(&ds_small, ts_small);
+                }
+
+                const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
+                if (ts_large != -1.0) {
+                    cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                }
+
                 ui_trl++;
             }
 
+            const uint64_t n_small = cmb_datasummary_count(&ds_small);
+            cmb_assert_debug(n_small > 1u);
+            const uint64_t n_large = cmb_datasummary_count(&ds_large);
+            cmb_assert_debug(n_large > 1u);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
             const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
             const double t_crit = 2.228;
+            const double conf_int_small = t_crit * smpl_sd_small / sqrt((double)n_small);
+            const double conf_int_large = t_crit * smpl_sd_large / sqrt((double)n_large);
             fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit * smpl_sd_small,
-                    smpl_avg_large, t_crit * smpl_sd_large);
+                    smpl_avg_small, conf_int_small,
+                    smpl_avg_large, conf_int_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
@@ -786,21 +803,35 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-                cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
+                if (ts_small != -1.0) {
+                    cmb_datasummary_add(&ds_small, ts_small);
+                }
+
+                const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
+                if (ts_large != -1.0) {
+                    cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                }
+
                 ui_trl++;
             }
 
+            const uint64_t n_small = cmb_datasummary_count(&ds_small);
+            cmb_assert_debug(n_small > 1u);
+            const uint64_t n_large = cmb_datasummary_count(&ds_large);
+            cmb_assert_debug(n_large > 1u);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
             const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
             const double t_crit = 2.228;
+            const double conf_int_small = t_crit * smpl_sd_small / sqrt((double)n_small);
+            const double conf_int_large = t_crit * smpl_sd_large / sqrt((double)n_large);
             fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit * smpl_sd_small,
-                    smpl_avg_large, t_crit * smpl_sd_large);
+                    smpl_avg_small, conf_int_small,
+                    smpl_avg_large, conf_int_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
@@ -820,21 +851,35 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-                cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
+                if (ts_small != -1.0) {
+                    cmb_datasummary_add(&ds_small, ts_small);
+                }
+
+                const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
+                if (ts_large != -1.0) {
+                    cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                }
+
                 ui_trl++;
             }
 
+            const uint64_t n_small = cmb_datasummary_count(&ds_small);
+            cmb_assert_debug(n_small > 1u);
+            const uint64_t n_large = cmb_datasummary_count(&ds_large);
+            cmb_assert_debug(n_large > 1u);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
             const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
             const double t_crit = 2.228;
+            const double conf_int_small = t_crit * smpl_sd_small / sqrt((double)n_small);
+            const double conf_int_large = t_crit * smpl_sd_large / sqrt((double)n_large);
             fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit * smpl_sd_small,
-                    smpl_avg_large, t_crit * smpl_sd_large);
+                    smpl_avg_small, conf_int_small,
+                    smpl_avg_large, conf_int_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
@@ -854,21 +899,35 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-                cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
+                if (ts_small != -1.0) {
+                    cmb_datasummary_add(&ds_small, ts_small);
+                }
+
+                const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
+                if (ts_large != -1.0) {
+                    cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+                }
+
                 ui_trl++;
             }
 
+            const uint64_t n_small = cmb_datasummary_count(&ds_small);
+            cmb_assert_debug(n_small > 1u);
+            const uint64_t n_large = cmb_datasummary_count(&ds_large);
+            cmb_assert_debug(n_large > 1u);
             const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
             const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
             const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
             const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
             const double t_crit = 2.228;
+            const double conf_int_small = t_crit * smpl_sd_small / sqrt((double)n_small);
+            const double conf_int_large = t_crit * smpl_sd_large / sqrt((double)n_large);
             fprintf(datafp, "%f\t%f\t%u\t%u\t%u\t%f\t%f\t%f\t%f\n",
                     smpl_arr, smpl_refdep, smpl_ntugs,
                     smpl_nsmallbts, smpl_nlargebts,
-                    smpl_avg_small, t_crit * smpl_sd_small,
-                    smpl_avg_large, t_crit * smpl_sd_large);
+                    smpl_avg_small, conf_int_small,
+                    smpl_avg_large, conf_int_large);
             cmb_datasummary_terminate(&ds_small);
             cmb_datasummary_terminate(&ds_large);
         }
