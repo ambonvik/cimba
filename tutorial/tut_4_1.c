@@ -442,7 +442,7 @@ static void stop_rec(void *subject, void *object)
     const struct context *ctxp = object;
     const struct simulation *simp = ctxp->sim;
 
-    cmb_resourcepool_start_recording(simp->tugs);
+    cmb_resourcepool_stop_recording(simp->tugs);
     for (int i = 0; i < 2; i++) {
         cmb_resourcepool_stop_recording(simp->berths[i]);
     }
