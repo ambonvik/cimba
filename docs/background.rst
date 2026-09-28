@@ -728,8 +728,9 @@ We initialize the PRNG in a three-stage bootstrapping process:
   to make sure that any initial transient is gone before returning and allowing
   :c:func:`cmb_random_sfc64` to provide pseudo-random numbers to the user application.
 
-The result is a pseudo-random number sequence that cannot be distinguished from true
-randomness by any currently available statistical methods.
+This should qualify as a rather carefully constructed pseudo-random number generator, but
+since it is fundamental to all results obtained from Cimba, we have also put it through a
+demanding empirical test battery for validation. It passes all available tests.
 
 Validating `sfc64`
 ^^^^^^^^^^^^^^^^^^
@@ -885,12 +886,6 @@ For comparison, the well-known 64-bit
 `fails PractRand already at 512 GB <https://www.pcg-random.org/posts/how-to-test-with-practrand.html>`_,
 about 68.7 billion samples, or just 26 minutes into this run.
 
-With this high PRNG quality, it is not necessary to use multiple streams of pseudo-random
-numbers in the same trial to avoid overlapping cycles. That problem does not exist.
-Accordingly, the Cimba PRNG is not implemented as an object in the simulated world,
-where various entities can carry around their own streams of randomness, but more like
-a property of the simulated world. It just *is*. The simulated entities can obtain
-sample values from it as needed according to whatever distribution is needed.
 
 Validating the basic `cmb_random()` U[0,1) distribution
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1010,7 +1005,7 @@ Even if it passes our informal eyeball tests, and the source code combined with 
 above results for the underlying `sfc64` generator conclusively proves that
 :c:func:`cmb_random()` in fact is uniformly distributed, we will need a way to
 quantifying our degree of certainty in this claim. For this purpose, we have built a
-battery of formal statistical test as part of the test suite.
+battery of formal statistical goodness-of-fit tests as part of the test suite.
 
 Feeding a million samples from `cmb_random()` through this test battery gives output
 similar to this:
@@ -1210,9 +1205,9 @@ test:
 However, armed with the statistical Goodness-of-Fit machinery, we can construct a more
 rigorous test. We collect independent samples of the number of customers in the system
 by running the simulation to some multiple of the relaxation time and taking a single
-sample there. Similarly, we can pretermine that we sample the time in the system of the
+sample there. Similarly, we can predetermine that we sample the time in the system of the
 :math:`n`'th customer to pass through, where :math:`n` also is determined from a
-sufficent number of relaxation times. These are unbiased samples, independent of the
+sufficient number of relaxation times. These are unbiased samples, independent of the
 situation in the system at the sampling point.
 
 Having built that model, we can run it, e.g., a million times, all with different
