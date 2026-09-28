@@ -2933,6 +2933,8 @@ where the ship class looks like this:
     struct ship *ship_create(void)
     {
         struct ship *shpp = malloc(sizeof(struct ship));
+        cmb_assert_release(shpp != NULL);
+        memset(shpp, 0, sizeof(*shpp));
 
         return shpp;
     }
@@ -3269,8 +3271,8 @@ Time to fire up more computing power.
 Setting up our experiment, we have the factors dredging depth, number of tugs,
 and number of small and large berths. To ensure that the SPA also has numbers it can use
 beyond next year's budget, we try five levels of each parameter, dredging in steps of 0.5
-meters and adding tugs and berths in steps of one. We again run ten replications of each
-parameter set. This gives us 4 * 5 * 3 = 60 parameter combinations and 60 * 10 = 600 trials.
+meters and adding tugs and berths in steps of one. We run 32 replications of each
+parameter set. This gives us 4 * 5 * 3 = 60 parameter combinations and 60 * 10 = 1920 trials.
 We will run each trial for one year of simulated time, i.e. 365 * 24 = 8760 time
 units, allowing 30 days' warmup time before we start collecting data.
 
@@ -3291,9 +3293,9 @@ of trials, consisting of parameter variations and replications.
     values, how many replications for each? Implementing it is then just a simple
     piece of code, and unpacking the results its mirror image.
 
-We compile and run, and this chart appears, showing our 60  arameter combinations, the
+We compile and run, and this chart appears, showing our 60 parameter combinations, the
 average time in the system for small (blue) and large ships (red) under each set of
-parameters, and tight 95 % confidence intervals based on our 10 replications of each
+parameters, and tight 95 % confidence intervals based on our 32 replications of each
 parameter combination:
 
 .. image:: ../images/tut_4_2.png
@@ -3327,7 +3329,7 @@ It will call ``cimba_trial_abandon()`` internally after printing the log entry.
 Either way, Cimba will call the necessary destructors on all abandoned ``cmb_`` objects
 in the trial. Any memory that is directly allocated in user code is its own
 responsibility to free. Cimba also provides a callback hook to register a
-clanup-handler for this, avoiding the need to add code for memory cleanup just before
+cleanup-handler for this, avoiding the need to add code for memory cleanup just before
 each call to ``cmb_logger_error()``.
 
 We modify our ``tut_4_2.c`` slightly. First, we change the local stack-allocated
@@ -3450,70 +3452,87 @@ We can then check for valid result or not in each trial when assembling the stat
 
 .. code-block:: c
 
-    for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-        if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
-            cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-            cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
-        }
-        ui_trl++;
-    }
+        for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+            const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
+            if (ts_small != -1.0) {
+                cmb_datasummary_add(&ds_small, ts_small);
+            }
 
-For extra credit, we also calculate the confidence intervals from the actual number of
-samples in each case:
+            const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
+            if (ts_large != -1.0) {
+                cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
+            }
+
+            ui_trl++;
+        }
+
+For extra credit, we also calculate the confidence intervals properly from the actual number of
+samples in each case by using a small helper function ``t_crit_95()``:
 
 .. code-block:: c
 
-            const double smpl_cnt_small = cmb_datasummary_count(&ds_small);
-            const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
-            const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
-            const double t_crit_small = t_crit_95(smpl_cnt_small);
+        const uint64_t n_small = cmb_datasummary_count(&ds_small);
+        const double smpl_avg_small = cmb_datasummary_mean(&ds_small);
+        const double smpl_sd_small = cmb_datasummary_stddev(&ds_small);
+        const uint32_t t_df_small = (n_small > 1u) ? n_small - 1u : 0;
+        const double t_crit_small = (t_df_small > 0) ? t_crit_95(n_small - 1u) : 0.0;
+        const double conf_int_small = t_crit_small * smpl_sd_small / sqrt((double)n_small);
 
-            const double smpl_cnt_large = cmb_datasummary_count(&ds_large);
-            const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
-            const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
-            const double t_crit_large = t_crit_95(smpl_cnt_large);
+        const uint64_t n_large = cmb_datasummary_count(&ds_large);
+        const double smpl_avg_large = cmb_datasummary_mean(&ds_large);
+        const double smpl_sd_large = cmb_datasummary_stddev(&ds_large);
+        const uint32_t t_df_large = (n_large > 1u) ? n_large - 1u : 0;
+        const double t_crit_large = (t_df_large > 0) ? t_crit_95(n_large - 1u) : 0.0;
+        const double conf_int_large = t_crit_large * smpl_sd_large / sqrt((double)n_large);
+
+Moreover, for convenience, we add command line options
+``[-d <duration_hours][-n <n_replications>][-s <master_seed>][-w warmup_hours]`` for easy adjustment of the main
+simulation parameters.
 
 We compile and run, and get output similar to this:
 
 .. code-block:: none
 
     [ambonvik@Threadripper cimba]$ ./build/tutorial/tut_4_3
-    Cimba version 3.0.0-RC1
+    Cimba version 3.0.2
     Setting up experiment
-    Configured 600 trials
+    Configured 1920 trials
     Executing experiment
-    2	    0.0000	dispatcher	run_trial (568):  Started, seed 0x2b91dbf7402c1b90
-    0	    0.0000	dispatcher	run_trial (568):  Started, seed 0x93ceaf7eb880eb72
-    4	    0.0000	dispatcher	run_trial (568):  Started, seed 0xf02d686e82beeece
-    1	    0.0000	dispatcher	run_trial (568):  Started, seed 0xb2d60cb0046eba9c
-    5	    0.0000	dispatcher	run_trial (568):  Started, seed 0x1dbf274139c09c4d
-    3	    0.0000	dispatcher	run_trial (568):  Started, seed 0xe6fa5d8c2560411b
+    1	    0.0000	dispatcher	run_trial (570):  Started, seed 0x9f2fb98bcc71e0a8
+    0	    0.0000	dispatcher	run_trial (570):  Started, seed 0xa1811d3f43810df3
+    2	    0.0000	dispatcher	run_trial (570):  Started, seed 0x852e207e008c23ad
+    3	    0.0000	dispatcher	run_trial (570):  Started, seed 0xbaa857bc1ba4a1e5
+    4	    0.0000	dispatcher	run_trial (570):  Started, seed 0x3b267755d4424fd2
+    6	    0.0000	dispatcher	run_trial (570):  Started, seed 0x1b8b11ab5446953b
 
     ...
 
-    61	    0.0000	dispatcher	run_trial (568):  Started, seed 0x1015f31088cbb8a3
-    63	    0.0000	dispatcher	run_trial (568):  Started, seed 0x655c64dfbd5c0928
-    20	    1628.1	Ship_000810_small	ship_proc (324):  Error: Randomly abandoning trial, seed 0x147f3521cef44265
-    64	    0.0000	dispatcher	run_trial (568):  Started, seed 0x3c34ef2bc108cc5c
-    40	    5763.8	Ship_002874_small	ship_proc (324):  Error: Randomly abandoning trial, seed 0xe80a62c2948f8967
-    65	    0.0000	dispatcher	run_trial (568):  Started, seed 0x4e935c39f1b027e8
-    48	    8298.5	Ship_004027_small	ship_proc (324):  Error: Randomly abandoning trial, seed 0xa8f207449132e876
-    66	    0.0000	dispatcher	run_trial (568):  Started, seed 0xf779b502f70bc2a8
-    11	    0.0000	dispatcher	run_trial (677):  Finished normally, seed 0x35acdf8c1e61ba55
+    45	    0.0000	dispatcher	run_trial (570):  Started, seed 0x0a2b1f59bd82d71a
+    28	    0.0000	dispatcher	run_trial (682):  Finished normally, seed 0x1c8202ce52f96b74
+    46	    0.0000	dispatcher	run_trial (570):  Started, seed 0xf24703a07f8a9b79
+    27	    0.0000	dispatcher	run_trial (682):  Finished normally, seed 0x922263ec6be75596
+    47	    0.0000	dispatcher	run_trial (570):  Started, seed 0x3c120218c735a32b
+    29	    8499.1	Ship_004155_small	ship_proc (329):  Error: Randomly abandoning trial, seed 0xcd00316f6e1f4031
+    48	    0.0000	dispatcher	run_trial (570):  Started, seed 0xc2e9f44a1940ea2a
+    32	    0.0000	dispatcher	run_trial (682):  Finished normally, seed 0xa1811d3f43810df3
+    49	    0.0000	dispatcher	run_trial (570):  Started, seed 0x085a95c2d5e2f86b
 
     ...
 
-    595	    0.0000	dispatcher	run_trial (677):  Finished normally, seed 0xe70596fed33211a3
-    596	    0.0000	dispatcher	run_trial (677):  Finished normally, seed 0x992d7262b2523d7e
-    594	    0.0000	dispatcher	run_trial (677):  Finished normally, seed 0x13c0d23b8fde680b
-    597	    0.0000	dispatcher	run_trial (677):  Finished normally, seed 0x22fff7f8b6f8960a
-    598	    0.0000	dispatcher	run_trial (677):  Finished normally, seed 0x37793f26aa3074f6
-    599	    0.0000	dispatcher	run_trial (677):  Finished normally, seed 0x720e51ce0924f645
-    Experiment finished, 29 failed trials, 571 successful
+    1916	    0.0000	dispatcher	run_trial (682):  Finished normally, seed 0x1c8202ce52f96b74
+    1918	    5269.5	Ship_003202_small	ship_proc (329):  Error: Randomly abandoning trial, seed 0xf01ed37e5f22f0c6
+    1914	    0.0000	dispatcher	run_trial (682):  Finished normally, seed 0xeb30f41a6346c4d0
+    1911	    0.0000	dispatcher	run_trial (682):  Finished normally, seed 0xfdf10b37ed131127
+    1913	    0.0000	dispatcher	run_trial (682):  Finished normally, seed 0x4046e2ecfa2f5d54
+    1912	    0.0000	dispatcher	run_trial (682):  Finished normally, seed 0xac604805816c50a5
+    1915	    0.0000	dispatcher	run_trial (682):  Finished normally, seed 0x922263ec6be75596
+    1917	    0.0000	dispatcher	run_trial (682):  Finished normally, seed 0xcd00316f6e1f4031
+    1919	    0.0000	dispatcher	run_trial (682):  Finished normally, seed 0xc55b917d43db923a
+    Experiment finished, 113 failed trials, 1807 successful
 
-Some of our confidence intervals in the gnuplot diagram may also become noticeably
-wider. We may also notice that the Leak Sanitizer does not report any leaked memory;
-every single allocated object in the entire simulation run has been taken care of.
+The statistics chart looks much the same as before. We may also notice that the Leak Sanitizer
+does not report any leaked memory; every single allocated object in the entire simulation run
+has been taken care of.
 
 This concludes our fourth tutorial. We have demonstrated the very powerful
 :c:struct:`cmb_condition` allowing processes to wait for arbitrary combinations of
