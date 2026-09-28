@@ -4,6 +4,12 @@ Note: Version numbers are MAJOR.MINOR.PATCH per [Semantic Versioning](https://se
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
+### 2026-09-28: 3.0.2
+* Bug fix to tutorial 4. (Statistics errors gave wrong confidence intervals in charts.)
+* Copyright notices updated: No old code still remaining, the 1994-95 dates removed. 
+  (Was true from somewhere in the beta build series, did not check before now.)
+* Documentation updates in tutorial and background sections.
+
 ### 2026-09-22: 3.0.1
 * Bug fix: A multithreaded, purely event-based model would fire an assert from the 
   memory registry. Added a clause for initialization in the is_empty predicate function.

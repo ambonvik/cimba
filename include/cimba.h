@@ -29,7 +29,7 @@
 /** \cond */
 #define CIMBA_VERSION_MAJOR 3
 #define CIMBA_VERSION_MINOR 0
-#define CIMBA_VERSION_PATCH 0
+#define CIMBA_VERSION_PATCH 2
 
 #define CMI_STRINGIFY(x) #x
 
