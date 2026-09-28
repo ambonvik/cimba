@@ -1,7 +1,7 @@
 /*
  * cmb_random.c - pseudo-random number generators and distributions
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * The normal and exponential distributions below are based on code at
  *      https://github.com/cd-mcfarland/fast_prng

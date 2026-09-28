@@ -2,7 +2,7 @@
  * cmb_event.c - event view of discrete event simulation.
  * Provides routines to handle clock sequencing and event scheduling.
  *
- * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025-26.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
