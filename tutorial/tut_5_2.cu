@@ -6,6 +6,8 @@
  *
  * Requires compute capability 8.6 (RTX 3090, Ampere), compile with -arch=sm_86.
  *
+ * This file mostly drafted by the LLM Anthropic Claude Opus v 4.6 - 4.8.
+ *
  * Copyright (c) Asbjørn M. Bonvik 2026.
  * Licensed under the Apache License, Version 2.0.
  */

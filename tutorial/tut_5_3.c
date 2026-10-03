@@ -11,7 +11,11 @@
  *
  * Generates a Gnuplot chart of simulation results, not per-trial animation.
  *
- * Copyright (c) Asbjørn M. Bonvik 2026.
+ * The code for CUDA terrain generation, ray-marching, sensor detections in
+ * clutter, and HDF5 file output was drafted by the LLM Anthropic Claude Opus
+ * v 4.6 - 4.8.
+ *
+* Copyright (c) Asbjørn M. Bonvik 2026.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
