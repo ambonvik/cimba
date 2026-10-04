@@ -13,7 +13,7 @@
  *   that the World Forgot (or: a Better Alternative to Integer Modulo)",
  *   https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
  *
- * Copyright (c) Asbjørn M. Bonvik 1993-1995, 2025-26.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

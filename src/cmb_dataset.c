@@ -2,7 +2,7 @@
  * cmb_dataset.c - an automatically resizing array of possibly unordered
  * sample values, each sample a double.
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

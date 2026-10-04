@@ -6,7 +6,7 @@
  * worker threads equal to the number of logical cores on the machine, then let
  * these pull and execute trials from the experiment array.
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-2026.
+ * Copyright (c) Asbjørn M. Bonvik 2025-2026.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

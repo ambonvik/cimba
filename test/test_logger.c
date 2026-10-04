@@ -6,7 +6,7 @@
  * Will normally return a non-zero exit code, since we end by testing the
  * error functions. An "abnormal" exit with abort() is actually successful.
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

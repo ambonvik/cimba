@@ -2,7 +2,7 @@
  * cmi_memutils.h - wrappers for malloc() and his friends plus internal
  *                  memory utility functions.
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

@@ -18,6 +18,9 @@
  * Adding these would improve the realism of the model, but not add anything
  * significant to this tutorial example.
  *
+ * The code for terrain generation, ray-marching, sensor detections in clutter, and
+ * HDF5 file output was drafted by the LLM Anthropic Claude Opus v 4.6 - 4.8.
+ *
  * Copyright (c) Asbjørn M. Bonvik 2026.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

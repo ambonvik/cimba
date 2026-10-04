@@ -7,7 +7,7 @@
  * Some alternative implementations of certain distributions in this
  * file for performance comparison purposes, e.g. Box Muller normal.
  *
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

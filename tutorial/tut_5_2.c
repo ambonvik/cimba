@@ -4,9 +4,15 @@
  * A single-threaded CPU + CUDA version of the AWACS simulation.
  * See comments in tut_5_1.c for details on the radar model.
  *
- * In this version, the CPU remains the simulation authority: the cimba event queue,
- * the simulated time, the target process behaviour, and the platform/orbit kinematics.
- * The GPU handles radar physics and determines detections.
+ * The code for terrain generation, ray-marching, sensor detections in clutter, and
+ * HDF5 file output was drafted by the LLM Anthropic Claude Opus v 4.6 - 4.8.
+ *
+ * In this version, also the CUDA implementation, including the rather long description
+ * just below this, was also drafted by the same LLM.
+ *
+ * Under this functional decomposition, the CPU remains the simulation enginey: the
+ * cimba event queue, the simulated time, the target process behaviour, and the
+ * platform/orbit kinematics. The GPU handles radar physics and determines detections.
  *
  * Key design decisions:
  *  - Terrain is born and lives on-device. The syntetic terrain map (~14 GB at

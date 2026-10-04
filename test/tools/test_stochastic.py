@@ -13,6 +13,11 @@ Running tests (called by meson test / CI):
     python test_stochastic.py
 
 Exit code is 0 only if every test passes.
+
+This file was drafted by the LLM Anthropic Claude Opus v. 4.6 - 4.8, adapted by
+the human author.
+
+Copyright (C) Asbjærn M Bonvik 2026.
 """
 
 import argparse

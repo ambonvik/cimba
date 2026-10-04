@@ -8,7 +8,7 @@
  */
 
 /*
- * Copyright (c) Asbjørn M. Bonvik 1994, 1995, 2025-26.
+ * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@
 /** \cond */
 #define CIMBA_VERSION_MAJOR 3
 #define CIMBA_VERSION_MINOR 0
-#define CIMBA_VERSION_PATCH 0
+#define CIMBA_VERSION_PATCH 2
 
 #define CMI_STRINGIFY(x) #x
 
