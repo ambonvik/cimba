@@ -33,6 +33,9 @@
 #define N_SIZES     2u
 #define N_REPS      10u
 
+/* Initial out-of-band value */
+#define NO_RESULT -1.0
+
 /*
  * Baseline parameters - can be global because const and because only used
  * outside the multithreading when loading the experiment array with trials.
@@ -714,8 +717,8 @@ int main(void)
                 experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
-                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
-                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
+                experiment[ui_trl].avg_time_in_system[SMALL] = NO_RESULT;
+                experiment[ui_trl].avg_time_in_system[LARGE] = NO_RESULT;
 
                 ui_trl++;
             }
@@ -736,8 +739,8 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
-                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
+                experiment[ui_trl].avg_time_in_system[SMALL] = NO_RESULT;
+                experiment[ui_trl].avg_time_in_system[LARGE] = NO_RESULT;
 
                 experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
@@ -761,8 +764,8 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
-                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
+                experiment[ui_trl].avg_time_in_system[SMALL] = NO_RESULT;
+                experiment[ui_trl].avg_time_in_system[LARGE] = NO_RESULT;
 
                 experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
@@ -786,8 +789,8 @@ int main(void)
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
-                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
+                experiment[ui_trl].avg_time_in_system[SMALL] = NO_RESULT;
+                experiment[ui_trl].avg_time_in_system[LARGE] = NO_RESULT;
 
                 experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
@@ -820,7 +823,7 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
+                if (experiment[ui_trl].avg_time_in_system[SMALL] != NO_RESULT) {
                     cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
@@ -861,7 +864,7 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
+                if (experiment[ui_trl].avg_time_in_system[SMALL] != NO_RESULT) {
                     cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
@@ -902,7 +905,7 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
+                if (experiment[ui_trl].avg_time_in_system[SMALL] != NO_RESULT) {
                     cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
@@ -943,7 +946,7 @@ int main(void)
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
             for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != -1.0) {
+                if (experiment[ui_trl].avg_time_in_system[SMALL] != NO_RESULT) {
                     cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
