@@ -770,18 +770,13 @@ int main(const int argc, char *argv[])
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
+                experiment[ui_trl].seed = cmb_random_fmix64(master_seed, ui_rp);
                 experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
-<<<<<<< HEAD
 
+                /* Initializing results to out-of-band value */
                 experiment[ui_trl].avg_time_in_system[SMALL] = NO_RESULT;
                 experiment[ui_trl].avg_time_in_system[LARGE] = NO_RESULT;
-=======
-                experiment[ui_trl].seed = cmb_random_fmix64(master_seed, ui_rp);
-                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
-                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
->>>>>>> 3e259241abc417413d0a24b56adaebb61ac0290f
-
                 ui_trl++;
             }
         }
@@ -801,20 +796,13 @@ int main(const int argc, char *argv[])
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-<<<<<<< HEAD
-                experiment[ui_trl].avg_time_in_system[SMALL] = NO_RESULT;
-                experiment[ui_trl].avg_time_in_system[LARGE] = NO_RESULT;
-
-=======
->>>>>>> 3e259241abc417413d0a24b56adaebb61ac0290f
-                experiment[ui_trl].warmup_h = warmup_h;
-                experiment[ui_trl].duration_h = duration_h;
                 /* Using the same sequence of trial seeds as for the first series */
                 experiment[ui_trl].seed = cmb_random_fmix64(master_seed, ui_rp);
+                experiment[ui_trl].warmup_h = warmup_h;
+                experiment[ui_trl].duration_h = duration_h;
 
-                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
-                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
-
+                experiment[ui_trl].avg_time_in_system[SMALL] = NO_RESULT;
+                experiment[ui_trl].avg_time_in_system[LARGE] = NO_RESULT;
                 ui_trl++;
             }
         }
@@ -834,19 +822,13 @@ int main(const int argc, char *argv[])
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-<<<<<<< HEAD
-                experiment[ui_trl].avg_time_in_system[SMALL] = NO_RESULT;
-                experiment[ui_trl].avg_time_in_system[LARGE] = NO_RESULT;
-=======
-                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
-                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
                 /* Using the same sequence of trial seeds as for the first series */
                 experiment[ui_trl].seed = cmb_random_fmix64(master_seed, ui_rp);
->>>>>>> 3e259241abc417413d0a24b56adaebb61ac0290f
-
                 experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
+                experiment[ui_trl].avg_time_in_system[SMALL] = NO_RESULT;
+                experiment[ui_trl].avg_time_in_system[LARGE] = NO_RESULT;
                 ui_trl++;
             }
         }
@@ -866,19 +848,13 @@ int main(const int argc, char *argv[])
                 experiment[ui_trl].unloading_time_avg[SMALL] = unloading_time_avg[SMALL];
                 experiment[ui_trl].unloading_time_avg[LARGE] = unloading_time_avg[LARGE];
 
-<<<<<<< HEAD
-                experiment[ui_trl].avg_time_in_system[SMALL] = NO_RESULT;
-                experiment[ui_trl].avg_time_in_system[LARGE] = NO_RESULT;
-=======
-                experiment[ui_trl].avg_time_in_system[SMALL] = -1.0;
-                experiment[ui_trl].avg_time_in_system[LARGE] = -1.0;
                 /* Using the same sequence of trial seeds as for the first series */
                 experiment[ui_trl].seed = cmb_random_fmix64(master_seed, ui_rp);
->>>>>>> 3e259241abc417413d0a24b56adaebb61ac0290f
-
                 experiment[ui_trl].warmup_h = warmup_h;
                 experiment[ui_trl].duration_h = duration_h;
 
+                experiment[ui_trl].avg_time_in_system[SMALL] = NO_RESULT;
+                experiment[ui_trl].avg_time_in_system[LARGE] = NO_RESULT;
                 ui_trl++;
             }
         }
@@ -906,20 +882,15 @@ int main(const int argc, char *argv[])
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-<<<<<<< HEAD
-            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != NO_RESULT) {
-                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-=======
+
             for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
                 const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
-                if (ts_small != -1.0) {
+                if (ts_small != NO_RESULT) {
                     cmb_datasummary_add(&ds_small, ts_small);
                 }
 
                 const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
-                if (ts_large != -1.0) {
->>>>>>> 3e259241abc417413d0a24b56adaebb61ac0290f
+                if (ts_large != NO_RESULT) {
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
 
@@ -963,20 +934,15 @@ int main(const int argc, char *argv[])
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-<<<<<<< HEAD
-            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != NO_RESULT) {
-                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-=======
+
             for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
                 const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
-                if (ts_small != -1.0) {
+                if (ts_small != NO_RESULT) {
                     cmb_datasummary_add(&ds_small, ts_small);
                 }
 
                 const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
-                if (ts_large != -1.0) {
->>>>>>> 3e259241abc417413d0a24b56adaebb61ac0290f
+                if (ts_large != NO_RESULT) {
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
 
@@ -1020,20 +986,14 @@ int main(const int argc, char *argv[])
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-<<<<<<< HEAD
-            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != NO_RESULT) {
-                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-=======
             for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
                 const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
-                if (ts_small != -1.0) {
+                if (ts_small != NO_RESULT) {
                     cmb_datasummary_add(&ds_small, ts_small);
                 }
 
                 const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
-                if (ts_large != -1.0) {
->>>>>>> 3e259241abc417413d0a24b56adaebb61ac0290f
+                if (ts_large != NO_RESULT) {
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
 
@@ -1077,20 +1037,15 @@ int main(const int argc, char *argv[])
             struct cmb_datasummary ds_large;
             cmb_datasummary_initialize(&ds_small);
             cmb_datasummary_initialize(&ds_large);
-<<<<<<< HEAD
-            for (unsigned ui_rep = 0u; ui_rep < N_REPS; ui_rep++) {
-                if (experiment[ui_trl].avg_time_in_system[SMALL] != NO_RESULT) {
-                    cmb_datasummary_add(&ds_small, experiment[ui_trl].avg_time_in_system[SMALL]);
-=======
+
             for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
                 const double ts_small = experiment[ui_trl].avg_time_in_system[SMALL];
-                if (ts_small != -1.0) {
+                if (ts_small != NO_RESULT) {
                     cmb_datasummary_add(&ds_small, ts_small);
                 }
 
                 const double ts_large = experiment[ui_trl].avg_time_in_system[LARGE];
-                if (ts_large != -1.0) {
->>>>>>> 3e259241abc417413d0a24b56adaebb61ac0290f
+                if (ts_large != NO_RESULT) {
                     cmb_datasummary_add(&ds_large, experiment[ui_trl].avg_time_in_system[LARGE]);
                 }
 
