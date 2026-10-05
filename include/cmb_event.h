@@ -21,7 +21,7 @@
  *
  * The event has an associated activation time and a priority. Just before
  * the event is executed, the simulation time will jump to this time as the
- * event is removed from the queue. The priority is a signed 16-bit integer,
+ * event is removed from the queue. The priority is a signed 64-bit integer,
  * where a higher numeric value means a higher priority. If two events have equal
  * activation time, the one with higher priority will execute first. If
  * you need to ensure that some event executes after all other events at
@@ -272,8 +272,8 @@ extern bool cmb_event_reprioritize(uint64_t handle, int64_t priority);
  * @return The handle of an event matching the search pattern, zero if none.
  */
 extern uint64_t cmb_event_pattern_find(cmb_event_func *action,
-                               const void *subject,
-                               const void *object);
+                                       const void *subject,
+                                       const void *object);
 
 /**
  * @brief Count the number of scheduled events matching the search pattern.
