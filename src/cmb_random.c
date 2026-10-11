@@ -77,12 +77,14 @@ uint64_t cmb_random_sfc64(void)
 /*
  * The MurmurHash3 finalizer function, used e.g. for bootstrapping thread seeds
  * from a common master seed, e.g. from command line input.
+ * Multiplies the nonce by floor(2^64 / phi), where phi is the golden ratio,
+ * to ensure non-overlapping results for different master seeds.
  *
  * See: https://github.com/aappleby/smhasher/wiki/MurmurHash3
  */
 uint64_t cmb_random_fmix64(const uint64_t seed, const uint64_t nonce)
 {
-    uint64_t h = seed + nonce;
+    uint64_t h = seed ^ (nonce * 0x9e3779b97f4a7c15ULL);
     h ^= h >> 33;
     h *= 0xff51afd7ed558ccd;
     h ^= h >> 33;
