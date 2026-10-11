@@ -116,7 +116,7 @@ void cmi_hashheap_initialize(struct cmi_hashheap *hp,
     const size_t rndtot_bts = (total_bts + page_bts - 1u) & ~(page_bts - 1u);
 
     unsigned char *mem = cmi_aligned_alloc(page_bts, rndtot_bts);
-    cmi_memset(mem, 0u, rndtot_bts);
+    /* Intentionally not zeroing the memory here, not necessary to touch */
 
     hp->heap = (struct cmi_heap_tag *)mem;
     hp->hash_map = (struct cmi_hash_tag *)(mem + heap_bts);
@@ -165,12 +165,6 @@ void cmi_hashheap_clear(struct cmi_hashheap *hp)
     cmb_assert_release(hp != NULL);
 
     if (hp->heap != NULL) {
-        /* Adding one for the working space at the end */
-        const size_t heap_bts = (hp->heap_size + 1u) * sizeof(struct cmi_heap_tag);
-        const size_t hash_bts = (hp->heap_size << 1u) * sizeof(struct cmi_hash_tag);
-        const size_t total_bts = heap_bts + hash_bts;
-        cmi_memset(hp->heap, 0u, total_bts);
-
         hp->heap_count = 0u;
         hp->tombstones = 0u;
         hp->map_active = false;
@@ -194,7 +188,7 @@ void cmi_hashheap_reset(struct cmi_hashheap *hp)
 
 /*
  * hash_key - Fibonacci hash function.
- * The "magic number" is approx 2^64 / phi, the golden ratio.
+ * The "magic number" is floor(2^64 / phi), where phi is the golden ratio.
  * The right shift maps to the hash map size, twice the heap size.
  */
 static uint64_t hash_key(const struct cmi_hashheap *hp, const uint64_t key)
@@ -204,7 +198,6 @@ static uint64_t hash_key(const struct cmi_hashheap *hp, const uint64_t key)
     const uint64_t hash = (key * UINT64_C(11400714819323198485))
                             >> (64u - (hp->heap_exp_cur + 1));
 
-    cmb_assert_debug(hash < (hp->heap_size << 1u));
     return hash;
 }
 
@@ -236,11 +229,14 @@ static uint64_t hash_find_slot(const struct cmi_hashheap *hp, const uint64_t key
 /*
  * hash_init - Initializes hashmap from current heap for first use
  */
-static void hash_init(const struct cmi_hashheap *hp)
+static void hash_init(struct cmi_hashheap *hp)
 {
     cmb_assert_debug(hp != NULL);
     cmb_assert_debug(hp->heap != NULL);
     cmb_assert_debug(hp->hash_map != NULL);
+
+    const size_t hash_bts = (hp->heap_size << 1u) * sizeof(struct cmi_hash_tag);
+    cmi_memset(hp->hash_map, 0u, hash_bts);
 
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         struct cmi_heap_tag *htp = &(hp->heap[ui]);
@@ -383,11 +379,9 @@ static void heap_down(const struct cmi_hashheap *hp, uint64_t k)
 /*
  * hashheap_grow: doubling the available heap and hash map sizes.
  * The old heap is memcpy'd into its new location, each event at the same
- * index as before. The new hash map is initialized to all zeros, the old
- * hash map is memcpy'd together with the old heap into the area that now
- * belongs to the new heap. From there, valid hash entries are rehashed into
- * their new locations in the new hash map. This works since there is no
- * memory overlap between the copy of the old hash map and the new one.
+ * index as before. The new hash map is initialized to all zeros.
+ * Valid hash entries from the old hash map are then rehashed into
+ * their new locations in the new hash map.
  */
 static void hashheap_grow(struct cmi_hashheap *hp)
 {
@@ -398,6 +392,7 @@ cmb_assert_debug(hp != NULL);
     const uint64_t old_heapsz = hp->heap_size;
 
     hp->heap_exp_cur++;
+    cmb_assert_debug(hp->heap_exp_cur < 63u);
     hp->heap_size = UINT64_C(1) << hp->heap_exp_cur;
 
     const size_t heap_bts = (hp->heap_size + 1u) * sizeof(struct cmi_heap_tag);
@@ -408,8 +403,6 @@ cmb_assert_debug(hp != NULL);
     const size_t rndtot_bts = (total_bts + pagesz - 1u) & ~(pagesz - 1u);
 
     unsigned char *mem_new = cmi_aligned_alloc(pagesz, rndtot_bts);
-    cmi_memset(mem_new, 0u, rndtot_bts);
-
     struct cmi_heap_tag *heap_new = (struct cmi_heap_tag *)mem_new;
     struct cmi_hash_tag *hash_new = (struct cmi_hash_tag *)(mem_new + heap_bts);
 
@@ -424,6 +417,7 @@ cmb_assert_debug(hp != NULL);
 
     if (hp->map_active) {
         /* Rehash into new hashmap */
+        cmi_memset(hash_new, 0u, hash_bts);
         const uint64_t old_hashsz = old_heapsz << 1u;
         hash_rehash(hp, hash_old, old_hashsz);
     }
@@ -431,28 +425,6 @@ cmb_assert_debug(hp != NULL);
     /* The rehash dropped every tombstone */
     hp->tombstones = 0u;
     cmi_aligned_free(heap_old_block);
-}
-
-/*
-* hashheap_compact - Reclaim tombstones without growing. Rebuilds the hash map
-* at its current size from the live heap entries, restoring empty slots that
-* had bled into tombstones. Needed because the grow-triggered rehash only fires
-* when the heap fills; a workload that holds the live count below that
-* threshold while churning heavily would otherwise accumulate tombstones
-* indefinitely, lengthening every lookup (which only terminates on a genuinely
-* empty slot, never on a tombstone).
-*/
-static void hashheap_compact(struct cmi_hashheap *hp)
-{
-    cmb_assert_debug(hp != NULL);
-    cmb_assert_debug(hp->heap != NULL);
-    cmb_assert_debug(hp->hash_map != NULL);
-    cmb_assert_debug(hp->map_active);
-
-    const size_t hash_bts = (hp->heap_size << 1u) * sizeof(struct cmi_hash_tag);
-    cmi_memset(hp->hash_map, 0u, hash_bts);
-    hash_init(hp);
-    hp->tombstones = 0u;
 }
 
 /*
@@ -475,11 +447,14 @@ uint64_t cmi_hashheap_enqueue(struct cmi_hashheap *hp,
 
     /* Do we have space? */
     if (hp->heap_count == hp->heap_size) {
+        /* No, expand */
        hashheap_grow(hp);
     }
     else if (hp->map_active &&
             (hp->heap_count + hp->tombstones >= (3 * (hp->heap_size << 1)) / 4)) {
-        hashheap_compact(hp);
+        /* Yes, but too many tombstones in hash map, regenerate it */
+        hash_init(hp);
+        hp->tombstones = 0u;
     }
 
     /* Now we have space, put the new entry at the end */
@@ -936,14 +911,17 @@ void cmi_hashheap_hash_print(const struct cmi_hashheap *hp, FILE *fp)
     cmb_assert_release(fp != NULL);
 
     fprintf(fp, "Hash map %s\n", hp->map_active ? "active" : "inactive");
-    fprintf(fp, "------------------------------------- Hash -------------------------------------\n");
-    fprintf(fp, "Hash idx\tHash key\tHeap idx\n");
-    for (uint64_t ui = 0u; ui < 2 * hp->heap_size; ui++) {
-        const struct cmi_hash_tag *htp = &(hp->hash_map[ui]);
-        fprintf(fp, "%8" PRIu64 "\t%8" PRIu64 "\t%8" PRIu64 "\n", ui, htp->hash_key, htp->heap_index);
+    if (hp->map_active) {
+        fprintf(fp, "------------------------------------- Hash -------------------------------------\n");
+        fprintf(fp, "Hash idx\tHash key\tHeap idx\n");
+        for (uint64_t ui = 0u; ui < 2 * hp->heap_size; ui++) {
+            const struct cmi_hash_tag *htp = &(hp->hash_map[ui]);
+            fprintf(fp, "%8" PRIu64 "\t%8" PRIu64 "\t%8" PRIu64 "\n", ui, htp->hash_key, htp->heap_index);
+        }
+
+        fprintf(fp, "--------------------------------------------------------------------------------\n");
     }
 
-    fprintf(fp, "--------------------------------------------------------------------------------\n");
     fflush(fp);
 }
 
