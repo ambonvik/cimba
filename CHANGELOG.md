@@ -4,9 +4,17 @@ Note: Version numbers are MAJOR.MINOR.PATCH per [Semantic Versioning](https://se
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
+### Work in progress, not yet tagged as release
+* Fixed bug in cmb_random_fmix24, where different pairs of seed and nonce could 
+  theoretically result in overlapping random number sequences, by adding a first 
+  Fibonacci hashing step.
+* Removed some unnecessary memset calls when initializing a hashheap to avoid touching 
+  memory that may not yet have been instantiated by the operating system, giving a 1–2 
+  % performance improvement in hashheap-intensive benchmarks.
+
 ### 2026-09-28: 3.0.2
 * Bug fix to tutorial 4. (Statistics errors gave wrong confidence intervals in charts.)
-* Copyright notices updated: No old code still remaining, the 1994-95 dates removed. 
+* Copyright notices updated: No old code still remaining, the 1994–95 dates removed. 
   (Was true from somewhere in the beta build series, did not check before now.)
 * Documentation updates in tutorial and background sections.
 
