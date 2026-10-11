@@ -4010,18 +4010,19 @@ any meaningful differences. The Cimba default number of threads is a reasonable 
 This completes our fifth tutorial. We have shown how to harness GPU power for model
 physics, running at three separate levels of concurrency at the same time: The trials
 on CPU cores, the coroutines inside a trial, and the massively GPU CUDA kernels for
-model physics. The desktop PC we ran this on, a used AMD Threadripper 3970X from around
-2020 with dual consumer-grade Nvidia GeForce RTX 3090 GPUs, each able to do 35.58
-TFLOPS of single precision math, has a combined compute power equivalent to almost
-90,000 old Cray X-MP/48's (each 800 MFLOPS peak). We just used all of it - for 73 seconds.
+model physics. The desktop PC we ran this on was an AMD Threadripper 3970X from around
+2020 with dual consumer-grade Nvidia GeForce RTX 3090 GPUs, each GPU able to do 35.6
+TFLOPS of single precision math. Its performance bottleneck turned out to be the 1200 W
+power supply and its capacity for peak current delivery. Cimba allows tapping into that
+compute power for the parts of your model where it will yield the most benefit.
 
 Summary
 -------
 
 In these five tutorials, we have gone from a basic M/M/1 queue simulation to a near
-military grade AWACS scenario running on 64 CPU cores and two GPUs (10496 cores each) in
-parallel, efficiently utilizing all the compute power available on a recent
-multi-core, multi-GPU desktop PC for discrete event simulation.
+military grade AWACS scenario running on 32 physical CPU cores and two GPUs (10496 cores
+each) in parallel, efficiently utilizing the considerable compute power available on a
+modern multi-core, multi-GPU desktop PC for discrete event simulation.
 
 For more detailed information about the various features of Cimba, please see
 the in-depth :ref:`background section <background>` and
