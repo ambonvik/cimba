@@ -128,11 +128,12 @@ extern uint64_t cmb_random_sfc64(void);
 
 /**
  * @brief MurmurHash3 finalizer function, used for bootstrapping statistically
- *        independent thread seeds from a master seed. Use some deterministic
- *        trial counter as the nonce argument to get reproducible results. Using
- *        random nonce values like time or OS thread ID works, but it will not be
- *        reproducible, and then you would probably be better off calling
- *        cmb_random_hwseed() instead for proper machine-generated entropy.
+ *        independent thread seeds from a master seed. Different nonce values
+ *        with the same master seed are guaranteed to return different values.
+ *        Use some deterministic trial counter as the nonce argument to get
+ *        reproducible results.
+ *
+ * See also https://github.com/aappleby/smhasher/wiki/MurmurHash3
  *
  * @param   seed    The master seed
  * @param   nonce   The hash key to be mixed into the seed
