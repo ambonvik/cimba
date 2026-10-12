@@ -93,19 +93,19 @@ Raw moment:   Expected:   Actual:   Error:
    15          0.0625    0.062515    0.024 %
 --------------------------------------------------------------------------------
 Testing Goodness of Fit vs the U(0,1) distribution
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  11.5          15    Sigma:  -0.57  Odds: 1 in    1.8    
-Neyman's smooth test                        4.67          10    Sigma:  -1.36  Odds: 1 in    5.7    
-    Neyman V1: mean                       -0.269           0    Sigma:  -0.27  Odds: 1 in    1.3    
-    Neyman V2: variance                    0.184           0    Sigma:  +0.18  Odds: 1 in    1.2    
-    Neyman V3: skewness                    0.779           0    Sigma:  +0.78  Odds: 1 in    2.3    
-    Neyman V4: kurtosis                   -0.139           0    Sigma:  -0.14  Odds: 1 in    1.1    
-    Neyman remainder: fine structure         271         251    Sigma:  +0.89  Odds: 1 in    2.7    
-Anderson-Darling EDF test                  0.291           1    Sigma:  -1.59  Odds: 1 in    9.0    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +1.22  Odds: 1 in    4.5    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        11.5          15     -0.57    
+Neyman's smooth test              4.67          10     -1.36    
+    Neyman V1: mean             -0.269           0     -0.27    
+    Neyman V2: variance          0.184           0     +0.18    
+    Neyman V3: skewness          0.779           0     +0.78    
+    Neyman V4: kurtosis         -0.139           0     -0.14    
+    Neyman remainder               271         251     +0.89    
+Anderson-Darling EDF test        0.291           1     -1.59    
+Combined assessment:                                   +1.22    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing cmb_random_uniform(-1,2)
 Drawing 1000000 samples...
@@ -132,19 +132,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     1.800,      2.000)   |#################################################=
 [     2.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  10.8          15    Sigma:  -0.73  Odds: 1 in    2.2    
-Neyman's smooth test                        6.09          10    Sigma:  -0.87  Odds: 1 in    2.6    
-    Neyman V1: mean                      0.00253           0    Sigma:  +0.00  Odds: 1 in    1.0    
-    Neyman V2: variance                   -0.593           0    Sigma:  -0.59  Odds: 1 in    1.8    
-    Neyman V3: skewness                     1.35           0    Sigma:  +1.35  Odds: 1 in    5.7    
-    Neyman V4: kurtosis                   -0.476           0    Sigma:  -0.48  Odds: 1 in    1.6    
-    Neyman remainder: fine structure         244         251    Sigma:  -0.29  Odds: 1 in    1.3    
-Anderson-Darling EDF test                  0.359           1    Sigma:  -1.22  Odds: 1 in    4.5    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.76  Odds: 1 in    2.2    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        10.8          15     -0.73    
+Neyman's smooth test              6.09          10     -0.87    
+    Neyman V1: mean            0.00253           0     +0.00    
+    Neyman V2: variance         -0.593           0     -0.59    
+    Neyman V3: skewness           1.35           0     +1.35    
+    Neyman V4: kurtosis         -0.476           0     -0.48    
+    Neyman remainder               244         251     -0.29    
+Anderson-Darling EDF test        0.359           1     -1.22    
+Combined assessment:                                   +0.76    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing cmb_random_triangular(-1, 2, 3)
 Drawing 1000000 samples...
@@ -176,19 +176,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     2.800,      3.000)   |#####-
 [     3.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  21.9          15    Sigma:  +1.22  Odds: 1 in    4.5    
-Neyman's smooth test                          11          10    Sigma:  +0.37  Odds: 1 in    1.4    
-    Neyman V1: mean                        0.342           0    Sigma:  +0.34  Odds: 1 in    1.4    
-    Neyman V2: variance                     1.11           0    Sigma:  +1.11  Odds: 1 in    3.7    
-    Neyman V3: skewness                    0.927           0    Sigma:  +0.93  Odds: 1 in    2.8    
-    Neyman V4: kurtosis                     1.35           0    Sigma:  +1.35  Odds: 1 in    5.6    
-    Neyman remainder: fine structure         229         251    Sigma:  -0.98  Odds: 1 in    3.1    
-Anderson-Darling EDF test                  0.796           1    Sigma:  +0.04  Odds: 1 in    1.0    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        21.9          15     +1.22    
+Neyman's smooth test                11          10     +0.37    
+    Neyman V1: mean              0.342           0     +0.34    
+    Neyman V2: variance           1.11           0     +1.11    
+    Neyman V3: skewness          0.927           0     +0.93    
+    Neyman V4: kurtosis           1.35           0     +1.35    
+    Neyman remainder               229         251     -0.98    
+Anderson-Darling EDF test        0.796           1     +0.04    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing standard normal distribution, mean = 0, sigma = 1
 Drawing 1000000 samples...
@@ -270,19 +270,19 @@ Raw moment:     Expected:     Actual:     Error:        Actual:     Error:
    13                 0          4698      ---            -3070      ---
    14         1.351e+05      1.44e+05    6.568 %      1.404e+05    3.880 %
    15                 0     1.071e+05      ---       -7.536e+04      ---
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  7.33          15    Sigma:  -1.62  Odds: 1 in    9.6    
-Neyman's smooth test                        12.4          10    Sigma:  +0.64  Odds: 1 in    1.9    
-    Neyman V1: mean                       -0.185           0    Sigma:  -0.19  Odds: 1 in    1.2    
-    Neyman V2: variance                    -0.66           0    Sigma:  -0.66  Odds: 1 in    2.0    
-    Neyman V3: skewness                    -1.56           0    Sigma:  -1.56  Odds: 1 in    8.3    
-    Neyman V4: kurtosis                    0.215           0    Sigma:  +0.22  Odds: 1 in    1.2    
-    Neyman remainder: fine structure         209         251    Sigma:  -1.98  Odds: 1 in    21.    
-Anderson-Darling EDF test                  0.382           1    Sigma:  -1.11  Odds: 1 in    3.7    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.62  Odds: 1 in    1.9    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        7.33          15     -1.62    
+Neyman's smooth test              12.4          10     +0.64    
+    Neyman V1: mean             -0.185           0     -0.19    
+    Neyman V2: variance          -0.66           0     -0.66    
+    Neyman V3: skewness          -1.56           0     -1.56    
+    Neyman V4: kurtosis          0.215           0     +0.22    
+    Neyman remainder               209         251     -1.98    
+Anderson-Darling EDF test        0.382           1     -1.11    
+Combined assessment:                                   +0.62    Unremarkable
+--------------------------------------------------------------------------------
 
 Binomial tail test, standard normal, n = 10000000
 t        expected      obs (zig)      deficit      sigma      obs (B-M)      deficit      sigma
@@ -328,19 +328,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     6.500,      7.000)   |-
 [     7.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  10.6          15    Sigma:  -0.77  Odds: 1 in    2.3    
-Neyman's smooth test                        9.16          10    Sigma:  -0.04  Odds: 1 in    1.0    
-    Neyman V1: mean                         1.77           0    Sigma:  +1.77  Odds: 1 in    13.    
-    Neyman V2: variance                    0.814           0    Sigma:  +0.81  Odds: 1 in    2.4    
-    Neyman V3: skewness                    0.532           0    Sigma:  +0.53  Odds: 1 in    1.7    
-    Neyman V4: kurtosis                    -0.51           0    Sigma:  -0.51  Odds: 1 in    1.6    
-    Neyman remainder: fine structure         247         251    Sigma:  -0.16  Odds: 1 in    1.1    
-Anderson-Darling EDF test                   1.82           1    Sigma:  +1.20  Odds: 1 in    4.3    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.73  Odds: 1 in    2.2    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        10.6          15     -0.77    
+Neyman's smooth test              9.16          10     -0.04    
+    Neyman V1: mean               1.77           0     +1.77    
+    Neyman V2: variance          0.814           0     +0.81    
+    Neyman V3: skewness          0.532           0     +0.53    
+    Neyman V4: kurtosis          -0.51           0     -0.51    
+    Neyman remainder               247         251     -0.16    
+Anderson-Darling EDF test         1.82           1     +1.20    
+Combined assessment:                                   +0.73    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing standard exponential distribution, mean = 1
 Drawing 1000000 samples...
@@ -406,19 +406,19 @@ Partial autocorrelation factors (expected 0.0):
   14  -0.000                                 -|
   15  -0.001                                 -|
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  16.7          15    Sigma:  +0.43  Odds: 1 in    1.5    
-Neyman's smooth test                        11.8          10    Sigma:  +0.52  Odds: 1 in    1.7    
-    Neyman V1: mean                         0.35           0    Sigma:  +0.35  Odds: 1 in    1.4    
-    Neyman V2: variance                     -2.5           0    Sigma:  -2.50  Odds: 1 in    81.    
-    Neyman V3: skewness                    0.304           0    Sigma:  +0.30  Odds: 1 in    1.3    
-    Neyman V4: kurtosis                   -0.451           0    Sigma:  -0.45  Odds: 1 in    1.5    
-    Neyman remainder: fine structure         240         251    Sigma:  -0.48  Odds: 1 in    1.6    
-Anderson-Darling EDF test                   1.34           1    Sigma:  +0.78  Odds: 1 in    2.3    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.16  Odds: 1 in    1.1    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        16.7          15     +0.43    
+Neyman's smooth test              11.8          10     +0.52    
+    Neyman V1: mean               0.35           0     +0.35    
+    Neyman V2: variance           -2.5           0     -2.50    
+    Neyman V3: skewness          0.304           0     +0.30    
+    Neyman V4: kurtosis         -0.451           0     -0.45    
+    Neyman remainder               240         251     -0.48    
+Anderson-Darling EDF test         1.34           1     +0.78    
+Combined assessment:                                   +0.16    Unremarkable
+--------------------------------------------------------------------------------
 
 Binomial tail test, standard exponential, n = 10000000
 t        expected      obs (zig)      deficit      sigma      obs (inv)      deficit      sigma
@@ -458,19 +458,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     26.00,      28.00)   |-
 [     28.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  5.05          15    Sigma:  -2.40  Odds: 1 in    60.    
-Neyman's smooth test                        8.68          10    Sigma:  -0.16  Odds: 1 in    1.1    
-    Neyman V1: mean                         -1.2           0    Sigma:  -1.20  Odds: 1 in    4.3    
-    Neyman V2: variance                   -0.076           0    Sigma:  -0.08  Odds: 1 in    1.1    
-    Neyman V3: skewness                    0.384           0    Sigma:  +0.38  Odds: 1 in    1.4    
-    Neyman V4: kurtosis                   -0.931           0    Sigma:  -0.93  Odds: 1 in    2.8    
-    Neyman remainder: fine structure         225         251    Sigma:  -1.16  Odds: 1 in    4.1    
-Anderson-Darling EDF test                  0.841           1    Sigma:  +0.12  Odds: 1 in    1.1    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        5.05          15     -2.40    
+Neyman's smooth test              8.68          10     -0.16    
+    Neyman V1: mean               -1.2           0     -1.20    
+    Neyman V2: variance         -0.076           0     -0.08    
+    Neyman V3: skewness          0.384           0     +0.38    
+    Neyman V4: kurtosis         -0.931           0     -0.93    
+    Neyman remainder               225         251     -1.16    
+Anderson-Darling EDF test        0.841           1     +0.12    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing exponential distribution, mean = 0.010000
 Drawing 1000000 samples...
@@ -497,19 +497,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [    0.1400,     0.1500)   |-
 [    0.1500,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  16.1          15    Sigma:  +0.33  Odds: 1 in    1.3    
-Neyman's smooth test                        10.4          10    Sigma:  +0.24  Odds: 1 in    1.2    
-    Neyman V1: mean                        0.375           0    Sigma:  +0.38  Odds: 1 in    1.4    
-    Neyman V2: variance                     -1.4           0    Sigma:  -1.40  Odds: 1 in    6.2    
-    Neyman V3: skewness                      1.7           0    Sigma:  +1.70  Odds: 1 in    11.    
-    Neyman V4: kurtosis                   -0.443           0    Sigma:  -0.44  Odds: 1 in    1.5    
-    Neyman remainder: fine structure         255         251    Sigma:  +0.23  Odds: 1 in    1.2    
-Anderson-Darling EDF test                  0.929           1    Sigma:  +0.26  Odds: 1 in    1.3    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        16.1          15     +0.33    
+Neyman's smooth test              10.4          10     +0.24    
+    Neyman V1: mean              0.375           0     +0.38    
+    Neyman V2: variance           -1.4           0     -1.40    
+    Neyman V3: skewness            1.7           0     +1.70    
+    Neyman V4: kurtosis         -0.443           0     -0.44    
+    Neyman remainder               255         251     +0.23    
+Anderson-Darling EDF test        0.929           1     +0.26    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing exponential distribution, mean = 1000000.000000
 Drawing 1000000 samples...
@@ -541,19 +541,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [ 1.296e+07,  1.365e+07)   |-
 [ 1.365e+07,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  13.2          15    Sigma:  -0.22  Odds: 1 in    1.2    
-Neyman's smooth test                        12.1          10    Sigma:  +0.59  Odds: 1 in    1.8    
-    Neyman V1: mean                        0.673           0    Sigma:  +0.67  Odds: 1 in    2.0    
-    Neyman V2: variance                    -1.15           0    Sigma:  -1.15  Odds: 1 in    4.0    
-    Neyman V3: skewness                   -0.355           0    Sigma:  -0.35  Odds: 1 in    1.4    
-    Neyman V4: kurtosis                    0.965           0    Sigma:  +0.96  Odds: 1 in    3.0    
-    Neyman remainder: fine structure         292         251    Sigma:  +1.77  Odds: 1 in    13.    
-Anderson-Darling EDF test                  0.646           1    Sigma:  -0.27  Odds: 1 in    1.3    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        13.2          15     -0.22    
+Neyman's smooth test              12.1          10     +0.59    
+    Neyman V1: mean              0.673           0     +0.67    
+    Neyman V2: variance          -1.15           0     -1.15    
+    Neyman V3: skewness         -0.355           0     -0.35    
+    Neyman V4: kurtosis          0.965           0     +0.96    
+    Neyman remainder               292         251     +1.77    
+Anderson-Darling EDF test        0.646           1     -0.27    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing cmb_random_erlang(5, 1)
 Drawing 1000000 samples...
@@ -578,19 +578,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     24.00,      26.00)   |-
 [     26.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  10.1          15    Sigma:  -0.90  Odds: 1 in    2.7    
-Neyman's smooth test                        6.29          10    Sigma:  -0.81  Odds: 1 in    2.4    
-    Neyman V1: mean                       0.0537           0    Sigma:  +0.05  Odds: 1 in    1.0    
-    Neyman V2: variance                    -1.34           0    Sigma:  -1.34  Odds: 1 in    5.6    
-    Neyman V3: skewness                    0.571           0    Sigma:  +0.57  Odds: 1 in    1.8    
-    Neyman V4: kurtosis                    0.678           0    Sigma:  +0.68  Odds: 1 in    2.0    
-    Neyman remainder: fine structure         253         251    Sigma:  +0.14  Odds: 1 in    1.1    
-Anderson-Darling EDF test                  0.497           1    Sigma:  -0.67  Odds: 1 in    2.0    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.20  Odds: 1 in    1.2    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        10.1          15     -0.90    
+Neyman's smooth test              6.29          10     -0.81    
+    Neyman V1: mean             0.0537           0     +0.05    
+    Neyman V2: variance          -1.34           0     -1.34    
+    Neyman V3: skewness          0.571           0     +0.57    
+    Neyman V4: kurtosis          0.678           0     +0.68    
+    Neyman remainder               253         251     +0.14    
+Anderson-Darling EDF test        0.497           1     -0.67    
+Combined assessment:                                   +0.20    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing cmb_random_hypoexponential, k = 4, m = [1, 2, 4, 8]
 Drawing 1000000 samples...
@@ -674,19 +674,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     11.00,      12.00)   |-
 [     12.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  13.7          15    Sigma:  -0.13  Odds: 1 in    1.1    
-Neyman's smooth test                        11.8          10    Sigma:  +0.54  Odds: 1 in    1.7    
-    Neyman V1: mean                        -1.21           0    Sigma:  -1.21  Odds: 1 in    4.4    
-    Neyman V2: variance                    0.612           0    Sigma:  +0.61  Odds: 1 in    1.9    
-    Neyman V3: skewness                    0.488           0    Sigma:  +0.49  Odds: 1 in    1.6    
-    Neyman V4: kurtosis                     1.91           0    Sigma:  +1.91  Odds: 1 in    18.    
-    Neyman remainder: fine structure         261         251    Sigma:  +0.48  Odds: 1 in    1.6    
-Anderson-Darling EDF test                   1.32           1    Sigma:  +0.75  Odds: 1 in    2.2    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.11  Odds: 1 in    1.1    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        13.7          15     -0.13    
+Neyman's smooth test              11.8          10     +0.54    
+    Neyman V1: mean              -1.21           0     -1.21    
+    Neyman V2: variance          0.612           0     +0.61    
+    Neyman V3: skewness          0.488           0     +0.49    
+    Neyman V4: kurtosis           1.91           0     +1.91    
+    Neyman remainder               261         251     +0.48    
+Anderson-Darling EDF test         1.32           1     +0.75    
+Combined assessment:                                   +0.11    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing gamma distribution, shape 3, scale 0.5
 Drawing 1000000 samples...
@@ -716,19 +716,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     8.500,      9.000)   |-
 [     9.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  10.3          15    Sigma:  -0.84  Odds: 1 in    2.5    
-Neyman's smooth test                        5.11          10    Sigma:  -1.19  Odds: 1 in    4.3    
-    Neyman V1: mean                       -0.956           0    Sigma:  -0.96  Odds: 1 in    3.0    
-    Neyman V2: variance                   -0.322           0    Sigma:  -0.32  Odds: 1 in    1.3    
-    Neyman V3: skewness                   -0.257           0    Sigma:  -0.26  Odds: 1 in    1.3    
-    Neyman V4: kurtosis                    0.752           0    Sigma:  +0.75  Odds: 1 in    2.2    
-    Neyman remainder: fine structure         255         251    Sigma:  +0.19  Odds: 1 in    1.2    
-Anderson-Darling EDF test                  0.694           1    Sigma:  -0.16  Odds: 1 in    1.1    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.73  Odds: 1 in    2.2    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        10.3          15     -0.84    
+Neyman's smooth test              5.11          10     -1.19    
+    Neyman V1: mean             -0.956           0     -0.96    
+    Neyman V2: variance         -0.322           0     -0.32    
+    Neyman V3: skewness         -0.257           0     -0.26    
+    Neyman V4: kurtosis          0.752           0     +0.75    
+    Neyman remainder               255         251     +0.19    
+Anderson-Darling EDF test        0.694           1     -0.16    
+Combined assessment:                                   +0.73    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing gamma distribution, shape 1, scale 1
 Drawing 1000000 samples...
@@ -754,19 +754,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     13.00,      14.00)   |-
 [     14.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  21.1          15    Sigma:  +1.11  Odds: 1 in    3.8    
-Neyman's smooth test                        11.6          10    Sigma:  +0.48  Odds: 1 in    1.6    
-    Neyman V1: mean                         1.22           0    Sigma:  +1.22  Odds: 1 in    4.5    
-    Neyman V2: variance                    0.208           0    Sigma:  +0.21  Odds: 1 in    1.2    
-    Neyman V3: skewness                   -0.823           0    Sigma:  -0.82  Odds: 1 in    2.4    
-    Neyman V4: kurtosis                    -0.67           0    Sigma:  -0.67  Odds: 1 in    2.0    
-    Neyman remainder: fine structure         292         251    Sigma:  +1.75  Odds: 1 in    13.    
-Anderson-Darling EDF test                   1.14           1    Sigma:  +0.55  Odds: 1 in    1.7    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        21.1          15     +1.11    
+Neyman's smooth test              11.6          10     +0.48    
+    Neyman V1: mean               1.22           0     +1.22    
+    Neyman V2: variance          0.208           0     +0.21    
+    Neyman V3: skewness         -0.823           0     -0.82    
+    Neyman V4: kurtosis          -0.67           0     -0.67    
+    Neyman remainder               292         251     +1.75    
+Anderson-Darling EDF test         1.14           1     +0.55    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing gamma distribution, shape 0.5, scale 2
 Drawing 1000000 samples...
@@ -792,19 +792,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     26.00,      28.00)   |-
 [     28.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  19.4          15    Sigma:  +0.85  Odds: 1 in    2.5    
-Neyman's smooth test                        8.56          10    Sigma:  -0.19  Odds: 1 in    1.2    
-    Neyman V1: mean                       -0.615           0    Sigma:  -0.62  Odds: 1 in    1.9    
-    Neyman V2: variance                   -0.444           0    Sigma:  -0.44  Odds: 1 in    1.5    
-    Neyman V3: skewness                    0.399           0    Sigma:  +0.40  Odds: 1 in    1.4    
-    Neyman V4: kurtosis                     0.67           0    Sigma:  +0.67  Odds: 1 in    2.0    
-    Neyman remainder: fine structure         288         251    Sigma:  +1.59  Odds: 1 in    8.9    
-Anderson-Darling EDF test                  0.513           1    Sigma:  -0.62  Odds: 1 in    1.9    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        19.4          15     +0.85    
+Neyman's smooth test              8.56          10     -0.19    
+    Neyman V1: mean             -0.615           0     -0.62    
+    Neyman V2: variance         -0.444           0     -0.44    
+    Neyman V3: skewness          0.399           0     +0.40    
+    Neyman V4: kurtosis           0.67           0     +0.67    
+    Neyman remainder               288         251     +1.59    
+Anderson-Darling EDF test        0.513           1     -0.62    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing gamma distribution, shape 0.1, scale 2
 Drawing 1000000 samples...
@@ -836,19 +836,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     19.00,      20.00)   |-
 [     20.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  8.67          15    Sigma:  -1.25  Odds: 1 in    4.7    
-Neyman's smooth test                        5.79          10    Sigma:  -0.97  Odds: 1 in    3.0    
-    Neyman V1: mean                        0.774           0    Sigma:  +0.77  Odds: 1 in    2.3    
-    Neyman V2: variance                    0.864           0    Sigma:  +0.86  Odds: 1 in    2.6    
-    Neyman V3: skewness                   -0.526           0    Sigma:  -0.53  Odds: 1 in    1.7    
-    Neyman V4: kurtosis                   -0.437           0    Sigma:  -0.44  Odds: 1 in    1.5    
-    Neyman remainder: fine structure         255         251    Sigma:  +0.23  Odds: 1 in    1.2    
-Anderson-Darling EDF test                  0.646           1    Sigma:  -0.27  Odds: 1 in    1.3    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.43  Odds: 1 in    1.5    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        8.67          15     -1.25    
+Neyman's smooth test              5.79          10     -0.97    
+    Neyman V1: mean              0.774           0     +0.77    
+    Neyman V2: variance          0.864           0     +0.86    
+    Neyman V3: skewness         -0.526           0     -0.53    
+    Neyman V4: kurtosis         -0.437           0     -0.44    
+    Neyman remainder               255         251     +0.23    
+Anderson-Darling EDF test        0.646           1     -0.27    
+Combined assessment:                                   +0.43    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing log-normal distribution, m 1, s 0.5
 Drawing 1000000 samples...
@@ -879,19 +879,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     36.00,      38.00)   |-
 [     38.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  15.2          15    Sigma:  +0.17  Odds: 1 in    1.2    
-Neyman's smooth test                        10.8          10    Sigma:  +0.33  Odds: 1 in    1.3    
-    Neyman V1: mean                        -1.39           0    Sigma:  -1.39  Odds: 1 in    6.1    
-    Neyman V2: variance                     -1.1           0    Sigma:  -1.10  Odds: 1 in    3.7    
-    Neyman V3: skewness                   -0.803           0    Sigma:  -0.80  Odds: 1 in    2.4    
-    Neyman V4: kurtosis                   -0.195           0    Sigma:  -0.20  Odds: 1 in    1.2    
-    Neyman remainder: fine structure         275         251    Sigma:  +1.08  Odds: 1 in    3.6    
-Anderson-Darling EDF test                   1.33           1    Sigma:  +0.77  Odds: 1 in    2.3    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.14  Odds: 1 in    1.1    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        15.2          15     +0.17    
+Neyman's smooth test              10.8          10     +0.33    
+    Neyman V1: mean              -1.39           0     -1.39    
+    Neyman V2: variance           -1.1           0     -1.10    
+    Neyman V3: skewness         -0.803           0     -0.80    
+    Neyman V4: kurtosis         -0.195           0     -0.20    
+    Neyman remainder               275         251     +1.08    
+Anderson-Darling EDF test         1.33           1     +0.77    
+Combined assessment:                                   +0.14    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing logistic distribution, m 1, s 0.5
 Drawing 1000000 samples...
@@ -917,19 +917,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     7.000,      8.000)   |-
 [     8.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  14.7          15    Sigma:  +0.07  Odds: 1 in    1.1    
-Neyman's smooth test                        10.8          10    Sigma:  +0.32  Odds: 1 in    1.3    
-    Neyman V1: mean                        0.843           0    Sigma:  +0.84  Odds: 1 in    2.5    
-    Neyman V2: variance                     1.57           0    Sigma:  +1.57  Odds: 1 in    8.5    
-    Neyman V3: skewness                    0.542           0    Sigma:  +0.54  Odds: 1 in    1.7    
-    Neyman V4: kurtosis                    0.966           0    Sigma:  +0.97  Odds: 1 in    3.0    
-    Neyman remainder: fine structure         236         251    Sigma:  -0.67  Odds: 1 in    2.0    
-Anderson-Darling EDF test                   1.05           1    Sigma:  +0.44  Odds: 1 in    1.5    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        14.7          15     +0.07    
+Neyman's smooth test              10.8          10     +0.32    
+    Neyman V1: mean              0.843           0     +0.84    
+    Neyman V2: variance           1.57           0     +1.57    
+    Neyman V3: skewness          0.542           0     +0.54    
+    Neyman V4: kurtosis          0.966           0     +0.97    
+    Neyman remainder               236         251     -0.67    
+Anderson-Darling EDF test         1.05           1     +0.44    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing cauchy distribution, m 1, s 0.5
 Drawing 1000000 samples...
@@ -962,19 +962,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [ 3.399e+06,  3.578e+06)   |-
 [ 3.578e+06,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  39.2          15    Sigma:  +3.26  Odds: 1 in 9.1e+02    Unusual
-Neyman's smooth test                        12.1          10    Sigma:  +0.60  Odds: 1 in    1.8    
-    Neyman V1: mean                        0.467           0    Sigma:  +0.47  Odds: 1 in    1.6    
-    Neyman V2: variance                     1.09           0    Sigma:  +1.09  Odds: 1 in    3.6    
-    Neyman V3: skewness                     -1.4           0    Sigma:  -1.40  Odds: 1 in    6.2    
-    Neyman V4: kurtosis                    -1.73           0    Sigma:  -1.73  Odds: 1 in    12.    
-    Neyman remainder: fine structure         249         251    Sigma:  -0.05  Odds: 1 in    1.0    
-Anderson-Darling EDF test                  0.954           1    Sigma:  +0.30  Odds: 1 in    1.3    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        39.2          15     +3.26    Unusual
+Neyman's smooth test              12.1          10     +0.60    
+    Neyman V1: mean              0.467           0     +0.47    
+    Neyman V2: variance           1.09           0     +1.09    
+    Neyman V3: skewness           -1.4           0     -1.40    
+    Neyman V4: kurtosis          -1.73           0     -1.73    
+    Neyman remainder               249         251     -0.05    
+Anderson-Darling EDF test        0.954           1     +0.30    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing beta distribution, shape 2, scale 5
 Drawing 1000000 samples...
@@ -1006,19 +1006,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [    0.9500,      1.000)   |-
 [     1.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  19.6          15    Sigma:  +0.88  Odds: 1 in    2.7    
-Neyman's smooth test                        12.5          10    Sigma:  +0.66  Odds: 1 in    2.0    
-    Neyman V1: mean                       -0.287           0    Sigma:  -0.29  Odds: 1 in    1.3    
-    Neyman V2: variance                   -0.266           0    Sigma:  -0.27  Odds: 1 in    1.3    
-    Neyman V3: skewness                     2.34           0    Sigma:  +2.34  Odds: 1 in    51.    
-    Neyman V4: kurtosis                   -0.214           0    Sigma:  -0.21  Odds: 1 in    1.2    
-    Neyman remainder: fine structure         223         251    Sigma:  -1.29  Odds: 1 in    5.0    
-Anderson-Darling EDF test                  0.681           1    Sigma:  -0.19  Odds: 1 in    1.2    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        19.6          15     +0.88    
+Neyman's smooth test              12.5          10     +0.66    
+    Neyman V1: mean             -0.287           0     -0.29    
+    Neyman V2: variance         -0.266           0     -0.27    
+    Neyman V3: skewness           2.34           0     +2.34    
+    Neyman V4: kurtosis         -0.214           0     -0.21    
+    Neyman remainder               223         251     -1.29    
+Anderson-Darling EDF test        0.681           1     -0.19    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing beta distribution, shape 2, scale 5, left 0, right 1
 Drawing 1000000 samples...
@@ -1050,19 +1050,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [    0.9500,      1.000)   |-
 [     1.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  8.41          15    Sigma:  -1.32  Odds: 1 in    5.3    
-Neyman's smooth test                        4.29          10    Sigma:  -1.50  Odds: 1 in    7.5    
-    Neyman V1: mean                        0.276           0    Sigma:  +0.28  Odds: 1 in    1.3    
-    Neyman V2: variance                  -0.0772           0    Sigma:  -0.08  Odds: 1 in    1.1    
-    Neyman V3: skewness                    0.768           0    Sigma:  +0.77  Odds: 1 in    2.3    
-    Neyman V4: kurtosis                    0.441           0    Sigma:  +0.44  Odds: 1 in    1.5    
-    Neyman remainder: fine structure         237         251    Sigma:  -0.60  Odds: 1 in    1.8    
-Anderson-Darling EDF test                  0.216           1    Sigma:  -2.18  Odds: 1 in    34.    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +1.89  Odds: 1 in    17.    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        8.41          15     -1.32    
+Neyman's smooth test              4.29          10     -1.50    
+    Neyman V1: mean              0.276           0     +0.28    
+    Neyman V2: variance        -0.0772           0     -0.08    
+    Neyman V3: skewness          0.768           0     +0.77    
+    Neyman V4: kurtosis          0.441           0     +0.44    
+    Neyman remainder               237         251     -0.60    
+Anderson-Darling EDF test        0.216           1     -2.18    
+Combined assessment:                                   +1.89    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing beta distribution, shape 0.5, scale 2, left 0, right 1
 Drawing 1000000 samples...
@@ -1094,19 +1094,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [    0.9500,      1.000)   |-
 [     1.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  8.41          15    Sigma:  -1.32  Odds: 1 in    5.3    
-Neyman's smooth test                        12.2          10    Sigma:  +0.61  Odds: 1 in    1.8    
-    Neyman V1: mean                        -1.35           0    Sigma:  -1.35  Odds: 1 in    5.7    
-    Neyman V2: variance                    0.343           0    Sigma:  +0.34  Odds: 1 in    1.4    
-    Neyman V3: skewness                    0.976           0    Sigma:  +0.98  Odds: 1 in    3.0    
-    Neyman V4: kurtosis                    0.592           0    Sigma:  +0.59  Odds: 1 in    1.8    
-    Neyman remainder: fine structure         290         251    Sigma:  +1.67  Odds: 1 in    11.    
-Anderson-Darling EDF test                   1.17           1    Sigma:  +0.58  Odds: 1 in    1.8    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        8.41          15     -1.32    
+Neyman's smooth test              12.2          10     +0.61    
+    Neyman V1: mean              -1.35           0     -1.35    
+    Neyman V2: variance          0.343           0     +0.34    
+    Neyman V3: skewness          0.976           0     +0.98    
+    Neyman V4: kurtosis          0.592           0     +0.59    
+    Neyman remainder               290         251     +1.67    
+Anderson-Darling EDF test         1.17           1     +0.58    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing beta distribution, shape 0.5, scale 0.5, left 2, right 5
 Drawing 1000000 samples...
@@ -1133,19 +1133,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     4.800,      5.000)   |#################################################=
 [     5.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  11.9          15    Sigma:  -0.48  Odds: 1 in    1.6    
-Neyman's smooth test                        8.98          10    Sigma:  -0.08  Odds: 1 in    1.1    
-    Neyman V1: mean                      -0.0909           0    Sigma:  -0.09  Odds: 1 in    1.1    
-    Neyman V2: variance                   -0.159           0    Sigma:  -0.16  Odds: 1 in    1.1    
-    Neyman V3: skewness                    0.398           0    Sigma:  +0.40  Odds: 1 in    1.4    
-    Neyman V4: kurtosis                     2.22           0    Sigma:  +2.22  Odds: 1 in    38.    
-    Neyman remainder: fine structure         244         251    Sigma:  -0.31  Odds: 1 in    1.3    
-Anderson-Darling EDF test                  0.425           1    Sigma:  -0.93  Odds: 1 in    2.8    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.38  Odds: 1 in    1.4    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        11.9          15     -0.48    
+Neyman's smooth test              8.98          10     -0.08    
+    Neyman V1: mean            -0.0909           0     -0.09    
+    Neyman V2: variance         -0.159           0     -0.16    
+    Neyman V3: skewness          0.398           0     +0.40    
+    Neyman V4: kurtosis           2.22           0     +2.22    
+    Neyman remainder               244         251     -0.31    
+Anderson-Darling EDF test        0.425           1     -0.93    
+Combined assessment:                                   +0.38    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing beta distribution, shape 0.5, scale 0.5, left -2, right 2
 Drawing 1000000 samples...
@@ -1177,19 +1177,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     1.800,      2.000)   |##################################################
 [     2.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  6.71          15    Sigma:  -1.81  Odds: 1 in    14.    
-Neyman's smooth test                        5.97          10    Sigma:  -0.91  Odds: 1 in    2.7    
-    Neyman V1: mean                        -0.28           0    Sigma:  -0.28  Odds: 1 in    1.3    
-    Neyman V2: variance                    -1.05           0    Sigma:  -1.05  Odds: 1 in    3.4    
-    Neyman V3: skewness                    0.918           0    Sigma:  +0.92  Odds: 1 in    2.8    
-    Neyman V4: kurtosis                    0.415           0    Sigma:  +0.41  Odds: 1 in    1.5    
-    Neyman remainder: fine structure         248         251    Sigma:  -0.11  Odds: 1 in    1.1    
-Anderson-Darling EDF test                  0.428           1    Sigma:  -0.92  Odds: 1 in    2.8    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.36  Odds: 1 in    1.4    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        6.71          15     -1.81    
+Neyman's smooth test              5.97          10     -0.91    
+    Neyman V1: mean              -0.28           0     -0.28    
+    Neyman V2: variance          -1.05           0     -1.05    
+    Neyman V3: skewness          0.918           0     +0.92    
+    Neyman V4: kurtosis          0.415           0     +0.41    
+    Neyman remainder               248         251     -0.11    
+Anderson-Darling EDF test        0.428           1     -0.92    
+Combined assessment:                                   +0.36    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing PERT distribution, left 2, mode 5, right 10
 Drawing 1000000 samples...
@@ -1217,19 +1217,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     9.500,      10.00)   |-
 [     10.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                    11          15    Sigma:  -0.67  Odds: 1 in    2.0    
-Neyman's smooth test                        3.54          10    Sigma:  -1.82  Odds: 1 in    15.    
-    Neyman V1: mean                          0.2           0    Sigma:  +0.20  Odds: 1 in    1.2    
-    Neyman V2: variance                   -0.148           0    Sigma:  -0.15  Odds: 1 in    1.1    
-    Neyman V3: skewness                    0.315           0    Sigma:  +0.31  Odds: 1 in    1.3    
-    Neyman V4: kurtosis                    0.862           0    Sigma:  +0.86  Odds: 1 in    2.6    
-    Neyman remainder: fine structure         244         251    Sigma:  -0.28  Odds: 1 in    1.3    
-Anderson-Darling EDF test                  0.275           1    Sigma:  -1.70  Odds: 1 in    11.    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +1.49  Odds: 1 in    7.3    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test          11          15     -0.67    
+Neyman's smooth test              3.54          10     -1.82    
+    Neyman V1: mean                0.2           0     +0.20    
+    Neyman V2: variance         -0.148           0     -0.15    
+    Neyman V3: skewness          0.315           0     +0.31    
+    Neyman V4: kurtosis          0.862           0     +0.86    
+    Neyman remainder               244         251     -0.28    
+Anderson-Darling EDF test        0.275           1     -1.70    
+Combined assessment:                                   +1.49    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing modified PERT distribution, left 2, mode 5, right 10, lambda 5
 Drawing 1000000 samples...
@@ -1257,19 +1257,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     9.500,      10.00)   |-
 [     10.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  13.9          15    Sigma:  -0.08  Odds: 1 in    1.1    
-Neyman's smooth test                        12.3          10    Sigma:  +0.62  Odds: 1 in    1.9    
-    Neyman V1: mean                        0.396           0    Sigma:  +0.40  Odds: 1 in    1.4    
-    Neyman V2: variance                    -1.08           0    Sigma:  -1.08  Odds: 1 in    3.6    
-    Neyman V3: skewness                   -0.401           0    Sigma:  -0.40  Odds: 1 in    1.5    
-    Neyman V4: kurtosis                     1.17           0    Sigma:  +1.17  Odds: 1 in    4.1    
-    Neyman remainder: fine structure         294         251    Sigma:  +1.83  Odds: 1 in    15.    
-Anderson-Darling EDF test                   0.53           1    Sigma:  -0.57  Odds: 1 in    1.8    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        13.9          15     -0.08    
+Neyman's smooth test              12.3          10     +0.62    
+    Neyman V1: mean              0.396           0     +0.40    
+    Neyman V2: variance          -1.08           0     -1.08    
+    Neyman V3: skewness         -0.401           0     -0.40    
+    Neyman V4: kurtosis           1.17           0     +1.17    
+    Neyman remainder               294         251     +1.83    
+Anderson-Darling EDF test         0.53           1     -0.57    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing modified PERT distribution, left 2, mode 3, right 5, lambda 2
 Drawing 1000000 samples...
@@ -1296,19 +1296,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     4.800,      5.000)   |##-
 [     5.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  14.4          15    Sigma:  +0.00  Odds: 1 in    1.0    
-Neyman's smooth test                        6.33          10    Sigma:  -0.80  Odds: 1 in    2.3    
-    Neyman V1: mean                       -0.153           0    Sigma:  -0.15  Odds: 1 in    1.1    
-    Neyman V2: variance                     1.32           0    Sigma:  +1.32  Odds: 1 in    5.4    
-    Neyman V3: skewness                    0.614           0    Sigma:  +0.61  Odds: 1 in    1.9    
-    Neyman V4: kurtosis                     0.57           0    Sigma:  +0.57  Odds: 1 in    1.8    
-    Neyman remainder: fine structure         255         251    Sigma:  +0.20  Odds: 1 in    1.2    
-Anderson-Darling EDF test                  0.637           1    Sigma:  -0.29  Odds: 1 in    1.3    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.19  Odds: 1 in    1.2    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        14.4          15     +0.00    
+Neyman's smooth test              6.33          10     -0.80    
+    Neyman V1: mean             -0.153           0     -0.15    
+    Neyman V2: variance           1.32           0     +1.32    
+    Neyman V3: skewness          0.614           0     +0.61    
+    Neyman V4: kurtosis           0.57           0     +0.57    
+    Neyman remainder               255         251     +0.20    
+Anderson-Darling EDF test        0.637           1     -0.29    
+Combined assessment:                                   +0.19    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing Pareto distribution, shape 3, scale 2
 Drawing 1000000 samples...
@@ -1340,19 +1340,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     171.0,      180.0)   |-
 [     180.0,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  15.5          15    Sigma:  +0.22  Odds: 1 in    1.2    
-Neyman's smooth test                        10.3          10    Sigma:  +0.21  Odds: 1 in    1.2    
-    Neyman V1: mean                        0.481           0    Sigma:  +0.48  Odds: 1 in    1.6    
-    Neyman V2: variance                   -0.896           0    Sigma:  -0.90  Odds: 1 in    2.7    
-    Neyman V3: skewness                    0.973           0    Sigma:  +0.97  Odds: 1 in    3.0    
-    Neyman V4: kurtosis                    -1.37           0    Sigma:  -1.37  Odds: 1 in    5.9    
-    Neyman remainder: fine structure         268         251    Sigma:  +0.76  Odds: 1 in    2.2    
-Anderson-Darling EDF test                  0.696           1    Sigma:  -0.16  Odds: 1 in    1.1    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        15.5          15     +0.22    
+Neyman's smooth test              10.3          10     +0.21    
+    Neyman V1: mean              0.481           0     +0.48    
+    Neyman V2: variance         -0.896           0     -0.90    
+    Neyman V3: skewness          0.973           0     +0.97    
+    Neyman V4: kurtosis          -1.37           0     -1.37    
+    Neyman remainder               268         251     +0.76    
+Anderson-Darling EDF test        0.696           1     -0.16    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing chisquare distribution, v 4
 Drawing 1000000 samples...
@@ -1383,19 +1383,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     36.00,      38.00)   |-
 [     38.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  17.1          15    Sigma:  +0.48  Odds: 1 in    1.6    
-Neyman's smooth test                        10.4          10    Sigma:  +0.23  Odds: 1 in    1.2    
-    Neyman V1: mean                       -0.416           0    Sigma:  -0.42  Odds: 1 in    1.5    
-    Neyman V2: variance                   -0.941           0    Sigma:  -0.94  Odds: 1 in    2.9    
-    Neyman V3: skewness                    -1.74           0    Sigma:  -1.74  Odds: 1 in    12.    
-    Neyman V4: kurtosis                    0.637           0    Sigma:  +0.64  Odds: 1 in    1.9    
-    Neyman remainder: fine structure         264         251    Sigma:  +0.59  Odds: 1 in    1.8    
-Anderson-Darling EDF test                  0.811           1    Sigma:  +0.07  Odds: 1 in    1.1    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        17.1          15     +0.48    
+Neyman's smooth test              10.4          10     +0.23    
+    Neyman V1: mean             -0.416           0     -0.42    
+    Neyman V2: variance         -0.941           0     -0.94    
+    Neyman V3: skewness          -1.74           0     -1.74    
+    Neyman V4: kurtosis          0.637           0     +0.64    
+    Neyman remainder               264         251     +0.59    
+Anderson-Darling EDF test        0.811           1     +0.07    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing f distribution, a 3, b 5
 Drawing 1000000 samples...
@@ -1427,19 +1427,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     513.0,      540.0)   |-
 [     540.0,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  17.7          15    Sigma:  +0.58  Odds: 1 in    1.8    
-Neyman's smooth test                        9.81          10    Sigma:  +0.11  Odds: 1 in    1.1    
-    Neyman V1: mean                       0.0134           0    Sigma:  +0.01  Odds: 1 in    1.0    
-    Neyman V2: variance                      1.9           0    Sigma:  +1.90  Odds: 1 in    17.    
-    Neyman V3: skewness                   -0.171           0    Sigma:  -0.17  Odds: 1 in    1.2    
-    Neyman V4: kurtosis                    -1.39           0    Sigma:  -1.39  Odds: 1 in    6.0    
-    Neyman remainder: fine structure         248         251    Sigma:  -0.12  Odds: 1 in    1.1    
-Anderson-Darling EDF test                  0.872           1    Sigma:  +0.17  Odds: 1 in    1.2    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        17.7          15     +0.58    
+Neyman's smooth test              9.81          10     +0.11    
+    Neyman V1: mean             0.0134           0     +0.01    
+    Neyman V2: variance            1.9           0     +1.90    
+    Neyman V3: skewness         -0.171           0     -0.17    
+    Neyman V4: kurtosis          -1.39           0     -1.39    
+    Neyman remainder               248         251     -0.12    
+Anderson-Darling EDF test        0.872           1     +0.17    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing Student's t distribution, v 3
 Drawing 1000000 samples...
@@ -1471,19 +1471,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     144.0,      162.0)   |-
 [     162.0,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  12.5          15    Sigma:  -0.36  Odds: 1 in    1.4    
-Neyman's smooth test                        19.3          10    Sigma:  +1.80  Odds: 1 in    14.    
-    Neyman V1: mean                         1.36           0    Sigma:  +1.36  Odds: 1 in    5.7    
-    Neyman V2: variance                     1.08           0    Sigma:  +1.08  Odds: 1 in    3.6    
-    Neyman V3: skewness                    0.595           0    Sigma:  +0.60  Odds: 1 in    1.8    
-    Neyman V4: kurtosis                    0.875           0    Sigma:  +0.87  Odds: 1 in    2.6    
-    Neyman remainder: fine structure         317         251    Sigma:  +2.74  Odds: 1 in 1.6e+02    
-Anderson-Darling EDF test                   1.37           1    Sigma:  +0.80  Odds: 1 in    2.4    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +1.46  Odds: 1 in    6.9    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        12.5          15     -0.36    
+Neyman's smooth test              19.3          10     +1.80    
+    Neyman V1: mean               1.36           0     +1.36    
+    Neyman V2: variance           1.08           0     +1.08    
+    Neyman V3: skewness          0.595           0     +0.60    
+    Neyman V4: kurtosis          0.875           0     +0.87    
+    Neyman remainder               317         251     +2.74    
+Anderson-Darling EDF test         1.37           1     +0.80    
+Combined assessment:                                   +1.46    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing t distribution, m 1, s 2, v 3,
 Drawing 1000000 samples...
@@ -1515,19 +1515,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     147.0,      168.0)   |-
 [     168.0,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  21.7          15    Sigma:  +1.20  Odds: 1 in    4.3    
-Neyman's smooth test                        14.6          10    Sigma:  +1.05  Odds: 1 in    3.4    
-    Neyman V1: mean                        0.547           0    Sigma:  +0.55  Odds: 1 in    1.7    
-    Neyman V2: variance                    0.587           0    Sigma:  +0.59  Odds: 1 in    1.8    
-    Neyman V3: skewness                     -1.2           0    Sigma:  -1.20  Odds: 1 in    4.3    
-    Neyman V4: kurtosis                     2.48           0    Sigma:  +2.48  Odds: 1 in    77.    
-    Neyman remainder: fine structure         260         251    Sigma:  +0.41  Odds: 1 in    1.5    
-Anderson-Darling EDF test                   0.83           1    Sigma:  +0.10  Odds: 1 in    1.1    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  +0.54  Odds: 1 in    1.7    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        21.7          15     +1.20    
+Neyman's smooth test              14.6          10     +1.05    
+    Neyman V1: mean              0.547           0     +0.55    
+    Neyman V2: variance          0.587           0     +0.59    
+    Neyman V3: skewness           -1.2           0     -1.20    
+    Neyman V4: kurtosis           2.48           0     +2.48    
+    Neyman remainder               260         251     +0.41    
+Anderson-Darling EDF test         0.83           1     +0.10    
+Combined assessment:                                   +0.54    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing Rayleigh distribution, s 1.5
 Drawing 1000000 samples...
@@ -1557,19 +1557,19 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     8.500,      9.000)   |-
 [     9.000,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  8.27          15    Sigma:  -1.36  Odds: 1 in    5.7    
-Neyman's smooth test                        7.51          10    Sigma:  -0.46  Odds: 1 in    1.5    
-    Neyman V1: mean                       -0.789           0    Sigma:  -0.79  Odds: 1 in    2.3    
-    Neyman V2: variance                    -1.04           0    Sigma:  -1.04  Odds: 1 in    3.4    
-    Neyman V3: skewness                   -0.465           0    Sigma:  -0.46  Odds: 1 in    1.6    
-    Neyman V4: kurtosis                   0.0823           0    Sigma:  +0.08  Odds: 1 in    1.1    
-    Neyman remainder: fine structure         228         251    Sigma:  -1.02  Odds: 1 in    3.3    
-Anderson-Darling EDF test                  0.653           1    Sigma:  -0.25  Odds: 1 in    1.2    
-Combined assessment, Bonferroni on Neyman + Anderson-Darling:   Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        8.27          15     -1.36    
+Neyman's smooth test              7.51          10     -0.46    
+    Neyman V1: mean             -0.789           0     -0.79    
+    Neyman V2: variance          -1.04           0     -1.04    
+    Neyman V3: skewness         -0.465           0     -0.46    
+    Neyman V4: kurtosis         0.0823           0     +0.08    
+    Neyman remainder               228         251     -1.02    
+Anderson-Darling EDF test        0.653           1     -0.25    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 ************************* Integer-valued distributions *************************
 
 Quality testing unbiased coin flip, p = 0.5
@@ -1603,12 +1603,12 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     1.000,      1.050)   |##################################################
 [     1.050,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                 0.452           1    Sigma:  -0.00  Odds: 1 in    1.0    
-Combined assessment (Pearson only due to few discrete values):  Sigma:  -0.00  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test       0.452           1     -0.00    
+Combined assessment:                                   -0.00    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing biased Bernoulli trials, p = 0.1
 Drawing 1000000 samples...
@@ -1641,12 +1641,12 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     1.000,      1.050)   |#####=
 [     1.050,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                 0.543           1    Sigma:  +0.10  Odds: 1 in    1.1    
-Combined assessment (Pearson only due to few discrete values):  Sigma:  +0.10  Odds: 1 in    1.1    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test       0.543           1     +0.10    
+Combined assessment:                                   +0.10    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing biased Bernoulli trials, p = 0.6
 Drawing 1000000 samples...
@@ -1679,12 +1679,12 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     1.000,      1.050)   |##################################################
 [     1.050,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                 0.132           1    Sigma:  -0.57  Odds: 1 in    1.8    
-Combined assessment (Pearson only due to few discrete values):  Sigma:  -0.57  Odds: 1 in    1.8    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test       0.132           1     -0.57    
+Combined assessment:                                   -0.57    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing geometric distribution, p = 0.1
 Drawing 1000000 samples...
@@ -1716,18 +1716,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     133.0,      140.0)   |-
 [     140.0,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  11.7          20    Sigma:  -1.45  Odds: 1 in    6.8    
-Neyman's smooth test                        8.07          10    Sigma:  -0.31  Odds: 1 in    1.3    
-    Neyman V1: mean                       -0.827           0    Sigma:  -0.83  Odds: 1 in    2.4    
-    Neyman V2: variance                    -0.65           0    Sigma:  -0.65  Odds: 1 in    1.9    
-    Neyman V3: skewness                    0.651           0    Sigma:  +0.65  Odds: 1 in    1.9    
-    Neyman V4: kurtosis                   -0.483           0    Sigma:  -0.48  Odds: 1 in    1.6    
-    Neyman remainder: fine structure        9.93          16    Sigma:  -1.13  Odds: 1 in    3.9    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  -0.31  Odds: 1 in    1.3    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        11.7          20     -1.45    
+Neyman's smooth test              8.07          10     -0.31    
+    Neyman V1: mean             -0.827           0     -0.83    
+    Neyman V2: variance          -0.65           0     -0.65    
+    Neyman V3: skewness          0.651           0     +0.65    
+    Neyman V4: kurtosis         -0.483           0     -0.48    
+    Neyman remainder              9.93          16     -1.13    
+Combined assessment:                                   -0.31    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing geometric distribution, p = 0.6
 Drawing 1000000 samples...
@@ -1758,18 +1758,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     19.00,      20.00)   |-
 [     20.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  17.3          12    Sigma:  +1.09  Odds: 1 in    3.6    
-Neyman's smooth test                        13.8          10    Sigma:  +0.90  Odds: 1 in    2.7    
-    Neyman V1: mean                         1.65           0    Sigma:  +1.65  Odds: 1 in    10.    
-    Neyman V2: variance                    0.479           0    Sigma:  +0.48  Odds: 1 in    1.6    
-    Neyman V3: skewness                      2.2           0    Sigma:  +2.20  Odds: 1 in    36.    
-    Neyman V4: kurtosis                   -0.031           0    Sigma:  -0.03  Odds: 1 in    1.0    
-    Neyman remainder: fine structure        9.53           8    Sigma:  +0.53  Odds: 1 in    1.7    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  +0.90  Odds: 1 in    2.7    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        17.3          12     +1.09    
+Neyman's smooth test              13.8          10     +0.90    
+    Neyman V1: mean               1.65           0     +1.65    
+    Neyman V2: variance          0.479           0     +0.48    
+    Neyman V3: skewness            2.2           0     +2.20    
+    Neyman V4: kurtosis         -0.031           0     -0.03    
+    Neyman remainder              9.53           8     +0.53    
+Combined assessment:                                   +0.90    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing binomial distribution, n = 10, p = 0.1
 Drawing 1000000 samples...
@@ -1796,18 +1796,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     7.000,      7.500)   |-
 [     7.500,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  4.81           6    Sigma:  -0.17  Odds: 1 in    1.2    
-Neyman's smooth test                        7.05          10    Sigma:  -0.58  Odds: 1 in    1.8    
-    Neyman V1: mean                        0.741           0    Sigma:  +0.74  Odds: 1 in    2.2    
-    Neyman V2: variance                   -0.416           0    Sigma:  -0.42  Odds: 1 in    1.5    
-    Neyman V3: skewness                    0.961           0    Sigma:  +0.96  Odds: 1 in    3.0    
-    Neyman V4: kurtosis                   -0.535           0    Sigma:  -0.54  Odds: 1 in    1.7    
-    Neyman remainder: fine structure        2.88           2    Sigma:  +0.71  Odds: 1 in    2.1    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  -0.58  Odds: 1 in    1.8    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        4.81           6     -0.17    
+Neyman's smooth test              7.05          10     -0.58    
+    Neyman V1: mean              0.741           0     +0.74    
+    Neyman V2: variance         -0.416           0     -0.42    
+    Neyman V3: skewness          0.961           0     +0.96    
+    Neyman V4: kurtosis         -0.535           0     -0.54    
+    Neyman remainder              2.88           2     +0.71    
+Combined assessment:                                   -0.58    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing binomial distribution, n = 100, p = 0.5
 Drawing 1000000 samples...
@@ -1837,18 +1837,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     72.00,      75.00)   |-
 [     75.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  29.1          42    Sigma:  -1.51  Odds: 1 in    7.6    
-Neyman's smooth test                        4.45          10    Sigma:  -1.44  Odds: 1 in    6.6    
-    Neyman V1: mean                        0.129           0    Sigma:  +0.13  Odds: 1 in    1.1    
-    Neyman V2: variance                   -0.509           0    Sigma:  -0.51  Odds: 1 in    1.6    
-    Neyman V3: skewness                    0.327           0    Sigma:  +0.33  Odds: 1 in    1.3    
-    Neyman V4: kurtosis                  -0.0564           0    Sigma:  -0.06  Odds: 1 in    1.0    
-    Neyman remainder: fine structure        28.7          38    Sigma:  -1.08  Odds: 1 in    3.6    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  -1.44  Odds: 1 in    6.6    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        29.1          42     -1.51    
+Neyman's smooth test              4.45          10     -1.44    
+    Neyman V1: mean              0.129           0     +0.13    
+    Neyman V2: variance         -0.509           0     -0.51    
+    Neyman V3: skewness          0.327           0     +0.33    
+    Neyman V4: kurtosis        -0.0564           0     -0.06    
+    Neyman remainder              28.7          38     -1.08    
+Combined assessment:                                   -1.44    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing binomial distribution, n = 50, p = 0.7
 Drawing 1000000 samples...
@@ -1876,18 +1876,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     48.00,      50.00)   |-
 [     50.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                    17          27    Sigma:  -1.48  Odds: 1 in    7.2    
-Neyman's smooth test                        5.93          10    Sigma:  -0.92  Odds: 1 in    2.8    
-    Neyman V1: mean                       -0.834           0    Sigma:  -0.83  Odds: 1 in    2.5    
-    Neyman V2: variance                   0.0965           0    Sigma:  +0.10  Odds: 1 in    1.1    
-    Neyman V3: skewness                   -0.484           0    Sigma:  -0.48  Odds: 1 in    1.6    
-    Neyman V4: kurtosis                     -0.3           0    Sigma:  -0.30  Odds: 1 in    1.3    
-    Neyman remainder: fine structure          16          23    Sigma:  -1.06  Odds: 1 in    3.5    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  -0.92  Odds: 1 in    2.8    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test          17          27     -1.48    
+Neyman's smooth test              5.93          10     -0.92    
+    Neyman V1: mean             -0.834           0     -0.83    
+    Neyman V2: variance         0.0965           0     +0.10    
+    Neyman V3: skewness         -0.484           0     -0.48    
+    Neyman V4: kurtosis           -0.3           0     -0.30    
+    Neyman remainder                16          23     -1.06    
+Combined assessment:                                   -0.92    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing negative binomial (Pascal) distribution, m = 10, p = 0.1
 Drawing 1000000 samples...
@@ -1920,18 +1920,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     320.0,      336.0)   |-
 [     336.0,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                   233         237    Sigma:  -0.16  Odds: 1 in    1.1    
-Neyman's smooth test                        9.41          10    Sigma:  +0.02  Odds: 1 in    1.0    
-    Neyman V1: mean                         0.85           0    Sigma:  +0.85  Odds: 1 in    2.5    
-    Neyman V2: variance                   -0.669           0    Sigma:  -0.67  Odds: 1 in    2.0    
-    Neyman V3: skewness                     1.48           0    Sigma:  +1.48  Odds: 1 in    7.3    
-    Neyman V4: kurtosis                    0.875           0    Sigma:  +0.88  Odds: 1 in    2.6    
-    Neyman remainder: fine structure         229         233    Sigma:  -0.17  Odds: 1 in    1.2    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  +0.02  Odds: 1 in    1.0    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test         233         237     -0.16    
+Neyman's smooth test              9.41          10     +0.02    
+    Neyman V1: mean               0.85           0     +0.85    
+    Neyman V2: variance         -0.669           0     -0.67    
+    Neyman V3: skewness           1.48           0     +1.48    
+    Neyman V4: kurtosis          0.875           0     +0.88    
+    Neyman remainder               229         233     -0.17    
+Combined assessment:                                   +0.02    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing negative binomial (Pascal) distribution, m = 50, p = 0.7
 Drawing 1000000 samples...
@@ -1962,18 +1962,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     54.00,      57.00)   |-
 [     57.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  58.2          47    Sigma:  +1.15  Odds: 1 in    4.0    
-Neyman's smooth test                        11.8          10    Sigma:  +0.53  Odds: 1 in    1.7    
-    Neyman V1: mean                        -1.52           0    Sigma:  -1.52  Odds: 1 in    7.7    
-    Neyman V2: variance                    0.174           0    Sigma:  +0.17  Odds: 1 in    1.2    
-    Neyman V3: skewness                     1.15           0    Sigma:  +1.15  Odds: 1 in    4.0    
-    Neyman V4: kurtosis                   -0.853           0    Sigma:  -0.85  Odds: 1 in    2.5    
-    Neyman remainder: fine structure        53.9          43    Sigma:  +1.16  Odds: 1 in    4.0    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  +0.53  Odds: 1 in    1.7    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        58.2          47     +1.15    
+Neyman's smooth test              11.8          10     +0.53    
+    Neyman V1: mean              -1.52           0     -1.52    
+    Neyman V2: variance          0.174           0     +0.17    
+    Neyman V3: skewness           1.15           0     +1.15    
+    Neyman V4: kurtosis         -0.853           0     -0.85    
+    Neyman remainder              53.9          43     +1.16    
+Combined assessment:                                   +0.53    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing negative binomial (Pascal) distribution, m = 1, p = 0.1
 Drawing 1000000 samples...
@@ -2004,18 +2004,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     126.0,      133.0)   |-
 [     133.0,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  97.4          94    Sigma:  +0.29  Odds: 1 in    1.3    
-Neyman's smooth test                        8.22          10    Sigma:  -0.27  Odds: 1 in    1.3    
-    Neyman V1: mean                        0.598           0    Sigma:  +0.60  Odds: 1 in    1.8    
-    Neyman V2: variance                    -1.99           0    Sigma:  -1.99  Odds: 1 in    22.    
-    Neyman V3: skewness                   0.0644           0    Sigma:  +0.06  Odds: 1 in    1.1    
-    Neyman V4: kurtosis                    0.169           0    Sigma:  +0.17  Odds: 1 in    1.2    
-    Neyman remainder: fine structure          93          90    Sigma:  +0.27  Odds: 1 in    1.3    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  -0.27  Odds: 1 in    1.3    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        97.4          94     +0.29    
+Neyman's smooth test              8.22          10     -0.27    
+    Neyman V1: mean              0.598           0     +0.60    
+    Neyman V2: variance          -1.99           0     -1.99    
+    Neyman V3: skewness         0.0644           0     +0.06    
+    Neyman V4: kurtosis          0.169           0     +0.17    
+    Neyman remainder                93          90     +0.27    
+Combined assessment:                                   -0.27    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing Poisson distribution, rate = 5
 Drawing 1000000 samples...
@@ -2048,18 +2048,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     20.00,      21.00)   |-
 [     21.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  15.1          17    Sigma:  -0.23  Odds: 1 in    1.2    
-Neyman's smooth test                        9.08          10    Sigma:  -0.06  Odds: 1 in    1.1    
-    Neyman V1: mean                        -1.03           0    Sigma:  -1.03  Odds: 1 in    3.3    
-    Neyman V2: variance                     1.12           0    Sigma:  +1.12  Odds: 1 in    3.8    
-    Neyman V3: skewness                    0.708           0    Sigma:  +0.71  Odds: 1 in    2.1    
-    Neyman V4: kurtosis                   -0.958           0    Sigma:  -0.96  Odds: 1 in    3.0    
-    Neyman remainder: fine structure        11.3          13    Sigma:  -0.21  Odds: 1 in    1.2    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  -0.06  Odds: 1 in    1.1    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        15.1          17     -0.23    
+Neyman's smooth test              9.08          10     -0.06    
+    Neyman V1: mean              -1.03           0     -1.03    
+    Neyman V2: variance           1.12           0     +1.12    
+    Neyman V3: skewness          0.708           0     +0.71    
+    Neyman V4: kurtosis         -0.958           0     -0.96    
+    Neyman remainder              11.3          13     -0.21    
+Combined assessment:                                   -0.06    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing Poisson distribution, rate = 16.9
 Drawing 1000000 samples...
@@ -2091,18 +2091,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     38.00,      40.00)   |-
 [     40.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  32.7          34    Sigma:  -0.07  Odds: 1 in    1.1    
-Neyman's smooth test                        18.3          10    Sigma:  +1.64  Odds: 1 in    9.9    
-    Neyman V1: mean                         1.12           0    Sigma:  +1.12  Odds: 1 in    3.8    
-    Neyman V2: variance                    -1.45           0    Sigma:  -1.45  Odds: 1 in    6.8    
-    Neyman V3: skewness                   -0.747           0    Sigma:  -0.75  Odds: 1 in    2.2    
-    Neyman V4: kurtosis                    -2.41           0    Sigma:  -2.41  Odds: 1 in    62.    
-    Neyman remainder: fine structure        23.1          30    Sigma:  -0.89  Odds: 1 in    2.7    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  +1.64  Odds: 1 in    9.9    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        32.7          34     -0.07    
+Neyman's smooth test              18.3          10     +1.64    
+    Neyman V1: mean               1.12           0     +1.12    
+    Neyman V2: variance          -1.45           0     -1.45    
+    Neyman V3: skewness         -0.747           0     -0.75    
+    Neyman V4: kurtosis          -2.41           0     -2.41    
+    Neyman remainder              23.1          30     -0.89    
+Combined assessment:                                   +1.64    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing Poisson distribution, rate = 17.1
 Drawing 1000000 samples...
@@ -2129,18 +2129,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     42.00,      45.00)   |-
 [     45.00,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  57.5          34    Sigma:  +2.45  Odds: 1 in    70.    
-Neyman's smooth test                        15.7          10    Sigma:  +1.23  Odds: 1 in    4.6    
-    Neyman V1: mean                        -1.24           0    Sigma:  -1.24  Odds: 1 in    4.7    
-    Neyman V2: variance                   -0.625           0    Sigma:  -0.62  Odds: 1 in    1.9    
-    Neyman V3: skewness                    0.031           0    Sigma:  +0.03  Odds: 1 in    1.0    
-    Neyman V4: kurtosis                    0.629           0    Sigma:  +0.63  Odds: 1 in    1.9    
-    Neyman remainder: fine structure        55.2          30    Sigma:  +2.71  Odds: 1 in 1.5e+02    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  +1.23  Odds: 1 in    4.6    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        57.5          34     +2.45    
+Neyman's smooth test              15.7          10     +1.23    
+    Neyman V1: mean              -1.24           0     -1.24    
+    Neyman V2: variance         -0.625           0     -0.62    
+    Neyman V3: skewness          0.031           0     +0.03    
+    Neyman V4: kurtosis          0.629           0     +0.63    
+    Neyman remainder              55.2          30     +2.71    
+Combined assessment:                                   +1.23    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing Poisson distribution, rate = 100
 Drawing 1000000 samples...
@@ -2171,18 +2171,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     145.0,      150.0)   |-
 [     150.0,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  60.9          83    Sigma:  -1.85  Odds: 1 in    15.    
-Neyman's smooth test                        13.3          10    Sigma:  +0.82  Odds: 1 in    2.4    
-    Neyman V1: mean                       0.0671           0    Sigma:  +0.07  Odds: 1 in    1.1    
-    Neyman V2: variance                     1.13           0    Sigma:  +1.13  Odds: 1 in    3.9    
-    Neyman V3: skewness                     1.34           0    Sigma:  +1.34  Odds: 1 in    5.6    
-    Neyman V4: kurtosis                   -0.722           0    Sigma:  -0.72  Odds: 1 in    2.1    
-    Neyman remainder: fine structure        57.2          79    Sigma:  -1.87  Odds: 1 in    16.    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  +0.82  Odds: 1 in    2.4    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        60.9          83     -1.85    
+Neyman's smooth test              13.3          10     +0.82    
+    Neyman V1: mean             0.0671           0     +0.07    
+    Neyman V2: variance           1.13           0     +1.13    
+    Neyman V3: skewness           1.34           0     +1.34    
+    Neyman V4: kurtosis         -0.722           0     -0.72    
+    Neyman remainder              57.2          79     -1.87    
+Combined assessment:                                   +0.82    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing Poisson distribution, rate = 5000
 Drawing 1000000 samples...
@@ -2215,18 +2215,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     5328.,      5365.)   |-
 [     5365.,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                   565         531    Sigma:  +1.03  Odds: 1 in    3.3    
-Neyman's smooth test                        8.18          10    Sigma:  -0.28  Odds: 1 in    1.3    
-    Neyman V1: mean                       -0.897           0    Sigma:  -0.90  Odds: 1 in    2.7    
-    Neyman V2: variance                   -0.676           0    Sigma:  -0.68  Odds: 1 in    2.0    
-    Neyman V3: skewness                    0.375           0    Sigma:  +0.38  Odds: 1 in    1.4    
-    Neyman V4: kurtosis                   -0.721           0    Sigma:  -0.72  Odds: 1 in    2.1    
-    Neyman remainder: fine structure         563         527    Sigma:  +1.10  Odds: 1 in    3.7    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  -0.28  Odds: 1 in    1.3    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test         565         531     +1.03    
+Neyman's smooth test              8.18          10     -0.28    
+    Neyman V1: mean             -0.897           0     -0.90    
+    Neyman V2: variance         -0.676           0     -0.68    
+    Neyman V3: skewness          0.375           0     +0.38    
+    Neyman V4: kurtosis         -0.721           0     -0.72    
+    Neyman remainder               563         527     +1.10    
+Combined assessment:                                   -0.28    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing dice (discrete uniform) distribution, a = 1, b = 6
 Drawing 1000000 samples...
@@ -2249,18 +2249,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     6.000,      6.500)   |#################################################=
 [     6.500,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  3.61           5    Sigma:  -0.27  Odds: 1 in    1.3    
-Neyman's smooth test                        6.63          10    Sigma:  -0.71  Odds: 1 in    2.1    
-    Neyman V1: mean                         1.24           0    Sigma:  +1.24  Odds: 1 in    4.6    
-    Neyman V2: variance                    -1.23           0    Sigma:  -1.23  Odds: 1 in    4.6    
-    Neyman V3: skewness                   0.0772           0    Sigma:  +0.08  Odds: 1 in    1.1    
-    Neyman V4: kurtosis                   -0.151           0    Sigma:  -0.15  Odds: 1 in    1.1    
-    Neyman remainder: fine structure       0.532           1    Sigma:  +0.09  Odds: 1 in    1.1    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  -0.71  Odds: 1 in    2.1    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        3.61           5     -0.27    
+Neyman's smooth test              6.63          10     -0.71    
+    Neyman V1: mean               1.24           0     +1.24    
+    Neyman V2: variance          -1.23           0     -1.23    
+    Neyman V3: skewness         0.0772           0     +0.08    
+    Neyman V4: kurtosis         -0.151           0     -0.15    
+    Neyman remainder             0.532           1     +0.09    
+Combined assessment:                                   -0.71    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing dice (discrete uniform) distribution, a = -1, b = 5
 Drawing 1000000 samples...
@@ -2285,18 +2285,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     5.000,      5.500)   |#################################################=
 [     5.500,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  6.78           6    Sigma:  +0.41  Odds: 1 in    1.5    
-Neyman's smooth test                        9.63          10    Sigma:  +0.07  Odds: 1 in    1.1    
-    Neyman V1: mean                       -0.126           0    Sigma:  -0.13  Odds: 1 in    1.1    
-    Neyman V2: variance                    -1.75           0    Sigma:  -1.75  Odds: 1 in    13.    
-    Neyman V3: skewness                    -1.52           0    Sigma:  -1.52  Odds: 1 in    7.8    
-    Neyman V4: kurtosis                   -0.116           0    Sigma:  -0.12  Odds: 1 in    1.1    
-    Neyman remainder: fine structure        1.35           2    Sigma:  -0.03  Odds: 1 in    1.0    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  +0.07  Odds: 1 in    1.1    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        6.78           6     +0.41    
+Neyman's smooth test              9.63          10     +0.07    
+    Neyman V1: mean             -0.126           0     -0.13    
+    Neyman V2: variance          -1.75           0     -1.75    
+    Neyman V3: skewness          -1.52           0     -1.52    
+    Neyman V4: kurtosis         -0.116           0     -0.12    
+    Neyman remainder              1.35           2     -0.03    
+Combined assessment:                                   +0.07    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing discrete non-uniform distribution, n = 7
 Drawing 1000000 samples...
@@ -2321,18 +2321,18 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     6.000,      6.500)   |##################################################
 [     6.500,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  9.33           6    Sigma:  +1.01  Odds: 1 in    3.2    
-Neyman's smooth test                        11.9          10    Sigma:  +0.55  Odds: 1 in    1.7    
-    Neyman V1: mean                         2.38           0    Sigma:  +2.38  Odds: 1 in    58.    
-    Neyman V2: variance                    0.626           0    Sigma:  +0.63  Odds: 1 in    1.9    
-    Neyman V3: skewness                  -0.0257           0    Sigma:  -0.03  Odds: 1 in    1.0    
-    Neyman V4: kurtosis                    0.418           0    Sigma:  +0.42  Odds: 1 in    1.5    
-    Neyman remainder: fine structure        3.11           2    Sigma:  +0.80  Odds: 1 in    2.4    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  +0.55  Odds: 1 in    1.7    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        9.33           6     +1.01    
+Neyman's smooth test              11.9          10     +0.55    
+    Neyman V1: mean               2.38           0     +2.38    
+    Neyman V2: variance          0.626           0     +0.63    
+    Neyman V3: skewness        -0.0257           0     -0.03    
+    Neyman V4: kurtosis          0.418           0     +0.42    
+    Neyman remainder              3.11           2     +0.80    
+Combined assessment:                                   +0.55    Unremarkable
+--------------------------------------------------------------------------------
 
 Quality testing vose alias sampling, n = 7
 Drawing 1000000 samples...
@@ -2357,16 +2357,16 @@ Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
 [     6.000,      6.500)   |##################################################
 [     6.500,   Infinity)   |
 --------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-Goodness-of-fit test:                    Actual:   Expected:    Interpretation:
-------------------------------------------------------------------------------------------------------------------------
-Pearson's chi squared test                  5.51           6    Sigma:  +0.05  Odds: 1 in    1.0    
-Neyman's smooth test                         6.9          10    Sigma:  -0.63  Odds: 1 in    1.9    
-    Neyman V1: mean                       0.0277           0    Sigma:  +0.03  Odds: 1 in    1.0    
-    Neyman V2: variance                   -0.918           0    Sigma:  -0.92  Odds: 1 in    2.8    
-    Neyman V3: skewness                     0.75           0    Sigma:  +0.75  Odds: 1 in    2.2    
-    Neyman V4: kurtosis                    0.335           0    Sigma:  +0.34  Odds: 1 in    1.4    
-    Neyman remainder: fine structure           4           2    Sigma:  +1.10  Odds: 1 in    3.7    
-Combined assessment (Neyman only due to the discrete data):     Sigma:  -0.63  Odds: 1 in    1.9    Unremarkable
-------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Goodness-of-fit test:            Actual:   Expected:   Sigma:   Interpretation:
+--------------------------------------------------------------------------------
+Pearson's chi squared test        5.51           6     +0.05    
+Neyman's smooth test               6.9          10     -0.63    
+    Neyman V1: mean             0.0277           0     +0.03    
+    Neyman V2: variance         -0.918           0     -0.92    
+    Neyman V3: skewness           0.75           0     +0.75    
+    Neyman V4: kurtosis          0.335           0     +0.34    
+    Neyman remainder                 4           2     +1.10    
+Combined assessment:                                   -0.63    Unremarkable
+--------------------------------------------------------------------------------
 ********************************************************************************
