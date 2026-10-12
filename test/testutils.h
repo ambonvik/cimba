@@ -103,10 +103,10 @@ extern double cmi_test_gof_disc(uint64_t m,
 /* Return a text string with an interpretation of a sigma value.
  * If the arg `comment` is `true`, also includes a "Unremarkable" string for
  * insignificant results.  */
-extern const char *cmi_test_interpretation(double sigma, bool comment);
+extern const char *cmi_test_interpretation(double sigma, bool comment, bool narrow_format);
 
 /* Print a short report of a test outcome */
-extern void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp);
+extern void cmi_test_outcome_print(struct cmi_test_outcome *r, FILE *fp, bool narrow_format);
 
 /* Utility: Log of the incomplete gamma function */
 extern void cmi_test_log_incomplete_gamma(double a, double x,

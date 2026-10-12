@@ -127,7 +127,8 @@ static void test_gof_cont(const uint64_t nsamples)
 
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_test_gof_cont(cdf_u01, NULL, &ds_good, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, true);
+    cmi_test_outcome_print(result, stdout, false);
 
     cmb_datasummary_terminate(&dsu);
     cmb_dataset_initialize(&ds_bad);
@@ -147,7 +148,7 @@ static void test_gof_cont(const uint64_t nsamples)
     cmb_dataset_histogram_print(&ds_bad, stdout, 20, 0.0, 1.0);
 
     cmi_test_gof_cont(cdf_u01, NULL, &ds_bad, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, false);
 
     cmb_datasummary_terminate(&dsu);
 
@@ -160,7 +161,7 @@ static void test_gof_cont(const uint64_t nsamples)
     cmb_dataset_histogram_print(&ds_poisoned, stdout, 20, 0.0, 1.0);
 
     cmi_test_gof_cont(cdf_u01, NULL, &ds_poisoned, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, false);
 
     cmb_datasummary_terminate(&dsu);
     cmb_dataset_terminate(&ds_poisoned);
@@ -177,7 +178,7 @@ static void test_gof_cont(const uint64_t nsamples)
     cmb_dataset_histogram_print(&ds_poisoned, stdout, 20, 0.0, 1.0);
 
     cmi_test_gof_cont(cdf_u01, NULL, &ds_poisoned, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, false);
 
     cmb_datasummary_terminate(&dsu);
     cmb_dataset_terminate(&ds_poisoned);
@@ -213,7 +214,7 @@ static void test_gof_disc(const uint64_t nsamples)
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(10u, pu_vec, vu_vec, &ds_good, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, false);
 
     printf("Creating a poisoned sample\n");
     struct cmb_dataset ds_poisoned = { 0 };
@@ -230,7 +231,7 @@ static void test_gof_disc(const uint64_t nsamples)
 
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(10u, pu_vec, vu_vec, &ds_poisoned, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, false);
 
     cmb_datasummary_reset(&dsu);
     cmb_dataset_reset(&ds_poisoned);
@@ -267,7 +268,7 @@ static void test_gof_disc(const uint64_t nsamples)
 
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(20u, pg_vec, vg_vec, &ds_good, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, false);
 
     cmb_datasummary_terminate(&dsu);
     cmb_dataset_terminate(&ds_poisoned);

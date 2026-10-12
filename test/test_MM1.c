@@ -228,8 +228,7 @@ static void test_geometric(const struct cmb_dataset *dsp, const double p)
 
     struct cmi_test_outcome result = { 0 };
     cmi_test_gof_disc(20u, pg_vec, vg_vec, &ds, &result);
-    cmi_test_outcome_print(&result, stdout);
-    // cmb_assert_always((result.status == CMI_TEST_OK) && (fabs(result.combined_sigma) < 6.0));
+    cmi_test_outcome_print(&result, stdout, true);
 
     cmb_dataset_terminate(&ds);
 }
@@ -254,8 +253,7 @@ static void test_exponential(const struct cmb_dataset *dsp, const double m)
     struct cdf_exp_params pp = { .m = m };
     struct cmi_test_outcome result = { 0 };
     cmi_test_gof_cont(cdf_exp, &pp, dsp, &result);
-    cmi_test_outcome_print(&result, stdout);
-    // cmb_assert_always((result.status == CMI_TEST_OK) && (fabs(result.combined_sigma) < 6.0));
+    cmi_test_outcome_print(&result, stdout, true);
 }
 
 

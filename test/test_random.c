@@ -62,7 +62,7 @@
 #define QTEST_GOF_CONT(cdf, ctx) \
     struct cmi_test_outcome result = { 0 }; \
     cmi_test_gof_cont(cdf, ctx, &ds, &result); \
-    cmi_test_outcome_print(&result, stdout); \
+    cmi_test_outcome_print(&result, stdout, true); \
     cmb_assert_always((result.status == CMI_TEST_OK) \
                   && (fabs(result.combined_sigma) < 6.0))
 
@@ -181,7 +181,7 @@ static void test_quality_random(const uint64_t nsamples)
     printf("Testing Goodness of Fit vs the U(0,1) distribution\n");
     struct cmi_test_outcome result = { 0 };
     cmi_test_gof_cont(cdf_u01, NULL, &ds, &result);
-    cmi_test_outcome_print(&result, stdout);
+    cmi_test_outcome_print(&result, stdout, true);
     cmb_assert_always((result.status == CMI_TEST_OK)
                       && (fabs(result.combined_sigma) < 6.0));
 
@@ -1392,7 +1392,7 @@ static void test_quality_flip(const uint64_t nsamples)
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(2u, p_vec, v_vec, &ds, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, true);
     cmi_free(result);
 
     QTEST_FINISH();
@@ -1420,7 +1420,7 @@ static void test_quality_bernoulli(const uint64_t nsamples, const double p)
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(2u, p_vec, v_vec, &ds, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, true);
     cmi_free(result);
 
     QTEST_FINISH();
@@ -1461,7 +1461,7 @@ static void test_quality_geometric(const uint64_t nsamples, const double p)
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(20u, pg_vec, vg_vec, &ds, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, true);
     cmi_free(result);
 
     QTEST_FINISH();
@@ -1506,7 +1506,7 @@ static void test_quality_binomial(const uint64_t nsamples, const unsigned n, con
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(m, p_vec, v_vec, &ds, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, true);
     cmi_free(result);
     cmi_free(v_vec);
     cmi_free(p_vec);
@@ -1557,7 +1557,7 @@ static void test_quality_pascal(const uint64_t nsamples, const uint64_t m, const
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(kmax + 1u, p_vec, v_vec, &ds, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, true);
 
     cmi_free(result);
     cmi_free(v_vec);
@@ -1604,7 +1604,7 @@ static void test_quality_poisson(const uint64_t nsamples, const double rate)
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(kmax + 1u, p_vec, v_vec, &ds, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, true);
 
     cmi_free(result);
     cmi_free(v_vec);
@@ -1647,7 +1647,7 @@ static void test_quality_dice(const uint64_t nsamples, const long a, const long 
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(n, p_vec, v_vec, &ds, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, true);
 
     cmi_free(result);
     cmi_free(v_vec);
@@ -1715,7 +1715,7 @@ static void test_quality_loaded_dice(const uint64_t nsamples, const unsigned n, 
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(n, p_vec, v_vec, &ds, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, true);
 
     cmi_free(result);
     cmi_free(v_vec);
@@ -1751,7 +1751,7 @@ static void test_quality_vose_alias(const uint64_t nsamples, const unsigned n, c
     struct cmi_test_outcome *result = cmi_malloc(sizeof(*result));
     cmi_memset(result, 0, sizeof(*result));
     cmi_test_gof_disc(n, p_vec, v_vec, &ds, result);
-    cmi_test_outcome_print(result, stdout);
+    cmi_test_outcome_print(result, stdout, true);
 
     cmi_free(result);
     cmi_free(v_vec);
