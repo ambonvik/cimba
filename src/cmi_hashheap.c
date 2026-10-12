@@ -889,13 +889,14 @@ void cmi_hashheap_heap_print(const struct cmi_hashheap *hp, FILE *fp,
     }
 
     fprintf(fp, "------------------------------------- Heap -------------------------------------\n");
+    fprintf(fp, "Hash map %s\n", hp->map_active ? "active" : "inactive");
     fprintf(fp, "Heap idx\tHash key\tHash idx\tDbl rank\tInt rank\tValues\n");
     for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         const struct cmi_heap_tag *htp = &(hp->heap[ui]);
         fprintf(fp, "%8" PRIu64 "\t%8" PRIu64 "\t%8" PRIu64 "\t%#8.4g\t%8" PRIi64 "\t%s\n",
                 ui,
                 htp->hash_key,
-                htp->hash_index,
+                (hp->map_active) ? htp->hash_index : 0u,
                 htp->rank_d64,
                 htp->rank_i64,
                 (*hif)(htp->item[0], htp->item[1], htp->item[2], htp->item[3]));

@@ -11,6 +11,7 @@ Add an item, returned hash_key 1
 Pull an item
 Adding 5 items
 ------------------------------------- Heap -------------------------------------
+Hash map inactive
 Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
        1	       5	       0	  0.1246	      97	0x4	0x0	0x0	0x0
        2	       3	       0	  0.3143	     363	0x2	0x0	0x0	0x0
@@ -26,6 +27,7 @@ Dequeued item: 0x3
 Dequeued item: 0x5
 Adding 10 items, forcing a resizing ... 
 ------------------------------------- Heap -------------------------------------
+Hash map active
 Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
        1	      14	      20	 0.08955	     512	0xD	0x0	0x0	0x0
        2	      15	       8	  0.1408	     229	0xE	0x0	0x0	0x0
@@ -77,6 +79,7 @@ Hash idx	Hash key	Heap idx
 Removing hash keys 8u and 10u
 Reprioritizing hash key 9u
 ------------------------------------- Heap -------------------------------------
+Hash map active
 Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
        1	      14	      20	 0.08955	     512	0xD	0x0	0x0	0x0
        2	      15	       8	  0.1408	     229	0xE	0x0	0x0	0x0
@@ -125,6 +128,7 @@ Hash idx	Hash key	Heap idx
 --------------------------------------------------------------------------------
 Cancelling value 0xC (hash key 13)
 ------------------------------------- Heap -------------------------------------
+Hash map active
 Heap idx	Hash key	Hash idx	Dbl rank	Int rank	Values
        1	      14	      20	 0.08955	     512	0xD	0x0	0x0	0x0
        2	      15	       8	  0.1408	     229	0xE	0x0	0x0	0x0
