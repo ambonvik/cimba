@@ -209,18 +209,7 @@ void test_hashheap(uint64_t seed)
 }
 
 /*
- * test_hashheap_churn - Stress the tombstone reclamation (issue M1).
- *
- * Holds the live count well below the heap capacity while churning heavily, so
- * the heap never grows and the grow-triggered rehash never fires. Without
- * compaction the hash map bleeds empty slots into tombstones without bound, and
- * lookups (which only stop at a genuinely empty slot) keep getting longer. With
- * it, tombstones are reclaimed once they reach half the hash slots (heap_size).
- * Verifies correctness throughout, that the heap does not grow, that compaction
- * actually fires repeatedly, and that the tombstone count stays bounded.
- *
- * Deterministic by construction: no use of the random generator, so its output
- * does not depend on the seed.
+ * test_hashheap_churn - Stress test the tombstone reclamation
  */
 #define CHURN_LIVE       100u
 #define CHURN_ITERATIONS 50000u
@@ -234,7 +223,7 @@ static void test_hashheap_churn(void)
     cmb_assert_always(hhp != NULL);
 
     /* Small heap so compaction is reached quickly; live count stays below it. */
-    cmi_hashheap_initialize(hhp, 8u, heap_order_check);     /* heap_size = 256 */
+    cmi_hashheap_initialize(hhp, 8u, heap_order_check);
     const uint64_t heap_size = hhp->heap_size;
     cmb_assert_always(CHURN_LIVE < heap_size);
 
@@ -276,6 +265,7 @@ static void test_hashheap_churn(void)
             compactions++;
             cmb_assert_always(hhp->tombstones == 0u);
         }
+
         ring[head] = newkey;
         head = (head + 1u) % CHURN_LIVE;
 
