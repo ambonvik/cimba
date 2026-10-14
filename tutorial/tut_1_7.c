@@ -323,7 +323,7 @@ int main(const int argc, char *argv[])
         rho += rho_step;
     }
 
-    printf("Executing experiment\n");
+    printf("Executing experiment, %u trials\n", n_trials);
     cimba_run(experiment, n_trials, sizeof(*experiment), run_MM1_trial);
 
     printf("Finished experiment, writing results to file\n");

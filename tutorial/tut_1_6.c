@@ -202,7 +202,7 @@ int main(void)
         rho += rho_step;
     }
 
-    printf("Executing experiment\n");
+    printf("Executing experiment, %u trials\n", n_trials);
     cimba_run(experiment, n_trials, sizeof(*experiment), run_MM1_trial);
 
     printf("Finished experiment, writing results to file\n");
@@ -253,6 +253,7 @@ void write_gnuplot_commands(void)
     fprintf(cmdfp, "set yrange [0:50]\n");
     fprintf(cmdfp, "f(x) = x**2 / (1.0 - x)\n");
     fprintf(cmdfp, "datafile = 'tut_1_6.dat'\n");
+    fprintf(cmdfp, "set samples 500\n");
     fprintf(cmdfp, "plot datafile with yerrorbars lc rgb \"black\", \\\n");
     fprintf(cmdfp, "        f(x) title \"M/M/1\" with lines lw 2 lc rgb \"gray\"\n");
 
