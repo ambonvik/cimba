@@ -1899,6 +1899,7 @@ int main(int argc, char **argv)
     struct trial trl = {};
 
     printf("Initializing random generator\n");
+    printf("Seed: 0x%" PRIx64 "\n", seed);
     trl.seed_used = seed;
     cmb_random_initialize(trl.seed_used);
 
