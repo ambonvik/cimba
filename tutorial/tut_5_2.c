@@ -1056,6 +1056,7 @@ int main(int argc, char **argv)
     const clock_t start_time = clock();
 
     printf("Initializing random generators\n");
+    printf("Seed: 0x%" PRIx64 "\n", seed);
     trl.seed_used = seed;
     cmb_random_initialize(trl.seed_used);
 
