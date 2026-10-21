@@ -224,8 +224,9 @@ int main(void)
         cmb_assert_debug(cmb_datasummary_count(&cds) == n_reps);
         const double sample_avg = cmb_datasummary_mean(&cds);
         const double sample_sd = cmb_datasummary_stddev(&cds);
+        const double sample_n = (double)cmb_datasummary_count(&cds);
         const double t_crit = 2.228;
-        fprintf(datafp, "%f\t%f\t%f\n", rho_used, sample_avg, t_crit * sample_sd);
+        fprintf(datafp, "%f\t%f\t%f\n", rho_used, sample_avg, t_crit * sample_sd / sqrt(sample_n));
         cmb_datasummary_terminate(&cds);
     }
 

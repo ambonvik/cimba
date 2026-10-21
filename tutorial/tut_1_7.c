@@ -345,8 +345,9 @@ int main(const int argc, char *argv[])
         cmb_assert_debug(cmb_datasummary_count(&cds) == n_reps);
         const double sample_avg = cmb_datasummary_mean(&cds);
         const double sample_sd = cmb_datasummary_stddev(&cds);
+        const double sample_n = (double)cmb_datasummary_count(&cds);
         const double t_crit = t_crit_95(n_reps);
-        fprintf(datafp, "%f\t%f\t%f\n", rho_used, sample_avg, t_crit * sample_sd);
+        fprintf(datafp, "%f\t%f\t%f\n", rho_used, sample_avg, t_crit * sample_sd / sqrt(sample_n));
         cmb_datasummary_terminate(&cds);
     }
 
@@ -397,16 +398,16 @@ double t_crit_95(const uint32_t n)
 {
     cmb_assert_debug(n > 0u);
 
-    #define NUM_TVALS 62u
+#define NUM_TVALS 62u
     static uint32_t n_vals[NUM_TVALS] = {
-         1,  2,  3,  4,  5,  6,  7,  8,  9, 10,
-        11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-        21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
-        31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-        41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
-        60, 70, 80, 90,100,120,140,180,200,500,
-        1000, UINT32_MAX
-    };
+        1,  2,  3,  4,  5,  6,  7,  8,  9, 10,
+       11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+       21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+       31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+       41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+       60, 70, 80, 90,100,120,140,180,200,500,
+       1000, UINT32_MAX
+   };
 
     static double t_vals[NUM_TVALS] = {
         12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228,
@@ -429,14 +430,15 @@ double t_crit_95(const uint32_t n)
             const double t_range = t_vals[ui] - t_vals[ui - 1];
             const double frac = (double)(n - n_vals[ui - 1]) / (double)n_range;
             cmb_assert_debug(frac >= 0.0 && frac <= 1.0);
-            const double t_ret = t_vals[ui] - frac * t_range;
+            const double t_ret = t_vals[ui - 1u] + frac * t_range;
 
-            cmb_assert_debug((t_ret >= t_vals[ui -1]) && (t_ret <= t_vals[ui]));
+            cmb_assert_debug((t_ret <= t_vals[ui - 1u]) && (t_ret >= t_vals[ui]));
             return t_ret;
         }
     }
 
     /* Should never get this far */
     cmb_logger_error(stderr, "Critical value lookup failed");
-    #undef NUM_TVALS
+#undef NUM_TVALS
 }
+

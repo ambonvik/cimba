@@ -897,29 +897,39 @@ int main(int argc, char **argv)
     double dur_h = 6.0;
     uint32_t n_replications = 10u;
     uint32_t n_threads = 0u;
+    bool show_graphics = true;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:n:r:s:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:g:n:r:s:")) != -1) {
         switch (opt) {
             case 'd': {
                 errno = 0;
                 char *end = NULL;
                 dur_h = strtod(optarg, &end);
-                if (end == optarg        /* no digits consumed   */
-                    || *end != '\0'      /* trailing garbage     */
-                    || errno == ERANGE   /* overflow / underflow */
-                    || dur_h <= 0.0) {   /* domain: hours > 0    */
+                if ((end == optarg) || (*end != '\0') || (errno == ERANGE) || (dur_h <= 0.0)) {
                     fprintf(stderr, "Invalid -d value '%s' (expected hours > 0)\n", optarg);
                     return EXIT_FAILURE;
                     }
                 break;
             }
 
+            case 'g': {
+                errno = 0;
+                char *end = NULL;
+                long garg = strtol(optarg, &end, 0);
+                if ((end == optarg) || (*end != '\0') || (errno == ERANGE)) {
+                    fprintf(stderr, "Invalid -g value '%s' (expected 0 or 1)\n", optarg);
+                    return EXIT_FAILURE;
+                }
+                show_graphics = (garg != 0);
+                break;
+            }
+
             case 'n': {
                 errno = 0;
                 char *end = NULL;
-                n_replications = strtoul(optarg, &end, 0);   /* base 0 => accepts 0x.., 0.. */
-                if (end == optarg || *end != '\0' || errno == ERANGE || n_replications == 0u) {
+                n_replications = strtoul(optarg, &end, 0);
+                if ((end == optarg) || (*end != '\0') || (errno == ERANGE) || (n_replications == 0u)) {
                     fprintf(stderr, "Invalid -n value '%s' (expected nonzero integer)\n", optarg);
                     return EXIT_FAILURE;
                 }
@@ -929,9 +939,9 @@ int main(int argc, char **argv)
             case 'r': {
                 errno = 0;
                 char *end = NULL;
-                n_threads = strtoul(optarg, &end, 0);   /* base 0 => accepts 0x.., 0.. */
-                if (end == optarg || *end != '\0' || errno == ERANGE) {
-                    fprintf(stderr, "Invalid -r value '%s' (expected integer)\n", optarg);
+                n_threads = strtoul(optarg, &end, 0);
+                if ((end == optarg) || (*end != '\0') || (errno == ERANGE)) {
+                    fprintf(stderr, "Invalid -r value '%s' (expected unsigned integer)\n", optarg);
                     return EXIT_FAILURE;
                 }
                 break;
@@ -940,9 +950,9 @@ int main(int argc, char **argv)
             case 's': {
                 errno = 0;
                 char *end = NULL;
-                master_seed = strtoull(optarg, &end, 0);   /* base 0 => accepts 0x.., 0.. */
-                if (end == optarg || *end != '\0' || errno == ERANGE || master_seed == 0u) {
-                    fprintf(stderr, "Invalid -s value '%s' (expected nonzero integer)\n", optarg);
+                master_seed = strtoull(optarg, &end, 0);
+                if ((end == optarg) || (*end != '\0') || (errno == ERANGE)) {
+                    fprintf(stderr, "Invalid -s value '%s' (expected unsigned integer)\n", optarg);
                     return EXIT_FAILURE;
                 }
                 break;
@@ -985,10 +995,12 @@ int main(int argc, char **argv)
      }
 
     printf("Setting up experiment\n");
+    printf("Master seed: 0x%" PRIx64 "\n", master_seed);
     const double fl_start = 100.0;
     const double fl_step = 25.0;
-    const uint32_t n_levels = 15u;
+    const uint32_t n_levels = 16u;
     const uint32_t n_trials = n_levels * n_terrains * n_replications;
+    printf("Preparing %u trials\n", n_trials);
 
     struct trial *experiment = cmi_calloc(n_trials, sizeof(*experiment));
 
@@ -1037,8 +1049,9 @@ int main(int argc, char **argv)
         cmb_assert_debug(cmb_datasummary_count(&cds) == n_smpl);
         const double sample_avg = cmb_datasummary_mean(&cds);
         const double sample_sd = cmb_datasummary_stddev(&cds);
+        const double sample_n = cmb_datasummary_count(&cds);
         const double t_crit = 2.228;
-        fprintf(datafp, "%f\t%f\t%f\n", fl, sample_avg, t_crit * sample_sd);
+        fprintf(datafp, "%f\t%f\t%f\n", fl, sample_avg, t_crit * sample_sd / sqrt(sample_n));
         cmb_datasummary_terminate(&cds);
     }
 
@@ -1053,10 +1066,13 @@ int main(int argc, char **argv)
 
     cmi_free(terrains);
 
-    write_gnuplot_commands();
-    if (system("gnuplot -persistent tut_5_3.gp") != 0) {
-        cmb_logger_warning(stderr, "gnuplot launch failed");
+    if (show_graphics) {
+        write_gnuplot_commands();
+        if (system("gnuplot -persistent tut_5_3.gp") != 0) {
+            cmb_logger_warning(stderr, "gnuplot launch failed");
+        }
     }
+
     return 0;
 }
 
@@ -1069,7 +1085,7 @@ void write_gnuplot_commands(void)
     fprintf(cmdfp, "set grid\n");
     fprintf(cmdfp, "set xlabel \"Flight level (ft x 100)\"\n");
     fprintf(cmdfp, "set ylabel \"Number of targets\"\n");
-    fprintf(cmdfp, "set xrange [0.0:500.0]\n");
+    fprintf(cmdfp, "set xrange [0.0:700.0]\n");
     fprintf(cmdfp, "set yrange [0:1000]\n");
     fprintf(cmdfp, "datafile = 'tut_5_3.dat'\n");
     fprintf(cmdfp, "plot datafile with yerrorbars lc rgb \"black\", \\\n");
