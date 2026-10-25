@@ -75,20 +75,10 @@ It is powerful, fast, reliable, and free.
     runtime. See [the documentation](https://cimba.readthedocs.io/en/latest/background.html#benchmarking-cimba-performance) 
     for technical details on this benchmark. 
 
-  * Another performance reference point is found in the literature on large-scale
-    parallel discrete event simulation (PDES). In these models, each simulation run is
-    distributed across many physical cores.
-    [Fujimoto (2015)](https://informs-sim.org/wsc15papers/004.pdf) states that performance
-    for the PDES algorithms has leveled out at around 250 k events/second/core
-    on massively parallel supercomputers due to the inherent clock speed limitations on 
-    each core, and that further performance improvement in recent years comes from 
-    increasing the number of cores. 
-  
-    *Cimba runs two orders of magnitude faster than this on a per-core basis.* The CPU used 
-    in the benchmark above has 32 _physical_ cores, running two threads per physical core.
-    Cimba executed 42 M events/sec on a single core and 34 M events/second/core on 32
-    physical cores. The reason is that keeping our entire event queue in "hot" CPU cache memory
-    is orders of magnitude faster than communicating the events across a link between separate devices.
+  * Another set of performance benchmarks are the space-parallel discrete event 
+    simulation frameworks, such as [ROSS](https://ross-org.github.io). We have started 
+    to get some quite interesting benchmark results also in this area, but we will save 
+    those for an upcoming paper. Once published, it will also be quoted here.
 
   * If you need even higher speed, CUDA kernels can be used for massively parallel 
     computation inside each simulated process, e.g., for AI-enabled agents or for 
@@ -475,10 +465,12 @@ version 2.0 in ANSI C and Perl around 1995–96. The present version written in
 C23 with POSIX pthreads is the third major rebuild, and the first public version.
 
 ### You had me at "free." How do I get my hands on Cimba?
-It is right here. You clone the repository, build, and install it. You
-will need a C compiler and the Meson build manager. On Linux, you can use GCC 
-or Clang, while the recommended approach on Windows is MinGW with its GCC 
-compiler. For convenience, we recommend the CLion integrated development environment 
-with GCC, Meson, and Ninja built-in support on both Linux and Windows.
+It is right here. You clone the repository (or download and extract the compressed 
+archive if you prefer not getting the entire history along with the latest version),
+build, and install it. You will need a C compiler, the NASM assembler, and the Meson
+build manager. On Linux, you can use GCC or Clang, while the recommended approach on 
+Windows is MinGW with its GCC compiler. For convenience, we recommend the CLion 
+integrated development environment with GCC, Meson, and Ninja built-in support on 
+both Linux and Windows.
 
 You will find the installation guide here: https://cimba.readthedocs.io/en/latest/installation.html

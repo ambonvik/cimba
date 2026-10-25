@@ -90,20 +90,9 @@ It is powerful, fast, reliable, and free.
   assembly will always run faster than code that needs to be interpreted on-the-fly at
   runtime.
 
-  The CPU used here has 32 *physical* cores, running two threads per physical core.
-  Cimba runs 43 M events/second on a single core and 34 M events/second/core
-  on 32 physical cores for a scaling efficiency of 79 %. This also compares favorably to
-  `the literature on large-scale parallel discrete event simulation <https://informs-sim.org/wsc15papers/004.pdf>`_
-  (PDES), where each simulation trial is distributed across many physical cores,
-  where it seems that  performance for the Time Warp-type PDES algorithms has leveled
-  out at around 250 K events/second/core on massively parallel supercomputers.
-
-  *Cimba runs about two orders of magnitude faster than Time Warp PDES measured in events
-  per second per core.*
-
-  The reason is that keeping our entire event queue in "hot" CPU cache memory
-  is orders of magnitude faster than communicating the same events across a link between
-  separate devices, no matter how fast that link is.
+  We are also preparing a benchmark against ROSS, an existing space-parallel discrete
+  event simulation framework. The preliminary results are quite interesting, but we
+  will publish those for an upcoming paper before adding them here.
 
 * *Reliable*: Cimba is well engineered, self-contained open source. There is no mystery to
   the results you get. The code is written with liberal use of assertions to enforce

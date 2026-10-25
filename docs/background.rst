@@ -2091,39 +2091,15 @@ sequential simulation.
 One approach is *optimistic synchronization*, where CPUs are allowed to run ahead, but
 anti-events are sent to initiate rollback if a violation of time sequence is detected.
 This may initiate sequences of cascading rollbacks until causality is re-established.
-The best known algorithm for this is Time Warp, e.g., used in
-`ROSS <https://ross-org.github.io/about.html>`_. Other approaches use *conservative
+The best known algorithm for this is Time Warp. Another approach is *conservative
 synchronization*, not allowing any core to proceed unless the event timestamp is
 guaranteed valid.
 
-`In a 2015 review paper <https://informs-sim.org/wsc15papers/004.pdf>`_, Richard
-Fujimoto, one of the pioneers in the PDES field, states that PDES performance has leveled
-out at around 250 K events/second/core on massively parallel supercomputers since CPU
-cores have reached a clock rate limit. Further performance improvement comes from increasing
-the number of cores.
+We are working on a benchmark with `ROSS <https://ross-org.github.io/about.html>`_
+using the same workstation with 32 physical cores for both ROSS and Cimba. Our
+preliminary results are quite interesting, but we will publish those in an upcoming
+paper first, before quting those numbers also here.
 
-Unfortunately, we do not have a massively parallel supercomputer available for direct
-benchmarking against Cimba, but to the nearest order of magnitude: The PC we used for
-the SimPy benchmark above has 32 physical cores, running two threads per physical core.
-Cimba runs 43.1 M events/second on a single core and 33.9 M events/second/core
-on 32 physical cores for a scaling efficiency of 78.7 %.
-
-If those numbers are anywhere near comparable to Fujimoto's, it means that *Cimba runs
-about two orders of magnitude faster than Time Warp PDES measured in events/second/core*.
-The reason is that keeping our entire event queue in "hot" CPU cache memory is orders of
-magnitude faster than communicating the events across a link between separate devices,
-no matter how fast that link is.
-
-The original reason for PDES, limited memory capacity per CPU necessitating
-distributing the model across many, is no longer valid. The PC referred to above has
-128 GB of memory and can easily fit 64 complete trials in parallel, two per physical core,
-even with thousands of active processes in each trial. The remaining use case for Time Warp
-and similar PDES seems to be for extremely large simulations distributed across the nodes of
-supercomputer clusters, and then mostly for cases where the problem can be structured
-as nearly independent sub-systems limiting the amount of message passing between the nodes.
-
-(This section will be updated when we have been able to devise a benchmark against
-`ROSS <https://ross-org.github.io>`_.)
 
 .. _background_name:
 
