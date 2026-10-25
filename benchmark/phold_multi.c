@@ -1,5 +1,5 @@
 /*
- * PHOLD performance test on event queue - sequential run as default
+ * PHOLD performance test on event queue - parallel run as default
  *
  * Copyright (c) Asbjørn M. Bonvik 2026.
  *
@@ -26,18 +26,22 @@
 
 #include "cimba.h"
 
-#define N_THREADS 1u                /* Override with -t command line option */
-#define N_TRIALS 1u                 /* Override with -n command line option */
-#define N_LP 32u                    /* Override with -p command line option */
-#define N_START 1u                  /* Override with -a command line option */
-#define N_QLENGTHS 49u              /* Override with -q command line option */
-#define STEP_MULT 0.125             /* Override with -m command line option */
-#define LOOKAHEAD 1.0               /* Override with -h command line option */
-#define MEAN 2.0                    /* Override with -u command line option */
-#define P_REMOTE 0.25               /* Override with -r command line option */
-#define N_MEASURE 10000000          /* Override with -x command line option */
+#define N_THREADS 64u
+#define N_REPLICATIONS 64u
+#define N_LP 160u
+#define N_HOLDING 100u
+#define P_REMOTE 0.25
+#define T_DURATION 20000.0
+#define T_LOOKAHEAD 1.0
+#define T_HOLD_MEAN 1.0
+#define N_RATIOS 11u
+#define T_FACTOR sqrt(2.0)
 
 #define USERLEVEL 0x0001
+
+static uint64_t total_events = 0u;
+static double running_time = 0.0;
+extern uint32_t cmi_cpu_cores();
 
 struct simulation {
     uint64_t n_lp;
@@ -51,19 +55,21 @@ struct trial {
     double hold_mean;
     double lookahead;
     double p_remote;
-    uint64_t n_measure;
+    double t_duration;
+    /* Controls */
+    uint64_t index;
     uint64_t seed;
+    bool dry_run;
     /* Results */
-    double events_sec;
-    double ns_event;
+    double trial_sec;
     uint64_t n_events;
+    double ns_event;
 };
 
 struct context {
     struct simulation *sim;
     struct trial *trl;
 };
-
 
 static pthread_mutex_t tty = PTHREAD_MUTEX_INITIALIZER;
 
@@ -84,24 +90,22 @@ static void event(void *subject, void *object)
     const struct trial *trl = ctx->trl;
     const double_t m = trl->hold_mean;
     const double lh = trl->lookahead;
-    double t = cmb_time();
-    const double diff = m - lh;
-    if (diff > 0.0) {
-        /* Random */
-        t += cmb_random_exponential(m - lh) + lh;
-    }
-    else {
-        /* Deterministic */
-        t += lh;
-    }
+    const double t = cmb_time() + cmb_random_exponential(m) + lh;
 
     /* Where to route it next? */
     if (cmb_random_bernoulli(trl->p_remote) == 1u) {
         subject = (void *)cmb_random_discrete_uniform(sim->n_lp);
     }
 
-    /* Next, please */
     cmb_event_schedule(event, subject, object, t, 0);
+}
+
+static void end_event(void *subject, void *object)
+{
+    cmb_unused(subject);
+    cmb_unused(object);
+
+    cmb_event_queue_clear();
 }
 
 static double monotonic_seconds(void)
@@ -117,6 +121,10 @@ static void run_trial(void *vtrl)
     cmb_assert_debug(vtrl != NULL);
     struct trial *trl = vtrl;
 
+    if (trl->dry_run) {
+        return;
+    }
+
     struct simulation sim = { 0 };
     sim.n_lp = trl->n_lp;
     sim.lp_arr = cmi_calloc((size_t)sim.n_lp, sizeof(*(sim.lp_arr)));
@@ -131,9 +139,12 @@ static void run_trial(void *vtrl)
     const uint64_t n_holding = trl->n_holding;
     const double mean = trl->hold_mean;
     const double lh = trl->lookahead;
+    const uint64_t me = trl->index;
+    printf ("Trial %" PRIu64 " started\n", me);
+
     const uint64_t n_queue = trl->n_lp * n_holding;
     for (uint64_t ui = 0u; ui < n_queue; ui++) {
-        const double t = (mean > lh) ? cmb_random_exponential(mean - lh) + lh : lh;
+        const double t = cmb_time() + cmb_random_exponential(mean) + lh;
         const uint64_t lp = cmb_random_discrete_uniform(sim.n_lp);
         cmb_event_schedule(event, (void *)lp, &ctx, t, 0);
     }
@@ -146,212 +157,59 @@ static void run_trial(void *vtrl)
 
     /* Zero all event counters before the real run */
     cmi_memset(sim.lp_arr, 0, (size_t)sim.n_lp * sizeof(*sim.lp_arr));
+    cmb_event_schedule(end_event, NULL, NULL, cmb_time() + trl->t_duration, 0);
 
-    const uint64_t n_measure = trl->n_measure;
     const double t0 = monotonic_seconds();
-    for (uint64_t ui = 0u; ui < n_measure; ui++) {
-        cmb_event_execute_next();
-    }
+    cmb_event_queue_execute();
     const double t1 = monotonic_seconds();
+    const double elapsed = t1 - t0;
 
     uint64_t count = 0u;
     for (uint64_t ui = 0u; ui < trl->n_lp; ui++) {
         count += sim.lp_arr[ui];
     }
 
-    const double elapsed = t1 - t0;
-    const double eps = (double)count / elapsed;
-    trl->events_sec = eps;
-    trl->ns_event = 1e9 / eps;
+    const double epsec = (double)count / elapsed;
+    trl->trial_sec = elapsed;
+    trl->ns_event = 1e9 / epsec;
     trl->n_events = count;
+
+    pthread_mutex_lock(&tty);
+    printf ("Trial %" PRIu64 " finished in %f sec\n", me, elapsed);
+    pthread_mutex_unlock(&tty);
 
     cmi_free(sim.lp_arr);
     cmb_random_terminate();
     cmb_event_queue_terminate();
 }
 
-static uint64_t run_level(const uint64_t n_lp,
-                          const uint64_t n_holding,
-                          const uint64_t n_trials,
-                          const uint64_t n_measure,
-                          const double mean,
-                          const double lookahead,
-                          const double p_remote,
-                          const uint64_t master_seed,
-                          const bool dry_run)
-{
-    struct trial *experiment = cmi_calloc(n_trials, sizeof(*experiment));
 
-    for (unsigned ui = 0; ui < n_trials; ui++) {
-        struct trial *trl = &experiment[ui];
-        trl->n_holding = n_holding;
-        trl->n_measure = n_measure;
-        trl->n_lp = n_lp;
-        trl->hold_mean = mean;
-        trl->p_remote = p_remote;
-        trl->lookahead = lookahead;
-        trl->seed = cmb_random_fmix64(master_seed, ui);
-    }
-
-    pthread_mutex_lock(&tty);
-    printf ("%9" PRIu64 "\t"
-            "%9" PRIu64 "\t"
-            "%9" PRIu64 "\t",
-             n_lp, n_holding, n_lp * n_holding);
-    fflush(stdout);
-    pthread_mutex_unlock(&tty);
-
-    if (!dry_run) {
-        cimba_run(experiment, n_trials, sizeof(*experiment), run_trial);
-    }
-
-    uint64_t events = 0u;
-    struct cmb_datasummary dsu_esec;
-    cmb_datasummary_initialize(&dsu_esec);
-    struct cmb_datasummary dsu_nse;
-    cmb_datasummary_initialize(&dsu_nse);
-    for (unsigned ui = 0; ui < n_trials; ui++) {
-        struct trial *trl = &experiment[ui];
-        cmb_datasummary_add(&dsu_esec, trl->events_sec);
-        cmb_datasummary_add(&dsu_nse, trl->ns_event);
-        events += trl->n_events;
-    }
-
-    pthread_mutex_lock(&tty);
-    printf ("%10.3g\t%10.5g\n",
-             cmb_datasummary_mean(&dsu_esec),
-             cmb_datasummary_mean(&dsu_nse));
-    pthread_mutex_unlock(&tty);
-
-    cmb_datasummary_terminate(&dsu_esec);
-    cmb_datasummary_terminate(&dsu_nse);
-    free(experiment);
-
-    return events;
-}
+void write_gnuplot_commands_lh(void);
+void write_gnuplot_commands_tp(void);
+double t_crit_95(uint32_t n);
 
 int main(const int argc, char *argv[])
 {
     uint64_t master_seed = cmb_random_hwseed();
-    uint64_t n_trials = N_TRIALS;
-    uint64_t n_measure = N_MEASURE;
-    uint64_t n_start = N_START;
+    uint64_t n_holding = N_HOLDING;
+    uint64_t n_reps = N_REPLICATIONS;
+    uint64_t n_ratios = N_RATIOS;
+    double t_factor = T_FACTOR;
     uint64_t n_lp = N_LP;
-    uint64_t n_qlengths = N_QLENGTHS;
-    double step_mult = STEP_MULT;
-    double lookahead = LOOKAHEAD;
-    double mean = MEAN;
     double p_remote = P_REMOTE;
+    double t_duration = T_DURATION;
+    double t_hold_mean = T_HOLD_MEAN;
+    double t_lookahead = T_LOOKAHEAD;
     uint32_t n_threads = N_THREADS;
     bool dry_run = false;
 
     int opt;
-    while ((opt = getopt(argc, argv, "a:h:m:n:p:q:r:s:t:u:x:z")) != -1) {
+    while ((opt = getopt(argc, argv, "s:z")) != -1) {
         switch (opt) {
-            case 'a': {
-                errno = 0;
-                n_start = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    return EXIT_FAILURE;
-                }
-                break;
-            }
-
-            case 'h': {
-                errno = 0;
-                lookahead = strtod(optarg, NULL);
-                if (errno != 0 || lookahead < 0.0) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    return EXIT_FAILURE;
-                }
-                break;
-            }
-
-            case 'm': {
-                errno = 0;
-                step_mult = strtod(optarg, NULL);
-                if (errno != 0 || step_mult <= 0.0) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    return EXIT_FAILURE;
-                }
-                break;
-            }
-
-            case 'n': {
-                errno = 0;
-                n_trials = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    return EXIT_FAILURE;
-                }
-                break;
-            }
-
-            case 'p': {
-                errno = 0;
-                n_lp = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    return EXIT_FAILURE;
-                }
-                break;
-            }
-
-            case 'q': {
-                errno = 0;
-                n_qlengths = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    return EXIT_FAILURE;
-                }
-                break;
-            }
-
-            case 'r': {
-                errno = 0;
-                p_remote = strtod(optarg, NULL);
-                if (errno != 0 || p_remote < 0.0 || p_remote > 1.0) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    return EXIT_FAILURE;
-                }
-                break;
-            }
-
             case 's': {
                 errno = 0;
                 master_seed = (uint64_t)strtoull(optarg, NULL, 0);
                 if (errno != 0 || master_seed == 0u) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    return EXIT_FAILURE;
-                }
-                break;
-            }
-
-            case 't': {
-                errno = 0;
-                n_threads = (uint32_t)strtoul(optarg, NULL, 0);
-                if (errno != 0) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    return EXIT_FAILURE;
-                }
-                break;
-            }
-
-            case 'u': {
-                errno = 0;
-                mean = strtod(optarg, NULL);
-                if (errno != 0 || mean < 0.0) {
-                    fprintf(stderr, "Invalid argument %s\n", optarg);
-                    return EXIT_FAILURE;
-                }
-                break;
-            }
-
-            case 'x': {
-                errno = 0;
-                n_measure = (uint64_t)strtoull(optarg, NULL, 0);
-                if (errno != 0) {
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     return EXIT_FAILURE;
                 }
@@ -375,88 +233,279 @@ int main(const int argc, char *argv[])
 
     printf("\nModel parameters:\n");
     printf("-----------------\n");
-    printf("Probability of re-routing: %g\n", p_remote);
-    printf("Holding time mean: %g lookahead: %g\n", mean, lookahead);
-
-    printf("\nTest parameters, varying queue length per logical process:\n");
-    printf("----------------------------------------------------------\n");
     printf("Number of logical processes: %" PRIu64 "\n", n_lp);
-    printf("Number of event queue levels: %" PRIu64 ", from %" PRIu64 " to %" PRIu64 "\n",
-           n_qlengths,   (uint64_t)n_start, (uint64_t)(n_start * pow(10.0, (n_qlengths - 1u) * step_mult)));
-    printf("Number of trials per level: %" PRIu64 "\n", n_trials);
-    printf("Number of measured events: %" PRIu64 "\n", n_measure);
-    printf("Step multiplier: %4.2f\n", pow(10.0, step_mult));
+    printf("Number of holding queue entries per LP: %" PRIu64 "\n", n_holding);
     printf("Number of threads: %" PRIu32 "\n", n_threads);
+    const uint64_t n_trials = 2u * n_ratios * n_reps;
+    printf("Number of trials: %" PRIu64 "\n", n_trials);
     printf("Master seed: 0x%" PRIx64 "\n", master_seed);
 
-    cmb_assert_release(mean - lookahead >= 0.0);
+    printf("\nConfiguring lookahead ratio sweep:\n");
+    printf("Fixed probability of re-routing: %g\n", p_remote);
+    printf("Fixed lookahead: %g\n", t_lookahead);
+    printf("Varying mean hold time in %" PRIu64 " steps by factors of %g...\n\n", n_ratios, t_factor);
+
+    struct trial *experiment = cmi_calloc(n_trials, sizeof(*experiment));
+    uint64_t ui_exp = 0u;
+    /* Interleave replications to avoid any run-sequence bias */
+    for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+        double tm = t_hold_mean;
+        for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
+            experiment[ui_exp].n_holding = n_holding;
+            experiment[ui_exp].n_lp = n_lp;
+            experiment[ui_exp].hold_mean = tm;
+            experiment[ui_exp].lookahead = t_lookahead;
+            experiment[ui_exp].p_remote = p_remote;
+            experiment[ui_exp].t_duration = t_duration * (tm + t_lookahead);
+
+            experiment[ui_exp].seed = cmb_random_fmix64(master_seed, ui_exp);
+            experiment[ui_exp].index = ui_exp;
+            experiment[ui_exp].dry_run = dry_run;
+
+            experiment[ui_exp].trial_sec = 0.0;
+            experiment[ui_exp].n_events = 0u;
+            experiment[ui_exp].ns_event = 0.0;
+
+            tm *= t_factor;
+            ui_exp++;
+        }
+    }
+
+    printf("\nSetting up transfer probability sweep\n");
+    printf("Fixed lookahead: %g\n", t_lookahead);
+    printf("Fixed hold mean: %g\n", t_hold_mean);
+    const double p_step = 1.0 / (n_ratios - 1u);
+    printf("Varying transfer probability in %" PRIu64 " steps of %g...\n\n", n_ratios, p_step);
+
+    /* Interleave replications to avoid any run-sequence bias */
+    for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+        double pt = 0.0;
+        for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
+            experiment[ui_exp].n_holding = n_holding;
+            experiment[ui_exp].n_lp = n_lp;
+            experiment[ui_exp].hold_mean = t_hold_mean;
+            experiment[ui_exp].lookahead = t_lookahead;
+            experiment[ui_exp].p_remote = pt;
+            experiment[ui_exp].t_duration = t_duration;
+
+            experiment[ui_exp].seed = cmb_random_fmix64(master_seed, ui_exp);
+            experiment[ui_exp].index = ui_exp;
+            experiment[ui_exp].dry_run = dry_run;
+
+            experiment[ui_exp].trial_sec = 0.0;
+            experiment[ui_exp].n_events = 0u;
+            experiment[ui_exp].ns_event = 0.0;
+
+            pt += p_step;
+            ui_exp++;
+        }
+    }
 
     cimba_threads_use(n_threads);
+    double start_time = monotonic_seconds();
+    cimba_run(experiment, n_trials, sizeof(*experiment), run_trial);
+    double end_time = monotonic_seconds();
+    running_time += end_time - start_time;
 
-    printf("\nResults:\n");
-    printf("--------\n");
-    printf("LPs:\t"
-           "initevs/LP:\t"
-           "totevs:\t"
-           "evs/s:\t"
-           "ns/ev:\n");
+    FILE *datafp = fopen("phold_multi_lh.dat", "w");
+    fprintf(datafp, "# lookahead_ratio\tns_per_event\tconf_interval\n");
 
-    uint64_t total_events = 0u;
-    uint64_t prev = 0u;
-    for (uint64_t ui = 0u; ui < n_qlengths; ui++) {
-        const uint64_t qevs = (uint64_t)((double)n_start * pow(10.0, (double)(ui) * step_mult));
-        if ((qevs == 0u) || (qevs == prev)) {
-            continue;
+    struct cmb_datasummary *dstarr = cmi_calloc((size_t)n_ratios, sizeof(*dstarr));
+    struct cmb_datasummary *dsnarr = cmi_calloc((size_t)n_ratios, sizeof(*dsnarr));
+    struct cmb_datasummary *dsnsarr = cmi_calloc((size_t)n_ratios, sizeof(*dsnsarr));
+
+    for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
+        cmb_datasummary_initialize(&dstarr[ui_rat]);
+        cmb_datasummary_initialize(&dsnarr[ui_rat]);
+        cmb_datasummary_initialize(&dsnsarr[ui_rat]);
+    }
+
+    ui_exp = 0u;
+    for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+        for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
+            const double tt = experiment[ui_exp].trial_sec;
+            cmb_datasummary_add(&dstarr[ui_rat], tt);
+            const double ne = (double)experiment[ui_exp].n_events;
+            cmb_datasummary_add(&dsnarr[ui_rat], ne);
+            total_events += ne;
+            const double ns = experiment[ui_exp].ns_event;
+            cmb_datasummary_add(&dsnsarr[ui_rat], ns);
+            ui_exp++;
         }
-
-        total_events += run_level(n_lp, qevs, n_trials, n_measure,
-                            mean, lookahead, p_remote, master_seed, dry_run);
-        prev = qevs;
     }
 
-    printf("\nTest parameters, varying number of logical processes:\n");
-    printf("-----------------------------------------------------\n");
-    const uint64_t qevs = 1000u;
-    printf("Number of events in queue per logical process: %" PRIu64 "\n", qevs);
-    uint64_t start_lp = (uint64_t)((double)n_start * pow(10.0, (double)(0u) * step_mult)) / qevs;;
-    if (start_lp == 0u) {
-        start_lp = 1u;
+    double tm = t_hold_mean;
+    for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
+        const double rat = t_lookahead / tm;
+        const double sample_avg = cmb_datasummary_mean(&dsnsarr[ui_rat]);
+        const double sample_sd = cmb_datasummary_stddev(&dsnsarr[ui_rat]);
+        const double sample_n = (double)cmb_datasummary_count(&dsnsarr[ui_rat]);
+        const double t_crit = t_crit_95(n_reps - 1u);
+        fprintf(datafp, "%f\t%f\t%f\n", rat, sample_avg, t_crit * sample_sd / sqrt(sample_n));
+
+        printf("Mean %f lookahead %f ratio %f:\n", tm, t_lookahead, t_lookahead / tm);
+        cmb_datasummary_print(&dstarr[ui_rat], stdout, false);
+        cmb_datasummary_terminate(&dstarr[ui_rat]);
+        cmb_datasummary_print(&dsnarr[ui_rat], stdout, false);
+        cmb_datasummary_terminate(&dsnarr[ui_rat]);
+        cmb_datasummary_print(&dsnsarr[ui_rat], stdout, false);
+        cmb_datasummary_terminate(&dsnsarr[ui_rat]);
+
+        tm *= t_factor;
     }
 
-    uint64_t end_lp = (uint64_t)((double)n_lp * pow(10.0, (double)(n_qlengths - 1u) * step_mult)) / qevs;;
-    printf("Number of logical process counts: %" PRIu64 ", from %" PRIu64 " to %" PRIu64 "\n",
-            n_qlengths, start_lp, end_lp);
-    printf("Number of trials per level: %" PRIu64 "\n", n_trials);
-    printf("Number of measured events: %" PRIu64 "\n", n_measure);
-    printf("Number of threads: %" PRIu32 "\n", n_threads);
-    printf("Master seed: 0x%" PRIx64 "\n", master_seed);
+    fclose(datafp);
 
-    printf("\nResults:\n");
-    printf("--------\n");
-    printf("LPs:\t"
-           "initevs/LP:\t"
-           "totevs:\t"
-           "evs/s:\t"
-           "ns/ev:\n");
+    write_gnuplot_commands_lh();
+    if (system("gnuplot -persistent phold_multi_lh.gp") != 0) {
+        cmb_logger_warning(stderr, "gnuplot launch failed");
+    }
 
-    total_events = 0u;
-    prev = 0u;
-    for (uint64_t ui = 0u; ui < n_qlengths; ui++) {
-        /* Same values as first sweep */
-        const uint64_t tevs = n_lp * (uint64_t)((double)n_start * pow(10.0, (double)(ui) * step_mult));
-        /* ... but by varying the number of lp's instead */
-        const uint64_t lps = tevs / qevs;
-        if ((lps == 0u) || (lps == prev)) {
-            continue;
+    datafp = fopen("phold_multi_tp.dat", "w");
+    fprintf(datafp, "# transfer_probability\tns_per_event\tconf_interval\n");
+
+    for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
+        cmb_datasummary_initialize(&dstarr[ui_rat]);
+        cmb_datasummary_initialize(&dsnarr[ui_rat]);
+        cmb_datasummary_initialize(&dsnsarr[ui_rat]);
+    }
+
+    for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
+        for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
+            const double tt = experiment[ui_exp].trial_sec;
+            cmb_datasummary_add(&dstarr[ui_rat], tt);
+            const double ne = (double)experiment[ui_exp].n_events;
+            cmb_datasummary_add(&dsnarr[ui_rat], ne);
+            total_events += ne;
+            const double ns = experiment[ui_exp].ns_event;
+            cmb_datasummary_add(&dsnsarr[ui_rat], ns);
+            ui_exp++;
         }
-
-        total_events += run_level(lps, qevs, n_trials, n_measure,
-                            mean, lookahead, p_remote, master_seed, dry_run);
-        prev = lps;
     }
 
-    printf("\nTotal number of events processed: %" PRIu64 "\n", total_events);
+    for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
+        const double pt = p_step * (double)ui_rat;
+        const double sample_avg = cmb_datasummary_mean(&dsnsarr[ui_rat]);
+        const double sample_sd = cmb_datasummary_stddev(&dsnsarr[ui_rat]);
+        const double sample_n = (double)cmb_datasummary_count(&dsnsarr[ui_rat]);
+        const double t_crit = t_crit_95(n_reps - 1u);
+        fprintf(datafp, "%f\t%f\t%f\n", pt, sample_avg, t_crit * sample_sd / sqrt(sample_n));
 
+        printf("Transfer prob %f:\n", pt);
+        cmb_datasummary_print(&dstarr[ui_rat], stdout, false);
+        cmb_datasummary_terminate(&dstarr[ui_rat]);
+        cmb_datasummary_print(&dsnarr[ui_rat], stdout, false);
+        cmb_datasummary_terminate(&dsnarr[ui_rat]);
+        cmb_datasummary_print(&dsnsarr[ui_rat], stdout, false);
+        cmb_datasummary_terminate(&dsnsarr[ui_rat]);
+    }
+
+    fclose(datafp);
+    write_gnuplot_commands_tp();
+    if (system("gnuplot -persistent phold_multi_tp.gp") != 0) {
+        cmb_logger_warning(stderr, "gnuplot launch failed");
+    }
+
+    cmi_free(dstarr);
+    cmi_free(dsnarr);
+    cmi_free(dsnsarr);
+    cmi_free(experiment);
+
+    printf("Total events processed: %" PRIu64 "\n", total_events);
+    printf("Running time: %g seconds\n", running_time);
+    const double eps = (double)total_events / running_time;
+    const double nspe = 1e9 / eps;
+    printf("%g events per second, %g ns per event\n", eps, nspe);
+    const unsigned ncores = cmi_cpu_cores() / 2u;
+    printf("%g events per second per core\n", eps / (double)ncores);
 
     return 0;
 }
+
+
+void write_gnuplot_commands_lh(void)
+{
+    FILE *cmdfp = fopen("phold_multi_lh.gp", "w");
+
+    fprintf(cmdfp, "set terminal qt size 1200,700 enhanced font 'Arial,12'\n");
+    fprintf(cmdfp, "set title \"Cimba PHold: Effect of lookahead/mean ratio\" font \"Times Bold, 18\" \n");
+    fprintf(cmdfp, "set grid\n");
+    fprintf(cmdfp, "set xlabel \"Lookahead ratio\"\n");
+    fprintf(cmdfp, "set ylabel \"Nanoseconds per event\"\n");
+    fprintf(cmdfp, "set xrange [-0.1:1.1]\n");
+    fprintf(cmdfp, "set yrange [0:500]\n");
+    fprintf(cmdfp, "datafile = 'phold_multi_lh.dat'\n");
+    fprintf(cmdfp, "plot datafile with yerrorbars lc rgb \"black\"\n");
+
+    fclose(cmdfp);
+}
+
+void write_gnuplot_commands_tp(void)
+{
+    FILE *cmdfp = fopen("phold_multi_tp.gp", "w");
+
+    fprintf(cmdfp, "set terminal qt size 1200,700 enhanced font 'Arial,12'\n");
+    fprintf(cmdfp, "set title \"Cimba PHold: Effect of transfer probability\" font \"Times Bold, 18\" \n");
+    fprintf(cmdfp, "set grid\n");
+    fprintf(cmdfp, "set xlabel \"Transfer probability\"\n");
+    fprintf(cmdfp, "set ylabel \"Nanoseconds per event\"\n");
+    fprintf(cmdfp, "set xrange [-0.1:1.1]\n");
+    fprintf(cmdfp, "set yrange [0:500]\n");
+    fprintf(cmdfp, "datafile = 'phold_multi_tp.dat'\n");
+    fprintf(cmdfp, "plot datafile with yerrorbars lc rgb \"black\"\n");
+
+    fclose(cmdfp);
+}
+
+/*
+ * Table lookup for the critical values for two-sided 95 % confidence intervals,
+ * see https://www.stat.purdue.edu/~lfindsen/stat503/t-Dist.pdf
+ */
+double t_crit_95(const uint32_t n)
+{
+    cmb_assert_debug(n > 0u);
+
+#define NUM_TVALS 62u
+    static uint32_t n_vals[NUM_TVALS] = {
+        1,  2,  3,  4,  5,  6,  7,  8,  9, 10,
+       11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+       21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+       31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+       41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+       60, 70, 80, 90,100,120,140,180,200,500,
+       1000, UINT32_MAX
+   };
+
+    static double t_vals[NUM_TVALS] = {
+        12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228,
+         2.201, 2.179, 2.160, 2.145, 2.131, 2.120, 2.110, 2.101, 2.093, 2.086,
+         2.080, 2.074, 2.069, 2.064, 2.060, 2.056, 2.052, 2.048, 2.045, 2.042,
+         2.040, 2.037, 2.035, 2.032, 2.030, 2.028, 2.026, 2.024, 2.023, 2.021,
+         2.020, 2.018, 2.017, 2.015, 2.014, 2.013, 2.012, 2.011, 2.010, 2.009,
+         2.000, 1.994, 1.990, 1.987, 1.984, 1.980, 1.977, 1.973, 1.972, 1.965,
+         1.962, 1.960
+    };
+
+    for (uint32_t ui = 0u; ui < NUM_TVALS; ui++) {
+        if (n_vals[ui] == n) {
+            return t_vals[ui];
+        }
+
+        if (n_vals[ui] > n) {
+            /* Interpolate between values */
+            const uint32_t n_range = n_vals[ui] - n_vals[ui - 1];
+            const double t_range = t_vals[ui] - t_vals[ui - 1];
+            const double frac = (double)(n - n_vals[ui - 1]) / (double)n_range;
+            cmb_assert_debug(frac >= 0.0 && frac <= 1.0);
+            const double t_ret = t_vals[ui - 1u] + frac * t_range;
+
+            cmb_assert_debug((t_ret <= t_vals[ui - 1u]) && (t_ret >= t_vals[ui]));
+            return t_ret;
+        }
+    }
+
+    /* Should never get this far */
+    cmb_logger_error(stderr, "Critical value lookup failed");
+#undef NUM_TVALS
+}
+
