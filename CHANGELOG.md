@@ -4,6 +4,9 @@ Note: Version numbers are MAJOR.MINOR.PATCH per [Semantic Versioning](https://se
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
+### 2026-09-14: 3.0,4
+* Fixed a confidence interval width bug in several tutorials
+
 ### 2026-09-14: 3.0.3
 * Fixed bug in cmb_random_fmix24, where different pairs of seed and nonce could 
   theoretically result in overlapping random number sequences, by adding a first 
