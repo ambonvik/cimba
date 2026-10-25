@@ -479,7 +479,7 @@ void end_sim_evnt(void *subject, void *object)
     }
 }
 
-static void start_rec(void *subject, void *object)
+static void start_rec_evnt(void *subject, void *object)
 {
     cmb_unused(subject);
 
@@ -492,7 +492,7 @@ static void start_rec(void *subject, void *object)
     }
 }
 
-static void stop_rec(void *subject, void *object)
+static void stop_rec_evnt(void *subject, void *object)
 {
     cmb_unused(subject);
 
@@ -624,9 +624,9 @@ void run_trial(void *vtrl)
 
     /* Schedule the simulation control events */
     double t = trlp->warmup_h;
-    cmb_event_schedule(start_rec, NULL, ctxp, t, 0);
+    cmb_event_schedule(start_rec_evnt, NULL, ctxp, t, 0);
     t += trlp->duration_h;
-    cmb_event_schedule(stop_rec, NULL, ctxp, t, 0);
+    cmb_event_schedule(stop_rec_evnt, NULL, ctxp, t, 0);
     /* Set a large negative priority for the stop event to ensure normal events go first */
     cmb_event_schedule(end_sim_evnt, NULL, ctxp, t, -100);
 

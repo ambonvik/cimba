@@ -83,7 +83,7 @@ void end_sim_evnt(void *subject, void *object)
 /*
  * Event to turn on data recording
  */
-static void start_rec(void *subject, void *object)
+static void start_rec_evnt(void *subject, void *object)
 {
     cmb_unused(subject);
 
@@ -95,7 +95,7 @@ static void start_rec(void *subject, void *object)
 /*
  * Event to turn off data recording
  */
-static void stop_rec(void *subject, void *object)
+static void stop_rec_evnt(void *subject, void *object)
 {
     cmb_unused(subject);
 
@@ -192,9 +192,9 @@ void run_MM1_trial(void *vtrl)
 
     /* Schedule the simulation control events */
     double t = trl->warmup_s;
-    cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
+    cmb_event_schedule(start_rec_evnt, NULL, &ctx, t, 0);
     t += trl->duration_s;
-    cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
+    cmb_event_schedule(stop_rec_evnt, NULL, &ctx, t, 0);
     /* Set a large negative priority for the stop event to ensure normal events go first */
     cmb_event_schedule(end_sim_evnt, NULL, &ctx, t, -100);
 

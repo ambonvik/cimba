@@ -36,7 +36,7 @@ void end_sim_evnt(void *subject, void *object)
     cmb_process_stop(sim->srv, NULL);
 }
 
-static void start_rec(void *subject, void *object)
+static void start_rec_evnt(void *subject, void *object)
 {
     cmb_unused(subject);
     cmb_assert_debug(object != NULL);
@@ -46,7 +46,7 @@ static void start_rec(void *subject, void *object)
     cmb_buffer_recording_start(sim->que);
 }
 
-static void stop_rec(void *subject, void *object)
+static void stop_rec_evnt(void *subject, void *object)
 {
     cmb_unused(subject);
     cmb_assert_debug(object != NULL);
@@ -131,9 +131,9 @@ void run_MM1_trial(void *vtrl)
     cmb_process_start(ctx.sim->srv);
 
     double t = trl->warmup_s;
-    cmb_event_schedule(start_rec, NULL, &ctx, t, 0);
+    cmb_event_schedule(start_rec_evnt, NULL, &ctx, t, 0);
     t += trl->duration_s;
-    cmb_event_schedule(stop_rec, NULL, &ctx, t, 0);
+    cmb_event_schedule(stop_rec_evnt, NULL, &ctx, t, 0);
     cmb_event_schedule(end_sim_evnt, NULL, &ctx, t, -100);
 
     cmb_event_queue_execute();
