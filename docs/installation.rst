@@ -5,10 +5,11 @@ Installation guide
 
 You will need a C compiler like gcc or clang, the NASM assembler, and a development
 toolchain of git, meson, and ninja. For some of the examples in the tutorial, you
-will need the free plotting programs gnuplot and ParaView, but this is not strictly
-necessary for using Cimba.
+will need the free plotting programs gnuplot and ParaView, and the NVidia GPU
+programming framework CUDA, but this is not strictly necessary for building and using
+Cimba.
 
-We also recommend using a modern integrated development environment (IDE) like CLion,
+We recommend using a modern integrated development environment (IDE) like CLion,
 which has the advantage of being available both on Linux and Windows, integrated
 with a gcc toolchain (called MinGW under Windows), and free for open source
 work.
@@ -36,6 +37,10 @@ You need elevated privileges (``sudo``) for the last step, since it installs
 the library and header files in system locations  ``/usr/local/lib``
 and ``/usr/local/include``. These should already be in the respective paths for
 compilation and runtime linking.
+
+Alternatively, instad of cloning the entire repository, download the latest release in
+either ``zip`` or ``tar.gz`` format from https://github.com/ambonvik/cimba/releases
+Unpack it into your target directory, ``cd`` there, build and install it as above.
 
 Cimba should build without any warnings or errors. If you encounter errors, such as the
 include file not found by the compiler or the Cimba library not found at runtime, please
