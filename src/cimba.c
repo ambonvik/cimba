@@ -44,6 +44,7 @@ static size_t cmg_trial_struct_sz;
 static cimba_trial_func *cmg_trial_func = NULL;
 static uint64_t cmg_total_trials;
 static uint32_t cmg_worker_threads = 0u;
+static uint32_t cmg_threads_inuse = 0u;
 static cimba_thread_init_func *cmg_thread_init_func = NULL;
 static void *cmg_thread_init_usrarg = NULL;
 static cimba_thread_exit_func *cmg_thread_exit_func = NULL;
@@ -168,6 +169,7 @@ uint64_t cimba_thread_id(void)
     return cmi_thread_id;
 }
 
+/* Returns the total number of threads to use */
 uint32_t cimba_threads_num(void)
 {
     const uint32_t n_threads = __atomic_load_n(&cmg_worker_threads, __ATOMIC_RELAXED);
@@ -177,7 +179,12 @@ uint32_t cimba_threads_num(void)
     return r;
 }
 
-uint32_t cimba_threads_use(const uint32_t n_threads)
+uint32_t cimba_threads_inuse(void)
+{
+    return cmg_threads_inuse;
+}
+
+uint32_t cimba_threads_set(const uint32_t n_threads)
 {
     __atomic_store_n(&cmg_worker_threads, n_threads, __ATOMIC_RELAXED);
 
@@ -263,6 +270,7 @@ static void *thread_worker_func(void *arg)
 {
     const uint64_t tid = (uint64_t)arg;
     cmi_thread_id = tid;
+    (void)__atomic_add_fetch(&cmg_threads_inuse, 1, __ATOMIC_RELAXED);
 
     /* Any user-defined initialization needed? */
     if (cmg_thread_init_func != NULL) {
@@ -342,6 +350,8 @@ static void *thread_worker_func(void *arg)
     /* No more trials, execute the thread cleanup functions before exiting */
     pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
+
+    (void)__atomic_sub_fetch(&cmg_threads_inuse, 1, __ATOMIC_RELAXED);
 
     return NULL;
 }

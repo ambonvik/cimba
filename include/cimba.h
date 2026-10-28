@@ -28,8 +28,8 @@
 
 /** \cond */
 #define CIMBA_VERSION_MAJOR 3
-#define CIMBA_VERSION_MINOR 0
-#define CIMBA_VERSION_PATCH 2
+#define CIMBA_VERSION_MINOR 1
+#define CIMBA_VERSION_PATCH 0
 
 #define CMI_STRINGIFY(x) #x
 
@@ -242,16 +242,23 @@ extern void *cimba_thread_context(void);
 extern uint64_t cimba_thread_id(void);
 
 /**
-* @brief Get the number of worker threads
+* @brief Get the total number of worker threads to be used by cimba_run().
 *
 * @return Number of worker threads (running or otherwise), >= 1.
 */
 extern uint32_t cimba_threads_num(void);
 
 /**
+* @brief Get the number of worker threads running right now.
+*
+* @return Number of running worker threads, >= 0.
+*/
+extern uint32_t cimba_threads_inuse(void);
+
+/**
 * @brief Set the maximal number of worker threads to be used by Cimba. Can only
 *        be set before or between Cimba runs.
-
+*
 * @param n_threads The number of threads to use. Zero means default number,
 *                  i.e., equal to the number of CPU cores reported by the
 *                  operating system. Returns the actual number used, same value
@@ -259,7 +266,20 @@ extern uint32_t cimba_threads_num(void);
 *
 * @return Number of worker threads to be used on the next run, >= 1
 */
-extern uint32_t cimba_threads_use(uint32_t n_threads);
+extern uint32_t cimba_threads_set(uint32_t n_threads);
+
+/**
+* @brief Alias for cimba_threads_set(threads).
+*
+* @param n_threads The number of threads to use.
+*
+* @return Number of worker threads to be used on the next run, >= 1
+*/
+CMB_MAYBE_UNUSED
+uint32_t cimba_threads_use(uint32_t n_threads)
+{
+    return cimba_threads_set(n_threads);
+}
 
 /**
 * @brief Get the total number of trials in this experiment
