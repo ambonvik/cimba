@@ -979,6 +979,7 @@ When done, we can collect the results like this:
         cmb_logger_warning(stderr, "gnuplot launch failed");
     }
 
+
 We use a :c:struct:`cmb_datasummary` to simplify the calculation of confidence
 intervals, knowing that it will calculate correct moments in a single pass of the
 data. Once done, we can deallocate the experiment array. We
