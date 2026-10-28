@@ -411,7 +411,7 @@ int main(const int argc, char **argv)
                     fprintf(stderr, "Invalid argument %s\n", optarg);
                     abort();
                 }
-                (void)cimba_threads_use(nthr);
+                (void)cimba_threads_set(nthr);
                 break;
             }
             case 's': {
@@ -501,7 +501,7 @@ int main(const int argc, char **argv)
         /* We were running multithreaded, check that we get the exact same outcome single-threaded */
         printf("Validating experiment ...");
         fflush(stdout);
-        cimba_threads_use(1);
+        cimba_threads_set(1);
         /* Turn off all logging, including error messages. cimba_run() has joined
          * all threads that read the previous value, will soon start new worker
          * threads, tell them to turn off logging by storing a new value here. */
@@ -513,7 +513,7 @@ int main(const int argc, char **argv)
             cmb_assert_always(memcmp(&experiment[i], &experiment_single[i], sizeof(*experiment)) == 0);
         }
 
-        cimba_threads_use(nthr);
+        cimba_threads_set(nthr);
         printf("done\n");
     }
 
