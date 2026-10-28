@@ -1024,7 +1024,7 @@ int main(int argc, char **argv)
         flt_lvl += fl_step;
     }
 
-    const uint32_t nthr_act = cimba_threads_use(n_threads);
+    const uint32_t nthr_act = cimba_threads_set(n_threads);
     printf("Using %d threads\n", nthr_act);
 
     printf("Baiting the hooks\n");
