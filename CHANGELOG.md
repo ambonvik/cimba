@@ -4,7 +4,12 @@ Note: Version numbers are MAJOR.MINOR.PATCH per [Semantic Versioning](https://se
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
-### 2026-09-14: 3.0,4
+### 2026-10-28: 3.1.0
+* Added function cimba_threads_inuse() returning the number of worker threads actually 
+  running at this time.
+* Deprecated cimba_threads_use(), replaced by cimba_threads_set() for clarity.
+
+### 2026-10-25: 3.0,4
 * Fixed a confidence interval width bug in several tutorials
 
 ### 2026-09-14: 3.0.3
