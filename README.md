@@ -102,7 +102,7 @@ It is powerful, fast, reliable, and free.
   
   * Cimba is compatible with sanitizers for undefined behavior (UBSan), memory 
     address safety (ASan), thread safety (TSan), and memory leaks (LeakSan). These 
-    sanitizers are executed  utomatically as GitHub runners on every push to the 
+    sanitizers are executed automatically as GitHub runners on every push to the 
     repository as public verification of our reliability claim, right 
     here: https://github.com/ambonvik/cimba/actions
 
