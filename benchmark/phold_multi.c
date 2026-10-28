@@ -27,6 +27,7 @@
 #include "cimba.h"
 
 #define N_THREADS 64u
+#define N_CORES 32u
 #define N_REPLICATIONS 64u
 #define N_LP 160u
 #define N_HOLDING 100u
@@ -63,7 +64,9 @@ struct trial {
     /* Results */
     double trial_sec;
     uint64_t n_events;
-    double ns_event;
+    uint32_t n_threads1;
+    uint32_t n_threads2;
+    double n_ev_s_core;
 };
 
 struct context {
@@ -159,20 +162,23 @@ static void run_trial(void *vtrl)
     cmi_memset(sim.lp_arr, 0, (size_t)sim.n_lp * sizeof(*sim.lp_arr));
     cmb_event_schedule(end_event, NULL, NULL, cmb_time() + trl->t_duration, 0);
 
+    trl->n_threads1 = cimba_threads_inuse();
     const double t0 = monotonic_seconds();
     cmb_event_queue_execute();
     const double t1 = monotonic_seconds();
     const double elapsed = t1 - t0;
+    trl->n_threads2 = cimba_threads_inuse();
 
     uint64_t count = 0u;
     for (uint64_t ui = 0u; ui < trl->n_lp; ui++) {
         count += sim.lp_arr[ui];
     }
 
-    const double epsec = (double)count / elapsed;
     trl->trial_sec = elapsed;
-    trl->ns_event = 1e9 / epsec;
     trl->n_events = count;
+    const double epsec = (double)count / elapsed;
+    const double ntr = ((double)trl->n_threads1 + (double)trl->n_threads2) / 2.0;
+    trl->n_ev_s_core = epsec * ntr / N_CORES;
 
     pthread_mutex_lock(&tty);
     printf ("Trial %" PRIu64 " finished in %f sec\n", me, elapsed);
@@ -264,7 +270,7 @@ int main(const int argc, char *argv[])
 
             experiment[ui_exp].trial_sec = 0.0;
             experiment[ui_exp].n_events = 0u;
-            experiment[ui_exp].ns_event = 0.0;
+            experiment[ui_exp].n_ev_s_core = 0.0;
 
             tm *= t_factor;
             ui_exp++;
@@ -294,42 +300,35 @@ int main(const int argc, char *argv[])
 
             experiment[ui_exp].trial_sec = 0.0;
             experiment[ui_exp].n_events = 0u;
-            experiment[ui_exp].ns_event = 0.0;
+            experiment[ui_exp].n_ev_s_core = 0.0;
 
             pt += p_step;
             ui_exp++;
         }
     }
 
-    cimba_threads_use(n_threads);
+    cimba_threads_set(n_threads);
     double start_time = monotonic_seconds();
     cimba_run(experiment, n_trials, sizeof(*experiment), run_trial);
     double end_time = monotonic_seconds();
     running_time += end_time - start_time;
 
-    FILE *datafp = fopen("phold_multi_lh.dat", "w");
-    fprintf(datafp, "# lookahead_ratio\tns_per_event\tconf_interval\n");
+    FILE *datafp = fopen("phold_cimba_lh.dat", "w");
+    fprintf(datafp, "# lookahead_ratio\tevents_sec_core\tconf_interval\n");
 
-    struct cmb_datasummary *dstarr = cmi_calloc((size_t)n_ratios, sizeof(*dstarr));
-    struct cmb_datasummary *dsnarr = cmi_calloc((size_t)n_ratios, sizeof(*dsnarr));
-    struct cmb_datasummary *dsnsarr = cmi_calloc((size_t)n_ratios, sizeof(*dsnsarr));
+    struct cmb_datasummary *dstpcarr = cmi_calloc((size_t)n_ratios, sizeof(*dstpcarr));
 
     for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
-        cmb_datasummary_initialize(&dstarr[ui_rat]);
-        cmb_datasummary_initialize(&dsnarr[ui_rat]);
-        cmb_datasummary_initialize(&dsnsarr[ui_rat]);
+        cmb_datasummary_initialize(&dstpcarr[ui_rat]);
     }
 
     ui_exp = 0u;
     for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
         for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
-            const double tt = experiment[ui_exp].trial_sec;
-            cmb_datasummary_add(&dstarr[ui_rat], tt);
             const double ne = (double)experiment[ui_exp].n_events;
-            cmb_datasummary_add(&dsnarr[ui_rat], ne);
             total_events += ne;
-            const double ns = experiment[ui_exp].ns_event;
-            cmb_datasummary_add(&dsnsarr[ui_rat], ns);
+            const double nepspc = experiment[ui_exp].n_ev_s_core;
+            cmb_datasummary_add(&dstpcarr[ui_rat], nepspc);
             ui_exp++;
         }
     }
@@ -337,78 +336,62 @@ int main(const int argc, char *argv[])
     double tm = t_hold_mean;
     for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
         const double rat = t_lookahead / tm;
-        const double sample_avg = cmb_datasummary_mean(&dsnsarr[ui_rat]);
-        const double sample_sd = cmb_datasummary_stddev(&dsnsarr[ui_rat]);
-        const double sample_n = (double)cmb_datasummary_count(&dsnsarr[ui_rat]);
+        const double sample_avg = cmb_datasummary_mean(&dstpcarr[ui_rat]);
+        const double sample_sd = cmb_datasummary_stddev(&dstpcarr[ui_rat]);
+        const double sample_n = (double)cmb_datasummary_count(&dstpcarr[ui_rat]);
         const double t_crit = t_crit_95(n_reps - 1u);
         fprintf(datafp, "%f\t%f\t%f\n", rat, sample_avg, t_crit * sample_sd / sqrt(sample_n));
 
         printf("Mean %f lookahead %f ratio %f:\n", tm, t_lookahead, t_lookahead / tm);
-        cmb_datasummary_print(&dstarr[ui_rat], stdout, false);
-        cmb_datasummary_terminate(&dstarr[ui_rat]);
-        cmb_datasummary_print(&dsnarr[ui_rat], stdout, false);
-        cmb_datasummary_terminate(&dsnarr[ui_rat]);
-        cmb_datasummary_print(&dsnsarr[ui_rat], stdout, false);
-        cmb_datasummary_terminate(&dsnsarr[ui_rat]);
-
+        cmb_datasummary_print(&dstpcarr[ui_rat], stdout, false);
+        cmb_datasummary_terminate(&dstpcarr[ui_rat]);
         tm *= t_factor;
     }
 
     fclose(datafp);
 
     write_gnuplot_commands_lh();
-    if (system("gnuplot -persistent phold_multi_lh.gp") != 0) {
+    if (system("gnuplot -persistent phold_cimba_lh.gp") != 0) {
         cmb_logger_warning(stderr, "gnuplot launch failed");
     }
 
-    datafp = fopen("phold_multi_tp.dat", "w");
-    fprintf(datafp, "# transfer_probability\tns_per_event\tconf_interval\n");
+    datafp = fopen("phold_cimba_tp.dat", "w");
+    fprintf(datafp, "# transfer_probability\tevents_sec_core\tconf_interval\n");
 
     for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
-        cmb_datasummary_initialize(&dstarr[ui_rat]);
-        cmb_datasummary_initialize(&dsnarr[ui_rat]);
-        cmb_datasummary_initialize(&dsnsarr[ui_rat]);
-    }
+        cmb_datasummary_initialize(&dstpcarr[ui_rat]);
+     }
 
     for (unsigned ui_rep = 0u; ui_rep < n_reps; ui_rep++) {
         for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
-            const double tt = experiment[ui_exp].trial_sec;
-            cmb_datasummary_add(&dstarr[ui_rat], tt);
             const double ne = (double)experiment[ui_exp].n_events;
-            cmb_datasummary_add(&dsnarr[ui_rat], ne);
             total_events += ne;
-            const double ns = experiment[ui_exp].ns_event;
-            cmb_datasummary_add(&dsnsarr[ui_rat], ns);
+            const double nepspc = experiment[ui_exp].n_ev_s_core;
+            cmb_datasummary_add(&dstpcarr[ui_rat], nepspc);
             ui_exp++;
         }
     }
 
     for (unsigned ui_rat = 0u; ui_rat < n_ratios; ui_rat++) {
         const double pt = p_step * (double)ui_rat;
-        const double sample_avg = cmb_datasummary_mean(&dsnsarr[ui_rat]);
-        const double sample_sd = cmb_datasummary_stddev(&dsnsarr[ui_rat]);
-        const double sample_n = (double)cmb_datasummary_count(&dsnsarr[ui_rat]);
+        const double sample_avg = cmb_datasummary_mean(&dstpcarr[ui_rat]);
+        const double sample_sd = cmb_datasummary_stddev(&dstpcarr[ui_rat]);
+        const double sample_n = (double)cmb_datasummary_count(&dstpcarr[ui_rat]);
         const double t_crit = t_crit_95(n_reps - 1u);
         fprintf(datafp, "%f\t%f\t%f\n", pt, sample_avg, t_crit * sample_sd / sqrt(sample_n));
 
         printf("Transfer prob %f:\n", pt);
-        cmb_datasummary_print(&dstarr[ui_rat], stdout, false);
-        cmb_datasummary_terminate(&dstarr[ui_rat]);
-        cmb_datasummary_print(&dsnarr[ui_rat], stdout, false);
-        cmb_datasummary_terminate(&dsnarr[ui_rat]);
-        cmb_datasummary_print(&dsnsarr[ui_rat], stdout, false);
-        cmb_datasummary_terminate(&dsnsarr[ui_rat]);
+        cmb_datasummary_print(&dstpcarr[ui_rat], stdout, false);
+        cmb_datasummary_terminate(&dstpcarr[ui_rat]);
     }
 
     fclose(datafp);
     write_gnuplot_commands_tp();
-    if (system("gnuplot -persistent phold_multi_tp.gp") != 0) {
+    if (system("gnuplot -persistent phold_cimba_tp.gp") != 0) {
         cmb_logger_warning(stderr, "gnuplot launch failed");
     }
 
-    cmi_free(dstarr);
-    cmi_free(dsnarr);
-    cmi_free(dsnsarr);
+    cmi_free(dstpcarr);
     cmi_free(experiment);
 
     printf("Total events processed: %" PRIu64 "\n", total_events);
@@ -425,16 +408,16 @@ int main(const int argc, char *argv[])
 
 void write_gnuplot_commands_lh(void)
 {
-    FILE *cmdfp = fopen("phold_multi_lh.gp", "w");
+    FILE *cmdfp = fopen("phold_cimba_lh.gp", "w");
 
     fprintf(cmdfp, "set terminal qt size 1200,700 enhanced font 'Arial,12'\n");
     fprintf(cmdfp, "set title \"Cimba PHold: Effect of lookahead/mean ratio\" font \"Times Bold, 18\" \n");
     fprintf(cmdfp, "set grid\n");
     fprintf(cmdfp, "set xlabel \"Lookahead ratio\"\n");
-    fprintf(cmdfp, "set ylabel \"Nanoseconds per event\"\n");
+    fprintf(cmdfp, "set ylabel \"Events per second per core\"\n");
     fprintf(cmdfp, "set xrange [-0.1:1.1]\n");
-    fprintf(cmdfp, "set yrange [0:500]\n");
-    fprintf(cmdfp, "datafile = 'phold_multi_lh.dat'\n");
+    fprintf(cmdfp, "set yrange [0:*]\n");
+    fprintf(cmdfp, "datafile = 'phold_cimba_lh.dat'\n");
     fprintf(cmdfp, "plot datafile with yerrorbars lc rgb \"black\"\n");
 
     fclose(cmdfp);
@@ -442,16 +425,16 @@ void write_gnuplot_commands_lh(void)
 
 void write_gnuplot_commands_tp(void)
 {
-    FILE *cmdfp = fopen("phold_multi_tp.gp", "w");
+    FILE *cmdfp = fopen("phold_cimba_tp.gp", "w");
 
     fprintf(cmdfp, "set terminal qt size 1200,700 enhanced font 'Arial,12'\n");
     fprintf(cmdfp, "set title \"Cimba PHold: Effect of transfer probability\" font \"Times Bold, 18\" \n");
     fprintf(cmdfp, "set grid\n");
     fprintf(cmdfp, "set xlabel \"Transfer probability\"\n");
-    fprintf(cmdfp, "set ylabel \"Nanoseconds per event\"\n");
+    fprintf(cmdfp, "set ylabel \"Events per second per core\"\n");
     fprintf(cmdfp, "set xrange [-0.1:1.1]\n");
-    fprintf(cmdfp, "set yrange [0:500]\n");
-    fprintf(cmdfp, "datafile = 'phold_multi_tp.dat'\n");
+    fprintf(cmdfp, "set yrange [0:*]\n");
+    fprintf(cmdfp, "datafile = 'phold_cimba_tp.dat'\n");
     fprintf(cmdfp, "plot datafile with yerrorbars lc rgb \"black\"\n");
 
     fclose(cmdfp);
