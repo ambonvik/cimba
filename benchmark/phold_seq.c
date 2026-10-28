@@ -382,7 +382,7 @@ int main(const int argc, char *argv[])
 
     cmb_assert_release(mean - lookahead >= 0.0);
 
-    cimba_threads_use(n_threads);
+    cimba_threads_set(n_threads);
 
     printf("\nResults:\n");
     printf("--------\n");
