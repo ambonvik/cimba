@@ -90,7 +90,8 @@ elif get_option('pgo') == 'use'
     desired_flags += pgo_flags
 endif
 
-if host_machine.system() == 'linux'
+# Matches CMB_THREAD_LOCAL in cmi_config.h: initial-exec on x86-64 Linux only
+if host_machine.system() == 'linux' and host_machine.cpu_family() == 'x86_64'
     desired_flags += ['-ftls-model=initial-exec' ]
 endif
 

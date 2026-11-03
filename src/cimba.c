@@ -21,6 +21,14 @@
  * limitations under the License.
  */
 
+/* glibc's _FORTIFY_SOURCE (on by default in e.g. Ubuntu's GCC) replaces
+ * longjmp with __longjmp_chk, which aborts with "longjmp causes uninitialized
+ * stack frame" when a trial abandons from a coroutine stack back to the worker
+ * stack. x86-64 uses __builtin_longjmp; arm64 Linux needs the plain longjmp. */
+#if defined(__linux__) && defined(__aarch64__)
+#undef _FORTIFY_SOURCE
+#endif
+
 #include <inttypes.h>
 #include <pthread.h>
 #include <setjmp.h>
