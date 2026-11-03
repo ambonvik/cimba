@@ -90,27 +90,87 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
     cmb_assert_debug(cmi_coroutine_stack_valid(cp));
 }
 
-unsigned char *cmi_coroutine_stack_alloc(const size_t size,
+/*
+ * Intrusive singly linked list of recycled stacks, as in the Linux ports:
+ * mprotect is a system call on every guarded allocation and free, so each
+ * stack is protected once, recycled within the current thread, and freed
+ * at thread exit by cmi_coroutine_stack_cleanup().
+ */
+struct stack_tag {
+    size_t size;                /* Size of stacks in this list */
+    unsigned char *head;        /* The intrusive list */
+    struct stack_tag *next;     /* Next list, a different size stack */
+};
+
+CMB_THREAD_LOCAL static struct stack_tag *stack_list = NULL;
+
+unsigned char *cmi_coroutine_stack_alloc(const size_t size_req,
                                          unsigned char **base_p,
                                          unsigned char **limit_p)
 {
-    const size_t pagesz = cmi_pagesize();
-    unsigned char *raw = cmi_aligned_alloc(pagesz, size + pagesz);
-    cmb_assert_always(raw != NULL);
-    cmb_assert_always(mprotect(raw, pagesz, PROT_NONE) == 0);
+    cmb_assert_debug(size_req > 0u);
+    cmb_assert_debug((base_p != NULL) && (limit_p != NULL));
 
-    *base_p = raw + size + pagesz;
-    *limit_p = raw + pagesz;
-    return raw;
+    const size_t pagesz = cmi_pagesize();
+    cmb_assert_debug(size_req <= SIZE_MAX - pagesz);
+    const size_t size_rnd = (size_req + pagesz - 1u) & ~(pagesz - 1u);
+
+    /* Do we have one lying around? */
+    unsigned char *stack_raw = NULL;
+    struct stack_tag *st = stack_list;
+    while (st != NULL) {
+        if (st->size == size_rnd) {
+            if (st->head != NULL) {
+                stack_raw = st->head;
+                cmi_asan_unpoison(stack_raw + pagesz, size_rnd);
+                unsigned char **nextloc = (unsigned char **)(stack_raw + pagesz);
+                st->head = *nextloc;
+            }
+            break;
+        }
+        st = st->next;
+    }
+
+    if (stack_raw == NULL) {
+        stack_raw = cmi_aligned_alloc(pagesz, size_rnd + pagesz);
+        cmb_assert_always(stack_raw != NULL);
+        cmb_assert_always(mprotect(stack_raw, pagesz, PROT_NONE) == 0);
+    }
+
+    *base_p = stack_raw + pagesz + size_rnd;
+    *limit_p = stack_raw + pagesz;
+    cmb_assert_debug(!cmi_asan_region_poisoned(stack_raw + pagesz, size_rnd));
+
+    return stack_raw;
 }
 
-void cmi_coroutine_stack_free(unsigned char *stack, size_t size)
+/* Push a stack back on the pool rather than freeing it */
+void cmi_coroutine_stack_free(unsigned char *stack_raw, size_t size_req)
 {
-    cmb_assert_release(stack != NULL);
+    cmb_assert_release(stack_raw != NULL);
+
     const size_t pagesz = cmi_pagesize();
-    cmi_asan_unpoison(stack + pagesz, size);
-    cmb_assert_always(mprotect(stack, pagesz, PROT_READ | PROT_WRITE) == 0);
-    cmi_aligned_free(stack);
+    cmb_assert_debug(size_req <= SIZE_MAX - pagesz);
+    const size_t size_rnd = (size_req + pagesz - 1u) & ~(pagesz - 1u);
+    cmi_asan_unpoison(stack_raw + pagesz, size_rnd);
+
+    struct stack_tag *st = stack_list;
+    while (st != NULL) {
+        if (st->size == size_rnd) {
+            unsigned char **nextloc = (unsigned char **)(stack_raw + pagesz);
+            *nextloc = st->head;
+            st->head = stack_raw;
+            return;
+        }
+        st = st->next;
+    }
+
+    st = cmi_malloc(sizeof(*st));
+    *(unsigned char **)(stack_raw + pagesz) = NULL;
+    st->size = size_rnd;
+    st->head = stack_raw;
+    st->next = stack_list;
+    stack_list = st;
 }
 
 unsigned char *cmi_coroutine_stackbase(void)
@@ -129,8 +189,27 @@ unsigned char *cmi_coroutine_stackraw(void)
     return NULL;
 }
 
-/* macOS frees stacks immediately, so there is no recycled stack pool. */
-void cmi_coroutine_stack_cleanup(void) {}
+/* Free the recycled stacks, called at thread exit */
+void cmi_coroutine_stack_cleanup(void)
+{
+    const size_t pagesz = cmi_pagesize();
+    struct stack_tag *st = stack_list;
+    while (st != NULL) {
+        while (st->head != NULL) {
+            unsigned char *raw = st->head;
+            unsigned char *next = *(unsigned char **)(raw + pagesz);
+            cmb_assert_always(mprotect(raw, pagesz, PROT_READ | PROT_WRITE) == 0);
+            cmi_aligned_free(raw);
+            st->head = next;
+        }
+
+        struct stack_tag *next = st->next;
+        cmi_free(st);
+        st = next;
+    }
+
+    stack_list = NULL;
+}
 
 /* Darwin does not require updating OS stack bounds after longjmp. */
 void cmi_coroutine_os_adopt_stack(const struct cmi_coroutine *cp)

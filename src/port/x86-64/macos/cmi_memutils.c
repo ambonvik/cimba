@@ -8,14 +8,22 @@
 #include <malloc/malloc.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdatomic.h>
 #include <unistd.h>
 
 #include "cmb_assert.h"
 #include "cmi_memutils.h"
 
+/* The page size is fixed for the life of the process, so ask the OS once */
 size_t cmi_pagesize(void)
 {
-    return (size_t)sysconf(_SC_PAGESIZE);
+    static _Atomic size_t pagesz = 0u;
+    size_t value = atomic_load_explicit(&pagesz, memory_order_relaxed);
+    if (value == 0u) {
+        value = (size_t)sysconf(_SC_PAGESIZE);
+        atomic_store_explicit(&pagesz, value, memory_order_relaxed);
+    }
+    return value;
 }
 
 void *cmi_aligned_alloc(const size_t align, const size_t sz)
