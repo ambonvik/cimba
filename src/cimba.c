@@ -23,6 +23,7 @@
 
 #include <inttypes.h>
 #include <pthread.h>
+#include <setjmp.h>
 #include <stdint.h>
 
 #include "cimba.h"
@@ -75,9 +76,16 @@ static uint64_t leaking_trials;
 static CMB_THREAD_LOCAL cimba_trial_cleanup_func *trial_cleanup_func = NULL;
 static CMB_THREAD_LOCAL void *trial_cleanup_arg = NULL;
 
+#if CMI_ARCH == CMI_ARM64
+/* Clang does not implement __builtin_setjmp on AArch64, use the libc version */
+static CMB_THREAD_LOCAL jmp_buf recovery_buf;
+#define recovery_set()   setjmp(recovery_buf)
+#define recovery_jump()  longjmp(recovery_buf, 1)
+#else
 static CMB_THREAD_LOCAL intptr_t recovery_buf[5];
 #define recovery_set()   __builtin_setjmp((void **)recovery_buf)
 #define recovery_jump()  __builtin_longjmp((void **)recovery_buf, 1)
+#endif
 
 extern void cmi_coroutine_recovery_prepare(void *stack_marker);
 extern void cmi_coroutine_recovery_finalize(void *stack_marker);
