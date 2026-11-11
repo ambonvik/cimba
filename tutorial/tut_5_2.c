@@ -128,6 +128,8 @@ const char *terrain_h5name = "terrain.vtkhdf";
 const char *events_h5name = "events.vtkhdf";
 /* Animation frame interval, seconds */
 double frame_interval_s = 1.0;
+/* On/off button */
+bool visuals = true;
 
 struct target;
 struct platform_state;
@@ -715,8 +717,10 @@ void sensor_initialize(struct sensor *senp, const char *name, const float rpm,
     senp->radar.cell_grid_n_cross  = 4;
     senp->radar.mdv_ms             = 4.0f;     /* ~4 m/s clutter-notch half-width */
     senp->radar.mti_improvement    = 1000.0f;  /* 30 dB clutter cancellation */
-    senp->hdf = vtkhdf_create();
-    events_vtkhdf_init(senp->hdf, events_h5name, NUM_TARGETS);
+    if (visuals) {
+        senp->hdf = vtkhdf_create();
+        events_vtkhdf_init(senp->hdf, events_h5name, NUM_TARGETS);
+    }
 
     const size_t sz = NUM_TARGETS * sizeof(float);
     CUDA_CHECK(cudaHostAlloc((void **)&senp->h_x, sz, cudaHostAllocDefault));
@@ -742,8 +746,10 @@ void sensor_initialize(struct sensor *senp, const char *name, const float rpm,
 
 void sensor_terminate(struct sensor *senp)
 {
-    events_vtkhdf_close(senp->hdf);
-    vtkhdf_destroy(senp->hdf);
+    if  (visuals) {
+        events_vtkhdf_close(senp->hdf);
+        vtkhdf_destroy(senp->hdf);
+    }
 
     CUDA_CHECK(cudaFreeHost(senp->h_x));
     CUDA_CHECK(cudaFreeHost(senp->h_y));
@@ -799,7 +805,9 @@ void end_sim_evnt(void *subject, void *object)
         cmb_process_stop((struct cmb_process *)&tgts[ui], NULL);
     }
 
-    cmb_process_stop(sim->HDF5_output, NULL);
+    if (visuals) {
+        cmb_process_stop(sim->HDF5_output, NULL);
+    }
 }
 
 const char *hhmmss_formatter(double t);
@@ -831,6 +839,8 @@ void *ent_proc(struct cmb_process *me, void *vtp)
 void *out_proc(struct cmb_process *me, void *vtp)
 {
     cmb_unused(me);
+    cmb_assert_debug(visuals == true);
+
     const struct simulation *sim = (struct simulation *)vtp;
     struct target *tgts = sim->targets;        /* non-const: we write alt_m */
     struct platform *pfp = sim->AWACS;
@@ -923,7 +933,9 @@ void run_trial(void *vtrl)
     const bool clockwise = true;
     racetrack_initialize(orbit, start_time, anchor_lat, anchor_lon, orientation,
                          length, turn_radius, flight_level, velocity, clockwise);
-    racetrack_write_vtp(orbit, "racetrack.vtp");
+    if (visuals) {
+        racetrack_write_vtp(orbit, "racetrack.vtp");
+    }
 
     printf("Initializing AWACS platform\n");
     struct platform *awacs = platform_create();
@@ -951,10 +963,12 @@ void run_trial(void *vtrl)
     double t_end_s = trl->duration_s;
     cmb_event_schedule(end_sim_evnt, &sim, NULL, t_end_s, 0);
 
-    /* Process to write output events */
-    sim.HDF5_output = cmb_process_create();
-    cmb_process_initialize(sim.HDF5_output, "HDF5_out", out_proc, &sim, -1);
-    cmb_process_start(sim.HDF5_output);
+    if (visuals) {
+        /* Process to write output events */
+        sim.HDF5_output = cmb_process_create();
+        cmb_process_initialize(sim.HDF5_output, "HDF5_out", out_proc, &sim, -1);
+        cmb_process_start(sim.HDF5_output);
+    }
 
     /* Process to show the progress bar */
     struct cmb_process *entertainment = cmb_process_create();
@@ -1007,7 +1021,7 @@ int main(int argc, char **argv)
     double dur_h = 6.0;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:s:t")) != -1) {
+    while ((opt = getopt(argc, argv, "d:gs:t")) != -1) {
         switch (opt) {
             case 'd': {
                 errno = 0;
@@ -1020,6 +1034,11 @@ int main(int argc, char **argv)
                     fprintf(stderr, "Invalid -d value '%s' (want hours > 0)\n", optarg);
                     return EXIT_FAILURE;
                     }
+                break;
+            }
+
+            case 'g': {
+                visuals = !visuals;
                 break;
             }
 
@@ -1164,6 +1183,8 @@ struct vtkhdf_handle {
 
 struct vtkhdf_handle *vtkhdf_create(void)
 {
+    cmb_assert_debug(visuals == true);
+
     struct vtkhdf_handle *h = cmi_malloc(sizeof(struct vtkhdf_handle));
 
     return h;
@@ -1171,6 +1192,8 @@ struct vtkhdf_handle *vtkhdf_create(void)
 
 void vtkhdf_destroy(struct vtkhdf_handle *h)
 {
+    cmb_assert_debug(visuals == true);
+
     cmi_free(h);
 }
 
@@ -1184,6 +1207,8 @@ void vtkhdf_destroy(struct vtkhdf_handle *h)
 
 void write_attr_string(const hid_t loc_id, const char *const name, const char *const value)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t type = H5Tcopy(H5T_C_S1);
     H5_CHECK(type);
     H5_CHECK(H5Tset_size(type, strlen(value)));
@@ -1203,6 +1228,8 @@ void write_attr_string(const hid_t loc_id, const char *const name, const char *c
 
 void write_attr_int32_array(const hid_t loc_id, const char *const name, const int32_t *const values, const hsize_t count)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t type = H5T_NATIVE_INT32;
     H5_CHECK(type);
     const hid_t space = H5Screate_simple(1, &count, NULL);
@@ -1219,6 +1246,8 @@ void write_attr_int32_array(const hid_t loc_id, const char *const name, const in
 void write_attr_int64_array(hid_t loc_id, const char *name,
                             const int64_t *values, hsize_t count)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t space = H5Screate_simple(1, &count, NULL);
     H5_CHECK(space);
     const hid_t attr = H5Acreate2(loc_id, name, H5T_NATIVE_INT64,
@@ -1231,6 +1260,8 @@ void write_attr_int64_array(hid_t loc_id, const char *name,
 
 void write_attr_double_array(const hid_t loc_id, const char *const name, const double *const values, const hsize_t count)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t type = H5T_NATIVE_DOUBLE;
     H5_CHECK(type);
     const hid_t space = H5Screate_simple(1, &count, NULL);
@@ -1251,6 +1282,8 @@ void terrain_vtkhdf_write(const char *const h5_filename,
                           const float x_scale,        /* now: matches that resolution */
                           const float y_scale)
 {
+    cmb_assert_debug(visuals == true);
+
     /* No more internal decimation — caller has already done it if desired */
 
     const hid_t fapl = H5Pcreate(H5P_FILE_ACCESS);
@@ -1307,6 +1340,8 @@ void terrain_vtkhdf_write(const char *const h5_filename,
 static void write_dummy_topology_stepped(hid_t root, const char *name,
                                          unsigned long nsteps)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t group = H5Gcreate2(root, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
     int64_t *zeros = calloc(nsteps, sizeof(int64_t));
@@ -1352,6 +1387,8 @@ static void write_dummy_topology_stepped(hid_t root, const char *name,
 
 void events_vtkhdf_init(struct vtkhdf_handle *h, const char *filename, const int n_targets)
 {
+    cmb_assert_debug(visuals == true);
+
     h->num_targets = n_targets;
     h->current_step = 0;
 
@@ -1526,6 +1563,8 @@ void events_vtkhdf_init(struct vtkhdf_handle *h, const char *filename, const int
 
 void events_vtkhdf_append(struct vtkhdf_handle *h, const struct target *targets, const struct platform_state *awacs, const float sensor_dir, const float time_val)
 {
+    cmb_assert_debug(visuals == true);
+
     const int n = h->num_targets;
     const int total_pts = n + 1;
     const hsize_t n_steps = h->current_step + 1;
@@ -1682,6 +1721,8 @@ void events_vtkhdf_append(struct vtkhdf_handle *h, const struct target *targets,
 
 void events_vtkhdf_close(const struct vtkhdf_handle *const h)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t st_group = H5Gopen2(h->file_id, "VTKHDF/Steps", H5P_DEFAULT);
     H5_CHECK(st_group);
 
@@ -1721,6 +1762,8 @@ void events_vtkhdf_close(const struct vtkhdf_handle *const h)
 /* Export the racetrack orbit as a 3D line loop for ParaView (.vtp) */
 void racetrack_write_vtp(const struct racetrack *rt, const char *filename)
 {
+    cmb_assert_debug(visuals == true);
+
     const unsigned int npoints = 500u;
 
     FILE *fp = fopen(filename, "w");

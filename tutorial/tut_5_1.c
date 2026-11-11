@@ -118,7 +118,7 @@ const float atm_scale_h_m   = 7000.0f;   /* refractivity scale height, m */
  *   sigma_0 = gamma * sin(grazing_angle)
  * Typical values: smooth surface around -25 dB, crops/grass -15 dB,
  * rough terrain -5 dB. The biome is selected by terrain altitude at
- * each clutter sample point; the elevations array splits the terrain
+ * each clutter sample point. The elevations array splits the terrain
  * into NBIOMES bands.
  *
  * Must match the values in tut_5_2.h to keep CPU and GPU physics aligned.
@@ -163,6 +163,8 @@ const char *events_h5name = "events.vtkhdf";
 const unsigned int stride_step = 32u;
 /* Animation frame interval, seconds */
 double frame_interval_s = 1.0;
+/* On/off button */
+bool visuals = true;
 
 struct target;
 struct platform_state;
@@ -385,10 +387,12 @@ void terrain_initialize(struct terrain *tp,
               (float)((size_t)tp->cols * (size_t)tp->rows * sizeof(float)) / 1024.0f / 1024.0f / 1024.0f);
     cmb_datasummary_terminate(&tds);
 
-    printf("Writing decimated terrain map to file %s...", terrain_h5name);
-    fflush(stdout);
-    terrain_vtkhdf_write(terrain_h5name, tp->map, tp->cols, tp->rows, tp->x_scale, tp->y_scale);
-    printf(" done\n");
+    if (visuals) {
+        printf("Writing decimated terrain map to file %s...", terrain_h5name);
+        fflush(stdout);
+        terrain_vtkhdf_write(terrain_h5name, tp->map, tp->cols, tp->rows, tp->x_scale, tp->y_scale);
+        printf(" done\n");
+    }
 }
 
 void terrain_terminate(struct terrain *tp)
@@ -863,7 +867,9 @@ static float antenna_gain_sq(const float angular_offset_r,
 {
     const float u    = 2.0f * angular_offset_r / beamwidth_r;
     const float g_sq = expf(-2.0f * 0.6931472f * u * u);
-    return fmaxf(g_sq, 1.0e-3f);    /* -30 dB sidelobe floor */
+
+    /* -30 dB sidelobe floor */
+    return fmaxf(g_sq, 1.0e-3f);
 }
 
 /*
@@ -927,10 +933,7 @@ static float integrate_cell_clutter(const float center_range,
 
             const float terr = terrain_elevation(terp, wx_c, wy_c);
 
-            /* Earth-curvature drop at this range. Using fixed k=4/3
-             * (rather than altitude-dependent k) is a small simplification
-             * for the clutter integration; the bulk geometry through the
-             * lower atmosphere dominates. */
+            /* Earth-curvature drop at this range. */
             const float earth_drop = (R_safe * R_safe)
                                    / (2.0f * 1.33f * r_earth);
             const float h_sensor_eff = sa - terr - earth_drop;
@@ -1083,10 +1086,8 @@ static float multipath_gain(const float sx, const float sy, const float sa,
         }
     }
 
-    /* Rayleigh roughness suppression: rougher surface or steeper grazing
-     * scatters the specular component into diffuse, reducing |Γ_eff|.
-     *   |Γ_eff| = |Γ_max| × exp(-(4π σ_h sin ψ / λ)²)
-     */
+    /* Rayleigh roughness suppression. Rougher surface or steeper grazing
+     * scatters the specular component into diffuse. */
     const float roughness_arg = (4.0f * (float)M_PI * sigma_h * sin_graze)
                               / radar_wavelength_m;
     const float gamma_eff = gamma_max * expf(-roughness_arg * roughness_arg);
@@ -1104,9 +1105,10 @@ static float multipath_gain(const float sx, const float sy, const float sa,
                           + 2.0f * gamma_eff * cosf(phase);
 
     /* Two-way (round-trip) factor. Clamp the lower end to avoid
-     * exactly-zero target energy at perfect nulls — physically there
+     * exactly-zero target energy at perfect nulls. Physically there
      * is always some residual signal from non-ideal geometry. */
     const float g_two_way = g_one_way * g_one_way;
+
     return fmaxf(g_two_way, 1.0e-3f);
 }
 
@@ -1558,7 +1560,7 @@ void *sensor_proc(struct cmb_process *me, void *vctx)
                 if (tgt->mode != FIRING) {
                     tgt->detected = true;
                 }
-                                          }
+            }
             else {
                 tgt->tds = MISSED;
             }
@@ -1610,16 +1612,21 @@ void sensor_initialize(struct sensor *senp, const char *name, const float rpm,
         biome_gamma_lin[b] = powf(10.0f, biome_gamma_db[b] / 10.0f);
     }
 
-    senp->hdf = vtkhdf_create();
-    events_vtkhdf_init(senp->hdf, events_h5name, NUM_TARGETS);
+    if (visuals) {
+        senp->hdf = vtkhdf_create();
+        events_vtkhdf_init(senp->hdf, events_h5name, NUM_TARGETS);
+    }
 
     cmb_process_initialize((struct cmb_process *)senp, name, sensor_proc, vctx, 0);
 }
 
 void sensor_terminate(struct sensor *senp)
 {
-    events_vtkhdf_close(senp->hdf);
-    vtkhdf_destroy(senp->hdf);
+    if (visuals) {
+        events_vtkhdf_close(senp->hdf);
+        vtkhdf_destroy(senp->hdf);
+    }
+
     cmb_process_terminate((struct cmb_process *)senp);
 }
 
@@ -1662,7 +1669,9 @@ void end_sim_evnt(void *subject, void *object)
         cmb_process_stop((struct cmb_process *)&tgts[ui], NULL);
     }
 
-    cmb_process_stop(sim->HDF5_output, NULL);
+    if (visuals) {
+        cmb_process_stop(sim->HDF5_output, NULL);
+    }
 }
 
 const char *hhmmss_formatter(double t);
@@ -1689,11 +1698,14 @@ void *ent_proc(struct cmb_process *me, void *vtp)
 }
 
 /*
- * A cmb_process to write snapshots to HDF5 output file
+ * A cmb_process to write snapshots to HDF5 output file.
+ * Should not be running unless visuals are on.
  */
 void *out_proc(struct cmb_process *me, void *vtp)
 {
     cmb_unused(me);
+    cmb_assert_debug(visuals == true);
+
     const struct simulation *sim = (struct simulation *)vtp;
     const struct target *tgts = sim->targets;
     struct platform *pfp = sim->AWACS;
@@ -1765,7 +1777,10 @@ void run_trial(void *vtrl)
     const bool clockwise = true;
     racetrack_initialize(orbit, start_time, anchor_lat, anchor_lon, orientation,
                          length, turn_radius, flight_level, velocity, clockwise);
-    racetrack_write_vtp(orbit, "racetrack.vtp");
+
+    if (visuals) {
+        racetrack_write_vtp(orbit, "racetrack.vtp");
+    }
 
     printf("Initializing AWACS platform\n");
     struct platform *awacs = platform_create();
@@ -1788,10 +1803,12 @@ void run_trial(void *vtrl)
     cmb_process_start((struct cmb_process *)radar);
 
     /* Process to write output events */
-    printf("Starting output process\n");
-    sim.HDF5_output = cmb_process_create();
-    cmb_process_initialize(sim.HDF5_output, "HDF5 output", out_proc, &sim, -1);
-    cmb_process_start(sim.HDF5_output);
+    if (visuals) {
+        printf("Starting output process\n");
+        sim.HDF5_output = cmb_process_create();
+        cmb_process_initialize(sim.HDF5_output, "HDF5 output", out_proc, &sim, -1);
+        cmb_process_start(sim.HDF5_output);
+    }
 
     /* Schedule the simulation control events */
     printf("Scheduling end event\n");
@@ -1849,7 +1866,7 @@ int main(int argc, char **argv)
     double dur_h = 6.0;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:s:t")) != -1) {
+    while ((opt = getopt(argc, argv, "d:gs:t")) != -1) {
         switch (opt) {
             case 'd': {
                 errno = 0;
@@ -1862,6 +1879,11 @@ int main(int argc, char **argv)
                     fprintf(stderr, "Invalid -d value '%s' (want hours > 0)\n", optarg);
                     return EXIT_FAILURE;
                     }
+                break;
+            }
+
+            case 'g': {
+                visuals = !visuals;
                 break;
             }
 
@@ -2009,6 +2031,7 @@ struct vtkhdf_handle {
 
 struct vtkhdf_handle *vtkhdf_create(void)
 {
+    cmb_assert_debug(visuals == true);
     struct vtkhdf_handle *h = cmi_malloc(sizeof(struct vtkhdf_handle));
 
     return h;
@@ -2016,6 +2039,7 @@ struct vtkhdf_handle *vtkhdf_create(void)
 
 void vtkhdf_destroy(struct vtkhdf_handle *h)
 {
+    cmb_assert_debug(visuals == true);
     cmi_free(h);
 }
 
@@ -2029,6 +2053,8 @@ void vtkhdf_destroy(struct vtkhdf_handle *h)
 
 void write_attr_string(const hid_t loc_id, const char *const name, const char *const value)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t type = H5Tcopy(H5T_C_S1);
     H5_CHECK(type);
     H5_CHECK(H5Tset_size(type, strlen(value)));
@@ -2048,6 +2074,8 @@ void write_attr_string(const hid_t loc_id, const char *const name, const char *c
 
 void write_attr_int32_array(const hid_t loc_id, const char *const name, const int32_t *const values, const hsize_t count)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t type = H5T_NATIVE_INT32;
     H5_CHECK(type);
     const hid_t space = H5Screate_simple(1, &count, NULL);
@@ -2064,6 +2092,8 @@ void write_attr_int32_array(const hid_t loc_id, const char *const name, const in
 void write_attr_int64_array(hid_t loc_id, const char *name,
                             const int64_t *values, hsize_t count)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t space = H5Screate_simple(1, &count, NULL);
     H5_CHECK(space);
     const hid_t attr = H5Acreate2(loc_id, name, H5T_NATIVE_INT64,
@@ -2076,6 +2106,8 @@ void write_attr_int64_array(hid_t loc_id, const char *name,
 
 void write_attr_double_array(const hid_t loc_id, const char *const name, const double *const values, const hsize_t count)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t type = H5T_NATIVE_DOUBLE;
     H5_CHECK(type);
     const hid_t space = H5Screate_simple(1, &count, NULL);
@@ -2096,6 +2128,8 @@ void terrain_vtkhdf_write(const char *const h5_filename,
                           const float x_scale,
                           const float y_scale)
 {
+    cmb_assert_debug(visuals == true);
+
     const uint32_t vis_cols = cols / stride_step;
     const uint32_t vis_rows = rows / stride_step;
 
@@ -2166,6 +2200,8 @@ void terrain_vtkhdf_write(const char *const h5_filename,
 static void write_dummy_topology_stepped(hid_t root, const char *name,
                                          unsigned long nsteps)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t group = H5Gcreate2(root, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
     int64_t *zeros = calloc(nsteps, sizeof(int64_t));
@@ -2211,6 +2247,8 @@ static void write_dummy_topology_stepped(hid_t root, const char *name,
 
 void events_vtkhdf_init(struct vtkhdf_handle *h, const char *filename, const int n_targets)
 {
+    cmb_assert_debug(visuals == true);
+
     h->num_targets = n_targets;
     h->current_step = 0;
 
@@ -2385,6 +2423,8 @@ void events_vtkhdf_init(struct vtkhdf_handle *h, const char *filename, const int
 
 void events_vtkhdf_append(struct vtkhdf_handle *h, const struct target *targets, const struct platform_state *awacs, const float sensor_dir, const float time_val)
 {
+    cmb_assert_debug(visuals == true);
+
     const int n = h->num_targets;
     const int total_pts = n + 1;
     const hsize_t n_steps = h->current_step + 1;
@@ -2541,6 +2581,8 @@ void events_vtkhdf_append(struct vtkhdf_handle *h, const struct target *targets,
 
 void events_vtkhdf_close(const struct vtkhdf_handle *const h)
 {
+    cmb_assert_debug(visuals == true);
+
     const hid_t st_group = H5Gopen2(h->file_id, "VTKHDF/Steps", H5P_DEFAULT);
     H5_CHECK(st_group);
 
@@ -2580,6 +2622,8 @@ void events_vtkhdf_close(const struct vtkhdf_handle *const h)
 /* Export the racetrack orbit as a 3D line loop for ParaView (.vtp) */
 void racetrack_write_vtp(const struct racetrack *rt, const char *filename)
 {
+    cmb_assert_debug(visuals == true);
+
     const unsigned int npoints = 500u;
 
     FILE *fp = fopen(filename, "w");
