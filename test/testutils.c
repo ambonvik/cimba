@@ -29,8 +29,6 @@
 
 #include "testutils.h"
 
-/**** General utilities *****/
-
 void cmi_test_fnprint_line(FILE *fp, const char *str, const unsigned n)
 {
     cmb_assert_debug(fp != NULL);
@@ -51,7 +49,7 @@ void cmi_test_fnprint_line(FILE *fp, const char *str, const unsigned n)
         }
     }
 
-    printf("\n");
+    fprintf(fp, "\n");
 }
 
 static unsigned clamp_u(const uint64_t v, const unsigned lo, const unsigned hi)
@@ -60,8 +58,6 @@ static unsigned clamp_u(const uint64_t v, const unsigned lo, const unsigned hi)
     if (v > (uint64_t)hi) { return hi; }
     return (unsigned)v;
 }
-
-/**** General mathematical and statistical utilities ****/
 
 /* log(1 - exp(x)) for x < 0, accurate at both ends. */
 static double log1mexp(const double x)
@@ -198,8 +194,6 @@ static void mgs_validate(double *basis, const unsigned k, const unsigned n_bins)
     }
 }
 
-/**** Normal distribution utilities ****/
-
 /* ppnd16 - percentage points of the normal distribution, 16 significant digits.
  * I.e., the inverse CDF of the standard normal distribution, returning the x
  * value that gives probability p starting from the negative tail. For the
@@ -320,9 +314,7 @@ static double ppnd16(const double p)
     return x;
 }
 
-/**** Chi squared utilities ****/
-
-/****
+/*
  * Log space chi squared CDF, aka regularized incomplete Gamma function,
  * calculated in logs. When handling actual deviations, the sample could
  * be extremely unlikely under the null hypothesis ~U(0,1).  We need a way to
@@ -331,7 +323,7 @@ static double ppnd16(const double p)
  * the chi squared CDF in log(p) to capture the far tails. Consists of three
  * functions, one for continued fractions, one for asymptotic series, and a
  * wrapper choosing which to use in each case.
- ****/
+ */
 
 /* Calculate log(P(a,x)) as incomplete gamma asymptotic series,
  * sum_{n>=0} x^n / (a(a+1)...(a+n)), valid for x < a+1. */
