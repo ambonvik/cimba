@@ -218,20 +218,12 @@ void cmb_buffer_print_report(struct cmb_buffer *bp, FILE *fp) {
 /*
  * cmb_buffer_get - Request and, if necessary, wait for an amount of the
  * buffer resource.
- *
- * Note that the amount argument is a pointer to where the amount is stored.
- * The return value CMB_PROCESS_SUCCESS (0) indicates that all went well and
- * the value *amount equals the requested amount.
- *
- * If the call was interrupted for some reason, it will be partially fulfilled,
- * and *amount will be the quantity obtained before interrupted. The return
- * value is the interrupt signal received, some value other than
- * CMB_PROCESS_SUCCESS.
  */
 int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 {
     cmb_assert_release(bp != NULL);
     cmb_assert_release(amntp != NULL);
+    cmb_assert_release(*amntp > 0u);
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
@@ -303,15 +295,6 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 /*
  * cmb_buffer_put - Put a non-zero amount of the resource into the buffer,
  * waiting for free space if necessary.
- *
- * Note that the amount argument is a pointer to where the amount is stored.
- * The return value CMB_PROCESS_NORMAL (0) indicates that all went well and
- * the value *amntp now equals zero.
- *
- * If the call was interrupted for some reason, it will be partially fulfilled,
- * and *amntp will be the quantity remaining when interrupted. The return
- * value is the interrupt signal received, some value other than
- * CMB_PROCESS_NORMAL.
  */
 int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
 {
