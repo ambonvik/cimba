@@ -4,6 +4,12 @@ Note: Version numbers are MAJOR.MINOR.PATCH per [Semantic Versioning](https://se
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
+### 2026-11-13: 3.1.1
+* Bug fix for Issue #5: Partially fulfilled requests would break FIFO waitlist ordering, 
+  now enforced by storing the initial ranking key in a new cmb_process tiebreaker field.
+* Fixed asymmetric asserts for cmb_buffer_put and _get: Both now forbid zero amounts.
+* Minor wording changes to improve clarity in some internal info logging messages.
+
 ### 2026-10-28: 3.1.0
 * Added function cimba_threads_inuse() returning the number of worker threads actually 
   running at this time.
