@@ -50,8 +50,6 @@
  * The hash_key is a unique event identifier, the hash_index a reference to where
  * in the hash map it is located. The heap tag is 8 * 8 = 64 bytes large.
  */
-static_assert(sizeof(double) == sizeof(uint64_t));
-
 struct cmi_heap_tag {
     uint64_t hash_key;      /* The unique handle/ID */
     uint64_t hash_index;    /* Position in the hash map */

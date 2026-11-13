@@ -35,6 +35,8 @@
 #include "cmi_hashheap.h"
 #include "cmi_memutils.h"
 
+static_assert(sizeof(double) == sizeof(uint64_t));
+
 /* The initial capacity of the heap is 2^QUEUE_INIT_EXP items, resizing as needed */
 #define QUEUE_INIT_EXP 3
 
