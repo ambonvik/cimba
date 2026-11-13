@@ -1,8 +1,5 @@
 .. _installation:
 
-.. image:: https://zenodo.org/badge/1044537259.svg
-  :target: https://doi.org/10.5281/zenodo.24199885
-
 Installation guide
 ==================
 
@@ -21,6 +18,10 @@ Once the build chain is installed, you need to obtain Cimba itself.
 Cimba is distributed as free open source code through the Github repository at
 https://github.com/ambonvik/cimba. You download, build, and install Cimba with
 terminal commands.
+
+.. image:: https://zenodo.org/badge/1044537259.svg
+  :target: https://doi.org/10.5281/zenodo.24199885
+
 
 Linux
 -----
