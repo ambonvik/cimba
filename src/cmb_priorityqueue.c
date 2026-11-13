@@ -240,6 +240,9 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
     cmb_assert_release(objectloc != NULL);
     cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
 
+    struct cmb_process *caller = cmb_process_current();
+    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
+
     cmb_logger_info(stdout, "Gets an object from %s, length now %" PRIu64,
                     ((struct cmi_resourcebase *)pqp)->name, pqp->queue.heap_count);
 
@@ -257,6 +260,9 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
 
             cmb_logger_info(stdout, "Success, got %p", *objectloc);
             cmb_resourceguard_signal(&(pqp->rear_guard));
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
+            }
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -276,6 +282,9 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
                             sig);
             *objectloc = NULL;
             cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
+            }
 
             return sig;
         }
@@ -288,8 +297,11 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
                               uint64_t *handleloc)
 {
     cmb_assert_release(pqp != NULL);
-
     cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
+
+    struct cmb_process *caller = cmb_process_current();
+    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
+
     cmb_logger_info(stdout, "Puts object %p priority %" PRIi64 " into %s, length %" PRIu64,
                     object, priority, ((struct cmi_resourcebase *)pqp)->name, pqp->queue.heap_count);
     while (true) {
@@ -307,6 +319,9 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
             record_sample(pqp);
             cmb_logger_info(stdout, "Success, put %p", object);
             cmb_resourceguard_signal(&(pqp->front_guard));
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
+            }
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -325,6 +340,9 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
                             "Interrupted by signal %" PRIi64 ", could not put object %p into %s",
                             sig, object, ((struct cmi_resourcebase *)pqp)->name);
             cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
+            }
 
             return sig;
         }

@@ -228,6 +228,9 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
+    struct cmb_process *caller = cmb_process_current();
+    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
+
     const uint64_t init_claim = *amntp;
     uint64_t rem_claim = *amntp;
     *amntp = 0u;
@@ -241,7 +244,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
             record_sample(bp);
             *amntp += rem_claim;
             cmb_logger_info(stdout,
-                            "Success, %" PRIu64 " was available, got %" PRIu64,
+                            "Success, %" PRIu64 " was available, got all %" PRIu64,
                             rem_claim, *amntp);
 
             cmb_assert_debug(bp->level <= bp->capacity);
@@ -249,6 +252,10 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
             if (bp->level > 0u) {
                 /* In case someone else can use any leftovers */
                 cmb_resourceguard_signal(&(bp->front_guard));
+            }
+
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
             }
 
             return CMB_PROCESS_SUCCESS;
@@ -261,7 +268,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
             *amntp += grab;
             rem_claim -= grab;
             cmb_logger_info(stdout,
-                            "Grabbed %" PRIu64 ", has %" PRIu64,
+                            "Got %" PRIu64 ", has %" PRIu64,
                             grab, *amntp);
 
             cmb_assert_debug(bp->level <= bp->capacity);
@@ -286,6 +293,9 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 
             cmb_assert_debug(bp->level <= bp->capacity);
             cmb_assert_debug(*amntp <= init_claim);
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
+            }
 
             return sig;
         }
@@ -304,6 +314,10 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
 
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+
+    struct cmb_process *caller = cmb_process_current();
+    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
+
     const uint64_t init_claim = *amntp;
     uint64_t rem_claim = *amntp;
     while (true) {
@@ -326,6 +340,10 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
                 cmb_resourceguard_signal(&(bp->rear_guard));
             }
 
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
+            }
+
             return CMB_PROCESS_SUCCESS;
         }
         else if (bp->level < bp->capacity) {
@@ -336,7 +354,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
             *amntp -= grab;
             rem_claim -= grab;
             cmb_logger_info(stdout,
-                            "Pushed in %" PRIu64 ", still has %" PRIu64 " remaining",
+                            "Put in %" PRIu64 ", still has %" PRIu64 " remaining",
                             grab,  *amntp);
 
             cmb_resourceguard_signal(&(bp->front_guard));
@@ -359,10 +377,11 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
 
             cmb_assert_debug(bp->level <= bp->capacity);
             cmb_assert_debug(*amntp <= init_claim);
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
+            }
 
             return sig;
         }
     }
 }
-
-

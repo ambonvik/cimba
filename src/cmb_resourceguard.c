@@ -65,8 +65,8 @@ static CMB_THREAD_LOCAL uint64_t enqueue_seq = 0u;
 
 /*
  * guard_queue_check - Test if heap_tag *a should go before *b. If so, return true.
- * Higher priority (rank_i64) first, then earlier entry time (rank_d64) for FIFO,
- * then lower enqueue key (hash_key) as a stable tie-break.
+ * Higher priority (rank_i64) first, then FIFO based on the initial hash key
+ * (retained across multiple waits inside an incomplete get, put, etc)
  */
 static bool guard_queue_check(const struct cmi_heap_tag *a,
                               const struct cmi_heap_tag *b)
@@ -74,18 +74,20 @@ static bool guard_queue_check(const struct cmi_heap_tag *a,
     cmb_assert_debug(a != NULL);
     cmb_assert_debug(b != NULL);
 
-    /* Higher priority goes first */
     if (a->rank_i64 != b->rank_i64) {
-        return a->rank_i64 > b->rank_i64;
+        /* Higher priority goes first */
+       return (a->rank_i64 > b->rank_i64);
+    }
+    else if (a->rank_u64 != b->rank_u64) {
+        /* Lower initial hash key goes first for FIFO */
+        return (a->rank_u64 < b->rank_u64);
+    }
+    else {
+        /* Last resort: Rank by hash key for this wait */
+        return (a->hash_key < b->hash_key);
     }
 
-    /* Same priority: earlier queue entry time goes first (FIFO by arrival) */
-    if (a->rank_d64 != b->rank_d64) {
-        return a->rank_d64 < b->rank_d64;
-    }
-
-    /* Same arrival time: lower enqueue key goes first (stable FIFO tie-break) */
-    return a->hash_key < b->hash_key;
+    /* not reached */
 }
 
 /* Start very small and fast, 2^GUARD_INIT_EXP = 8 slots in the initial queue */
@@ -132,22 +134,35 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
     struct cmb_process *pp = cmb_process_current();
     cmb_assert_release(pp != NULL);
 
-    const double entry_time = cmb_time();
     const int64_t priority = cmb_process_priority(pp);
-    /* The enqueue key is this entry's identity: the FIFO tie-breaker in the
-     * queue and the handle used to find it again for removal, cancellation, or
-     * reprioritization. Key 0 is reserved to mean "not enqueued". */
+
+    /* The enqueue key is this entry's identity: the handle used to find it
+     * again for removal, cancellation, or reprioritization.
+     * Key 0 is reserved to mean "not enqueued". */
     uint64_t hash_key = ++enqueue_seq;
     if (hash_key == 0u) {
+        /* Looped around, skip */
         hash_key = ++enqueue_seq;
     }
+
+    if (pp->tiebreaker == 0u) {
+        /* Not a looped put, get, or similar, store it */
+        pp->tiebreaker = hash_key;
+    }
+
+    union {
+        double d;
+        uint64_t u;
+    } tmp;
+
+    tmp.u = pp->tiebreaker;
     const uint64_t key = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
                                               (void *)pp,
                                               (void *)demand,
                                               (void *)ctx,
                                               NULL,
                                               hash_key,
-                                              entry_time,
+                                              tmp.d,
                                               priority);
 
     /* Record the key on the awaitable so cancel/remove/reprioritize can find

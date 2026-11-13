@@ -78,7 +78,7 @@ static void end_sim_evt(void *subject, void *object)
     cmb_assert_always(cmb_process_status(thesim->nuisance) == CMB_PROCESS_FINISHED);
 }
 
-void *putterfunc(struct cmb_process *me, void *vctx)
+static void *putterfunc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     cmb_assert_always(cmb_process_status(me) == CMB_PROCESS_RUNNING);
@@ -116,7 +116,7 @@ void *putterfunc(struct cmb_process *me, void *vctx)
     }
 }
 
-void *getterfunc(struct cmb_process *me, void *ctx)
+static void *getterfunc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
     cmb_assert_always(cmb_process_status(me) == CMB_PROCESS_RUNNING);
@@ -154,7 +154,7 @@ void *getterfunc(struct cmb_process *me, void *ctx)
     }
 }
 
-void *nuisancefunc(struct cmb_process *me, void *ctx)
+static void *nuisancefunc(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
     cmb_assert_always(cmb_process_status(me) == CMB_PROCESS_RUNNING);
@@ -180,7 +180,7 @@ void *nuisancefunc(struct cmb_process *me, void *ctx)
     }
 }
 
-void test_buffer(const double duration, const uint64_t seed)
+static void test_buffer(const double duration, const uint64_t seed)
 {
     cmi_test_print_line("*");
     printf("*****************************   Testing buffers   ******************************\n");
@@ -284,6 +284,156 @@ void test_buffer(const double duration, const uint64_t seed)
     cmi_test_print_line("*");
 }
 
+/*
+ * Reproduction and regression test for reported issue #5
+ * A process with a partially fulfilled put or get request should keep its
+ * position in the waiting list for proper FIFO ordering among equal priority
+ * processes, not fall back to the back of the list.
+ */
+
+struct context {
+    struct cmb_buffer *buf;
+    double finish_time;
+};
+
+static void *partial_putterfunc(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    struct context *ctx = vctx;
+
+    uint64_t amount = 2u;
+    const int64_t sig = cmb_buffer_put(ctx->buf, &amount);
+    cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
+
+    cmb_logger_user(stdout, USERFLAG1, "Success");
+    ctx->finish_time = cmb_time();
+
+    return NULL;
+}
+
+static void *partial_drainfunc(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    struct cmb_buffer *buf = vctx;
+
+    for (int i = 0; i < 4; i++) {
+        const double interval = 10.0;
+        cmb_process_hold(interval);
+        uint64_t amount = 1u;
+        const int64_t sig = cmb_buffer_get(buf, &amount);
+        cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
+    }
+
+    return NULL;
+}
+
+static void *partial_getterfunc(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    struct context *ctx = vctx;
+
+    uint64_t amount = 2u;
+    const int64_t sig = cmb_buffer_get(ctx->buf, &amount);
+    cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
+
+    cmb_logger_user(stdout, USERFLAG1, "Success");
+    ctx->finish_time = cmb_time();
+
+    return NULL;
+}
+
+static void *partial_feedfunc(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    struct cmb_buffer *buf = vctx;
+
+    for (int i = 0; i < 4; i++) {
+        const double interval = 10.0;
+        cmb_process_hold(interval);
+        uint64_t amount = 1u;
+        const int64_t sig = cmb_buffer_put(buf, &amount);
+        cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
+    }
+
+    return NULL;
+}
+
+static void test_partials(void)
+{
+    struct context ctx[2];
+
+    cmb_event_queue_initialize(0.0);
+
+    /* Create a small buffer */
+    struct cmb_buffer *buf = cmb_buffer_create();
+    uint64_t cap = 2u;
+    cmb_buffer_initialize(buf, "Buf", cap);
+    ctx[0].buf = buf;
+    ctx[1].buf = buf;
+
+    /* Get version of issue #5 */
+    struct cmb_process *g1 = cmb_process_create();
+    cmb_process_initialize(g1, "G1", partial_getterfunc, &(ctx[0]), 0);
+    cmb_process_start(g1);
+
+    struct cmb_process *g2 = cmb_process_create();
+    cmb_process_initialize(g2, "G2", partial_getterfunc, &(ctx[1]), 0);
+    cmb_process_start(g2);
+
+    struct cmb_process *fp = cmb_process_create();
+    cmb_process_initialize(fp, "Feed", partial_feedfunc, buf, 0);
+    cmb_process_start(fp);
+
+    cmb_event_queue_execute();
+
+    cmb_process_terminate(fp);
+    cmb_process_destroy(fp);
+
+    cmb_process_terminate(g2);
+    cmb_process_destroy(g2);
+
+    cmb_process_terminate(g1);
+    cmb_process_destroy(g1);
+
+    cmb_event_queue_terminate();
+
+    cmb_assert_always((ctx[0].finish_time == 20.0) && (ctx[1].finish_time == 40.0));
+
+    /* Put version of issue #5 */
+    cmb_event_queue_initialize(0.0);
+    cmb_buffer_put(buf, &cap);
+
+    struct cmb_process *p1 = cmb_process_create();
+    cmb_process_initialize(p1, "P1", partial_putterfunc, &(ctx[0]), 0);
+    cmb_process_start(p1);
+
+    struct cmb_process *p2 = cmb_process_create();
+    cmb_process_initialize(p2, "P2", partial_putterfunc, &(ctx[1]), 0);
+    cmb_process_start(p2);
+
+    struct cmb_process *dp = cmb_process_create();
+    cmb_process_initialize(dp, "Drain", partial_drainfunc, buf, 0);
+    cmb_process_start(dp);
+
+    cmb_event_queue_execute();
+
+    cmb_process_terminate(dp);
+    cmb_process_destroy(dp);
+
+    cmb_process_terminate(p2);
+    cmb_process_destroy(p2);
+
+    cmb_process_terminate(p1);
+    cmb_process_destroy(p1);
+
+    cmb_buffer_terminate(buf);
+    cmb_buffer_destroy(buf);
+
+    cmb_event_queue_terminate();
+
+    cmb_assert_always((ctx[0].finish_time == 20.0) && (ctx[1].finish_time == 40.0));
+}
+
 int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
@@ -321,6 +471,7 @@ int main(const int argc, char *argv[])
     const clock_t start_time = clock();
 
     test_buffer(dur, seed);
+    test_partials();
 
     if (timing_enabled) {
         const clock_t end_time = clock();

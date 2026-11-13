@@ -119,6 +119,7 @@ struct cmb_process {
     struct cmi_coroutine core;              /**< The parent coroutine */
     uint64_t handle;                        /**< Unique identifier */
     int64_t priority;                       /**< The current process priority */
+    uint64_t tiebreaker;                    /**< Internal use, ensuring FIFO wait for various resource types  */
     struct cmi_slist_node awaits;           /**< What this process is waiting for, if anything */
     struct cmi_slist_node resources;        /**< Any resources held by this process */
     struct cmi_slist_node waiters;          /**< Any other processes waiting for this process to finish */

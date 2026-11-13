@@ -238,8 +238,9 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     cmb_assert_release(rp != NULL);
     const struct cmi_resourcebase *rbp = &(rp->core.base);
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
-    struct cmb_process *pp = cmb_process_current();
-    cmb_assert_release(pp != NULL);
+    struct cmb_process *caller = cmb_process_current();
+    cmb_assert_release(caller != NULL);
+    cmb_assert_debug(caller->tiebreaker == 0u);
 
     cmb_logger_info(stdout, "Acquiring resource %s", rbp->name);
 
@@ -252,9 +253,11 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     for (;;) {
         if ((rp->holder == NULL) && may_grab) {
             /* Free and it is our turn, grab it */
-            resource_grab(rp, pp);
+            resource_grab(rp, caller);
             record_sample(rp);
             cmb_logger_info(stdout, "Acquired %s", rbp->name);
+            caller->tiebreaker = 0u;
+
             return CMB_PROCESS_SUCCESS;
         }
 
@@ -267,6 +270,8 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
             cmb_logger_info(stdout,
                             "Did not acquire %s, code %" PRId64,
                             rbp->name, ret);
+            caller->tiebreaker = 0u;
+
             return ret;
         }
 
@@ -365,6 +370,7 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
                          victim->name,
                          victim->priority,
                          myprio);
+
         ret = cmb_resource_acquire(rp);
     }
 

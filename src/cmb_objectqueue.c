@@ -249,6 +249,8 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
 
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    struct cmb_process *caller = cmb_process_current();
+    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
 
     cmb_logger_info(stdout, "Gets an object from %s, length now %" PRIu64,
                     rbp->name, oqp->length);
@@ -276,6 +278,9 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
             cmi_mempool_free(&objectqueue_tags, tag);
 
             cmb_resourceguard_signal(&(oqp->rear_guard));
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
+            }
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -295,6 +300,9 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
                             sig);
             *objectloc = NULL;
             cmb_assert_debug(oqp->length <= oqp->capacity);
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
+            }
 
             return sig;
         }
@@ -307,6 +315,9 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void *object)
 
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+    struct cmb_process *caller = cmb_process_current();
+    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
+
     cmb_logger_info(stdout, "Puts object %p into %s, length %" PRIu64,
                     object, rbp->name, oqp->length);
     while (true) {
@@ -331,6 +342,9 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void *object)
             record_sample(oqp);
             cmb_logger_info(stdout, "Success, put %p", object);
             cmb_resourceguard_signal(&(oqp->front_guard));
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
+            }
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -349,6 +363,9 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void *object)
                             "Interrupted by signal %" PRIi64 ", could not put object %p into %s",
                             sig, object, rbp->name);
             cmb_assert_debug(oqp->length <= oqp->capacity);
+            if (caller != NULL) {
+                caller->tiebreaker = 0u;
+            }
 
             return sig;
         }

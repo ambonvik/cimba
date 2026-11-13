@@ -115,6 +115,7 @@ void cmb_process_initialize_wssz(struct cmb_process *pp,
 
     pp->handle = ++handle_counter;
     pp->priority = priority;
+    pp->tiebreaker = 0u;
     cmb_process_name_set(pp, name);
 
     cmi_slist_initialize(&pp->awaits);
@@ -293,7 +294,7 @@ void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
             struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
             /* Find our entry by its enqueue key, not by process address */
             const uint64_t key = awp->guard_key;
-            /* Do not change the other priority key, queue entry time */
+            /* Keep the other ranking key unchanged */
             const double etime = cmi_hashheap_drank(hp, key);
             cmi_hashheap_reprioritize(hp, key, etime, pri);
         }
@@ -999,6 +1000,7 @@ int64_t cmb_process_stop(struct cmb_process *tgt, void *retval)
     cmi_process_cancel_awaiteds(tgt);
     cmi_process_drop_resources(tgt);
     wake_process_waiters(&(tgt->waiters), CMB_PROCESS_STOPPED);
+    tgt->tiebreaker = 0u;
 
     return CMB_PROCESS_SUCCESS;
 }

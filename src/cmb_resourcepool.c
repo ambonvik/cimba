@@ -434,6 +434,7 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
 
     struct cmb_process *caller = cmb_process_current();
     cmb_assert_release(caller != NULL);
+    cmb_assert_debug(caller->tiebreaker == 0u);
 
     /* Does the caller already hold some? */
     uint64_t initially_held = 0u;
@@ -475,6 +476,7 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
 
             /* In case someone else can use the leftovers */
             cmb_resourceguard_signal(&(rpp->guard));
+            caller->tiebreaker = 0u;
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -512,6 +514,7 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
                 cmb_assert_debug(found == true);
                 /* It may be waiting for more, cancel that */
                 cmi_process_cancel_awaiteds(victim);
+                victim->tiebreaker = 0u;
 
                 /* Schedule a wakeup for it, but do not switch context yet */
                 cmb_process_interrupt(victim, CMB_PROCESS_PREEMPTED, victim->priority);
@@ -544,6 +547,7 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
 
                     /* In case someone else can use the leftovers */
                     cmb_resourceguard_signal(&(rpp->guard));
+                    caller->tiebreaker = 0u;
 
                     return CMB_PROCESS_SUCCESS;
                 }
@@ -560,6 +564,7 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
         if (sig == CMB_PROCESS_PREEMPTED) {
             /* Got thrown out instead, unwind. */
             cmb_logger_info(stdout, "Preempted, returning empty-handed");
+            caller->tiebreaker = 0u;
 
             return sig;
         }
@@ -595,6 +600,7 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
 
             cmb_assert_debug(rpp->in_use <= rpp->capacity);
             cmb_assert_debug(sum_holder_items(hhp) == rpp->in_use);
+            caller->tiebreaker = 0u;
 
             return sig;
         }

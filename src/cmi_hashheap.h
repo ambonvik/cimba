@@ -50,12 +50,17 @@
  * The hash_key is a unique event identifier, the hash_index a reference to where
  * in the hash map it is located. The heap tag is 8 * 8 = 64 bytes large.
  */
+static_assert(sizeof(double) == sizeof(uint64_t));
+
 struct cmi_heap_tag {
-    uint64_t hash_key;    /* The unique handle/ID, sorting tiebreaker */
-    uint64_t hash_index;  /* Position in the hash map */
-    double   rank_d64;    /* Primary sort (e.g., time) */
-    int64_t  rank_i64;    /* Secondary sort (e.g., priority) */
-    void    *item[4];     /* The actual payload items */
+    uint64_t hash_key;      /* The unique handle/ID */
+    uint64_t hash_index;    /* Position in the hash map */
+    union {
+        double   rank_d64;  /* Primary sort (e.g., time) */
+        uint64_t rank_u64;  /* Alternative primary sort */
+    };
+    int64_t  rank_i64;      /* Secondary sort (e.g., priority) */
+    void    *item[4];       /* The actual payload items */
 };
 
 /*

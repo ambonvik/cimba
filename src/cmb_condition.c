@@ -105,6 +105,9 @@ int64_t cmb_condition_wait(struct cmb_condition *cp,
     cmb_assert_release(cp != NULL);
     cmb_assert_release(dmnd != NULL);
 
+    struct cmb_process *caller = cmb_process_current();
+    cmb_assert_debug(caller->tiebreaker == 0u);
+
     cmb_logger_info(stdout, "Waiting for condition %s",
                     ((struct cmi_resourcebase *)cp)->name);
     const int64_t sig =  cmb_resourceguard_wait(&(cp->guard),
@@ -113,6 +116,7 @@ int64_t cmb_condition_wait(struct cmb_condition *cp,
 
     cmb_logger_info(stdout, "Condition %s returning signal %" PRIi64,
                     ((struct cmi_resourcebase *)cp)->name, sig);
+    caller->tiebreaker = 0u;
 
     return sig;
 }
