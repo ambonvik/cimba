@@ -11,8 +11,10 @@ project('cimba', ['c'],
         ]
 )
 
-# We also need the portable Netwide Assembler for assembly code
-add_languages('nasm', required : true, native : true)
+# We also need the portable Netwide Assembler for the x86-64 assembly code
+if host_machine.cpu_family() == 'x86_64'
+    add_languages('nasm', required : true, native : true)
+endif
 
 # Try to find CUDA, but don't fail if it's missing
 add_languages('cuda', required : false, native : true)
@@ -33,10 +35,17 @@ cc = meson.get_compiler('c')
 # Flags common to all build types
 common_flags = [
     '-Wno-pedantic',
-    '-D_POSIX_C_SOURCE=200809L',
     '-fno-semantic-interposition',
     '-ffp-contract=off',
 ]
+
+if host_machine.system() == 'darwin'
+    # Keep Darwin extensions such as pthread_get_stackaddr_np() and
+    # arc4random_buf() visible
+    common_flags += '-D_DARWIN_C_SOURCE'
+else
+    common_flags += '-D_POSIX_C_SOURCE=200809L'
+endif
 
 # Flags per build type
 # 'debug'    : full asserts and logging, no optimization
@@ -81,7 +90,8 @@ elif get_option('pgo') == 'use'
     desired_flags += pgo_flags
 endif
 
-if host_machine.system() == 'linux'
+# Matches CMB_THREAD_LOCAL in cmi_config.h: initial-exec on x86-64 Linux only
+if host_machine.system() == 'linux' and host_machine.cpu_family() == 'x86_64'
     desired_flags += ['-ftls-model=initial-exec' ]
 endif
 
