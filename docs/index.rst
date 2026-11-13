@@ -3,9 +3,6 @@ Cimba documentation
 
 .. image:: ../images/logo_large.jpg
 
-.. image:: https://zenodo.org/badge/1044537259.svg
-  :target: https://doi.org/10.5281/zenodo.24199885
-
 .. toctree::
     :maxdepth: 1
     :caption: Contents:
@@ -15,3 +12,6 @@ Cimba documentation
     tutorial
     background
     api/library_root
+
+.. image:: https://zenodo.org/badge/1044537259.svg
+  :target: https://doi.org/10.5281/zenodo.24199885
