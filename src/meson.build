@@ -66,7 +66,8 @@ if host_machine.system() == 'windows'
 elif lto_feature.enabled() or (lto_feature.auto() and get_option('buildtype').startswith('release'))
     cimba_lto = ['b_lto=true']
     if get_option('default_library') != 'shared'
-        cimba_lto_args = ['-ffat-lto-objects']
+        # Apple Clang does not accept -ffat-lto-objects
+        cimba_lto_args = cc.get_supported_arguments('-ffat-lto-objects')
     endif
 endif
 
