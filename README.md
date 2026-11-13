@@ -12,6 +12,8 @@ a similar combination of powerful features and performance.
 It is currently implemented for both Linux and Windows on the x86-64 architecture, 
 with other platforms planned.
 
+[![DOI](https://zenodo.org/badge/1044537259.svg)](https://doi.org/10.5281/zenodo.24199885)
+
 ### Why should I use it?
 It is powerful, fast, reliable, and free.
 
