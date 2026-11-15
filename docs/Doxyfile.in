@@ -1,7 +1,6 @@
 # Doxyfile.in
 
 PROJECT_NAME    = "@PROJECT_NAME@"
-PROJECT_NUMBER  = "@VERSION@"
 OUTPUT_DIRECTORY = "@OUTPUT_DIR@"
 INPUT           = @SOURCE_ROOT@/include
 EXCLUDE         = @BUILD_ROOT@

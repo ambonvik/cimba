@@ -2,15 +2,14 @@ import os
 import re
 
 project = 'cimba'
-with open(os.path.join(os.path.dirname(__file__), '../meson.build'), 'r') as f:
-    meson_build = f.read()
-version_match = re.search(r"version\s*:\s*'([^']+)'", meson_build)
-if version_match:
-    release = version_match.group(1)
-    version = release
-else:
-    release = '3.0.0'
-    version = release
+
+# Single source of truth: the VERSION file in the repository root
+version_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'VERSION')
+with open(version_file, 'r', encoding='utf-8') as f:
+    release = f.read().strip()
+if not re.fullmatch(r'\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?', release):
+    raise ValueError(f"{version_file}: unexpected version string {release!r}")
+version = release
 
 copyright = 'Asbjørn M. Bonvik 2025-26'
 

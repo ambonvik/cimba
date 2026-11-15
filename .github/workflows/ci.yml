@@ -143,7 +143,7 @@ jobs:
       - name: Test
         run: meson test -C build-tsan --print-errorlogs --timeout-multiplier 100
 
-  # Linux only: the all-out profile-guided optimizwer build (-Dpgo).
+  # Linux only: the all-out profile-guided optimizer build (-Dpgo).
   linux-pgo:
     runs-on: ubuntu-latest
     steps:
@@ -181,6 +181,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         buildtype: [ debug, release ]
         sys: [ UCRT64, MINGW64 ]

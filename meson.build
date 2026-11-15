@@ -1,7 +1,7 @@
 # main meson.build
 
 project('cimba', ['c'],
-        version : '3.1.1',
+        version : files('VERSION'),
         meson_version : '>= 0.64',
         default_options : [
             'warning_level=3',
@@ -10,6 +10,9 @@ project('cimba', ['c'],
             'cuda_std=c++17',
         ]
 )
+
+ver_full = meson.project_version()
+ver_core = ver_full.split('-')[0].split('.')
 
 # We also need the portable Netwide Assembler for assembly code
 add_languages('nasm', required : true, native : true)

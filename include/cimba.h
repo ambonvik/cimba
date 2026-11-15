@@ -26,20 +26,7 @@
 #ifndef CIMBA_CIMBA_H
 #define CIMBA_CIMBA_H
 
-/** \cond */
-#define CIMBA_VERSION_MAJOR 3
-#define CIMBA_VERSION_MINOR 1
-#define CIMBA_VERSION_PATCH 1
-
-#define CMI_STRINGIFY(x) #x
-
-#define CMI_TOSTRING(A, B, C) \
-                CMI_STRINGIFY(A) "." CMI_STRINGIFY(B) "." CMI_STRINGIFY(C)
-
-#define CIMBA_VERSION CMI_TOSTRING(CIMBA_VERSION_MAJOR, \
-                                   CIMBA_VERSION_MINOR, \
-                                   CIMBA_VERSION_PATCH)
-/** \endcond */
+#include "cimba_version.h"
 
 /**
  * @brief Returns a version string in printable format.
