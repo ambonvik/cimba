@@ -1,7 +1,7 @@
 # main meson.build
 
 project('cimba', ['c'],
-        version : '3.0.0',
+        version : '3.1.1',
         meson_version : '>= 0.64',
         default_options : [
             'warning_level=3',
