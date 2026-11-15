@@ -276,7 +276,7 @@ extern uint32_t cimba_threads_set(uint32_t n_threads);
 * @return Number of worker threads to be used on the next run, >= 1
 */
 CMB_MAYBE_UNUSED
-uint32_t cimba_threads_use(uint32_t n_threads)
+static inline uint32_t cimba_threads_use(uint32_t n_threads)
 {
     return cimba_threads_set(n_threads);
 }
