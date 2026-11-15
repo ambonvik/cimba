@@ -74,12 +74,13 @@ static uint64_t leaking_trials;
 
 static CMB_THREAD_LOCAL cimba_trial_cleanup_func *trial_cleanup_func = NULL;
 static CMB_THREAD_LOCAL void *trial_cleanup_arg = NULL;
+static CMB_THREAD_LOCAL volatile uintptr_t *recovery_floor_p;
 
 static CMB_THREAD_LOCAL intptr_t recovery_buf[5];
 #define recovery_set()   __builtin_setjmp((void **)recovery_buf)
 #define recovery_jump()  __builtin_longjmp((void **)recovery_buf, 1)
 
-extern void cmi_coroutine_recovery_prepare(void *stack_marker);
+extern uintptr_t cmi_coroutine_recovery_prepare(void *stack_marker);
 extern void cmi_coroutine_recovery_finalize(void *stack_marker);
 
 extern void cmi_coroutine_thread_cleanup(void);
@@ -230,7 +231,7 @@ CMB_NORETURN
 void cimba_trial_abandon(void)
 {
     if (cmi_recovery_armed) {
-        cmi_coroutine_recovery_prepare(NULL);
+        *recovery_floor_p = cmi_coroutine_recovery_prepare(__builtin_frame_address(0));
         recovery_jump();
     }
     else {
@@ -260,6 +261,24 @@ static void thread_exit_wrapper(void *context)
  * the event-layer counterpart to cmi_coroutine_reset_to_main(). */
 extern void cmi_event_queue_reset(void);
 
+/* Helper function to recover from an abandoned trial. There may be objects in the
+ * memregistry that live on the soon-to-be-unrolled stack. To avoid overwriting
+ * those before they are terminated, we allocate a stack frame in safe distance
+ * to execute the recovery. */
+static void recover_abandoned_trial(void *marker)
+{
+    /* Sort out any ASan/TSan/OS concerns */
+    cmi_coroutine_recovery_finalize(marker);
+
+    /* Execute the user-defined trial cleanup function, if any */
+    if (trial_cleanup_func != NULL) {
+        (*trial_cleanup_func)(trial_cleanup_arg);
+    }
+
+    /* Execute all registered `cmb_` destructors in LIFO sequence */
+    cmi_memregistry_cleanup();
+}
+
 /*
  * thread_worker_func - The function passed to pthread_create. It finds the next
  * available trial from the experiment array, executes it, and repeats. If no
@@ -283,6 +302,10 @@ static void *thread_worker_func(void *arg)
     /* Any user-defined thread cleanup needed? */
     pthread_cleanup_push(thread_exit_wrapper, cmi_thread_context);
 
+    /* A stack marker for any abandoned trials */
+    volatile uintptr_t recovery_floor = 0u;
+    recovery_floor_p = &recovery_floor;
+
     while (true) {
         /* Using GCC/Clang __atomic built-in rather than C11 stdatomic.h due to
          * clangd false positives with no clean workaround */
@@ -296,6 +319,7 @@ static void *thread_worker_func(void *arg)
 
         cmi_recovery_armed = true;
         if (recovery_set() == 0) {
+            /* Proceeding normally after arming the setjmp, run the trial */
             if (cmg_trial_func != NULL) {
                 /* Normal usage, a common function, multiple data */
                 (*cmg_trial_func)(trial);
@@ -322,17 +346,23 @@ static void *thread_worker_func(void *arg)
         else {
             /* The trial abandoned via longjmp. That returned us to the main
              * thread stack from whatever coroutine was running. Restore this
-             * thread's per-trial stack state bookkeeping, with the address of
-             * a local variable in this stack frame as a high-water marker. */
-            cmi_coroutine_recovery_finalize(&trial);
-
-            /* Execute the user-defined trial cleanup function, if any */
-            if (trial_cleanup_func != NULL) {
-                (*trial_cleanup_func)(trial_cleanup_arg);
+             * thread's per-trial stack state bookkeeping, with this stack frame
+             * as the high-water marker. */
+            const uintptr_t top = (uintptr_t)__builtin_frame_address(0);
+            const uintptr_t floor = recovery_floor;
+            const size_t n = (floor != 0u && floor < top) ?
+                              (size_t)(top - floor) + 256u : 1u;
+            {
+                /* Temporary scope to zoom past anything still on the stack */
+                volatile unsigned char pad[n];
+                /* Do not initialize the pad, leaving anything in it untouched,
+                 * but touch it to make sure it is in place before the call. */
+                pad[0] = 0u;
+                /* Execute helper in a stack frame below the just-abandoned */
+                recover_abandoned_trial((void *)top);
+                /* Ensure that it is not optimized away by a too-clever compiler */
+                cmb_unused(pad[0]);
             }
-
-            /* Execute all registered `cmb_` destructors in LIFO sequence */
-            cmi_memregistry_cleanup();
 
             /* Increment the failure counter across all worker threads */
             (void)__atomic_fetch_add(&failed_trials, 1, __ATOMIC_RELAXED);

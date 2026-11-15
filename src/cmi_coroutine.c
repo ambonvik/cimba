@@ -452,22 +452,25 @@ void cmi_coroutine_thread_cleanup(void)
 extern void cmi_coroutine_os_adopt_stack(const struct cmi_coroutine *cp);
 
 /* Prepare ASAN for a sudden change of coroutine context.
- * Argument unused now, reserved for possible future use. */
-void cmi_coroutine_recovery_prepare(void *stack_marker)
+ * The argument is an address in the caller's own stack frame.
+ */
+uintptr_t  cmi_coroutine_recovery_prepare(void *stack_marker)
 {
-    cmb_unused(stack_marker);
-
     if (coroutine_main == NULL || coroutine_current == coroutine_main) {
         /* Either no coroutine has run yet on this thread, or this was called
          * from the main coroutine. In either case, the current stack is already
          * the main stack, no action needed. */
-        return;
+        return (uintptr_t)stack_marker;
     }
+    else {
+        /* Prepare ASan that things will be happening to the stack */
+        cmi_asan_start_switch(NULL,
+                              coroutine_main->stack_limit,
+                              (size_t)(coroutine_main->stack_base
+                                       - coroutine_main->stack_limit));
 
-    cmi_asan_start_switch(NULL,
-                          coroutine_main->stack_limit,
-                          (size_t)(coroutine_main->stack_base
-                                   - coroutine_main->stack_limit));
+        return (uintptr_t)coroutine_main->stack_pointer;
+    }
 }
 
 /* Clean up after an abandoned trial */
