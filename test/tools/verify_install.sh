@@ -40,9 +40,9 @@ if [[ ! -d "$INCDIR" ]]; then
 fi
 
 case "$(uname -s)" in
-    MINGW*|MSYS*|CYGWIN*) OS=windows ;;
-    Darwin)               OS=macos ;;
-    *)                    OS=linux ;;
+    MINGW*|MSYS*|CYGWIN*UCRT64*|CLANG*) OS=windows ;;
+    Darwin)                             OS=macos ;;
+    *)                                  OS=linux ;;
 esac
 
 # Locate what we link against and what must be present at runtime. On Windows
