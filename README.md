@@ -397,7 +397,7 @@ the radar lobe. The visualization is done in [ParaView](https://www.paraview.org
 
 ![AWACS racetrack](images/tut_5_1c.png)
 
-Cimba is able to harness *all* the computing power available in modern computer 
+Cimba is able to harness all the computing power available in modern computer 
 architectures for your simulation purposes, whatever they are.
 
 ### What do you mean by "well engineered"?
