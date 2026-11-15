@@ -100,4 +100,8 @@ extern CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags;
 extern bool cmi_process_remove_waiter(struct cmb_process *pp,
                                       const struct cmb_process *waiter);
 
+/* Special values for the waitlist tiebreaker */
+#define CMI_PROCESS_TB_CLEARED  0u
+#define CMI_PROCESS_TB_ARMED    UINT64_MAX
+
 #endif /* CIMBA_CMI_PROCESS_H */

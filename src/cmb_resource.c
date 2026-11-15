@@ -109,22 +109,22 @@ void cmb_resource_initialize(struct cmb_resource *rp, const char *name)
 void cmb_resource_terminate(struct cmb_resource *rp)
 {
     cmb_assert_release(rp != NULL);
-    cmb_assert_release(cmi_hashheap_count(&(rp->guard.priority_queue)) == 0u);
     const struct cmi_resourcebase *rbp = &(rp->core.base);
-    cmb_assert_release((rbp->cookie == CMI_INITIALIZED)
-                    || cmi_memregistry_is_demolishing);
 
-    if (rbp->cookie == CMI_INITIALIZED) {
+    if (!cmi_memregistry_is_demolishing) {
+        cmb_assert_release(cmi_hashheap_count(&(rp->guard.priority_queue)) == 0u);
+        cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
         if (rp->holder != NULL) {
             resource_drop_holder(&(rp->core), rp->holder);
         }
-
-        cmb_timeseries_terminate(&(rp->history));
-        cmb_resourceguard_terminate(&(rp->guard));
-
-        /* Terminating the parent class will also clear the memregistry item */
-        cmi_holdable_terminate(&(rp->core));
     }
+
+    rp->holder = NULL;
+    cmb_timeseries_terminate(&(rp->history));
+    cmb_resourceguard_terminate(&(rp->guard));
+
+    /* Terminating the parent class will also clear the memregistry item */
+    cmi_holdable_terminate(&(rp->core));
 
     cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
 }
@@ -238,9 +238,11 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
     cmb_assert_release(rp != NULL);
     const struct cmi_resourcebase *rbp = &(rp->core.base);
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
+
     struct cmb_process *caller = cmb_process_current();
     cmb_assert_release(caller != NULL);
-    cmb_assert_debug(caller->tiebreaker == 0u);
+    cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+    caller->tiebreaker = CMI_PROCESS_TB_ARMED;
 
     cmb_logger_info(stdout, "Acquiring resource %s", rbp->name);
 
@@ -256,7 +258,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
             resource_grab(rp, caller);
             record_sample(rp);
             cmb_logger_info(stdout, "Acquired %s", rbp->name);
-            caller->tiebreaker = 0u;
+            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -265,12 +267,15 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
         const int64_t ret = cmb_resourceguard_wait(&(rp->guard),
                                                    is_available,
                                                    NULL);
+        cmb_assert_debug((caller->tiebreaker != CMI_PROCESS_TB_CLEARED)
+                        && (caller->tiebreaker != CMI_PROCESS_TB_ARMED));
+
         if (ret != CMB_PROCESS_SUCCESS) {
             /* Thrown out by the guard (cancelled, interrupted, timed out) */
             cmb_logger_info(stdout,
                             "Did not acquire %s, code %" PRId64,
                             rbp->name, ret);
-            caller->tiebreaker = 0u;
+            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
             return ret;
         }

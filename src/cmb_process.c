@@ -115,7 +115,7 @@ void cmb_process_initialize_wssz(struct cmb_process *pp,
 
     pp->handle = ++handle_counter;
     pp->priority = priority;
-    pp->tiebreaker = 0u;
+    pp->tiebreaker = CMI_PROCESS_TB_CLEARED;
     cmb_process_name_set(pp, name);
 
     cmi_slist_initialize(&pp->awaits);
@@ -1000,7 +1000,7 @@ int64_t cmb_process_stop(struct cmb_process *tgt, void *retval)
     cmi_process_cancel_awaiteds(tgt);
     cmi_process_drop_resources(tgt);
     wake_process_waiters(&(tgt->waiters), CMB_PROCESS_STOPPED);
-    tgt->tiebreaker = 0u;
+    tgt->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
     return CMB_PROCESS_SUCCESS;
 }

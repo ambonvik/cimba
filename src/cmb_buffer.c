@@ -27,6 +27,7 @@
 #include "cmb_logger.h"
 
 #include "cmi_memutils.h"
+#include "cmi_process.h"
 
 /*
  * cmb_buffer_create - Allocate memory for a buffer object.
@@ -228,8 +229,12 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
+    /* May be called from dispatcher, check */
     struct cmb_process *caller = cmb_process_current();
-    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
+    if (caller != NULL) {
+        cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+        caller->tiebreaker = CMI_PROCESS_TB_ARMED;
+    }
 
     const uint64_t init_claim = *amntp;
     uint64_t rem_claim = *amntp;
@@ -255,7 +260,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
             }
 
             if (caller != NULL) {
-                caller->tiebreaker = 0u;
+                caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
             }
 
             return CMB_PROCESS_SUCCESS;
@@ -275,7 +280,9 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
             cmb_resourceguard_signal(&(bp->rear_guard));
         }
 
-        /* Wait at the front door until some more becomes available  */
+        /* Wait at the front door until some more becomes available.
+         * Getting here if called from the dispatcher will not end well. */
+        cmb_assert_release(caller != NULL);
         cmb_assert_debug(rem_claim > 0u);
         cmb_logger_info(stdout, "Waiting for more, level now %" PRIu64,
                         bp->level);
@@ -283,6 +290,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
         const int64_t sig = cmb_resourceguard_wait(&(bp->front_guard),
                                                    buffer_has_content,
                                                    NULL);
+
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_info(stdout,"Returned successfully from wait");
         }
@@ -293,9 +301,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 
             cmb_assert_debug(bp->level <= bp->capacity);
             cmb_assert_debug(*amntp <= init_claim);
-            if (caller != NULL) {
-                caller->tiebreaker = 0u;
-            }
+            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
             return sig;
         }
@@ -316,7 +322,10 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
     struct cmb_process *caller = cmb_process_current();
-    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
+    if (caller != NULL) {
+        cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+        caller->tiebreaker = CMI_PROCESS_TB_ARMED;
+    }
 
     const uint64_t init_claim = *amntp;
     uint64_t rem_claim = *amntp;
@@ -341,7 +350,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
             }
 
             if (caller != NULL) {
-                caller->tiebreaker = 0u;
+                caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
             }
 
             return CMB_PROCESS_SUCCESS;
@@ -361,6 +370,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
         }
 
         /* Wait at the back door until some more becomes available  */
+        cmb_assert_release(caller != NULL);
         cmb_assert_debug(rem_claim > 0u);
         cmb_logger_info(stdout, "Waiting for space, level %" PRIu64, bp->level);
         cmb_resourceguard_signal(&(bp->front_guard));
@@ -377,9 +387,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
 
             cmb_assert_debug(bp->level <= bp->capacity);
             cmb_assert_debug(*amntp <= init_claim);
-            if (caller != NULL) {
-                caller->tiebreaker = 0u;
-            }
+            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
             return sig;
         }

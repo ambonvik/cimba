@@ -37,6 +37,7 @@
 
 #include "cmi_mempool.h"
 #include "cmi_memutils.h"
+#include "cmi_process.h"
 
 /*
  * struct queue_tag - A tag for the singly linked list that is a queue.
@@ -250,7 +251,10 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     struct cmb_process *caller = cmb_process_current();
-    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
+    if (caller != NULL) {
+        cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+        caller->tiebreaker = CMI_PROCESS_TB_ARMED;
+    }
 
     cmb_logger_info(stdout, "Gets an object from %s, length now %" PRIu64,
                     rbp->name, oqp->length);
@@ -279,13 +283,15 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
 
             cmb_resourceguard_signal(&(oqp->rear_guard));
             if (caller != NULL) {
-                caller->tiebreaker = 0u;
+                caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
             }
 
             return CMB_PROCESS_SUCCESS;
         }
 
-        /* Wait at the front door until some more becomes available  */
+        /* Wait at the front door until some more becomes available.
+         * Getting here if called by the dispatcher will not end well. */
+        cmb_assert_release(caller != NULL);
         cmb_assert_debug(oqp->length == 0u);
         cmb_logger_info(stdout, "Waiting for an object");
         const int64_t sig = cmb_resourceguard_wait(&(oqp->front_guard),
@@ -300,9 +306,7 @@ int64_t cmb_objectqueue_get(struct cmb_objectqueue *oqp, void **objectloc)
                             sig);
             *objectloc = NULL;
             cmb_assert_debug(oqp->length <= oqp->capacity);
-            if (caller != NULL) {
-                caller->tiebreaker = 0u;
-            }
+            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
             return sig;
         }
@@ -316,7 +320,10 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void *object)
     const struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)oqp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
     struct cmb_process *caller = cmb_process_current();
-    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
+    if (caller != NULL) {
+        cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+        caller->tiebreaker = CMI_PROCESS_TB_ARMED;
+    }
 
     cmb_logger_info(stdout, "Puts object %p into %s, length %" PRIu64,
                     object, rbp->name, oqp->length);
@@ -343,13 +350,14 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void *object)
             cmb_logger_info(stdout, "Success, put %p", object);
             cmb_resourceguard_signal(&(oqp->front_guard));
             if (caller != NULL) {
-                caller->tiebreaker = 0u;
+                caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
             }
 
             return CMB_PROCESS_SUCCESS;
         }
 
         /* Wait at the back door until some more becomes available  */
+        cmb_assert_release(caller != NULL);
         cmb_assert_debug(oqp->length == oqp->capacity);
         cmb_logger_info(stdout, "Waiting for space");
         const int64_t sig = cmb_resourceguard_wait(&(oqp->rear_guard),
@@ -363,9 +371,7 @@ int64_t cmb_objectqueue_put(struct cmb_objectqueue *oqp, void *object)
                             "Interrupted by signal %" PRIi64 ", could not put object %p into %s",
                             sig, object, rbp->name);
             cmb_assert_debug(oqp->length <= oqp->capacity);
-            if (caller != NULL) {
-                caller->tiebreaker = 0u;
-            }
+            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
             return sig;
         }

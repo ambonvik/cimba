@@ -106,17 +106,17 @@ int64_t cmb_condition_wait(struct cmb_condition *cp,
     cmb_assert_release(dmnd != NULL);
 
     struct cmb_process *caller = cmb_process_current();
-    cmb_assert_debug(caller->tiebreaker == 0u);
+    cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+    caller->tiebreaker = CMI_PROCESS_TB_ARMED;
 
     cmb_logger_info(stdout, "Waiting for condition %s",
                     ((struct cmi_resourcebase *)cp)->name);
     const int64_t sig =  cmb_resourceguard_wait(&(cp->guard),
                                           (cmb_resourceguard_demand_func *)dmnd,
                                           ctx);
-
     cmb_logger_info(stdout, "Condition %s returning signal %" PRIi64,
                     ((struct cmi_resourcebase *)cp)->name, sig);
-    caller->tiebreaker = 0u;
+    caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
     return sig;
 }

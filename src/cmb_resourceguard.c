@@ -145,8 +145,8 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
         hash_key = ++enqueue_seq;
     }
 
-    if (pp->tiebreaker == 0u) {
-        /* Not a looped put, get, or similar, store it */
+    if (pp->tiebreaker == CMI_PROCESS_TB_ARMED) {
+        /* Not a returning put, get, or similar, store initial hash key */
         pp->tiebreaker = hash_key;
     }
 

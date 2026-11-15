@@ -434,7 +434,8 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
 
     struct cmb_process *caller = cmb_process_current();
     cmb_assert_release(caller != NULL);
-    cmb_assert_debug(caller->tiebreaker == 0u);
+    cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+    caller->tiebreaker = CMI_PROCESS_TB_ARMED;
 
     /* Does the caller already hold some? */
     uint64_t initially_held = 0u;
@@ -476,7 +477,7 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
 
             /* In case someone else can use the leftovers */
             cmb_resourceguard_signal(&(rpp->guard));
-            caller->tiebreaker = 0u;
+            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
             return CMB_PROCESS_SUCCESS;
         }
@@ -512,9 +513,10 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
                 const struct cmi_holdable *hrp = (struct cmi_holdable *)rpp;
                 const bool found = cmi_process_remove_holdable(victim, hrp);
                 cmb_assert_debug(found == true);
+
                 /* It may be waiting for more, cancel that */
                 cmi_process_cancel_awaiteds(victim);
-                victim->tiebreaker = 0u;
+                caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
                 /* Schedule a wakeup for it, but do not switch context yet */
                 cmb_process_interrupt(victim, CMB_PROCESS_PREEMPTED, victim->priority);
@@ -547,7 +549,7 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
 
                     /* In case someone else can use the leftovers */
                     cmb_resourceguard_signal(&(rpp->guard));
-                    caller->tiebreaker = 0u;
+                    caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
                     return CMB_PROCESS_SUCCESS;
                 }
@@ -564,7 +566,7 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
         if (sig == CMB_PROCESS_PREEMPTED) {
             /* Got thrown out instead, unwind. */
             cmb_logger_info(stdout, "Preempted, returning empty-handed");
-            caller->tiebreaker = 0u;
+            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
             return sig;
         }
@@ -572,21 +574,14 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
             cmb_logger_info(stdout,
                             "Interrupted by signal %" PRId64 ", returning unchanged",
                             sig);
+            uint64_t putback;
             if (initially_held > 0u) {
                 /* Put back the difference. It had some, there should be a record */
-                const uint64_t surplus = reset_holder(hhp, caller, initially_held);
-                rpp->in_use -= surplus;
-                cmb_assert_debug(rpp->in_use <= rpp->capacity);
-                record_sample(rpp);
-
-                cmb_resourceguard_signal(&(rpp->guard));
+                putback = reset_holder(hhp, caller, initially_held);
             }
             else {
                 /* Had nothing, put back all. */
-                const uint64_t holds_now = cmb_resourcepool_held(rpp, caller);
-                rpp->in_use -= holds_now;
-                cmb_assert_debug(rpp->in_use <= rpp->capacity);
-                record_sample(rpp);
+                putback = cmb_resourcepool_held(rpp, caller);
 
                 /* There may be a record created during this call, delete it */
                 const struct cmi_holdable *hrp = (struct cmi_holdable *)rpp;
@@ -598,9 +593,13 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
                 }
             }
 
+            rpp->in_use -= putback;
             cmb_assert_debug(rpp->in_use <= rpp->capacity);
             cmb_assert_debug(sum_holder_items(hhp) == rpp->in_use);
-            caller->tiebreaker = 0u;
+            record_sample(rpp);
+
+            cmb_resourceguard_signal(&(rpp->guard));
+            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
             return sig;
         }

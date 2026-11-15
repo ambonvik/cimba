@@ -32,6 +32,7 @@
 #include "cmb_process.h"
 
 #include "cmi_memutils.h"
+#include "cmi_process.h"
 
 /* The initial heap size will be 2^INITIAL_QUEUE_SIZE */
 #define INITIAL_QUEUE_SIZE 3u
@@ -241,7 +242,10 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
     cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
 
     struct cmb_process *caller = cmb_process_current();
-    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
+    if (caller != NULL) {
+        cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+        caller->tiebreaker = CMI_PROCESS_TB_ARMED;
+    }
 
     cmb_logger_info(stdout, "Gets an object from %s, length now %" PRIu64,
                     ((struct cmi_resourcebase *)pqp)->name, pqp->queue.heap_count);
@@ -261,13 +265,14 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
             cmb_logger_info(stdout, "Success, got %p", *objectloc);
             cmb_resourceguard_signal(&(pqp->rear_guard));
             if (caller != NULL) {
-                caller->tiebreaker = 0u;
+                caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
             }
 
             return CMB_PROCESS_SUCCESS;
         }
 
         /* Wait at the front door until some more becomes available  */
+        cmb_assert_release(caller != NULL);
         cmb_assert_debug(pqp->queue.heap_count == 0u);
         cmb_logger_info(stdout, "Waiting for an object");
         const int64_t sig = cmb_resourceguard_wait(&(pqp->front_guard),
@@ -283,7 +288,7 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
             *objectloc = NULL;
             cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
             if (caller != NULL) {
-                caller->tiebreaker = 0u;
+                caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
             }
 
             return sig;
@@ -300,7 +305,10 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
     cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
 
     struct cmb_process *caller = cmb_process_current();
-    cmb_assert_debug((caller == NULL) || (caller->tiebreaker == 0u));
+    if (caller != NULL) {
+        cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+        caller->tiebreaker = CMI_PROCESS_TB_ARMED;
+    }
 
     cmb_logger_info(stdout, "Puts object %p priority %" PRIi64 " into %s, length %" PRIu64,
                     object, priority, ((struct cmi_resourcebase *)pqp)->name, pqp->queue.heap_count);
@@ -320,13 +328,14 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
             cmb_logger_info(stdout, "Success, put %p", object);
             cmb_resourceguard_signal(&(pqp->front_guard));
             if (caller != NULL) {
-                caller->tiebreaker = 0u;
+                caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
             }
 
             return CMB_PROCESS_SUCCESS;
         }
 
         /* Wait at the back door until some more becomes available  */
+        cmb_assert_release(caller != NULL);
         cmb_assert_debug(pqp->queue.heap_count == pqp->capacity);
         cmb_logger_info(stdout, "Waiting for space");
         const int64_t sig = cmb_resourceguard_wait(&(pqp->rear_guard),
@@ -340,9 +349,7 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
                             "Interrupted by signal %" PRIi64 ", could not put object %p into %s",
                             sig, object, ((struct cmi_resourcebase *)pqp)->name);
             cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
-            if (caller != NULL) {
-                caller->tiebreaker = 0u;
-            }
+            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
             return sig;
         }
