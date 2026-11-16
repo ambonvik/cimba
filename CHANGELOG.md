@@ -1,6 +1,8 @@
 ## Cimba change log
 
 Note: Version numbers are MAJOR.MINOR.PATCH per [Semantic Versioning](https://semver.org).
+The semantic versioning applies to the code only, not necessarily already-compiled
+binaries. There is no promise of binary (linker) compatibility between releases.
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
