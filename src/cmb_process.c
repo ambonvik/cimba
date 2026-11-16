@@ -182,6 +182,7 @@ extern void cmb_process_terminate(struct cmb_process *pp)
                 "Terminating %s while still awaiting something", pp->name);
             cmi_process_cancel_awaiteds(pp);
         }
+
         cmi_slist_terminate(&pp->awaits);
 
         if (!cmi_slist_is_empty(&pp->resources)) {
@@ -189,7 +190,18 @@ extern void cmb_process_terminate(struct cmb_process *pp)
                 "Terminating %s while still holding resources", pp->name);
             cmi_process_drop_resources(pp);
         }
+
         cmi_slist_terminate(&pp->resources);
+
+        /* Should not be the active part of any future events */
+        cmb_event_pattern_cancel(CMB_ANY_ACTION, pp, CMB_ANY_OBJECT);
+
+        /* Check and warn for user events that might dereference this later */
+        const uint64_t objcnt = cmb_event_pattern_count(CMB_ANY_ACTION, CMB_ANY_SUBJECT, pp);
+        if (objcnt > 0u) {
+            cmb_logger_warning(stdout,
+                "Terminating %s while future events scheduled with it as object", pp->name);
+        }
 
        /* Terminating normally, remove from register */
         cmi_memregistry_remove(&(pp->terminate));
@@ -222,10 +234,10 @@ void cmb_process_destroy(struct cmb_process *pp)
         cmi_resource_cancel_wakeups(pp);
         cmi_resourceguard_cancel_wakeups(pp);
         cmi_event_cancel_wakeups(pp);
-        cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
-        cmb_event_pattern_cancel(wakeup_event_process_finished, pp, CMB_ANY_OBJECT);
-        cmb_event_pattern_cancel(wakeup_event_process_stopped, pp, CMB_ANY_OBJECT);
-        cmb_event_pattern_cancel(resume_event, pp, CMB_ANY_OBJECT);
+
+        /* Just in case something somewhere accidentally scheduled something
+         * after cmb_process_terminate(pp) was called */
+        cmb_event_pattern_cancel(CMB_ANY_ACTION, pp, CMB_ANY_OBJECT);
 
         /* Destroying normally, remove from register */
         cmi_memregistry_remove(&(pp->destroy));
@@ -615,7 +627,6 @@ void cmb_process_timers_clear(struct cmb_process *pp)
         }
    }
 }
-
 
 static void wakeup_process_waiter(struct cmb_process *pp,
                                   const uint64_t key,

@@ -215,11 +215,14 @@ extern void cmb_process_initialize_wssz(struct cmb_process *pp,
  * @brief Deallocate memory for the underlying coroutine stack but not for the
  * process object itself. In particular, the process exit value is still there.
  *
+ * Any scheduled events with this process as subject will be canceled, including
+ * any user-defined events, since a terminated process cannot take any action.
+ *
  * The process must be finished (exited, stopped, or returned) before calling.
  * Do not confuse this object destructor function with `cmb_process_stop` (or
  * its alias `cmb_process_kill`) forcing a running process to exit non-
- * voluntarily. Call one of those first if nuking a running process from the
- * outside.
+ * voluntarily. Call one of those first if you are nuking a running process from
+ * the outside.
  *
  * @memberof cmb_process
  * @param pp Pointer to an already created process.
