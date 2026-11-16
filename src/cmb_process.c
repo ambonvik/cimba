@@ -299,9 +299,15 @@ void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
             struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
             /* Find our entry by its enqueue key, not by process address */
             const uint64_t key = awp->await_key;
-            /* Keep the other ranking key unchanged */
-            const double etime = cmi_hashheap_drank(hp, key);
-            cmi_hashheap_reprioritize(hp, key, etime, pri);
+            /* Check for the implausible case that it just scheduled a wakeup */
+            if (cmi_hashheap_is_enqueued(hp, key)) {
+                /* Keep the other ranking key unchanged */
+                const double etime = cmi_hashheap_drank(hp, key);
+                cmi_hashheap_reprioritize(hp, key, etime, pri);
+            }
+            else {
+                cmb_logger_info(stdout, "Already left waitlist");
+            }
         }
 
         ahead = ahead->next;
@@ -618,7 +624,8 @@ static void wakeup_process_waiter(struct cmb_process *pp,
     cmb_assert_debug(pp != NULL);
 
     if ((key == 0u) || (process_await_key(pp) != key)) {
-        cmb_logger_info(stdout, "Stale process wakeup for %s, discarded",
+        cmb_logger_info(stdout,
+                        "Stale process wakeup for %s, discarded",
                         pp->name);
         return;
     }
