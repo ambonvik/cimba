@@ -169,7 +169,7 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
      * this exact entry later given only the process and the guard. */
     struct cmi_process_awaitable *awp = cmi_process_add_awaitable(pp,
                                         CMI_PROCESS_AWAITABLE_RESOURCE, rgp);
-    awp->guard_key = key;
+    awp->await_key = key;
     cmb_logger_info(stdout, "Waits for %s", rgp->guarded_resource->name);
 
     /* Yield to the dispatcher, collect the return signal value when resumed */

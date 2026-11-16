@@ -114,6 +114,8 @@ enum cmb_process_state {
  * @brief The process struct, inheriting all properties from `cmi_coroutine` by
  * composition, adding the name, priority, and lists of resources it may be
  * holding and things it may be waiting for.
+ *
+ * TODO: doubly linked list of waiters for uniqueness and efficiency.
 */
 struct cmb_process {
     struct cmi_coroutine core;              /**< The parent coroutine */

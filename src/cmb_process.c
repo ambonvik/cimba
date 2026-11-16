@@ -43,6 +43,9 @@ CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags
 /* Thread local counter for assigning process handles. */
 static CMB_THREAD_LOCAL uint64_t handle_counter = 0u;
 
+/* Thread local counter for processes waiting for other processes */
+static CMB_THREAD_LOCAL uint64_t wait_seq = 0u;
+
 /* Default stack size, unless told otherwise */
 static size_t default_stacksize = CMI_COROUTINE_DEFAULT_STACKSIZE;
 
@@ -64,7 +67,8 @@ extern bool cmi_event_remove_waiter(uint64_t key, const struct cmb_process *pp);
 static void cmi_process_drop_resources(struct cmb_process *pp);
 static void wake_process_waiters(struct cmi_slist_node *waiters, int64_t signal);
 static void wakeup_event_interrupt(void *vp, void *arg);
-static void wakeup_event_process(void *vp, void *arg);
+static void wakeup_event_process_finished(void *vp, void *arg);
+static void wakeup_event_process_stopped(void *vp, void *arg);
 static void resume_event(void *vp, void *arg);
 
 static_assert((int)CMB_PROCESS_UNINITIALIZED == (int)CMI_COROUTINE_UNINITIALIZED);
@@ -219,7 +223,8 @@ void cmb_process_destroy(struct cmb_process *pp)
         cmi_resourceguard_cancel_wakeups(pp);
         cmi_event_cancel_wakeups(pp);
         cmb_event_pattern_cancel(wakeup_event_interrupt, pp, CMB_ANY_OBJECT);
-        cmb_event_pattern_cancel(wakeup_event_process, pp, CMB_ANY_OBJECT);
+        cmb_event_pattern_cancel(wakeup_event_process_finished, pp, CMB_ANY_OBJECT);
+        cmb_event_pattern_cancel(wakeup_event_process_stopped, pp, CMB_ANY_OBJECT);
         cmb_event_pattern_cancel(resume_event, pp, CMB_ANY_OBJECT);
 
         /* Destroying normally, remove from register */
@@ -289,11 +294,11 @@ void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
         else if (awp->type == CMI_PROCESS_AWAITABLE_RESOURCE) {
             /* Waiting for some resource, reshuffle resource guard queue */
             cmb_assert_debug(awp->ptr != NULL);
-            cmb_assert_debug(awp->guard_key != UINT64_C(0));
+            cmb_assert_debug(awp->await_key != UINT64_C(0));
             struct cmb_resourceguard *rgp = awp->ptr;
             struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
             /* Find our entry by its enqueue key, not by process address */
-            const uint64_t key = awp->guard_key;
+            const uint64_t key = awp->await_key;
             /* Keep the other ranking key unchanged */
             const double etime = cmi_hashheap_drank(hp, key);
             cmi_hashheap_reprioritize(hp, key, etime, pri);
@@ -367,7 +372,7 @@ struct cmi_process_awaitable *cmi_process_add_awaitable(struct  cmb_process *pp,
     struct cmi_process_awaitable *awp = cmi_mempool_alloc(&cmi_process_awaitabletags);
     awp->type = type;
     awp->ptr = awaitable;
-    awp->guard_key = 0u;
+    awp->await_key = 0u;
 
     struct cmi_slist_node *head = &(pp->awaits);
     cmi_slist_push(head, &(awp->listhead));
@@ -376,7 +381,7 @@ struct cmi_process_awaitable *cmi_process_add_awaitable(struct  cmb_process *pp,
 }
 
 /*
- * cmi_process_guard_key - Recover the enqueue key under which pp is waiting in
+ * cmi_process_guard_key - Recover the await key under which pp is waiting in
  * the given guard. Returns 0 if pp has no RESOURCE awaitable for that guard.
  */
 uint64_t cmi_process_guard_key(const struct cmb_process *pp, const void *guard)
@@ -390,8 +395,32 @@ uint64_t cmi_process_guard_key(const struct cmb_process *pp, const void *guard)
                                                   struct cmi_process_awaitable,
                                                   listhead);
         if ((awp->type == CMI_PROCESS_AWAITABLE_RESOURCE) && (awp->ptr == guard)) {
-            return awp->guard_key;
+            return awp->await_key;
         }
+
+        ahead = ahead->next;
+    }
+
+    return 0u;
+}
+
+/*
+ * process_await_key - Await key of the wait_process call pp is parked in,
+ *                     or 0 if none.
+ */
+static uint64_t process_await_key(const struct cmb_process *pp)
+{
+    cmb_assert_debug(pp != NULL);
+
+    const struct cmi_slist_node *ahead = &(pp->awaits);
+    while (ahead->next != NULL) {
+        const struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
+                                                  struct cmi_process_awaitable,
+                                                  listhead);
+        if (awp->type == CMI_PROCESS_AWAITABLE_PROCESS) {
+            return awp->await_key;
+        }
+
         ahead = ahead->next;
     }
 
@@ -442,6 +471,7 @@ bool cmi_process_remove_awaitable(struct cmb_process *pp,
             && ((awaitable == NULL) || (awp->ptr == awaitable))) {
             (void)cmi_slist_pop(ahead);
             cmi_mempool_free(&cmi_process_awaitabletags, awp);
+
             return true;
         }
         ahead = ahead->next;
@@ -580,38 +610,42 @@ void cmb_process_timers_clear(struct cmb_process *pp)
    }
 }
 
-/*
- * wakeup_event_process - The event that resumes the process after being scheduled by
- *           cmb_process_wait_process
- */
-static void wakeup_event_process(void *vp, void *arg)
+
+static void wakeup_process_waiter(struct cmb_process *pp,
+                                  const uint64_t key,
+                                  const int64_t signal)
 {
-    cmb_assert_debug(vp != NULL);
-    struct cmb_process *pp = (struct cmb_process *)vp;
+    cmb_assert_debug(pp != NULL);
 
-    cmb_logger_info(stdout, "Wakes %s signal %" PRIi64, pp->name, (int64_t)arg);
-    cmb_assert_debug(!cmi_slist_is_empty(&(pp->awaits)));
-
-    /* Cannot be waiting for more than one process */
-    const bool found = cmi_process_remove_awaitable(pp,
-                                                    CMI_PROCESS_AWAITABLE_PROCESS,
-                                                    NULL);
-    if (!found) {
-        /* Process is no longer waiting for this, a stale wakeup event */
-        cmb_logger_info(stdout,
-                        "Process %s scheduled wakeup event is stale", pp->name);
+    if ((key == 0u) || (process_await_key(pp) != key)) {
+        cmb_logger_info(stdout, "Stale process wakeup for %s, discarded",
+                        pp->name);
         return;
     }
 
     struct cmi_coroutine *cp = (struct cmi_coroutine *)pp;
     if (cp->status == CMI_COROUTINE_RUNNING) {
-        (void)cmi_coroutine_resume(cp, arg);
+        (void)cmi_coroutine_resume(cp, (void *)signal);
     }
     else {
-         cmb_logger_warning(stdout,
+        cmb_logger_warning(stdout,
                            "Process wait wakeup call found process %s dead",
                            cmb_process_name(pp));
     }
+}
+
+static void wakeup_event_process_finished(void *vp, void *arg)
+{
+    cmb_assert_debug(vp != NULL);
+
+    wakeup_process_waiter(vp, (uint64_t)arg, CMB_PROCESS_SUCCESS);
+}
+
+static void wakeup_event_process_stopped(void *vp, void *arg)
+{
+    cmb_assert_debug(vp != NULL);
+
+    wakeup_process_waiter(vp, (uint64_t)arg, CMB_PROCESS_STOPPED);
 }
 
 static void add_waiter_tag(struct cmi_slist_node *head, struct cmb_process *waiter)
@@ -645,7 +679,10 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
     }
     else {
         /* Wait for it to finish, register it both here and there */
-        cmi_process_add_awaitable(me, CMI_PROCESS_AWAITABLE_PROCESS, awaited);
+        struct cmi_process_awaitable *awp = cmi_process_add_awaitable(me,
+                                                CMI_PROCESS_AWAITABLE_PROCESS,
+                                                awaited);
+        awp->await_key = ++wait_seq;
         add_waiter_tag(&(awaited->waiters), me);
 
         /* Yield to the dispatcher and collect the return signal value */
@@ -710,8 +747,13 @@ static void wake_process_waiters(struct cmi_slist_node *waiters,
         cmb_assert_debug(pp != NULL);
         const double time = cmb_time();
         const int64_t priority = cmb_process_priority(pp);
-        (void)cmb_event_schedule(wakeup_event_process, pp, (void *)signal,
-                                 time, priority);
+        const uint64_t key = process_await_key(pp);
+        cmb_assert_debug(key != 0u);
+        cmb_event_func *wup = (signal == CMB_PROCESS_SUCCESS) ?
+                                &wakeup_event_process_finished :
+                                &wakeup_event_process_stopped;
+
+        cmb_event_schedule(wup, pp, (void *)key, time, priority);
         cmi_mempool_free(&cmi_process_waitertags, pw);
     }
 
@@ -811,7 +853,7 @@ bool cmi_process_awaiting_key(const struct cmb_process *pp, const uint64_t key)
                                                   struct cmi_process_awaitable,
                                                   listhead);
         if ((awp->type == CMI_PROCESS_AWAITABLE_RESOURCE)
-            && (awp->guard_key == key)) {
+            && (awp->await_key == key)) {
             return true;
         }
 
@@ -887,13 +929,13 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_RESOURCE) {
             cmb_assert_debug(pa->ptr != NULL);
-            cmb_assert_debug(pa->guard_key != UINT64_C(0));
+            cmb_assert_debug(pa->await_key != UINT64_C(0));
             struct cmb_resourceguard *rgp = pa->ptr;
             /* pa is already popped off pp->awaits, so remove by the key the
              * awaitable carries rather than looking it up via the process. */
-            const bool found = cmi_resourceguard_remove_key(rgp, pa->guard_key);
+            const bool found = cmi_resourceguard_remove_key(rgp, pa->await_key);
             if (!found) {
-                /* Special handling: Awaitable guard_key non-zero, but no matching key found in
+                /* Special handling: Awaitable await_key non-zero, but no matching key found in
                  * resource guard, may indicate that there is a wakeup event already scheduled.
                  * Assumed intentional, so hand the resource opportunity to the next waiter.
                  * The pending grant event is now stale and will be discarded by
