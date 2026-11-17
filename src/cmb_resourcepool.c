@@ -566,19 +566,17 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
         /* Wait at the front door until some more becomes available  */
         cmb_assert_debug(rem_claim > 0u);
         const int64_t sig = cmb_resourceguard_wait(&(rpp->guard), is_available, NULL);
-        if (sig == CMB_PROCESS_PREEMPTED) {
-            /* Got thrown out instead, unwind. */
-            cmb_logger_info(stdout, "Preempted, returning empty-handed");
-            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
-
-            return sig;
-        }
-        else if (sig != CMB_PROCESS_SUCCESS) {
+        if (sig != CMB_PROCESS_SUCCESS) {
             cmb_logger_info(stdout,
-                            "Interrupted by signal %" PRId64 ", returning unchanged",
+                            "Interrupted by signal %" PRId64 ", rolling back this request",
                             sig);
-            uint64_t putback;
-            if (initially_held > 0u) {
+            uint64_t putback = 0u;
+            if (cmi_hash_find_index(hhp, key) == 0u) {
+                /* No record left: preempted from this very pool, which took
+                 * everything we held here. Nothing to put back. */
+                cmb_logger_info(stdout, "Lost all holdings in %s", rbp->name);
+            }
+            else if (initially_held > 0u) {
                 /* Put back the difference. It had some, there should be a record */
                 putback = reset_holder(hhp, caller, initially_held);
             }
@@ -599,7 +597,9 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
             rpp->in_use -= putback;
             cmb_assert_debug(rpp->in_use <= rpp->capacity);
             cmb_assert_debug(sum_holder_items(hhp) == rpp->in_use);
-            record_sample(rpp);
+            if (putback > 0u) {
+                record_sample(rpp);
+            }
 
             cmb_resourceguard_signal(&(rpp->guard));
             caller->tiebreaker = CMI_PROCESS_TB_CLEARED;

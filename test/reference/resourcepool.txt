@@ -11,7 +11,7 @@ Execute simulation...
 Report statistics...
 Pool resource utilization for Cheese:
 Count   	Mean    	StdDev  	Variance	Skewness	Excess kurtosis
-     160	   19.56	   1.862	   3.466	  -5.522	   33.69
+     119	   19.56	   1.862	   3.466	  -5.522	   33.69
 --------------------------------------------------------------------------------
 ( -Infinity,      0.000)   |
 [     0.000,      1.000)   |
