@@ -246,12 +246,11 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
 
     cmb_logger_info(stdout, "Acquiring resource %s", rbp->name);
 
-    /* On the first attempt we may grab only if no one is already queued, so a
-     * new caller never jumps ahead of waiting processes. After we have waited
-     * and been resumed we are the dequeued front of the queue, so we may grab
-     * even with others still waiting behind us. */
-    /* TODO: Already granted in-flight resource allocations */
-    bool may_grab = cmi_hashheap_is_empty((struct cmi_hashheap *)&(rp->guard));
+    /* On the first attempt we may grab only if no one is already queued and no
+     * grant is "in flight" between the resource guard scheduling the wakeup
+     * event and the process resuming to secure the resource. */
+    const struct cmi_hashheap *hp = (struct cmi_hashheap *)&(rp->guard);
+    bool may_grab = cmi_hashheap_is_empty(hp) && (rp->guard.in_flight == 0u);
 
     for (;;) {
         if ((rp->holder == NULL) && may_grab) {
@@ -342,14 +341,18 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
 
     struct cmb_process *victim = rp->holder;
     cmb_assert_release(victim != cmb_process_current());
-    if (victim == NULL) {
+
+    /* Any resource grant that is already in flight (wakeup event scheduled by
+     * the resource guard for current time) is past our reach, we do not know
+     * its priority and can not preempt it once it is gone from the guard */
+    if ((victim == NULL) && (rp->guard.in_flight == 0u)) {
         /* Easy, grab it */
         cmb_logger_info(stdout, "Preempt found %s free", hrp->base.name);
         resource_grab(rp, pp);
         record_sample(rp);
         ret = CMB_PROCESS_SUCCESS;
     }
-    else if (myprio > victim->priority) {
+    else if ((victim != NULL) && (myprio > victim->priority)) {
         /* Kick it out. No record_sample needed, the resource remains occupied. */
         cmi_process_remove_holdable(victim, hrp);
         cmi_process_cancel_awaiteds(victim);

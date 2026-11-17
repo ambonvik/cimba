@@ -452,14 +452,18 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
     cmb_logger_info(stdout, "Has %" PRIu64 ", requests %" PRIu64 " from %s",
                     initially_held, req_amount, rbp->name);
 
-    /*
-     * Greedy approach, first grab what is available, then preempt from lower
+   /* First attempt: take nothing while others are queued or a grant is in
+     * flight. Once resumed by our own grant we are the front, and may grab. */
+    bool may_grab = cmi_hashheap_is_empty((struct cmi_hashheap *)&(rpp->guard))
+                    && (rpp->guard.in_flight == 0u);
+
+    /* Greedy approach, first grab what is available, then preempt from lower
      * priority processes (if allowed), finally wait in line for the remaining
-     * amount if any.
-     */
+     * amount if any.    */
     uint64_t rem_claim = req_amount;
+
     while (true) {
-        const uint64_t available = rpp->capacity - rpp->in_use;
+        const uint64_t available = may_grab ? (rpp->capacity - rpp->in_use) : 0u;
 
         /* First, take anything that is available already */
         if (available >= rem_claim) {
@@ -516,7 +520,6 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
 
                 /* It may be waiting for more, cancel that */
                 cmi_process_cancel_awaiteds(victim);
-                caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
                 /* Schedule a wakeup for it, but do not switch context yet */
                 cmb_process_interrupt(victim, CMB_PROCESS_PREEMPTED, victim->priority);
@@ -603,6 +606,9 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
 
             return sig;
         }
+
+        /* Looping around, gloves off */
+        may_grab = true;
     }
 }
 

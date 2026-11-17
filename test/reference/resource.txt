@@ -4,8 +4,8 @@
 Using seed: 0x34f05c64d7ad598f
 Mutual exclusion under a tied-timestamp wakeup
     0.0000	Holder	excl_worker (63):  Holder holds the resource at t=0.0
-    10.000	Sniper	excl_worker (63):  Sniper holds the resource at t=10.0
-    15.000	Waiter	excl_worker (63):  Waiter holds the resource at t=15.0
+    10.000	Waiter	excl_worker (63):  Waiter holds the resource at t=10.0
+    15.000	Sniper	excl_worker (63):  Sniper holds the resource at t=15.0
 Create a resource
 Create three processes to compete for the resource
 Create a fourth process trying to preempt the resource

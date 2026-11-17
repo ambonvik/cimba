@@ -390,6 +390,7 @@ struct cmi_process_awaitable *cmi_process_add_awaitable(struct  cmb_process *pp,
 
     struct cmi_process_awaitable *awp = cmi_mempool_alloc(&cmi_process_awaitabletags);
     awp->type = type;
+    awp->granted = false;
     awp->ptr = awaitable;
     awp->await_key = 0u;
 

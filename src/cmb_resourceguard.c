@@ -197,13 +197,11 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
             /* Still queued: an ordinary interrupt/timeout while waiting. All good. */
             (void)cmi_hashheap_cancel((struct cmi_hashheap *)rgp, key);
         }
-        else if (was_granted && (sig != CMB_PROCESS_CANCELLED)) {
-            /* Special case: We were already dequeued (resource to be granted) but are
-             * now resumed by some other signal (e.g. a timeout at the same timestamp)
-             * before the scheduled wakeup event fired and the process actually resumed.
-             * Assumed intentional, so hand the resource opportunity to the next waiter.
-             * Our own grant event is now stale and will be discarded by
-             * wakeup_event_resource_granted's key check. */
+        else if (was_granted) {
+            /* Granted but resumed by something else before the grant fired.
+             * Pass the opportunity on to the next waiter. Our own grant event
+             * is now stale and will be discarded by the key check in
+             * wakeup_event_resource_granted. */
             (void)cmb_resourceguard_signal(rgp);
         }
     }
