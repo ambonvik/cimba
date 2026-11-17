@@ -48,6 +48,7 @@
 struct cmb_resourceguard {
     struct cmi_hashheap priority_queue;         /**< The base hashheap class */
     struct cmi_resourcebase *guarded_resource;  /**< The resource it guards */
+    uint64_t in_flight;                         /**< Indicates scheduled wakeup(s) for current time */
     struct cmi_slist_node observers;            /**< Any other resource guards observing this one */
 };
 

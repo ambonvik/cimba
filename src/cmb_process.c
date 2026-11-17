@@ -58,6 +58,7 @@ extern void cmi_resource_cancel_wakeups(const struct cmb_process *pp);
 /* Friendly functions in cmb_resourceguard.c, not part of the public interface */
 extern void cmi_resourceguard_cancel_wakeups(struct cmb_process *pp);
 extern bool cmi_resourceguard_remove_key(struct cmb_resourceguard *rgp, uint64_t key);
+extern bool cmi_resourceguard_abandon(struct cmb_resourceguard *rgp, uint64_t key, bool granted);
 
 /* Friendly functions in cmi_event.c, not part of the public interface */
 extern void cmi_event_add_waiter(uint64_t key, struct cmb_process *pp);
@@ -399,6 +400,32 @@ struct cmi_process_awaitable *cmi_process_add_awaitable(struct  cmb_process *pp,
 }
 
 /*
+ * cmi_process_guard_awaitable - Return a pointer to the awaitable under which
+ * pp is waiting in the given guard, NULL if pp is not waiting at that guard.
+ */
+struct cmi_process_awaitable *cmi_process_guard_awaitable(
+                                                const struct cmb_process *pp,
+                                                const void *guard)
+{
+    cmb_assert_debug(pp != NULL);
+    cmb_assert_debug(guard != NULL);
+
+    const struct cmi_slist_node *ahead = &(pp->awaits);
+    while (ahead->next != NULL) {
+        struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
+                                                  struct cmi_process_awaitable,
+                                                  listhead);
+        if ((awp->type == CMI_PROCESS_AWAITABLE_RESOURCE) && (awp->ptr == guard)) {
+            return awp;
+        }
+
+        ahead = ahead->next;
+    }
+
+    return NULL;
+}
+
+/*
  * cmi_process_guard_key - Recover the await key under which pp is waiting in
  * the given guard. Returns 0 if pp has no RESOURCE awaitable for that guard.
  */
@@ -407,19 +434,13 @@ uint64_t cmi_process_guard_key(const struct cmb_process *pp, const void *guard)
     cmb_assert_debug(pp != NULL);
     cmb_assert_debug(guard != NULL);
 
-    const struct cmi_slist_node *ahead = &(pp->awaits);
-    while (ahead->next != NULL) {
-        const struct cmi_process_awaitable *awp = cmi_container_of(ahead->next,
-                                                  struct cmi_process_awaitable,
-                                                  listhead);
-        if ((awp->type == CMI_PROCESS_AWAITABLE_RESOURCE) && (awp->ptr == guard)) {
-            return awp->await_key;
-        }
-
-        ahead = ahead->next;
+    uint64_t ret = 0u;
+    const struct cmi_process_awaitable *awp = cmi_process_guard_awaitable(pp, guard);
+    if (awp != NULL) {
+        ret = awp->await_key;
     }
 
-    return 0u;
+    return ret;
 }
 
 /*
@@ -949,18 +970,7 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
             cmb_assert_debug(pa->ptr != NULL);
             cmb_assert_debug(pa->await_key != UINT64_C(0));
             struct cmb_resourceguard *rgp = pa->ptr;
-            /* pa is already popped off pp->awaits, so remove by the key the
-             * awaitable carries rather than looking it up via the process. */
-            const bool found = cmi_resourceguard_remove_key(rgp, pa->await_key);
-            if (!found) {
-                /* Special handling: Awaitable await_key non-zero, but no matching key found in
-                 * resource guard, may indicate that there is a wakeup event already scheduled.
-                 * Assumed intentional, so hand the resource opportunity to the next waiter.
-                 * The pending grant event is now stale and will be discarded by
-                 * wakeup_event_resource_granted's key check with no damage done. */
-                (void)cmb_resourceguard_signal(rgp);
-
-            }
+            (void)cmi_resourceguard_abandon(rgp, pa->await_key, pa->granted);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_PROCESS) {
             /* Waits for a process to end, remove ourselves from the waiter list */

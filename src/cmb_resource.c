@@ -250,6 +250,7 @@ int64_t cmb_resource_acquire(struct cmb_resource *rp)
      * new caller never jumps ahead of waiting processes. After we have waited
      * and been resumed we are the dequeued front of the queue, so we may grab
      * even with others still waiting behind us. */
+    /* TODO: Already granted in-flight resource allocations */
     bool may_grab = cmi_hashheap_is_empty((struct cmi_hashheap *)&(rp->guard));
 
     for (;;) {

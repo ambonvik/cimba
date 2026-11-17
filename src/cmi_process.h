@@ -38,10 +38,15 @@ enum cmi_process_awaitable_type {
  * cmi_process_awaitable - Things a process can be waiting for. The union of
  * pointer and handle are used for mutually exclusive cases (object in a queue
  * vs in a hashheap), while the await_key is used to identify the unique waiting
- * instance (for correct cancellation and detection of stale wakeup events).
+ * instance (for correct cancellation and detection of stale wakeup events). The
+ * granted flag signals that the request is granted by the resource guard and
+ * the corresponding wakeup event is scheduled for the current time, preventing
+ * any other request also arriving at the current time from grabbing the
+ * awaitable thing in the meantime.
  */
 struct cmi_process_awaitable {
     enum cmi_process_awaitable_type type;
+    bool granted;
     union { void *ptr; uint64_t handle; };
     uint64_t await_key;
     struct cmi_slist_node listhead;
@@ -49,9 +54,10 @@ struct cmi_process_awaitable {
 
 extern CMB_THREAD_LOCAL struct cmi_mempool cmi_process_awaitabletags;
 
-extern struct cmi_process_awaitable *cmi_process_add_awaitable(struct cmb_process *pp,
-                                                enum cmi_process_awaitable_type type,
-                                                void *awaitable);
+extern struct cmi_process_awaitable *cmi_process_add_awaitable(
+                                            struct cmb_process *pp,
+                                            enum cmi_process_awaitable_type type,
+                                            void *awaitable);
 
 extern bool cmi_process_has_awaitable(const struct cmb_process *pp,
                                       enum cmi_process_awaitable_type type,
@@ -71,6 +77,12 @@ extern bool cmi_process_awaiting_key(const struct cmb_process *pp, uint64_t key)
  * pointed to by `guard`, or 0 if `pp` is not waiting in that guard. */
 extern uint64_t cmi_process_guard_key(const struct cmb_process *pp,
                                       const void *guard);
+
+/* Return a pointer to the awaitable without removing it, NULL if `pp` is not
+ * waiting in that guard. */
+extern struct cmi_process_awaitable *cmi_process_guard_awaitable(
+                                                const struct cmb_process *pp,
+                                                const void *guard);
 
 /*
  * cmi_process_holdable - Things that can be held by a process.

@@ -104,6 +104,7 @@ void cmb_resourceguard_initialize(struct cmb_resourceguard *rgp,
                             guard_queue_check);
 
     rgp->guarded_resource = rbp;
+    rgp->in_flight = 0u;
     cmi_slist_initialize(&(rgp->observers));
 }
 
@@ -175,15 +176,28 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
     /* Yield to the dispatcher, collect the return signal value when resumed */
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
 
-    /* Back here, possibly much later. Clearly not waiting for this anymore. */
-    (void)cmi_process_remove_awaitable(pp, CMI_PROCESS_AWAITABLE_RESOURCE, rgp);
+    /* Back here, possibly much later. Clearly not waiting for this anymore.
+     * Check if it was canceled in the meantime. */
+    bool was_granted = false;
+    const struct cmi_process_awaitable *mine = cmi_process_guard_awaitable(pp, rgp);
+    if (mine != NULL) {
+        cmb_assert_debug(mine == awp);
+        was_granted = mine->granted;
+        const bool found = cmi_process_remove_awaitable(pp,
+                                        CMI_PROCESS_AWAITABLE_RESOURCE, rgp);
+        cmb_assert_debug(found);
+        if (was_granted) {
+            rgp->in_flight--;
+        }
+    }
+
     /* Make sure we do not accidentally cancel the wrong event. */
     if (sig != CMB_PROCESS_SUCCESS) {
         if (cmi_hashheap_is_enqueued((struct cmi_hashheap *)rgp, key)) {
-            /* Still queued: an ordinary interrupt/timeout while waiting. ALl good. */
+            /* Still queued: an ordinary interrupt/timeout while waiting. All good. */
             (void)cmi_hashheap_cancel((struct cmi_hashheap *)rgp, key);
         }
-        else if (sig != CMB_PROCESS_CANCELLED) {
+        else if (was_granted && (sig != CMB_PROCESS_CANCELLED)) {
             /* Special case: We were already dequeued (resource to be granted) but are
              * now resumed by some other signal (e.g. a timeout at the same timestamp)
              * before the scheduled wakeup event fired and the process actually resumed.
@@ -290,6 +304,10 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
         if ((*demand)(rbp, pp, ctx)) {
             /* Yes, pull the process off the queue and schedule wakeup event */
             cmb_logger_info(stdout, "Scheduling wakeup event for %s", pp->name);
+            struct cmi_process_awaitable *awp = cmi_process_guard_awaitable(pp, rgp);
+            awp->granted = true;
+            rgp->in_flight++;
+
             (void)cmi_hashheap_dequeue(hp);
             /* Make sure we have the right wait target */
             const uint64_t key = cmi_process_guard_key(pp, rgp);
@@ -421,4 +439,28 @@ bool cmb_resourceguard_unregister(struct cmb_resourceguard *rgp,
 
     return false;
 }
+
+/*
+ * cmi_resourceguard_abandon - remove the entry if queued and, if granted,
+ * decrement in_flight counter and signal the next waiter
+ */
+bool cmi_resourceguard_abandon(struct cmb_resourceguard *rgp,
+                               const uint64_t await_key,
+                               const bool granted)
+{
+    const bool found = cmi_resourceguard_remove_key(rgp, await_key);
+    if (!found && granted) {
+        /* Special handling: Awaitable await_key non-zero, but no matching key found in
+         * resource guard, may indicate that there is a wakeup event already scheduled.
+         * Assumed intentional, so hand the resource opportunity to the next waiter.
+         * The pending grant event is now stale and will be discarded by
+         * wakeup_event_resource_granted's key check with no damage done. */
+        cmb_assert_debug(rgp->in_flight > 0u);
+        rgp->in_flight--;
+        (void)cmb_resourceguard_signal(rgp);
+    }
+
+    return found;
+}
+
 
