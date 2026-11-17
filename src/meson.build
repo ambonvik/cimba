@@ -80,7 +80,7 @@ cimba_lib = library('cimba',
                     dependencies : [project_deps, codegen_deps],
                     install : true,
                     version : '.'.join(ver_core),
-                    soversion : '1',
+                    soversion : '.'.join(ver_core),
                     native : true,
                     c_args : cimba_lto_args,
                     override_options : cimba_lto
