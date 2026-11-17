@@ -125,11 +125,12 @@ def normalise_for_comparison(lines: list[str]) -> list[str]:
 def run_binary(test: StochasticTest) -> tuple[int, bytes, bytes]:
     env = os.environ.copy()
 
-    # Check for .dll rather than sys.platform, since MSYS2 Python
-    # reports sys.platform as 'msys' not 'win32'
-    dll_path = BUILD_DIR.parent / "src" / "libcimba-1.dll"
-    if dll_path.exists():
-        env["PATH"] = str(dll_path.parent) + os.pathsep + env.get("PATH", "")
+    # Check for a .dll rather than sys.platform, since MSYS2 Python
+    # reports sys.platform as 'msys' not 'win32'. The DLL name carries the
+    # soversion (libcimba-<version>.dll), so match any version.
+    src_dir = BUILD_DIR.parent / "src"
+    if any(src_dir.glob("libcimba*.dll")):
+        env["PATH"] = str(src_dir) + os.pathsep + env.get("PATH", "")
 
     try:
         result = subprocess.run(
