@@ -1,5 +1,4 @@
 PROJECT_NAME    = "cimba"
-PROJECT_NUMBER  = "3.0.0"
 INPUT           = ../include
 EXCLUDE         = ../build
 EXCLUDE_PATTERNS = */build/*
