@@ -58,7 +58,7 @@ extern void cmi_resource_cancel_wakeups(const struct cmb_process *pp);
 /* Friendly functions in cmb_resourceguard.c, not part of the public interface */
 extern void cmi_resourceguard_cancel_wakeups(struct cmb_process *pp);
 extern bool cmi_resourceguard_remove_key(struct cmb_resourceguard *rgp, uint64_t key);
-extern bool cmi_resourceguard_abandon(struct cmb_resourceguard *rgp, uint64_t key, bool granted);
+extern bool cmi_resourceguard_drop(struct cmb_resourceguard *rgp, uint64_t key, bool granted);
 
 /* Friendly functions in cmi_event.c, not part of the public interface */
 extern void cmi_event_add_waiter(uint64_t key, struct cmb_process *pp);
@@ -359,6 +359,7 @@ size_t cmb_process_default_stacksize(void)
 void cmb_process_default_stacksize_set(const size_t stacksize)
 {
     cmb_assert_release(stacksize > 0);
+
     __atomic_store_n(&default_stacksize, stacksize, __ATOMIC_RELAXED);
 }
 
@@ -534,11 +535,16 @@ int64_t cmb_process_hold(const double dur)
     /* Yield to the dispatcher and collect the return signal value when back */
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
 
-    /* Back here again, possibly much later. */
-    if (sig != CMB_PROCESS_SUCCESS) {
-        /* Whatever woke us up was not the scheduled wakeup call, cancel it */
+    /* Back here again, possibly much later. If our own timer is still armed,
+     * it did not fire: something else woke us. */
+    if (cmi_process_has_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle)) {
         cmb_logger_info(stdout, "Woken up by signal %" PRIi64, sig);
-        cmb_process_timer_cancel(pp, handle);
+        (void)cmb_process_timer_cancel(pp, handle);
+        if (sig == CMB_PROCESS_SUCCESS) {
+            /* Model error, something sent a confusing signal */
+            cmb_logger_error(stdout,
+                "Still waiting for hold, received unknown CMB_PROCESS_SUCCESS signal");
+        }
     }
 
     return sig;
@@ -622,7 +628,7 @@ bool cmb_process_timer_cancel(struct cmb_process *pp, const uint64_t handle)
  */
 void cmb_process_timers_clear(struct cmb_process *pp)
 {
-    cmb_assert_debug(pp != NULL);
+    cmb_assert_release(pp != NULL);
 
     struct cmi_slist_node *awaits = &(pp->awaits);
     while (!cmi_slist_is_empty(awaits)) {
@@ -731,7 +737,14 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
         /* Possibly much later, no longer waiting on that process.
          * Drop our tag from its waiter list (if not already done) and
          * from our PROCESS awaitable list. */
-        (void)cmi_process_remove_waiter(awaited, me);
+        const bool still_waiting = cmi_process_remove_waiter(awaited, me);
+        if (still_waiting && (sig == CMB_PROCESS_SUCCESS)) {
+            /* Model error, something sent a confusing signal */
+            cmb_logger_error(stdout,
+                "Still waiting for process %s, received unknown CMB_PROCESS_SUCCESS signal",
+                awaited->name);
+        }
+
         (void)cmi_process_remove_awaitable(me, CMI_PROCESS_AWAITABLE_PROCESS,
                                            (void *)awaited);
 
@@ -760,17 +773,23 @@ int64_t cmb_process_wait_event(const uint64_t ev_handle)
     cmi_process_add_awaitable(me, CMI_PROCESS_AWAITABLE_EVENT, (void *)ev_handle);
 
     /* Yield to the dispatcher and collect the return signal value */
-    const int64_t ret = (int64_t)cmi_coroutine_yield(NULL);
+    const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
 
-    /* Back here, possibly much later.
-     * Evidently, we are no longer waiting for this event.
-     * Deregister from the event's waiter list (if not done already)
+    /* Back here, possibly much later. Evidently, we are no longer waiting for
+     * this event. Deregister from the event's waiter list (if not done already)
      * and drop our EVENT awaitable. */
-    (void)cmi_event_remove_waiter(ev_handle, me);
+    const bool still_waiting = cmi_event_remove_waiter(ev_handle, me);
+    if (still_waiting && (sig == CMB_PROCESS_SUCCESS)) {
+        /* Model error, something sent a confusing signal */
+        cmb_logger_error(stdout,
+            "Still waiting for event %" PRIu64 ", received unknown CMB_PROCESS_SUCCESS signal",
+            ev_handle);
+    }
+
     (void)cmi_process_remove_awaitable(me, CMI_PROCESS_AWAITABLE_EVENT,
                                        (void *)ev_handle);
 
-    return ret;
+    return sig;
 }
 
 static void wake_process_waiters(struct cmi_slist_node *waiters,
@@ -971,7 +990,7 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
             cmb_assert_debug(pa->ptr != NULL);
             cmb_assert_debug(pa->await_key != UINT64_C(0));
             struct cmb_resourceguard *rgp = pa->ptr;
-            (void)cmi_resourceguard_abandon(rgp, pa->await_key, pa->granted);
+            (void)cmi_resourceguard_drop(rgp, pa->await_key, pa->granted);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_PROCESS) {
             /* Waits for a process to end, remove ourselves from the waiter list */
@@ -1007,8 +1026,9 @@ void cmb_process_interrupt(struct cmb_process *pp,
                            const int64_t sig,
                            const int64_t pri)
 {
-    cmb_assert_debug(pp != NULL);
-    cmb_assert_debug(sig != 0);
+    cmb_assert_release(pp != NULL);
+    cmb_assert_release(sig != CMB_PROCESS_SUCCESS);
+
     cmb_logger_info(stdout, "Interrupt %s signal %" PRIi64 " priority %" PRIi64,
                     pp->name, sig, pri);
 
@@ -1109,7 +1129,7 @@ static void resume_event(void *vp, void *arg)
  */
 void cmb_process_resume(struct cmb_process *pp, const int64_t sig)
 {
-    cmb_assert_debug(pp != NULL);
+    cmb_assert_release(pp != NULL);
 
     cmb_logger_info(stdout, "Schedules resume event for %s signal %" PRIi64,
                     pp->name, sig);

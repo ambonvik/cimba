@@ -191,13 +191,21 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
         }
     }
 
-    /* Make sure we do not accidentally cancel the wrong event. */
-    if (sig != CMB_PROCESS_SUCCESS) {
-        if (cmi_hashheap_is_enqueued((struct cmi_hashheap *)rgp, key)) {
-            /* Still queued: an ordinary interrupt/timeout while waiting. All good. */
-            (void)cmi_hashheap_cancel((struct cmi_hashheap *)rgp, key);
+    /* Still queued means our own wakeup has not been issued:
+     * something else resumed us. Leave the queue. */
+    if (cmi_hashheap_is_enqueued((struct cmi_hashheap *)rgp, key)) {
+        if (sig == CMB_PROCESS_SUCCESS) {
+            /* Model error, something sent a confusing signal */
+            cmb_logger_error(stdout,
+                "Still waiting for %s, received unknown CMB_PROCESS_SUCCESS signal",
+                rgp->guarded_resource->name);
         }
-        else if (was_granted) {
+
+        /* Was a normal interrupt of some kind */
+        (void)cmi_hashheap_cancel((struct cmi_hashheap *)rgp, key);
+    }
+    else if (sig != CMB_PROCESS_SUCCESS) {
+        if (was_granted) {
             /* Granted but resumed by something else before the grant fired.
              * Pass the opportunity on to the next waiter. Our own grant event
              * is now stale and will be discarded by the key check in
@@ -439,10 +447,10 @@ bool cmb_resourceguard_unregister(struct cmb_resourceguard *rgp,
 }
 
 /*
- * cmi_resourceguard_abandon - remove the entry if queued and, if granted,
+ * cmi_resourceguard_drop - remove the entry if queued and, if granted,
  * decrement in_flight counter and signal the next waiter
  */
-bool cmi_resourceguard_abandon(struct cmb_resourceguard *rgp,
+bool cmi_resourceguard_drop(struct cmb_resourceguard *rgp,
                                const uint64_t await_key,
                                const bool granted)
 {
