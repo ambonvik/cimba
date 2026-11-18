@@ -80,7 +80,7 @@ void cmb_dataset_terminate(struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release((dsp->cookie == CMI_INITIALIZED)
-                    || cmi_memregistry_is_demolishing);
+                    || cmi_memregistry_is_abandoning);
 
     if (dsp->cookie == CMI_INITIALIZED) {
         dsp->cookie = CMI_UNINITIALIZED;
@@ -93,7 +93,7 @@ void cmb_dataset_terminate(struct cmb_dataset *dsp)
         }
     }
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
        cmi_memregistry_remove(&(dsp->terminate));
     }
 
@@ -106,7 +106,7 @@ void cmb_dataset_destroy(struct cmb_dataset *dsp)
     /* Call cmb_dataset_terminate first, please */
     cmb_assert_debug(dsp->cookie == CMI_UNINITIALIZED);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         cmi_memregistry_remove(&(dsp->destroy));
     }
 

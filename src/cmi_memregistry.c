@@ -21,7 +21,7 @@
 
 #include "cmi_memregistry.h"
 
-CMB_THREAD_LOCAL bool cmi_memregistry_is_demolishing = false;
+CMB_THREAD_LOCAL bool cmi_memregistry_is_abandoning = false;
 CMB_THREAD_LOCAL struct cmi_dlist_node cmi_memregistry = { NULL, NULL };
 
 void cmi_memregistry_add(struct cmi_memregistry_item *item)
@@ -32,7 +32,7 @@ void cmi_memregistry_add(struct cmi_memregistry_item *item)
     /* Not already in registry, we presume. Could cause infinite cycle. */
     cmb_assert_debug(item->node.next == item->node.prev);
     /* Should not add any entries while we are busy tearing down. */
-    cmb_assert_debug(cmi_memregistry_is_demolishing == false);
+    cmb_assert_debug(cmi_memregistry_is_abandoning == false);
     /* Consistency check, e.g., against a node that died with its stack frame. */
     cmb_assert_debug((cmi_memregistry.next == NULL)
                      || (cmi_memregistry.next->prev == &cmi_memregistry));
@@ -51,7 +51,7 @@ void cmi_memregistry_add(struct cmi_memregistry_item *item)
 void cmi_memregistry_remove(struct cmi_memregistry_item *item)
 {
     cmb_assert_debug(item != NULL);
-    cmb_assert_debug(cmi_memregistry_is_demolishing == false);
+    cmb_assert_debug(cmi_memregistry_is_abandoning == false);
 
     cmi_dlist_unlink(&item->node);
     cmb_assert_debug(item->node.next == item->node.prev);
@@ -69,11 +69,11 @@ void cmi_memregistry_remove(struct cmi_memregistry_item *item)
  */
 void cmi_memregistry_cleanup(void)
 {
-    cmb_assert_debug(cmi_memregistry_is_demolishing == false);
+    cmb_assert_debug(cmi_memregistry_is_abandoning == false);
 
     if (cmi_memregistry.next != NULL) {
         /* It has been initialized, process any entries */
-        cmi_memregistry_is_demolishing = true;
+        cmi_memregistry_is_abandoning = true;
         while (!cmi_dlist_is_empty(&cmi_memregistry)) {
             struct cmi_dlist_node *node = cmi_dlist_remove_first(&cmi_memregistry);
             cmb_assert_debug(node != NULL);
@@ -85,6 +85,6 @@ void cmi_memregistry_cleanup(void)
             (*item->teardown)(item->object);
         }
 
-        cmi_memregistry_is_demolishing = false;
+        cmi_memregistry_is_abandoning = false;
     }
 }

@@ -213,10 +213,10 @@ void cmb_resourcepool_terminate(struct cmb_resourcepool *rpp)
     cmb_assert_release(rpp != NULL);
     const struct cmi_resourcebase *rbp = &(rpp->core.base);
     cmb_assert_release((rbp->cookie == CMI_INITIALIZED)
-                    || cmi_memregistry_is_demolishing);
+                    || cmi_memregistry_is_abandoning);
 
     if (rbp->cookie == CMI_INITIALIZED) {
-        if (!cmi_memregistry_is_demolishing) {
+        if (!cmi_memregistry_is_abandoning) {
             /* Remove our tag from every remaining holder, if any */
             const struct cmi_hashheap *hhp = &(rpp->holders);
             for (uint64_t ui = 1u; ui <= hhp->heap_count; ui++) {
@@ -248,7 +248,7 @@ void cmb_resourcepool_destroy(struct cmb_resourcepool *rpp)
     /* Please call cmb_resourcepool_terminate first */
     cmb_assert_release(rbp->cookie == CMI_UNINITIALIZED);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         /* Destroying normally, remove from register */
         cmi_memregistry_remove(&(rpp->destroy));
     }

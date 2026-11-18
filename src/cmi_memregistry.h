@@ -54,7 +54,7 @@ struct cmi_memregistry_item {
 extern CMB_THREAD_LOCAL struct cmi_dlist_node cmi_memregistry;
 
 /* Flag to identify if a teardown is in progress or not. */
-extern CMB_THREAD_LOCAL bool cmi_memregistry_is_demolishing;
+extern CMB_THREAD_LOCAL bool cmi_memregistry_is_abandoning;
 
 /*
  * Add an object to the registry, pushing it from the head of the list.

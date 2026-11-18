@@ -111,7 +111,7 @@ void cmb_resource_terminate(struct cmb_resource *rp)
     cmb_assert_release(rp != NULL);
     const struct cmi_resourcebase *rbp = &(rp->core.base);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         cmb_assert_release(cmi_hashheap_count(&(rp->guard.priority_queue)) == 0u);
         cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
         if (rp->holder != NULL) {
@@ -142,7 +142,7 @@ void cmb_resource_destroy(struct cmb_resource *rp)
     /* Call cmb_resource_terminate first, please */
     cmb_assert_release(rbp->cookie == CMI_UNINITIALIZED);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         /* Destroying normally, remove from register */
         cmi_memregistry_remove(&(rp->destroy));
     }

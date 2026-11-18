@@ -259,7 +259,7 @@ void cmi_logger_error(FILE *fp,
                       ...)
 {
     /* We should never end back here during an ongoing teardown */
-    logger_assert_always(!cmi_memregistry_is_demolishing);
+    logger_assert_always(!cmi_memregistry_is_abandoning);
 
     if ((CMB_LOGGER_ERROR & logger_mask()) != 0) {
         fflush(NULL);

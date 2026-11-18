@@ -109,7 +109,7 @@ void cmb_objectqueue_terminate(struct cmb_objectqueue *oqp)
     cmb_assert_release(oqp != NULL);
     struct cmi_resourcebase *rbp = &(oqp->base);
     cmb_assert_release((rbp->cookie == CMI_INITIALIZED)
-                    || cmi_memregistry_is_demolishing);
+                    || cmi_memregistry_is_abandoning);
 
     if (rbp->cookie == CMI_INITIALIZED) {
         while (oqp->queue_head != NULL) {
@@ -140,7 +140,7 @@ void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp)
     /* Call cmb_objectqueue_terminate first, please */
     cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         /* Destroying normally, remove from register */
         cmi_memregistry_remove(&(oqp->destroy));
     }

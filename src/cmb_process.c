@@ -166,10 +166,10 @@ extern void cmb_process_terminate(struct cmb_process *pp)
     cmb_assert_release(pp != NULL);
     cmb_assert_release(((cmb_process_status(pp) == CMB_PROCESS_INITIALIZED)
                        || (cmb_process_status(pp) == CMB_PROCESS_FINISHED))
-                       || cmi_memregistry_is_demolishing);
+                       || cmi_memregistry_is_abandoning);
     cmb_assert_release(pp != cmb_process_current());
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         /* Should not have any other processes waiting for this one at this point.
          * This should never happen, since any waiting processes are signaled when
          * the process finishes - which according to the assert above already must
@@ -225,11 +225,11 @@ void cmb_process_destroy(struct cmb_process *pp)
 {
     cmb_assert_release(pp != NULL);
     cmb_assert_release((cmb_process_status(pp) != CMB_PROCESS_RUNNING)
-                        || cmi_memregistry_is_demolishing);
+                        || cmi_memregistry_is_abandoning);
     cmb_assert_release(pp != cmb_process_current());
     cmb_assert_release(((struct cmi_coroutine *)pp)->stack == NULL);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         /* pp is about to become un-dereferenceable, and the
          * staleness checks in the wakeup handlers dereference it. */
         cmi_resource_cancel_wakeups(pp);

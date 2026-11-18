@@ -93,7 +93,7 @@ void cmb_buffer_terminate(struct cmb_buffer *bp)
     cmb_assert_release(bp != NULL);
     const struct cmi_resourcebase *rbp = &(bp->base);
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED
-                    || cmi_memregistry_is_demolishing);
+                    || cmi_memregistry_is_abandoning);
 
     if (rbp->cookie == CMI_INITIALIZED) {
         bp->is_recording = false;
@@ -118,7 +118,7 @@ void cmb_buffer_destroy(struct cmb_buffer *bp)
     /* Call cmb_buffer_terminate first, please */
     cmb_assert_release(rbp->cookie == CMI_UNINITIALIZED);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         /* Destroying normally, remove from register */
         cmi_memregistry_remove(&(bp->destroy));
     }

@@ -82,7 +82,7 @@ void cmb_timeseries_terminate(struct cmb_timeseries *tsp)
     cmb_assert_release(tsp != NULL);
     struct cmb_dataset *dsp = &(tsp->ds);
     cmb_assert_release((dsp->cookie == CMI_INITIALIZED)
-                    || cmi_memregistry_is_demolishing);
+                    || cmi_memregistry_is_abandoning);
 
     if (dsp->cookie == CMI_INITIALIZED) {
         if (tsp->ta != NULL) {
@@ -109,7 +109,7 @@ void cmb_timeseries_destroy(struct cmb_timeseries *tsp)
     /* Call cmb_timeseries_terminate first, please */
     cmb_assert_release(dsp->cookie == CMI_UNINITIALIZED);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         /* Destroying normally, remove from parent class register */
         cmi_memregistry_remove(&(dsp->destroy));
     }

@@ -1358,7 +1358,7 @@ void cmb_random_alias_destroy(struct cmb_random_alias *ap)
     cmb_assert_debug(ap->uprob != NULL);
     cmb_assert_debug(ap->alias != NULL);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         cmi_memregistry_remove(&(ap->destroy));
     }
 

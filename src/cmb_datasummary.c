@@ -80,14 +80,14 @@ void cmb_datasummary_terminate(struct cmb_datasummary *dsp)
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release((dsp->cookie == CMI_INITIALIZED)
-                    || cmi_memregistry_is_demolishing);
+                    || cmi_memregistry_is_abandoning);
 
     if (dsp->cookie == CMI_INITIALIZED) {
         dsp->cookie = CMI_UNINITIALIZED;
         dsp->count = 0u;
     }
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         cmi_memregistry_remove(&(dsp->terminate));
     }
 
@@ -100,7 +100,7 @@ void cmb_datasummary_destroy(struct cmb_datasummary *dsp)
     /* Call cmb_datasummary_terminate first, please */
     cmb_assert_debug(dsp->cookie == CMI_UNINITIALIZED);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         /* Destroying normally, remove from register */
         cmi_memregistry_remove(&(dsp->destroy));
     }

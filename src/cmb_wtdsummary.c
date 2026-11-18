@@ -83,7 +83,7 @@ void cmb_wtdsummary_terminate(struct cmb_wtdsummary *wsp)
     cmb_assert_release(wsp != NULL);
     struct cmb_datasummary *dsp = &(wsp->ds);
     cmb_assert_release((dsp->cookie == CMI_INITIALIZED)
-                    || cmi_memregistry_is_demolishing);
+                    || cmi_memregistry_is_abandoning);
 
     if (dsp->cookie == CMI_INITIALIZED) {
         /* Terminating the parent class will also clear the memregistry item */
@@ -100,7 +100,7 @@ void cmb_wtdsummary_destroy(struct cmb_wtdsummary *wsp)
     /* Call cmb_datasummary_terminate first, please */
     cmb_assert_release(dsp->cookie == CMI_UNINITIALIZED);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         /* Destroying normally, remove from parent class register */
         cmi_memregistry_remove(&(dsp->destroy));
     }

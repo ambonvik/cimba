@@ -110,7 +110,7 @@ void cmb_priorityqueue_terminate(struct cmb_priorityqueue *pqp)
     cmb_assert_release(pqp != NULL);
     const struct cmi_resourcebase *rbp = &(pqp->base);
     cmb_assert_release((rbp->cookie == CMI_INITIALIZED)
-                    || cmi_memregistry_is_demolishing);
+                    || cmi_memregistry_is_abandoning);
 
     if (rbp->cookie == CMI_INITIALIZED) {
         pqp->is_recording = false;
@@ -132,7 +132,7 @@ void cmb_priorityqueue_destroy(struct cmb_priorityqueue *pqp)
     /* Call cmb_buffer_terminate first, please */
     cmb_assert_release(pqp->base.cookie == CMI_UNINITIALIZED);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
        /* Destroying normally, remove from register */
         cmi_memregistry_remove(&(pqp->destroy));
     }

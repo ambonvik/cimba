@@ -52,11 +52,11 @@ void cmi_resourcebase_terminate(struct cmi_resourcebase *rbp)
 {
     cmb_assert_release(rbp != NULL);
     cmb_assert_release((rbp->cookie == CMI_INITIALIZED)
-                    || cmi_memregistry_is_demolishing);
+                    || cmi_memregistry_is_abandoning);
 
     if (rbp->cookie == CMI_INITIALIZED) {
         rbp->cookie = CMI_UNINITIALIZED;
-        if (!cmi_memregistry_is_demolishing) {
+        if (!cmi_memregistry_is_abandoning) {
             /* Terminating normally, remove from register */
             cmi_memregistry_remove(&(rbp->terminate));
         }

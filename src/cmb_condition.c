@@ -71,7 +71,7 @@ void cmb_condition_terminate(struct cmb_condition *cp)
     cmb_assert_release(cp != NULL);
     struct cmi_resourcebase *rbp = &(cp->base);
     cmb_assert_release((rbp->cookie == CMI_INITIALIZED)
-                    || cmi_memregistry_is_demolishing);
+                    || cmi_memregistry_is_abandoning);
 
     if (rbp->cookie == CMI_INITIALIZED) {
         cmb_resourceguard_terminate(&(cp->guard));
@@ -90,7 +90,7 @@ void cmb_condition_destroy(struct cmb_condition *cp)
     /* Call cmb_condition_terminate first, please */
     cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
 
-    if (!cmi_memregistry_is_demolishing) {
+    if (!cmi_memregistry_is_abandoning) {
         /* Destroying normally, remove from register */
         cmi_memregistry_remove(&(cp->destroy));
     }
