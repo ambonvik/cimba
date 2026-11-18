@@ -115,7 +115,10 @@ void cmb_resource_terminate(struct cmb_resource *rp)
         cmb_assert_release(cmi_hashheap_count(&(rp->guard.priority_queue)) == 0u);
         cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
         if (rp->holder != NULL) {
-            resource_drop_holder(&(rp->core), rp->holder);
+            /* Remove from holder's list of held resources */
+            const bool found = cmi_process_remove_holdable(rp->holder,
+                                                    (struct cmi_holdable *)rp);
+            cmb_assert_debug(found);
         }
     }
 

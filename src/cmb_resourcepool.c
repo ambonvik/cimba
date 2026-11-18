@@ -216,6 +216,17 @@ void cmb_resourcepool_terminate(struct cmb_resourcepool *rpp)
                     || cmi_memregistry_is_demolishing);
 
     if (rbp->cookie == CMI_INITIALIZED) {
+        if (!cmi_memregistry_is_demolishing) {
+            /* Remove our tag from every remaining holder, if any */
+            const struct cmi_hashheap *hhp = &(rpp->holders);
+            for (uint64_t ui = 1u; ui <= hhp->heap_count; ui++) {
+                const struct pool_item *pi = (struct pool_item *)(hhp->heap[ui].item);
+                const bool found = cmi_process_remove_holdable(pi->holder,
+                                                    (struct cmi_holdable *)rpp);
+                cmb_assert_debug(found);
+            }
+        }
+
         cmb_timeseries_terminate(&(rpp->history));
         cmi_hashheap_terminate(&(rpp->holders));
         cmb_resourceguard_terminate(&(rpp->guard));
