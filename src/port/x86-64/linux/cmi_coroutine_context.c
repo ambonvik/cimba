@@ -19,14 +19,16 @@
 
 /* Make sure we get pthread_getattr_np and avoid Clang-Tidy complaints */
 #define _GNU_SOURCE // NOLINT(bugprone-reserved-identifier)
+#include <errno.h>
 #include <pthread.h>
-
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/mman.h>
 #include <xmmintrin.h>
 
 #include "cmb_assert.h"
+#include "cmb_logger.h"
+
 #include "cmi_coroutine.h"
 #include "cmi_memutils.h"
 #include "cmi_sanitizer.h"
@@ -241,6 +243,13 @@ void cmi_coroutine_context_init(struct cmi_coroutine *cp)
  * hence managing a pool of recycled stacks of various sizes, assuming that
  * the application will only use a few different stack sizes. (Most likely, just
  * one size, all stacks the same size.)
+ *
+ * Also note that Linux systems have a limit to how many stacks can co-exist
+ * in an OS process. In most newer distros, it is 1048576, but in older and some
+ * current ones, it can be 65530. If OoM'ing at mprotect below consider
+ * increasing that limit by the terminal command
+ *      sudo sysctl -w vm.max_map_count=1048576
+ * (or running fewer Cimba worker processes in parallel).
  */
 unsigned char *cmi_coroutine_stack_alloc(const size_t size_req, unsigned char **base_p, unsigned char **limit_p)
 {
@@ -273,7 +282,9 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size_req, unsigned char **
         cmb_assert_always(stack_raw != NULL);
         /* Protect the guard page */
         const int r = mprotect(stack_raw, pagesz, PROT_NONE);
-        cmb_assert_always(r == 0);
+        /* If this assert trips, you have probably reached the OS stack limit,
+         * see comment above for how to fix. */
+        cmb_assert_always(r != 0);
     }
 
     /* Stack grows downwards, the stack base is at the top */
