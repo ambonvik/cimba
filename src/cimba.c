@@ -64,7 +64,7 @@ pthread_once_t cmg_atexit_armed = PTHREAD_ONCE_INIT;
 CMB_THREAD_LOCAL void *cmi_thread_context = NULL;
 
 /* Index of the current thread, if any */
-CMB_THREAD_LOCAL uint64_t cmi_thread_id = UINT64_C(0);
+CMB_THREAD_LOCAL uint64_t cmi_thread_id = 0u;
 
 /* For recovering from trial-ending cmb_logger_error calls */
 CMB_THREAD_LOCAL bool cmi_recovery_armed = false;
@@ -83,6 +83,7 @@ static CMB_THREAD_LOCAL intptr_t recovery_buf[5];
 extern uintptr_t cmi_coroutine_recovery_prepare(void *stack_marker);
 extern void cmi_coroutine_recovery_finalize(void *stack_marker);
 
+extern void cmi_condition_thread_cleanup(void);
 extern void cmi_coroutine_thread_cleanup(void);
 extern void cmi_event_thread_cleanup(void);
 extern void cmi_hashheap_thread_cleanup(void);
@@ -113,6 +114,7 @@ static void thread_pthread_cleanup(void *arg)
     cmb_unused(arg);
 
     /* The sequence is important here, mempools last */
+    cmi_condition_thread_cleanup();
     cmi_hashheap_thread_cleanup();
     cmi_event_thread_cleanup();
     cmi_coroutine_thread_cleanup();
@@ -129,6 +131,7 @@ static void thread_pthread_cleanup(void *arg)
 static void thread_main_cleanup(void)
 {
     if (cmi_coroutine_current() == cmi_coroutine_main()) {
+        cmi_condition_thread_cleanup();
         cmi_hashheap_thread_cleanup();
         cmi_event_thread_cleanup();
         cmi_coroutine_thread_cleanup();

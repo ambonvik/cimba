@@ -42,7 +42,7 @@ static_assert(sizeof(double) == sizeof(uint64_t));
 
 /* Temporary index buffer for pattern matches, static thread local for efficiency */
 static CMB_THREAD_LOCAL uint64_t *match_buf = NULL;
-static CMB_THREAD_LOCAL uint64_t match_buf_size = UINT64_C(0);
+static CMB_THREAD_LOCAL uint64_t match_buf_size = 0u;
 
 /*
  * cmi_hashheap_create - Allocate memory for a new hashheap struct.
@@ -937,6 +937,6 @@ void cmi_hashheap_thread_cleanup(void)
     if (match_buf != NULL) {
         cmi_free(match_buf);
         match_buf = NULL;
-        match_buf_size = UINT64_C(0);
+        match_buf_size = 0u;
     }
 }

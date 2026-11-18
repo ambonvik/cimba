@@ -186,7 +186,7 @@ uint64_t cmb_timeseries_finalize(struct cmb_timeseries *tsp, const double t)
     const struct cmb_dataset *dsp = (struct cmb_dataset *)tsp;
     const uint64_t n = dsp->count;
 
-    uint64_t r = UINT64_C(0);
+    uint64_t r = 0u;
     if (dsp->count == 0u) {
         cmb_logger_warning(stdout, "Finalizing empty time series, nothing added");
     }

@@ -26,6 +26,12 @@
 #include "cmi_memutils.h"
 #include "cmi_process.h"
 
+/* Temporary index buffer for signaling, static thread local for efficiency */
+static CMB_THREAD_LOCAL uint64_t *signal_buf = NULL;
+static CMB_THREAD_LOCAL uint64_t signal_buf_size = 0u;
+static CMB_THREAD_LOCAL const struct cmi_hashheap *signal_buf_hp = NULL;
+
+
 struct cmb_condition *cmb_condition_create(void)
 {
     struct cmb_condition *cp = cmi_malloc(sizeof *cp);
@@ -145,6 +151,24 @@ static void wakeup_event_condition(void *vp, void *arg)
 }
 
 /*
+ * Comparison function to sort array of heap indices in FIFO order
+ * Used with standard library qsort(), so the args are pointers into the
+ * signal_buf array of heap indices.
+ */
+static int sigcmp(const void *a, const void *b) {
+    const uint64_t ia = *(const uint64_t *)a;
+    const uint64_t ib = *(const uint64_t *)b;
+    if (ia == ib) {
+        return 0;
+    }
+
+    const struct cmi_heap_tag *htpa = &(signal_buf_hp->heap[ia]);
+    const struct cmi_heap_tag *htpb = &(signal_buf_hp->heap[ib]);
+
+    return (*(signal_buf_hp->heap_compare))(htpa, htpb) ? -1 : 1;
+}
+
+/*
  * Two-pass approach to avoid mutate-while-iterate bugs: First iterate over the
  * hashheap, note the handles for any that evaluate to true, schedule
  * reactivation event, then remove those from the hashheap.
@@ -164,9 +188,8 @@ uint64_t cmb_condition_signal(struct cmb_condition *cp)
     cmb_assert_release(cp != NULL);
 
     cmb_logger_info(stdout, "Signalling condition %s",
-        ((struct cmi_resourcebase *)cp)->name);
+                    ((struct cmi_resourcebase *)cp)->name);
 
-    uint64_t cnt = 0u;
     struct cmi_hashheap *hp = (struct cmi_hashheap *)&(cp->guard);
     if ((hp->heap == NULL) || (hp->heap_count == 0u)) {
         cmb_logger_info(stdout, "None waiting for %s",
@@ -174,12 +197,15 @@ uint64_t cmb_condition_signal(struct cmb_condition *cp)
         return 0u;
     }
 
-    /* Allocate space enough to reactivate everything in the heap */
-    uint64_t *tmp = cmi_malloc(hp->heap_count * sizeof(*tmp));
+    /* Make sure the buffer is large enough to reactivate everything in the heap */
+    if (hp->heap_count > signal_buf_size) {
+        signal_buf = cmi_realloc(signal_buf, hp->heap_count * sizeof(uint64_t));
+        signal_buf_size = hp->heap_count;
+    }
 
-    /* First pass, recording the satisfied demand predicates */
-    for (uint64_t ui = 1; ui <= hp->heap_count; ui++) {
-        /* Decode the hashheap item */
+    /* Record the satisfied demand predicates */
+    uint64_t cnt = 0u;
+    for (uint64_t ui = 1u; ui <= hp->heap_count; ui++) {
         struct cmi_heap_tag *htp = &(hp->heap[ui]);
         void **item = htp->item;
         struct cmb_process *pp = item[0];
@@ -187,23 +213,39 @@ uint64_t cmb_condition_signal(struct cmb_condition *cp)
         const void *ctx = item[2];
 
         if ((*demand)(cp, pp, ctx)) {
-            /* Satisfied, note it on the list, schedule wakeup event */
+            /* Satisfied, note it on the list */
             cmb_logger_info(stdout, "Condition %s satisfied for process %s",
                             ((struct cmi_resourcebase *)cp)->name, pp->name);
-            tmp[cnt++] = htp->hash_key;
-            const double time = cmb_time();
-            const int64_t priority = cmb_process_priority(pp);
-            (void)cmb_event_schedule(wakeup_event_condition, pp,
-                                     (void *)htp->hash_key, time, priority);
+            signal_buf[cnt++] = ui;
         }
     }
 
-    /* Second pass, remove the satisfied waiters from the hashheap */
+    /* Sort the satisfied customers in correct queue order */
+    signal_buf_hp = hp;
+    qsort(signal_buf, cnt, sizeof(uint64_t), sigcmp);
+    signal_buf_hp = NULL;
+
+    /* Schedule wakeup events in queue order */
     for (uint64_t ui = 0u; ui < cnt; ui++) {
-        cmi_hashheap_remove(hp, tmp[ui]);
+        const uint64_t inx = signal_buf[ui];
+        struct cmi_heap_tag *htp = &(hp->heap[inx]);
+        void **item = htp->item;
+        struct cmb_process *pp = item[0];
+
+        const uint64_t key = htp->hash_key;
+        const double time = cmb_time();
+        const int64_t priority = cmb_process_priority(pp);
+        (void)cmb_event_schedule(wakeup_event_condition, pp,
+                                 (void *)key, time, priority);
+        /* Store the hash key for our next pass */
+        signal_buf[ui] = key;
     }
 
-    cmi_free(tmp);
+    /* Remove the satisfied waiters from the hashheap */
+    for (uint64_t ui = 0u; ui < cnt; ui++) {
+        cmi_hashheap_remove(hp, signal_buf[ui]);
+    }
+
     return cnt;
 }
 
@@ -229,4 +271,17 @@ bool cmb_condition_remove(struct cmb_condition *cp,
                     pp->name, cp->base.name);
 
     return cmb_resourceguard_remove(&(cp->guard), pp);
+}
+
+/*
+ * cmi_condition_thread_cleanup - Function to deallocate any allocated memory
+ * in the thread local signal buffer. Call when exiting a pthread.
+ */
+void cmi_condition_thread_cleanup(void)
+{
+    if (signal_buf != NULL) {
+        cmi_free(signal_buf);
+        signal_buf = NULL;
+        signal_buf_size = 0u;
+    }
 }

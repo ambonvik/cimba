@@ -317,7 +317,7 @@ bool cmb_resourceguard_signal(struct cmb_resourceguard *rgp)
             (void)cmi_hashheap_dequeue(hp);
             /* Make sure we have the right wait target */
             const uint64_t key = cmi_process_guard_key(pp, rgp);
-            cmb_assert_debug(key != UINT64_C(0));
+            cmb_assert_debug(key != 0u);
             const double time = cmb_time();
             const int64_t priority = cmb_process_priority(pp);
             (void)cmb_event_schedule(wakeup_event_resource_granted, pp,

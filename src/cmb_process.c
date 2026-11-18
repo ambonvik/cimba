@@ -301,13 +301,13 @@ void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
                                                    listhead);
         if (awp->type == CMI_PROCESS_AWAITABLE_TIME) {
             /* Either in a hold() or a scheduled timer, reshuffle event queue */
-            cmb_assert_debug(awp->handle != UINT64_C(0));
+            cmb_assert_debug(awp->handle != 0u);
             cmb_event_reprioritize(awp->handle, pri);
         }
         else if (awp->type == CMI_PROCESS_AWAITABLE_RESOURCE) {
             /* Waiting for some resource, reshuffle resource guard queue */
             cmb_assert_debug(awp->ptr != NULL);
-            cmb_assert_debug(awp->await_key != UINT64_C(0));
+            cmb_assert_debug(awp->await_key != 0u);
             struct cmb_resourceguard *rgp = awp->ptr;
             struct cmi_hashheap *hp = (struct cmi_hashheap *)rgp;
             /* Find our entry by its enqueue key, not by process address */
@@ -644,7 +644,7 @@ void cmb_process_timers_clear(struct cmb_process *pp)
             cmi_mempool_free(&cmi_process_awaitabletags, pa);
 
             /* Cancel the corresponding wakeup event */
-            cmb_assert_debug(hndl != UINT64_C(0));
+            cmb_assert_debug(hndl != 0u);
             cmb_logger_info(stdout, "Cancels timeout event %" PRIu64, hndl);
             const bool found = cmb_event_cancel(hndl);
             cmb_assert_debug(found);
@@ -757,7 +757,7 @@ int64_t cmb_process_wait_process(struct cmb_process *awaited)
  */
 int64_t cmb_process_wait_event(const uint64_t ev_handle)
 {
-    cmb_assert_release(ev_handle != UINT64_C(0));
+    cmb_assert_release(ev_handle != 0u);
     cmb_assert_release(cmb_event_is_scheduled(ev_handle));
 
     /* Cannot be called from the main process, which will return NULL here */
@@ -983,12 +983,12 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
          * inconsistent while cleaning out the queues.         */
         if (pa->type == CMI_PROCESS_AWAITABLE_TIME) {
             /* Waits for some timeout (hold or timer), cancel it */
-            cmb_assert_debug(pa->handle != UINT64_C(0));
+            cmb_assert_debug(pa->handle != 0u);
             (void)cmb_event_cancel(pa->handle);
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_RESOURCE) {
             cmb_assert_debug(pa->ptr != NULL);
-            cmb_assert_debug(pa->await_key != UINT64_C(0));
+            cmb_assert_debug(pa->await_key != 0u);
             struct cmb_resourceguard *rgp = pa->ptr;
             (void)cmi_resourceguard_drop(rgp, pa->await_key, pa->granted);
         }
@@ -1000,7 +1000,7 @@ void cmi_process_cancel_awaiteds(struct cmb_process *pp)
         }
         else if (pa->type == CMI_PROCESS_AWAITABLE_EVENT) {
             /* Waits for a specific event, remove ourselves from the event's list */
-            cmb_assert_debug(pa->handle != UINT64_C(0));
+            cmb_assert_debug(pa->handle != 0u);
             (void)cmi_event_remove_waiter(pa->handle, pp);
         }
 

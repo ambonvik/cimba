@@ -1137,7 +1137,7 @@ uint64_t cmb_random_poisson(double r)
         const double z = cmb_random_std_normal();
         const double d = floor(r + sqrt(r) * z + 0.5);
         if (d <= 0.0) {
-            x = UINT64_C(0);
+            x = 0u;
         }
         else if (d >= (double)UINT64_MAX) {
             x = UINT64_MAX;

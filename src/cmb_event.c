@@ -17,8 +17,6 @@
  * limitations under the License.
  */
 
-#include <assert.h>
-
 #include "cmb_assert.h"
 #include "cmb_event.h"
 #include "cmb_logger.h"
@@ -47,7 +45,7 @@ static CMB_THREAD_LOCAL struct cmi_hashheap *event_queue = NULL;
 
 /* Temporary index buffer for pattern matches, static thread local for efficiency */
 static CMB_THREAD_LOCAL uint64_t *match_buf = NULL;
-static CMB_THREAD_LOCAL uint64_t match_buf_size = UINT64_C(0);
+static CMB_THREAD_LOCAL uint64_t match_buf_size = 0u;
 
 /* The memory layout of an event */
 struct event_peek {
@@ -133,7 +131,7 @@ void cmb_event_queue_terminate(void)
     if (match_buf != NULL) {
         cmi_free(match_buf);
         match_buf = NULL;
-        match_buf_size = UINT64_C(0);
+        match_buf_size = 0u;
     }
 }
 
@@ -254,7 +252,7 @@ static void wakeup_event_occurred(void *vp, void *arg)
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
     const uint64_t handle = (uint64_t)arg;
-    cmb_assert_debug(handle != UINT64_C(0));
+    cmb_assert_debug(handle != 0u);
 
     /* Stale unless pp is still parked in the wait this wakeup was issued for. */
     if (!cmi_process_has_awaitable(pp,
@@ -286,7 +284,7 @@ static void wakeup_event_cancelled(void *vp, void *arg)
     cmb_assert_debug(vp != NULL);
     struct cmb_process *pp = (struct cmb_process *)vp;
     const uint64_t handle = (uint64_t)arg;
-    cmb_assert_debug(handle != UINT64_C(0));
+    cmb_assert_debug(handle != 0u);
 
     /* Stale unless pp is still parked in the wait this wakeup was issued for. */
     if (!cmi_process_has_awaitable(pp,

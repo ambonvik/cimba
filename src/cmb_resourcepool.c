@@ -108,7 +108,7 @@ static bool holder_queue_rank(const struct cmi_heap_tag *a,
 static inline uint64_t holder_key(const struct cmb_process *pp)
 {
     cmb_assert_debug(pp != NULL);
-    cmb_assert_debug(pp->handle != UINT64_C(0));
+    cmb_assert_debug(pp->handle != 0u);
     
     return pp->handle;
 }
