@@ -18,7 +18,6 @@
 
 #include <inttypes.h>
 #include <pthread.h>
-#include <setjmp.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -88,7 +87,6 @@ CMB_THREAD_LOCAL uint64_t cmi_logger_trial_idx = CMI_NO_TRIAL_IDX;
  * For recovering from trial-ending cmb_logger_error calls,
  * defined in cimba.c. Effectively throwing an exception.
  */
-extern CMB_THREAD_LOCAL jmp_buf cmi_worker_recovery;
 extern CMB_THREAD_LOCAL bool cmi_recovery_armed;
 extern void cmi_event_queue_cleanup(void);
 

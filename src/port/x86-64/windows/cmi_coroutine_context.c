@@ -253,9 +253,10 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size,
 }
 
 /* Free memory previously allocated for a stack */
-void cmi_coroutine_stack_free(unsigned char *stack)
+void cmi_coroutine_stack_free(unsigned char *stack, const size_t size_req)
 {
     cmb_assert_release(stack != NULL);
+    cmb_unused(size_req);
 
     int r = VirtualFree(stack, 0, MEM_RELEASE);
     cmb_assert_always(r != 0);

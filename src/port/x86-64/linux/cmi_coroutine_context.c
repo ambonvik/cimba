@@ -284,7 +284,7 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size_req, unsigned char **
         const int r = mprotect(stack_raw, pagesz, PROT_NONE);
         /* If this assert trips, you have probably reached the OS stack limit,
          * see comment above for how to fix. */
-        cmb_assert_always(r != 0);
+        cmb_assert_always(r == 0);
     }
 
     /* Stack grows downwards, the stack base is at the top */
@@ -298,7 +298,7 @@ unsigned char *cmi_coroutine_stack_alloc(const size_t size_req, unsigned char **
 }
 
 /* Free memory previously allocated for a stack, pushing it back on pool */
-void cmi_coroutine_stack_free(unsigned char *stack_raw, size_t size_req)
+void cmi_coroutine_stack_free(unsigned char *stack_raw, const size_t size_req)
 {
     cmb_assert_release(stack_raw != NULL);
 

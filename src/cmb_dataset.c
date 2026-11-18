@@ -250,7 +250,7 @@ static void dataset_heapify(const uint64_t un,
 }
 
 /* Heapsort from smallest to largest value */
-void cmb_dataset_sort(const struct cmb_dataset *dsp)
+void cmb_dataset_sort(struct cmb_dataset *dsp)
 {
     cmb_assert_release(dsp != NULL);
     cmb_assert_release(dsp->cookie == CMI_INITIALIZED);

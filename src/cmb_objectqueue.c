@@ -138,7 +138,7 @@ void cmb_objectqueue_destroy(struct cmb_objectqueue *oqp)
     cmb_assert_release(oqp != NULL);
     struct cmi_resourcebase *rbp = &(oqp->base);
     /* Call cmb_objectqueue_terminate first, please */
-    cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
+    cmb_assert_release(rbp->cookie == CMI_UNINITIALIZED);
 
     if (!cmi_memregistry_is_abandoning) {
         /* Destroying normally, remove from register */

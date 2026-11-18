@@ -118,9 +118,9 @@ void cmi_hashheap_initialize(struct cmi_hashheap *hp,
     const size_t rndtot_bts = (total_bts + page_bts - 1u) & ~(page_bts - 1u);
 
     unsigned char *mem = cmi_aligned_alloc(page_bts, rndtot_bts);
-    /* Intentionally not zeroing the memory here, not necessary to touch */
 
     hp->heap = (struct cmi_heap_tag *)mem;
+    hp->heap[0].hash_key = 0u;
     hp->hash_map = (struct cmi_hash_tag *)(mem + heap_bts);
 
     hp->heap_count = 0u;

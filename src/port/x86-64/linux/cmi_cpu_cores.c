@@ -17,10 +17,21 @@
  * limitations under the License.
  */
 
+#define _GNU_SOURCE
+#include <sched.h>
 #include <stdint.h>
 #include <sys/sysinfo.h>
 
 uint32_t cmi_cpu_cores(void)
 {
-    return get_nprocs();
+    uint32_t nprocs;
+    cpu_set_t set;
+    if (sched_getaffinity(0, sizeof(set), &set) == 0) {
+        nprocs = (uint32_t)CPU_COUNT(&set);
+    }
+    else {
+        nprocs = (uint32_t)get_nprocs();
+    }
+
+    return nprocs;
 }

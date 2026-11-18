@@ -185,7 +185,9 @@ uint32_t cimba_threads_num(void)
 
 uint32_t cimba_threads_inuse(void)
 {
-    return cmg_threads_inuse;
+    const uint32_t r = __atomic_load_n(&cmg_threads_inuse, __ATOMIC_RELAXED);
+
+    return r;
 }
 
 uint32_t cimba_threads_set(const uint32_t n_threads)
@@ -421,7 +423,11 @@ uint64_t cimba_run(void *your_experiment_array,
     leaking_trials = 0u;
 
     /* Start the worker threads and let them help themselves to the trials */
-    const uint32_t nthreads = (cmg_worker_threads == 0u) ? cmi_cpu_cores() : cmg_worker_threads;
+    uint32_t nthreads = (cmg_worker_threads == 0u) ? cmi_cpu_cores() : cmg_worker_threads;
+    if (nthreads > num_trials) {
+        nthreads = num_trials;
+    }
+
     pthread_t *threads = cmi_calloc(nthreads, sizeof(*threads));
     for (uint64_t ui = 0u; ui < nthreads; ui++) {
         /* A failure here will be fatal, so check */

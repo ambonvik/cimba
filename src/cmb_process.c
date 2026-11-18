@@ -1045,7 +1045,7 @@ void cmb_process_exit(void *retval)
 {
     /* Will return NULL if called from the main coroutine (dispatcher) */
     struct cmb_process *pp = cmb_process_current();
-    cmb_assert_debug(pp != NULL);
+    cmb_assert_release(pp != NULL);
 
     cmb_logger_info(stdout, "Exit with value %p", retval);
     cmi_process_drop_resources(pp);

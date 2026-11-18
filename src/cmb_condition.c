@@ -94,7 +94,7 @@ void cmb_condition_destroy(struct cmb_condition *cp)
     cmb_assert_release(cp != NULL);
     const struct cmi_resourcebase *rbp = &(cp->base);
     /* Call cmb_condition_terminate first, please */
-    cmb_assert_debug(rbp->cookie == CMI_UNINITIALIZED);
+    cmb_assert_release(rbp->cookie == CMI_UNINITIALIZED);
 
     if (!cmi_memregistry_is_abandoning) {
         /* Destroying normally, remove from register */
@@ -112,6 +112,8 @@ int64_t cmb_condition_wait(struct cmb_condition *cp,
     cmb_assert_release(dmnd != NULL);
 
     struct cmb_process *caller = cmb_process_current();
+    /* Should not be called from the dispatcher */
+    cmb_assert_release(caller != NULL);
     cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
     caller->tiebreaker = CMI_PROCESS_TB_ARMED;
 

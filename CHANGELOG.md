@@ -6,6 +6,15 @@ binaries. There is no promise of binary (linker) compatibility between releases.
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
+### 2026-xx-xx: 3.1.2 wip
+* Bug fixes for issues surfaced by AI code review, details in
+  'code_reviews/20261114 Cimba code review by Claude Fable 5.2 high.md'
+* Hardened trial abandoning logic to avoid crashes
+* Closed several loopholes / race conditions for resuming processes in wrong sequence
+* Detect spurious SUCCESS signals that do not belong to current wait
+* Ensure FIFO wake order among equal priority processes waiting for a condition
+* Binary soversion set to equal Cimba version, e.g., libcimba.so.3.1.2
+
 ### 2026-11-13: 3.1.1
 * Bug fix for Issue #5: Partially fulfilled requests would break FIFO waitlist ordering, 
   now enforced by storing the initial ranking key in a new cmb_process tiebreaker field.
@@ -17,11 +26,11 @@ see the git commit history.
   running at this time.
 * Deprecated cimba_threads_use(), replaced by cimba_threads_set() for clarity.
 
-### 2026-10-25: 3.0,4
+### 2026-10-25: 3.0.4
 * Fixed a confidence interval width bug in several tutorials
 
-### 2026-09-14: 3.0.3
-* Fixed bug in cmb_random_fmix24, where different pairs of seed and nonce could 
+### 2026-10-14: 3.0.3
+* Fixed bug in cmb_random_fmix64, where different pairs of seed and nonce could 
   theoretically result in overlapping random number sequences, by adding a first 
   Fibonacci hashing step.
 * Removed some unnecessary memset calls when initializing a hashheap to avoid touching 

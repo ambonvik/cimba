@@ -38,11 +38,6 @@ uint64_t cmb_random_hwseed(void)
     if (cmi_cpu_has_rdseed()) {
         /* Should be valid since Intel Broadwell (2014) and AMD Zen (2016) */
         seed = cmi_rdseed();
-
-        /* Protection against AMD Ryzen microcode bug always returning 0xFFFFFFFF, see
-         * https://arstechnica.com/gadgets/2019/10/how-a-months-old-amd-microcode-bug-destroyed-my-weekend/
-         * XOR the seed with the 64-bit CPU cycle count since reset */
-        seed ^= __rdtsc();
     }
 
     if (seed == 0u && cmi_cpu_has_rdrand()) {
@@ -66,6 +61,14 @@ uint64_t cmb_random_hwseed(void)
         /* XOR the whole thing with the 64-bit CPU cycle count since reset */
         seed ^= __rdtsc();
     }
+
+    if (seed == 0xFFFFFFFF) {
+        /* Protection against AMD Ryzen microcode bug always returning 0xFFFFFFFF, see
+         * https://arstechnica.com/gadgets/2019/10/how-a-months-old-amd-microcode-bug-destroyed-my-weekend/
+         * XOR the seed with the 64-bit CPU cycle count since reset */
+        seed ^= __rdtsc();
+    }
+
 
     cmb_assert_debug(seed != 0u);
     return seed;

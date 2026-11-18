@@ -135,7 +135,7 @@ extern void cmb_dataset_destroy(struct cmb_dataset *dsp);
  * @memberof cmb_dataset
  * @param dsp Pointer to a dataset object.
  */
-extern void cmb_dataset_sort(const struct cmb_dataset *dsp);
+extern void cmb_dataset_sort(struct cmb_dataset *dsp);
 
 /**
  * @brief  Add a single value to a dataset, resizing the array as needed.
