@@ -84,6 +84,9 @@ extern struct cmi_process_awaitable *cmi_process_guard_awaitable(
                                                 const struct cmb_process *pp,
                                                 const void *guard);
 
+/* An internal variant of _hold with non-standard priority. */
+int64_t cmi_process_hold_prio(struct cmb_process *pp, double dur, int64_t pri);
+
 /*
  * cmi_process_holdable - Things that can be held by a process.
  */

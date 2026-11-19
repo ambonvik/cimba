@@ -335,56 +335,79 @@ int64_t cmb_resource_preempt(struct cmb_resource *rp)
     const struct cmi_resourcebase *rbp = &(rp->core.base);
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
-    int64_t ret;
     struct cmb_process *pp = cmb_process_current();
     cmb_assert_release(pp != NULL);
-    const int64_t myprio = pp->priority;
     struct cmi_holdable *hrp = &(rp->core);
     cmb_logger_info(stdout, "Preempting resource %s", hrp->base.name);
 
-    struct cmb_process *victim = rp->holder;
-    cmb_assert_release(victim != cmb_process_current());
+    while (true) {
+        const int64_t myprio = pp->priority;
+        struct cmb_process *victim = rp->holder;
+        cmb_assert_release(victim != cmb_process_current());
 
-    /* Any resource grant that is already in flight (wakeup event scheduled by
-     * the resource guard for current time) is past our reach, we do not know
-     * its priority and can not preempt it once it is gone from the guard */
-    if ((victim == NULL) && (rp->guard.in_flight == 0u)) {
-        /* Easy, grab it */
-        cmb_logger_info(stdout, "Preempt found %s free", hrp->base.name);
-        resource_grab(rp, pp);
-        record_sample(rp);
-        ret = CMB_PROCESS_SUCCESS;
-    }
-    else if ((victim != NULL) && (myprio > victim->priority)) {
-        /* Kick it out. No record_sample needed, the resource remains occupied. */
-        cmi_process_remove_holdable(victim, hrp);
-        cmi_process_cancel_awaiteds(victim);
-        rp->holder = NULL;
-        (void)cmb_event_schedule(wakeup_event_preempt,
-                                 (void *)victim,
-                                 (void *)CMB_PROCESS_PREEMPTED,
-                                 cmb_time(),
-                                 victim->priority);
+        if (victim == NULL) {
+            if (rp->guard.in_flight == 0u) {
+                /* Easy, grab it */
+                cmb_logger_info(stdout, "Preempt found %s free", hrp->base.name);
+                resource_grab(rp, pp);
+                record_sample(rp);
 
-        /* Take its place */
-        resource_grab(rp, pp);
-        cmb_logger_info(stdout,
-                       "Preempted %s from process %s",
-                        rbp->name,
-                        victim->name);
-        ret = CMB_PROCESS_SUCCESS;
-    }
-    else {
-        /* Wait politely at the front door until resource becomes available */
-        cmb_logger_info(stdout,
-                        "%s not preempted, holder %s priority %" PRId64 " > my priority %" PRId64,
-                         rbp->name,
-                         victim->name,
-                         victim->priority,
-                         myprio);
+                return CMB_PROCESS_SUCCESS;
+            }
+            else {
+                /* Any resource grant that is already in flight (wakeup event
+                 * scheduled by the resource guard for current time) is past our
+                 * reach, we do not know its priority and can not preempt it once it
+                 * is gone from the guard. Sit tight until signaled. */
+                cmb_logger_info(stdout,
+                     "Resource %s grant already in progress, waiting until resolved",
+                     hrp->base.name);
 
-        ret = cmb_resource_acquire(rp);
+                /* Temporarily drop our priority to retry at the end of the
+                 * current instant, when any grants in flight have settled. */
+                const int64_t sig = cmi_process_hold_prio(pp, 0.0, INT64_MIN);
+                if (sig != CMB_PROCESS_SUCCESS) {
+                    return sig;
+                }
+
+                /* Loop around, try again */
+            }
+        }
+        else {
+            if (myprio > victim->priority) {
+                /* Kick it out. No record_sample needed, the resource remains occupied. */
+                const bool found = cmi_process_remove_holdable(victim, hrp);
+                cmb_assert_debug(found);
+                cmi_process_cancel_awaiteds(victim);
+                rp->holder = NULL;
+                (void)cmb_event_schedule(wakeup_event_preempt,
+                                         (void *)victim,
+                                         (void *)CMB_PROCESS_PREEMPTED,
+                                         cmb_time(),
+                                         victim->priority);
+
+                /* Take its place */
+                resource_grab(rp, pp);
+                cmb_logger_info(stdout,
+                               "Preempted %s from process %s",
+                                rbp->name,
+                                victim->name);
+
+                return CMB_PROCESS_SUCCESS;
+            }
+            else {
+                cmb_logger_info(stdout,
+                    "%s not preempted, current holder %s priority %" PRId64
+                    " > my priority %" PRId64,
+                    rbp->name, victim->name, victim->priority, myprio);
+
+                break;
+            }
+        }
     }
+
+    /* Wait politely at the front door until resource becomes available */
+    const int64_t ret = cmb_resource_acquire(rp);
 
     return ret;
 }

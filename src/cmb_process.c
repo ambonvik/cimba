@@ -71,6 +71,8 @@ static void wakeup_event_interrupt(void *vp, void *arg);
 static void wakeup_event_process_finished(void *vp, void *arg);
 static void wakeup_event_process_stopped(void *vp, void *arg);
 static void resume_event(void *vp, void *arg);
+static uint64_t timer_add_prio(struct cmb_process *pp, const double dur,
+                               const int64_t sig, const int64_t pri);
 
 static_assert((int)CMB_PROCESS_UNINITIALIZED == (int)CMI_COROUTINE_UNINITIALIZED);
 static_assert((int)CMB_PROCESS_INITIALIZED == (int)CMI_COROUTINE_INITIALIZED);
@@ -285,6 +287,9 @@ void cmb_process_name_set(struct cmb_process *pp, const char *name)
     cmb_assert_release((r >= 0) && (r < CMB_PROCESS_NAMEBUF_SZ));
 }
 
+/*
+ * cmb_process_priority_set - Change the process priority
+ */
 void cmb_process_priority_set(struct cmb_process *pp, const int64_t pri)
 {
     cmb_assert_release(pp != NULL);
@@ -521,16 +526,13 @@ bool cmi_process_remove_awaitable(struct cmb_process *pp,
     return false;
 }
 
-int64_t cmb_process_hold(const double dur)
+int64_t cmi_process_hold_prio(struct cmb_process *pp, const double dur, const int64_t pri)
 {
-    cmb_assert_release(dur >= 0.0);
-
-    cmb_logger_info(stdout, "Holding for %f time units", dur);
+    cmb_assert_debug(pp != NULL);
+    cmb_assert_debug(dur >= 0.0);
 
     /* Set ourselves a wakeup call, leaving any previous timers in place */
-    struct cmb_process *pp = cmb_process_current();
-    cmb_assert_debug(pp != NULL);
-    const uint64_t handle = cmb_process_timer_add(pp, dur, CMB_PROCESS_SUCCESS);
+    const uint64_t handle = timer_add_prio(pp, dur, CMB_PROCESS_SUCCESS, pri);
 
     /* Yield to the dispatcher and collect the return signal value when back */
     const int64_t sig = (int64_t)cmi_coroutine_yield(NULL);
@@ -546,6 +548,20 @@ int64_t cmb_process_hold(const double dur)
                 "Still waiting for hold, received unknown CMB_PROCESS_SUCCESS signal");
         }
     }
+
+    return sig;
+}
+
+int64_t cmb_process_hold(const double dur)
+{
+    cmb_assert_release(dur >= 0.0);
+
+    cmb_logger_info(stdout, "Holding for %f time units", dur);
+
+    struct cmb_process *pp = cmb_process_current();
+    cmb_assert_debug(pp != NULL);
+    const int64_t pri = pp->priority;
+    const int64_t sig = cmi_process_hold_prio(pp, dur, pri);
 
     return sig;
 }
@@ -584,6 +600,24 @@ static void wakeup_event_time(void *vp, void *arg)
 
 }
 
+static uint64_t timer_add_prio(struct cmb_process *pp, const double dur,
+                               const int64_t sig, const int64_t pri)
+{
+    cmb_assert_debug(pp != NULL);
+    cmb_assert_debug(dur >= 0.0);
+
+    /* Schedule a wakeup event and add it to our list */
+    const double t = cmb_time() + dur;
+    const uint64_t handle = cmb_event_schedule(wakeup_event_time,
+                                               pp, (void *)sig, t, pri);
+
+    cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
+    cmb_logger_info(stdout, "Scheduled timeout event at %f", t);
+
+    return handle;
+
+}
+
 /*
  * cmb_process_timer_add - Set a timeout event without suspending the process.
  * Returns the handle of the scheduled timeout event.
@@ -597,12 +631,7 @@ uint64_t cmb_process_timer_add(struct cmb_process *pp,
 
    /* Schedule a wakeup event and add it to our list */
     const int64_t pri = cmb_process_priority(pp);
-    const double t = cmb_time() + dur;
-    const uint64_t handle = cmb_event_schedule(wakeup_event_time,
-                                               pp, (void *)sig, t, pri);
-
-    cmi_process_add_awaitable(pp, CMI_PROCESS_AWAITABLE_TIME, (void *)handle);
-    cmb_logger_info(stdout, "Scheduled timeout event at %f", t);
+    const uint64_t handle = timer_add_prio(pp, dur, sig, pri);
 
     return handle;
 }

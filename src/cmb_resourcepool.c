@@ -445,6 +445,19 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
 
     struct cmb_process *caller = cmb_process_current();
     cmb_assert_release(caller != NULL);
+
+    if (preempt) {
+        /* Units in a grant in flight are out of our reach until the grantee
+         * has resumed and recorded them. Those are events scheduled for the
+         * current time, retry after all other events at the current time. */
+        while (rpp->guard.in_flight > 0u) {
+            const int64_t sig = cmi_process_hold_prio(caller, 0.0, INT64_MIN);
+            if (sig != CMB_PROCESS_SUCCESS) {
+                return sig;
+            }
+        }
+    }
+
     cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
     caller->tiebreaker = CMI_PROCESS_TB_ARMED;
 
@@ -463,7 +476,7 @@ static int64_t acquire_inner(struct cmb_resourcepool *rpp,
     cmb_logger_info(stdout, "Has %" PRIu64 ", requests %" PRIu64 " from %s",
                     initially_held, req_amount, rbp->name);
 
-   /* First attempt: take nothing while others are queued or a grant is in
+    /* First attempt: take nothing while others are queued or a grant is in
      * flight. Once resumed by our own grant we are the front, and may grab. */
     bool may_grab = cmi_hashheap_is_empty((struct cmi_hashheap *)&(rpp->guard))
                     && (rpp->guard.in_flight == 0u);
