@@ -151,19 +151,15 @@ int64_t cmb_resourceguard_wait(struct cmb_resourceguard *rgp,
         pp->tiebreaker = hash_key;
     }
 
-    union {
-        double d;
-        uint64_t u;
-    } tmp;
-
-    tmp.u = pp->tiebreaker;
+    double bits;
+    (void)cmi_memcpy(&bits, &pp->tiebreaker, sizeof bits);
     const uint64_t key = cmi_hashheap_enqueue((struct cmi_hashheap *)rgp,
                                               (void *)pp,
                                               (void *)demand,
                                               (void *)ctx,
                                               NULL,
                                               hash_key,
-                                              tmp.d,
+                                              bits,
                                               priority);
 
     /* Record the key on the awaitable so cancel/remove/reprioritize can find
