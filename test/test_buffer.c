@@ -364,6 +364,9 @@ static void test_partials(void)
 
     cmb_event_queue_initialize(0.0);
 
+    cmb_logger_flags_off(CMB_LOGGER_INFO);
+    cmb_logger_flags_off(USERFLAG1);
+
     /* Create a small buffer */
     struct cmb_buffer *buf = cmb_buffer_create();
     uint64_t cap = 2u;

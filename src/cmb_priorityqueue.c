@@ -241,18 +241,16 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
     cmb_assert_release(objectloc != NULL);
     cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
 
-    struct cmb_process *caller = cmb_process_current();
-    if (caller != NULL) {
-        cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
-        caller->tiebreaker = CMI_PROCESS_TB_ARMED;
-    }
-
     cmb_logger_info(stdout, "Gets an object from %s, length now %" PRIu64,
                     ((struct cmi_resourcebase *)pqp)->name, pqp->queue.heap_count);
 
+    struct cmb_process *caller = NULL;
+    const struct cmi_hashheap *hp = (struct cmi_hashheap *)&(pqp->front_guard);
+    bool may_grab = cmi_hashheap_is_empty(hp) && (pqp->front_guard.in_flight == 0u);
+
     while (true) {
         cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
-        if (pqp->queue.heap_count > 0u) {
+        if ((pqp->queue.heap_count > 0u) && may_grab) {
             /* There is one ready */
             void **item = cmi_hashheap_dequeue(&(pqp->queue));
             cmb_assert_debug(item != NULL);
@@ -272,14 +270,22 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
         }
 
         /* Wait at the front door until some more becomes available  */
-        cmb_assert_release(caller != NULL);
-        cmb_assert_debug(pqp->queue.heap_count == 0u);
+        if (caller == NULL) {
+            /* First wait of this request: arm the tiebreaker once, so that any
+             * later waits in this same request keep the original queue place */
+            caller = cmb_process_current();
+            cmb_assert_release(caller != NULL);
+            cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+            caller->tiebreaker = CMI_PROCESS_TB_ARMED;
+        }
+
         cmb_logger_info(stdout, "Waiting for an object");
         const int64_t sig = cmb_resourceguard_wait(&(pqp->front_guard),
                                                    has_content,
                                                    NULL);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_info(stdout,"Trying again");
+            may_grab = true;
         }
         else {
             cmb_logger_info(stdout,
@@ -287,9 +293,7 @@ int64_t cmb_priorityqueue_get(struct cmb_priorityqueue *pqp, void **objectloc)
                             sig);
             *objectloc = NULL;
             cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
-            if (caller != NULL) {
-                caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
-            }
+            caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
 
             return sig;
         }
@@ -304,17 +308,16 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
     cmb_assert_release(pqp != NULL);
     cmb_assert_release(pqp->base.cookie == CMI_INITIALIZED);
 
-    struct cmb_process *caller = cmb_process_current();
-    if (caller != NULL) {
-        cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
-        caller->tiebreaker = CMI_PROCESS_TB_ARMED;
-    }
-
     cmb_logger_info(stdout, "Puts object %p priority %" PRIi64 " into %s, length %" PRIu64,
                     object, priority, ((struct cmi_resourcebase *)pqp)->name, pqp->queue.heap_count);
+
+    struct cmb_process *caller = NULL;
+    const struct cmi_hashheap *hp = (struct cmi_hashheap *)&(pqp->rear_guard);
+    bool may_push = cmi_hashheap_is_empty(hp) && (pqp->rear_guard.in_flight == 0u);
+
     while (true) {
         cmb_assert_debug(pqp->queue.heap_count <= pqp->capacity);
-        if (pqp->queue.heap_count < pqp->capacity) {
+        if ((pqp->queue.heap_count < pqp->capacity) && may_push) {
             /* There is space */
             const uint64_t handle = cmi_hashheap_enqueue(&(pqp->queue),
                                                          object,
@@ -335,14 +338,22 @@ int64_t cmb_priorityqueue_put(struct cmb_priorityqueue *pqp,
         }
 
         /* Wait at the back door until some more becomes available  */
-        cmb_assert_release(caller != NULL);
-        cmb_assert_debug(pqp->queue.heap_count == pqp->capacity);
-        cmb_logger_info(stdout, "Waiting for space");
+        if (caller == NULL) {
+            /* First wait of this request: arm the tiebreaker once, so that any
+             * later waits in this same request keep the original queue place */
+            caller = cmb_process_current();
+            cmb_assert_release(caller != NULL);
+            cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+            caller->tiebreaker = CMI_PROCESS_TB_ARMED;
+        }
+
+        cmb_logger_info(stdout, "Waiting for free space");
         const int64_t sig = cmb_resourceguard_wait(&(pqp->rear_guard),
                                                    has_space,
                                                    NULL);
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_info(stdout,"Trying again");
+            may_push = true;
         }
         else {
             cmb_logger_info(stdout,

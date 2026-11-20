@@ -229,21 +229,19 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
-    /* May be called from dispatcher, check */
-    struct cmb_process *caller = cmb_process_current();
-    if (caller != NULL) {
-        cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
-        caller->tiebreaker = CMI_PROCESS_TB_ARMED;
-    }
-
     const uint64_t init_claim = *amntp;
     uint64_t rem_claim = *amntp;
     *amntp = 0u;
+
+    struct cmb_process *caller = NULL;
+    const struct cmi_hashheap *hp = (struct cmi_hashheap *)&(bp->front_guard);
+    bool may_grab = cmi_hashheap_is_empty(hp) && (bp->front_guard.in_flight == 0u);
+
     while (true) {
         cmb_assert_debug(bp->level <= bp->capacity);
         cmb_logger_info(stdout, "Gets %" PRIu64 " from %s, level %" PRIu64,
                         rem_claim, rbp->name, bp->level);
-        if (bp->level >= rem_claim) {
+        if ((bp->level >= rem_claim) && may_grab) {
             /* Grab what we need */
             bp->level -= rem_claim;
             record_sample(bp);
@@ -265,7 +263,7 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 
             return CMB_PROCESS_SUCCESS;
         }
-        else if (bp->level > 0u) {
+        else if ((bp->level > 0u) && may_grab) {
             /* Grab what is there */
             const uint64_t grab = bp->level;
             bp->level = 0u;
@@ -282,7 +280,15 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 
         /* Wait at the front door until some more becomes available.
          * Getting here if called from the dispatcher will not end well. */
-        cmb_assert_release(caller != NULL);
+        if (caller == NULL) {
+            /* First wait of this request: arm the tiebreaker once, so that any
+             * later waits in this same request keep the original queue place */
+            caller = cmb_process_current();
+            cmb_assert_release(caller != NULL);
+            cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+            caller->tiebreaker = CMI_PROCESS_TB_ARMED;
+        }
+
         cmb_assert_debug(rem_claim > 0u);
         cmb_logger_info(stdout, "Waiting for more, level now %" PRIu64,
                         bp->level);
@@ -293,12 +299,13 @@ int64_t cmb_buffer_get(struct cmb_buffer *bp, uint64_t *amntp)
 
         if (sig == CMB_PROCESS_SUCCESS) {
             cmb_logger_info(stdout,"Returned successfully from wait");
+            may_grab = true;
         }
         else {
             cmb_logger_info(stdout,
-                            "Wait interrupted by signal %" PRIi64 " wanted %" PRIu64 ", returns with %" PRIu64,
+                            "Wait interrupted by signal %" PRIi64 " wanted %"
+                            PRIu64 ", returns with %" PRIu64,
                             sig, init_claim, *amntp);
-
             cmb_assert_debug(bp->level <= bp->capacity);
             cmb_assert_debug(*amntp <= init_claim);
             caller->tiebreaker = CMI_PROCESS_TB_CLEARED;
@@ -321,19 +328,18 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
     struct cmi_resourcebase *rbp = (struct cmi_resourcebase *)bp;
     cmb_assert_release(rbp->cookie == CMI_INITIALIZED);
 
-    struct cmb_process *caller = cmb_process_current();
-    if (caller != NULL) {
-        cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
-        caller->tiebreaker = CMI_PROCESS_TB_ARMED;
-    }
-
     const uint64_t init_claim = *amntp;
     uint64_t rem_claim = *amntp;
+
+    struct cmb_process *caller = NULL;
+    const struct cmi_hashheap *hp = (struct cmi_hashheap *)&(bp->rear_guard);
+    bool may_push = cmi_hashheap_is_empty(hp) && (bp->rear_guard.in_flight == 0u);
+
     while (true) {
         cmb_assert_debug(bp->level <= bp->capacity);
         cmb_logger_info(stdout, "Puts %" PRIu64 " into %s, level %" PRIu64,
                         rem_claim, rbp->name, bp->level);
-        if ((bp->capacity - bp->level) >= rem_claim) {
+        if (((bp->capacity - bp->level) >= rem_claim) && may_push) {
             /* Push the remainder into the buffer */
             bp->level += rem_claim;
             record_sample(bp);
@@ -355,7 +361,7 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
 
             return CMB_PROCESS_SUCCESS;
         }
-        else if (bp->level < bp->capacity) {
+        else if ((bp->level < bp->capacity) && may_push) {
             /* Fill 'er up */
             const uint64_t grab = bp->capacity - bp->level;
             bp->level = bp->capacity;
@@ -369,8 +375,16 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
             cmb_resourceguard_signal(&(bp->front_guard));
         }
 
-        /* Wait at the back door until some more becomes available  */
-        cmb_assert_release(caller != NULL);
+        /* Wait at the back door until some more space becomes available  */
+        if (caller == NULL) {
+            /* First wait of this request: arm the tiebreaker once, so that any
+             * later waits in this same request keep the original queue place */
+            caller = cmb_process_current();
+            cmb_assert_release(caller != NULL);
+            cmb_assert_debug(caller->tiebreaker == CMI_PROCESS_TB_CLEARED);
+            caller->tiebreaker = CMI_PROCESS_TB_ARMED;
+        }
+
         cmb_assert_debug(rem_claim > 0u);
         cmb_logger_info(stdout, "Waiting for space, level %" PRIu64, bp->level);
         cmb_resourceguard_signal(&(bp->front_guard));
@@ -378,11 +392,13 @@ int64_t cmb_buffer_put(struct cmb_buffer *bp, uint64_t *amntp)
                                                    buffer_has_space,
                                                    NULL);
         if (sig == CMB_PROCESS_SUCCESS) {
-            cmb_logger_info(stdout,"Returned successfully from wait");
+            cmb_logger_info(stdout,"Trying again");
+            may_push = true;
         }
         else {
             cmb_logger_info(stdout,
-                            "Wait interrupted by signal %" PRIi64 ", had %" PRIu64 ", returns with %" PRIu64 " left",
+                            "Wait interrupted by signal %" PRIi64 ", had %"
+                            PRIu64 ", returns with %" PRIu64 " left",
                             sig, init_claim, *amntp);
 
             cmb_assert_debug(bp->level <= bp->capacity);

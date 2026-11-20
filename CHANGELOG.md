@@ -7,13 +7,21 @@ We will only summarize new features, changes, and bug fixes below. For complete 
 see the git commit history.
 
 ### 2026-xx-xx: 3.1.2 wip
-* Bug fixes for issues surfaced by AI code review, details in
-  'code_reviews/20261114 Cimba code review by Claude Fable 5.2 high.md'
-* Hardened trial abandoning logic to avoid crashes
-* Closed several loopholes / race conditions for resuming processes in wrong sequence
-* Detect spurious SUCCESS signals that do not belong to current wait
-* Ensure FIFO wake order among equal priority processes waiting for a condition
-* Binary soversion set to equal Cimba version, e.g., libcimba.so.3.1.2
+Bug fixes for issues surfaced by AI code review, details in
+  'code_reviews/20261114 Cimba code review by Claude Fable 5.2 high.md'.
+* Hardened trial abandoning logic to avoid crashes, e.g., if abandoning a trial
+  with cmb_ objects declared as local variables on the stack.
+* Closed several loopholes / race conditions for resuming processes in wrong sequence, 
+  possibly changing the bitwise result from earlier runs.
+* Detect spurious CMB_PROCESS_SUCCESS signals that do not belong to current wait. 
+  The CMB_PROCESS_SUCCESS value is reserved for the ongoing wait, some other timer
+  returning it to a waiting process is a model error.
+* Linux binary soversion set to equal Cimba version, e.g., libcimba.so.3.1.2. The 
+  Windows DLL name changes with every release (libcimba-3.1.2.dll). 
+* Terminating or destroying a process now cancels every event with it as subject,
+  including any user-defined events.
+* The default number of worker threads now follows the CPU affinity mask.
+* Several debug asserts promoted to release asserts.
 
 ### 2026-11-13: 3.1.1
 * Bug fix for Issue #5: Partially fulfilled requests would break FIFO waitlist ordering, 
