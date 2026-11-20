@@ -309,6 +309,8 @@ static void wake_event_waiters_occurred(struct cmi_slist_node *waiters, const ui
 {
     cmb_assert_debug(waiters != NULL);
 
+    /* Wake in FIFO order, so reverse LIFO list */
+    cmi_slist_reverse(waiters);
     while (!cmi_slist_is_empty(waiters)) {
         struct cmi_slist_node *head = cmi_slist_pop(waiters);
         struct cmi_process_waiter *pw = cmi_container_of(head,
@@ -332,6 +334,8 @@ static void wake_event_waiters_cancelled(struct cmi_slist_node *waiters, const u
 {
     cmb_assert_debug(waiters != NULL);
 
+    /* Wake in FIFO order, so reverse LIFO list */
+    cmi_slist_reverse(waiters);
     while (!cmi_slist_is_empty(waiters)) {
         struct cmi_slist_node *head = cmi_slist_pop(waiters);
         struct cmi_process_waiter *pw = cmi_container_of(head,

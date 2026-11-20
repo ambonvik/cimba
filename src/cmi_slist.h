@@ -100,4 +100,21 @@ static inline struct cmi_slist_node *cmi_slist_peek(const struct cmi_slist_node 
 
 #define cmi_slist_entry(node, type, member) cmi_container_of(node, type, member)
 
+CMB_MAYBE_UNUSED
+static inline void cmi_slist_reverse(struct cmi_slist_node *head)
+{
+    cmb_assert_debug(head != NULL);
+
+    struct cmi_slist_node *prev = NULL;
+    struct cmi_slist_node *curr = head->next;
+    while (curr != NULL) {
+        struct cmi_slist_node *next = curr->next;
+        curr->next = prev;
+        prev = curr;
+        curr = next;
+    }
+
+    head->next = prev;
+}
+
 #endif /* CIMBA_CMI_SLIST_H */

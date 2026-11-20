@@ -826,6 +826,8 @@ static void wake_process_waiters(struct cmi_slist_node *waiters,
 {
     cmb_assert_debug(waiters != NULL);
 
+    /* Wake in FIFO order, so reverse LIFO list */
+    cmi_slist_reverse(waiters);
     while (!cmi_slist_is_empty(waiters)) {
         struct cmi_slist_node *head = cmi_slist_pop(waiters);
         struct cmi_process_waiter *pw = cmi_container_of(head,
