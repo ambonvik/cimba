@@ -408,6 +408,10 @@ uint64_t cimba_run(void *your_experiment_array,
     cmb_assert_release(your_experiment_array != NULL);
     cmb_assert_release(num_trials > 0u);
     cmb_assert_release(trial_struct_size > 0u);
+    /* Note that (your_trial_func == NULL) is valid, see thread_worker_func. */
+
+    /* Cannot be called from inside a trial, would deadlock next */
+    cmb_assert_release(!cmi_recovery_armed);
 
     /* A mutex to make sure the Cimba globals are protected */
     pthread_mutex_lock(&cmg_experiment_mutex);
