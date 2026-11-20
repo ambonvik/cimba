@@ -417,6 +417,7 @@ static void update_record(struct cmb_resourcepool *rpp,
     }
 }
 
+CMB_MAYBE_UNUSED
 static uint64_t sum_holder_items(const struct cmi_hashheap *hhp)
 {
     cmb_assert_debug(hhp != NULL);

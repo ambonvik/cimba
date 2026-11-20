@@ -866,7 +866,7 @@ void cmb_dataset_ACF(const struct cmb_dataset *dsp,
  * to avoid repeating a computationally expensive step if already done once.
  */
 static const double pacf_min_variance = 1.0e-12;
-static const double pacf_tolerance = 1.0e-9;
+CMB_MAYBE_UNUSED static const double pacf_tolerance = 1.0e-9;
 
 void cmb_dataset_PACF(const struct cmb_dataset *dsp,
                       const unsigned int n,

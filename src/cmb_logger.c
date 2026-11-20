@@ -165,6 +165,21 @@ int cmb_logger_vfprintf(FILE *fp,
 {
     int ret = 0;
     if ((flags & logger_mask()) != 0) {
+        static CMB_THREAD_LOCAL bool in_formatter = false;
+        const char *tstr = NULL;
+        if (!in_formatter) {
+            const char *(*tff)(double) = __atomic_load_n(&timeformatter, __ATOMIC_RELAXED);
+            logger_assert_debug(tff != NULL);
+            in_formatter = true;
+            tstr = tff(cmb_time());
+            in_formatter = false;
+        }
+        else {
+            /* Reentered from somewhere inside the user-provided time formatter
+             * function. Use default to avoid a recursive mutex deadlock */
+            tstr = time_to_string(cmb_time());
+        }
+
         pthread_mutex_lock(&cmi_logger_mutex);
         int r = 0;
         if (cmi_logger_trial_idx != CMI_NO_TRIAL_IDX) {
@@ -176,7 +191,7 @@ int cmb_logger_vfprintf(FILE *fp,
         const char *(*tff)(double) = NULL;
         tff = __atomic_load_n(&timeformatter, __ATOMIC_RELAXED);
         logger_assert_debug(tff != NULL);
-        r = fprintf(fp, "%s\t", tff(cmb_time()));
+        r = fprintf(fp, "%s\t", tstr);
         logger_assert_debug(r > 0);
         ret += r;
 
