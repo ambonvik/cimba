@@ -16,6 +16,8 @@ Bug fixes for issues surfaced by AI code review, details in
 * Detect spurious CMB_PROCESS_SUCCESS signals that do not belong to current wait. 
   The CMB_PROCESS_SUCCESS value is reserved for the ongoing wait, some other timer
   returning it to a waiting process is a model error.
+* Stopping a cmb_process that has been started but not yet executed its start event 
+  will now preent it from running and return CMB_PROCESS_SUCCESS.
 * Linux binary soversion set to equal Cimba version, e.g., libcimba.so.3.1.2. The 
   Windows DLL name changes with every release (libcimba-3.1.2.dll). 
 * Terminating or destroying a process now cancels every event with it as subject,

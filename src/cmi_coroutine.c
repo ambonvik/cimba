@@ -303,24 +303,25 @@ void cmi_coroutine_exit(void *retval)
 }
 
 /*
- * cmi_coroutine_stop - End some coroutine. Equivalent to
- * cmi_coroutine_exit(NULL) if called on itself.
+ * cmi_coroutine_stop - End some coroutine.
  */
 void cmi_coroutine_stop(struct cmi_coroutine *cp, void *retval)
 {
     cmb_assert_release(cp != NULL);
-    cmb_assert_release(cp->status == CMI_COROUTINE_RUNNING);
-    cmb_assert_debug(cmi_coroutine_stack_valid(cp));
-    cmb_assert_debug(cmi_coroutine_registers_valid(cp));
+    cmb_assert_release((cp->status == CMI_COROUTINE_RUNNING)
+                       || (cp->status == CMI_COROUTINE_INITIALIZED));
 
-    if (cp == cmi_coroutine_current()) {
-        cmi_coroutine_exit(retval);
+    if (cp->status == CMI_COROUTINE_RUNNING) {
+        cmb_assert_debug(cmi_coroutine_stack_valid(cp));
+        cmb_assert_debug(cmi_coroutine_registers_valid(cp));
+        if (cp == cmi_coroutine_current()) {
+            cmi_coroutine_exit(retval);
+        }
     }
-    else {
-        /* Not the current coroutine, control continues in the caller */
-        cp->exit_value = retval;
-        cp->status = CMI_COROUTINE_FINISHED;
-    }
+
+    /* Not the current coroutine (or never started), control continues here */
+    cp->exit_value = retval;
+    cp->status = CMI_COROUTINE_FINISHED;
 }
 
 /*

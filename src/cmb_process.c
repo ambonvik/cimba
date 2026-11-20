@@ -1105,7 +1105,19 @@ int64_t cmb_process_stop(struct cmb_process *tgt, void *retval)
     cmb_logger_info(stdout, "Stop %s value %p", tgt->name, retval);
 
     const int status = cmb_process_status(tgt);
-    if (status != CMB_PROCESS_RUNNING) {
+    if (status == CMB_PROCESS_INITIALIZED) {
+        /* Start event scheduled for current time? */
+        const uint64_t nfound = cmb_event_pattern_cancel(start_event, tgt,
+                                                         CMB_ANY_OBJECT);
+        if (nfound == 0u) {
+            /* Not. There may be something fishy in the model logic. */
+            cmb_logger_warning(stdout,
+                               "cmb_process_stop: tgt %s not started",
+                               tgt->name);
+            return CMB_PROCESS_STOPPED;
+        }
+    }
+    else if (status != CMB_PROCESS_RUNNING) {
         cmb_logger_warning(stdout,
                            "cmb_process_stop: tgt %s not running", tgt->name);
         return CMB_PROCESS_STOPPED;
