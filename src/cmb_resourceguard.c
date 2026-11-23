@@ -112,6 +112,14 @@ void cmb_resourceguard_terminate(struct cmb_resourceguard *rgp)
 {
     cmb_assert_release(rgp != NULL);
 
+    /* Return any remaining observer tags. Touches only our own list and the
+     * pool, never the observers themselves, so also safe when abandoning. */
+    while (!cmi_slist_is_empty(&(rgp->observers))) {
+        struct cmi_slist_node *head = cmi_slist_pop(&(rgp->observers));
+        cmi_mempool_free(&observer_tagpool,
+                         cmi_container_of(head, struct observer_tag, listhead));
+    }
+
     cmi_hashheap_terminate((struct cmi_hashheap *)rgp);
 }
 

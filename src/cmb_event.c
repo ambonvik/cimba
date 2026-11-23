@@ -47,6 +47,9 @@ static CMB_THREAD_LOCAL struct cmi_hashheap *event_queue = NULL;
 static CMB_THREAD_LOCAL uint64_t *match_buf = NULL;
 static CMB_THREAD_LOCAL uint64_t match_buf_size = 0u;
 
+/* Forward declaration of helper function */
+static void recycle_waiters(void);
+
 /* The memory layout of an event */
 struct event_peek {
     cmb_event_func *action;
@@ -123,6 +126,7 @@ void cmb_event_queue_terminate(void)
 {
     cmb_assert_release(event_queue != NULL);
 
+    recycle_waiters();
     cmi_hashheap_terminate(event_queue);
     cmi_hashheap_destroy(event_queue);
     event_queue = NULL;
@@ -140,6 +144,7 @@ void cmb_event_queue_terminate(void)
  */
 void cmb_event_queue_clear(void)
 {
+    recycle_waiters();
     cmi_hashheap_clear(event_queue);
 }
 
@@ -166,6 +171,7 @@ void cmi_event_queue_cleanup(void)
 void cmi_event_queue_reset(void)
 {
     if (event_queue != NULL) {
+        recycle_waiters();
         cmi_hashheap_terminate(event_queue);
         cmi_hashheap_destroy(event_queue);
         event_queue = NULL;
@@ -670,5 +676,25 @@ void cmi_event_thread_cleanup(void)
 {
     if (match_buf != NULL) {
         cmi_free(match_buf);
+    }
+}
+
+/*
+ * recycle_waiters - Return the waiter tags of all events still in the queue
+ * to their pool. Only touches the tags, not the processes they point to.
+ */
+static void recycle_waiters(void)
+{
+    if ((event_queue == NULL) || (event_queue->heap == NULL)) {
+        return;
+    }
+
+    for (uint64_t ui = 1u; ui <= event_queue->heap_count; ui++) {
+        struct event_peek *ep = (struct event_peek *)(event_queue->heap[ui].item);
+        while (!cmi_slist_is_empty(&(ep->waiters))) {
+            struct cmi_slist_node *head = cmi_slist_pop(&(ep->waiters));
+            cmi_mempool_free(&cmi_process_waitertags,
+                             cmi_container_of(head, struct cmi_process_waiter, listhead));
+        }
     }
 }

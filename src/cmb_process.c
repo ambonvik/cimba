@@ -200,14 +200,40 @@ extern void cmb_process_terminate(struct cmb_process *pp)
         cmb_event_pattern_cancel(CMB_ANY_ACTION, pp, CMB_ANY_OBJECT);
 
         /* Check and warn for user events that might dereference this later */
-        const uint64_t objcnt = cmb_event_pattern_count(CMB_ANY_ACTION, CMB_ANY_SUBJECT, pp);
+        const uint64_t objcnt = cmb_event_pattern_count(CMB_ANY_ACTION,
+                                                        CMB_ANY_SUBJECT, pp);
         if (objcnt > 0u) {
             cmb_logger_warning(stdout,
-                "Terminating %s while future events scheduled with it as object", pp->name);
+                "Terminating %s while future events scheduled with it as object",
+                pp->name);
         }
 
        /* Terminating normally, remove from register */
         cmi_memregistry_remove(&(pp->terminate));
+    }
+    else {
+        /* Abandoning trial, make sure tags get recycled to respective pools.
+         * The various objects may already be gone, don't dereference pointers. */
+        while (!cmi_slist_is_empty(&pp->awaits)) {
+            struct cmi_slist_node *head = cmi_slist_pop(&pp->awaits);
+            cmi_mempool_free(&cmi_process_awaitabletags,
+                             cmi_container_of(head, struct cmi_process_awaitable,
+                                              listhead));
+        }
+
+        while (!cmi_slist_is_empty(&pp->resources)) {
+            struct cmi_slist_node *head = cmi_slist_pop(&pp->resources);
+            cmi_mempool_free(&cmi_process_holdabletags,
+                             cmi_container_of(head, struct cmi_process_holdable,
+                                              listhead));
+        }
+
+        while (!cmi_slist_is_empty(&pp->waiters)) {
+            struct cmi_slist_node *head = cmi_slist_pop(&pp->waiters);
+            cmi_mempool_free(&cmi_process_waitertags,
+                             cmi_container_of(head, struct cmi_process_waiter,
+                                              listhead));
+        }
     }
 
     if (cmb_process_status(pp) != CMB_PROCESS_UNINITIALIZED) {
