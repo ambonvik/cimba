@@ -9,25 +9,27 @@ see the git commit history.
 ### 2026-xx-xx: 3.1.2 wip
 Bug fixes for issues surfaced by AI code review, details in
   'code_reviews/20261114 Cimba code review by Claude Fable 5.2 high.md'.
-* Hardened trial abandoning logic to avoid crashes, e.g., if abandoning a trial
-  with cmb_ objects declared as local variables on the stack.
 * Closed several loopholes / race conditions for resuming processes in wrong sequence, 
   possibly changing the bitwise result from earlier runs.
 * Detect spurious CMB_PROCESS_SUCCESS signals that do not belong to current wait. 
   The CMB_PROCESS_SUCCESS value is reserved for the ongoing wait, some other timer
   returning it to a waiting process is a model error.
+* Several debug asserts promoted to release asserts, including one that forbids calling
+  cmb_process_interrupt() with CMB_PROCESS_SUCCESS signal value.
 * Processes waiting for events or other processes are now woken in FIFO order.
 * Stopping a cmb_process that has been started but not yet executed its start event 
   will now prevent it from running and return CMB_PROCESS_SUCCESS.
-* Linux binary soversion set to equal Cimba version, e.g., libcimba.so.3.1.2. The 
-  Windows DLL name changes with every release (libcimba-3.1.2.dll). 
 * Terminating or destroying a process now cancels every event with it as subject,
   including any user-defined events.
-* The default number of worker threads now follows the CPU affinity mask.
-* Several debug asserts promoted to release asserts, including one that forbids calling
-  cmb_process_interrupt() with CMB_PROCESS_SUCCESS signal value.
 * cmb_dataset_sort() no longer declares its argument as const. Although legal C, it was
   semantically confusing for a function that very much modifies its target dataset.
+* Hardened trial abandoning logic to avoid crashes, e.g., if abandoning a trial
+  with cmb_ objects declared as local variables on the stack.
+* Calling cimba_run() from inside a trial now trips an assert instead of deadlocking
+  silently on a mutex.
+* The default number of worker threads now follows the CPU affinity mask.
+* Linux binary soversion set to equal Cimba version, e.g., libcimba.so.3.1.2. The
+  Windows DLL name changes with every release (libcimba-3.1.2.dll).
 
 ### 2026-11-13: 3.1.1
 * Bug fix for Issue #5: Partially fulfilled requests would break FIFO waitlist ordering, 
