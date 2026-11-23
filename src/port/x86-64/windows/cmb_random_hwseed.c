@@ -26,10 +26,10 @@ extern int cmi_cpu_has_rdseed(void);
 extern int cmi_cpu_has_rdrand(void);
 extern uint64_t cmi_rdseed(void);
 extern uint64_t cmi_rdrand(void);
+extern uint64_t cmi_rdtsc(void);
 extern uint32_t cmi_threadid(void);
-extern uint32_t cmi_rdtsc(void);
 
-static bool seed_ok(uint64_t seed)
+static bool seed_ok(const uint64_t seed)
 {
     return ((seed != 0u) && (seed != UINT64_MAX));
 }

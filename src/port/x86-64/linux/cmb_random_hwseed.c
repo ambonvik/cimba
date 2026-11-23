@@ -31,7 +31,7 @@ extern int cmi_cpu_has_rdrand(void);
 extern uint64_t cmi_rdseed(void);
 extern uint64_t cmi_rdrand(void);
 
-static bool seed_ok(uint64_t seed)
+static bool seed_ok(const uint64_t seed)
 {
     return ((seed != 0u) && (seed != UINT64_MAX));
 }
