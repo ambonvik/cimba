@@ -34,88 +34,6 @@
 
 #define USERFLAG 0x00000001
 
-static unsigned excl_inside = 0u;       /* processes currently holding */
-static unsigned excl_max_inside = 0u;   /* high-water mark observed */
-
-struct excl_ctx {
-    struct cmb_resource *rp;
-    double arrive;      /* delay before attempting to acquire */
-    double hold;        /* time to hold once acquired */
-};
-
-static void *excl_worker(struct cmb_process *me, void *vctx)
-{
-    cmb_assert_always(vctx != NULL);
-    struct excl_ctx *c = vctx;
-
-    if (c->arrive > 0.0) {
-        cmb_assert_always(cmb_process_hold(c->arrive) == CMB_PROCESS_SUCCESS);
-    }
-
-    cmb_assert_always(cmb_resource_acquire(c->rp) == CMB_PROCESS_SUCCESS);
-    excl_inside++;
-    if (excl_inside > excl_max_inside) {
-        excl_max_inside = excl_inside;
-    }
-
-    /* Can never be held by more than one process */
-    cmb_assert_always(excl_inside == 1u);
-    cmb_logger_user(stdout, USERFLAG, "%s holds the resource at t=%.1f",
-                    me->name, cmb_time());
-
-    (void)cmb_process_hold(c->hold);
-
-    cmb_assert_always(excl_inside == 1u);
-    excl_inside--;
-    cmb_resource_release(c->rp);
-    return NULL;
-}
-
-static void scenario_exclusion(void)
-{
-    printf("Mutual exclusion under a tied-timestamp wakeup\n");
-    cmb_event_queue_initialize(0.0);
-
-    struct cmb_resource *rp = cmb_resource_create();
-    cmb_assert_always(rp != NULL);
-    cmb_resource_initialize(rp, "BinaryResource");
-
-    excl_inside = 0u;
-    excl_max_inside = 0u;
-
-    /* Holder grabs at t=0 and releases at t=10. The "sniper" finishes an
-     * unrelated hold exactly at t=10 and then tries to acquire, racing the
-     * waiter that has been queued since t=1 and is woken by the release. */
-    struct excl_ctx holder_ctx = { rp, 0.0, 10.0 };
-    struct excl_ctx waiter_ctx = { rp, 1.0, 5.0 };
-    struct excl_ctx sniper_ctx = { rp, 10.0, 5.0 };
-
-    struct cmb_process *holder = cmb_process_create();
-    struct cmb_process *waiter = cmb_process_create();
-    struct cmb_process *sniper = cmb_process_create();
-    cmb_process_initialize(holder, "Holder", excl_worker, &holder_ctx, 0);
-    cmb_process_initialize(waiter, "Waiter", excl_worker, &waiter_ctx, 0);
-    cmb_process_initialize(sniper, "Sniper", excl_worker, &sniper_ctx, 0);
-    cmb_process_start(holder);
-    cmb_process_start(waiter);
-    cmb_process_start(sniper);
-
-    cmb_event_queue_execute();
-
-    /* Can never be held by more than one process */
-    cmb_assert_always(excl_max_inside == 1u);
-    cmb_assert_always(excl_inside == 0u);
-
-    cmb_process_terminate(holder);
-    cmb_process_terminate(waiter);
-    cmb_process_terminate(sniper);
-    cmb_process_destroy(holder);
-    cmb_process_destroy(waiter);
-    cmb_process_destroy(sniper);
-    cmb_resource_terminate(rp);
-    cmb_resource_destroy(rp);
-    cmb_event_queue_terminate();
-}
 
 static void end_sim_evt(void *subject, void *object)
 {
@@ -133,7 +51,7 @@ static void end_sim_evt(void *subject, void *object)
     }
 }
 
-void *preemptable(struct cmb_process *me, void *ctx)
+static void *preemptable(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
     cmb_assert_always(ctx != NULL);
@@ -167,7 +85,7 @@ void *preemptable(struct cmb_process *me, void *ctx)
     }
 }
 
-void *preempter(struct cmb_process *me, void *ctx)
+static void *preempter(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
     cmb_assert_always(ctx != NULL);
@@ -191,7 +109,7 @@ void *preempter(struct cmb_process *me, void *ctx)
     }
 }
 
-void test_resource(const uint64_t seed, const double dur)
+static void test_resource(const uint64_t seed, const double dur)
 {
     cmi_test_print_line("*");
     printf("****************************   Testing resources   *****************************\n");
@@ -200,10 +118,6 @@ void test_resource(const uint64_t seed, const double dur)
 
     cmb_random_initialize(seed);
     cmb_logger_flags_off(CMB_LOGGER_INFO);
-
-    /* Deterministic mutual-exclusion check first (draws no RNG, so the soak
-     * below sees the same random stream as before). */
-    scenario_exclusion();
 
     cmb_event_queue_initialize(0.0);
 
@@ -263,6 +177,107 @@ void test_resource(const uint64_t seed, const double dur)
     cmi_test_print_line("*");
 }
 
+/* Data structures for the exclusion and grant sequence test */
+static unsigned excl_inside = 0u;       /* processes currently holding */
+static unsigned excl_max_inside = 0u;   /* high-water mark observed */
+
+struct excl_ctx {
+    struct cmb_resource *rp;
+    double arrive;      /* delay before attempting to acquire */
+    double hold;        /* time to hold once acquired */
+};
+
+static void *excl_worker(struct cmb_process *me, void *vctx)
+{
+    cmb_assert_always(vctx != NULL);
+    struct excl_ctx *c = vctx;
+
+    if (c->arrive > 0.0) {
+        cmb_assert_always(cmb_process_hold(c->arrive) == CMB_PROCESS_SUCCESS);
+    }
+
+    cmb_assert_always(cmb_resource_acquire(c->rp) == CMB_PROCESS_SUCCESS);
+
+    /* The queued waiter must win the tied-timestamp race at t = 10.
+     * THis also tests that in-flight grants land safely. */
+    if (c->arrive == 1.0) {
+        /* We are the waiter, should get the resource at t = 10 */
+        cmb_assert_always(cmb_time() == 10.0);
+    }
+    else if (c->arrive == 10.0) {
+        /* We are the sniper, trying to barge in at t = 10, should not succeed */
+        cmb_assert_always(cmb_time() == 15.0);
+    }
+    else {
+        /* Original holder, got the resource at t = 0 */
+        cmb_assert_always(c->arrive == 0.0);
+        cmb_assert_always(cmb_time() == 0.0);
+    }
+
+    excl_inside++;
+    if (excl_inside > excl_max_inside) {
+        excl_max_inside = excl_inside;
+    }
+
+    /* Can never be held by more than one process */
+    cmb_assert_always(excl_inside == 1u);
+    cmb_logger_user(stdout, USERFLAG, "%s holds the resource at t=%.1f",
+                    me->name, cmb_time());
+
+    (void)cmb_process_hold(c->hold);
+
+    cmb_assert_always(excl_inside == 1u);
+    excl_inside--;
+    cmb_resource_release(c->rp);
+    return NULL;
+}
+
+static void test_exclusion(void)
+{
+    printf("Mutual exclusion and grant order under a tied-timestamp wakeup\n");
+    cmb_event_queue_initialize(0.0);
+
+    struct cmb_resource *rp = cmb_resource_create();
+    cmb_assert_always(rp != NULL);
+    cmb_resource_initialize(rp, "BinaryResource");
+
+    excl_inside = 0u;
+    excl_max_inside = 0u;
+
+    /* Holder grabs at t=0 and releases at t=10. The "sniper" finishes an
+     * unrelated hold exactly at t=10 and then tries to acquire, racing the
+     * waiter that has been queued since t=1 and is woken by the release. */
+    struct excl_ctx holder_ctx = { rp, 0.0, 10.0 };
+    struct excl_ctx waiter_ctx = { rp, 1.0, 5.0 };
+    struct excl_ctx sniper_ctx = { rp, 10.0, 5.0 };
+
+    struct cmb_process *holder = cmb_process_create();
+    struct cmb_process *waiter = cmb_process_create();
+    struct cmb_process *sniper = cmb_process_create();
+    cmb_process_initialize(holder, "Holder", excl_worker, &holder_ctx, 0);
+    cmb_process_initialize(waiter, "Waiter", excl_worker, &waiter_ctx, 0);
+    cmb_process_initialize(sniper, "Sniper", excl_worker, &sniper_ctx, 0);
+    cmb_process_start(holder);
+    cmb_process_start(waiter);
+    cmb_process_start(sniper);
+
+    cmb_event_queue_execute();
+
+    /* Can never be held by more than one process */
+    cmb_assert_always(excl_max_inside == 1u);
+    cmb_assert_always(excl_inside == 0u);
+
+    cmb_process_terminate(holder);
+    cmb_process_terminate(waiter);
+    cmb_process_terminate(sniper);
+    cmb_process_destroy(holder);
+    cmb_process_destroy(waiter);
+    cmb_process_destroy(sniper);
+    cmb_resource_terminate(rp);
+    cmb_resource_destroy(rp);
+    cmb_event_queue_terminate();
+}
+
 int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
@@ -300,6 +315,7 @@ int main(const int argc, char *argv[])
     const clock_t start_time = clock();
 
     test_resource(seed, dur);
+    test_exclusion();
 
     if (timing_enabled) {
         const clock_t end_time = clock();
