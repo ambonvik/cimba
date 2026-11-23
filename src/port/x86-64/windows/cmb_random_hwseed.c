@@ -29,6 +29,11 @@ extern uint64_t cmi_rdrand(void);
 extern uint32_t cmi_threadid(void);
 extern uint32_t cmi_rdtsc(void);
 
+static bool seed_ok(uint64_t seed)
+{
+    return ((seed != 0u) && (seed != UINT64_MAX));
+}
+
 /* Windows-specific code to get a suitable 64-bit seed from hardware */
 uint64_t cmb_random_hwseed(void)
 {
@@ -36,20 +41,15 @@ uint64_t cmb_random_hwseed(void)
     if (cmi_cpu_has_rdseed()) {
         /* Should be valid since Intel Broadwell (2014) and AMD Zen (2016) */
         seed = cmi_rdseed();
-
-        /* Protection against AMD Ryzen microcode bug always returning 0xFFFFFFFF, see
-         * https://arstechnica.com/gadgets/2019/10/how-a-months-old-amd-microcode-bug-destroyed-my-weekend/
-         * XOR the seed with the 64-bit CPU cycle count since reset */
-        seed ^= cmi_rdtsc();
     }
 
-    if (seed == 0u && cmi_cpu_has_rdrand()) {
+    if (!seed_ok(seed) && cmi_cpu_has_rdrand()) {
         /* Fallback. True for Intel since Ivy Bridge (2012) */
         seed = cmi_rdrand();
     }
 
-    if (seed == 0u) {
-        /* Some other (older?) CPU, build a decent seed ourselves */
+    if (!seed_ok(seed)) {
+        /* That also failed, build a decent seed ourselves */
         /* Start with thread id in top 32 bits */
         const uint64_t tid = cmi_threadid();
         seed = (tid << 32);
@@ -65,6 +65,6 @@ uint64_t cmb_random_hwseed(void)
         seed ^= cmi_rdtsc();
     }
 
-    cmb_assert_debug(seed != 0u);
+    cmb_assert_debug(seed_ok(seed));
     return seed;
 }
