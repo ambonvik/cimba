@@ -18,13 +18,16 @@ Bug fixes for issues surfaced by AI code review, details in
   returning it to a waiting process is a model error.
 * Processes waiting for events or other processes are now woken in FIFO order.
 * Stopping a cmb_process that has been started but not yet executed its start event 
-  will now preent it from running and return CMB_PROCESS_SUCCESS.
+  will now prevent it from running and return CMB_PROCESS_SUCCESS.
 * Linux binary soversion set to equal Cimba version, e.g., libcimba.so.3.1.2. The 
   Windows DLL name changes with every release (libcimba-3.1.2.dll). 
 * Terminating or destroying a process now cancels every event with it as subject,
   including any user-defined events.
 * The default number of worker threads now follows the CPU affinity mask.
-* Several debug asserts promoted to release asserts.
+* Several debug asserts promoted to release asserts, including one that forbids calling
+  cmb_process_interrupt() with CMB_PROCESS_SUCCESS signal value.
+* cmb_dataset_sort() no longer declares its argument as const. Although legal C, it was
+  semantically confusing for a function that very much modifies its target dataset.
 
 ### 2026-11-13: 3.1.1
 * Bug fix for Issue #5: Partially fulfilled requests would break FIFO waitlist ordering, 
