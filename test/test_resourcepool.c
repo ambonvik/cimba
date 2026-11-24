@@ -1,6 +1,8 @@
 /*
 * Test script for resource pool (i.e. counting semaphore).
  *
+ * Partly coded by Anthropic Claude Opus 5.5
+ *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +47,6 @@ struct simulation {
     struct cmb_process *cats[NUM_CATS];
     struct cmb_resourcepool *cheese;
 };
-
 
 static void end_sim_evt(void *subject, void *object)
 {
@@ -394,6 +395,114 @@ void test_pool(const uint64_t seed, const double dur)
     cmi_test_print_line("*");
 }
 
+/*
+ * A pool acquire that times out after taking part of its demand must return
+ * the units and signal the guard, so that waiters behind it are not stranded
+ * with free capacity. Silent regression test.
+ */
+struct stall_ctx {
+    struct cmb_resourcepool *pool;
+    double arrive;          /* delay before trying to acquire */
+    uint64_t amount;        /* units demanded */
+    double timeout;         /* timeout on the acquire, 0 for none */
+    double hold;            /* time to hold the units once acquired */
+    int64_t sig;            /* signal returned by the acquire */
+    double time;            /* sim time when the acquire returned */
+    uint64_t held;          /* units held by this process at that time */
+    uint64_t in_use;        /* units in use in the pool at that time */
+};
+
+static void *stall_worker(struct cmb_process *me, void *vctx)
+{
+    cmb_assert_always(vctx != NULL);
+    struct stall_ctx *c = vctx;
+
+    if (c->arrive > 0.0) {
+        cmb_assert_always(cmb_process_hold(c->arrive) == CMB_PROCESS_SUCCESS);
+    }
+
+    if (c->timeout > 0.0) {
+        (void)cmb_process_timer_add(me, c->timeout, CMB_PROCESS_TIMEOUT);
+    }
+
+    c->sig = cmb_resourcepool_acquire(c->pool, c->amount);
+    cmb_process_timers_clear(me);
+    c->time = cmb_time();
+    c->held = cmb_resourcepool_held(c->pool, me);
+    c->in_use = cmb_resourcepool_in_use(c->pool);
+
+    if (c->sig == CMB_PROCESS_SUCCESS) {
+        cmb_assert_always(cmb_process_hold(c->hold) == CMB_PROCESS_SUCCESS);
+        cmb_resourcepool_release(c->pool, c->amount);
+    }
+
+    return NULL;
+}
+
+static void test_rollback(void)
+{
+    cmb_event_queue_initialize(0.0);
+
+    struct cmb_resourcepool *pool = cmb_resourcepool_create();
+    cmb_resourcepool_initialize(pool, "Pool", 5u);
+
+    /* Hog takes 2 of 5 at t=0 and keeps them until t=100. Big asks for all 5
+     * at t=1 with a timeout of 5, takes the 3 free ones and waits for the
+     * rest. Small asks for 1 at t=2 and queues behind Big. When Big times out
+     * at t=6 and returns its 3, Small must be served at once, not at t=100
+     * when Hog releases. */
+    struct stall_ctx hog   = { .pool = pool, .arrive = 0.0, .amount = 2u,
+                                .timeout = 0.0, .hold = 100.0, .sig = INT64_MIN,
+                                .time = -1.0, .held = 0u, .in_use = 0u };
+    struct stall_ctx big   = { .pool = pool, .arrive = 1.0, .amount = 5u,
+                                .timeout = 5.0,   .hold = 1.0, .sig = INT64_MIN,
+                                .time = -1.0, .held = 0u, .in_use = 0u };
+    struct stall_ctx small = { .pool = pool, .arrive = 2.0, .amount = 1u,
+                                .timeout = 0.0,   .hold = 1.0, .sig = INT64_MIN,
+                                .time = -1.0, .held = 0u, .in_use = 0u };
+
+    struct cmb_process *hp = cmb_process_create();
+    cmb_process_initialize(hp, "Hog", stall_worker, &hog, 0);
+    cmb_process_start(hp);
+
+    struct cmb_process *bp = cmb_process_create();
+    cmb_process_initialize(bp, "Big", stall_worker, &big, 0);
+    cmb_process_start(bp);
+
+    struct cmb_process *sp = cmb_process_create();
+    cmb_process_initialize(sp, "Small", stall_worker, &small, 0);
+    cmb_process_start(sp);
+
+    cmb_event_queue_execute();
+
+    cmb_assert_always((hog.sig == CMB_PROCESS_SUCCESS) && (hog.time == 0.0));
+    cmb_assert_always((hog.held == 2u) && (hog.in_use == 2u));
+
+    /* Big gave up with nothing held */
+    cmb_assert_always((big.sig == CMB_PROCESS_TIMEOUT) && (big.time == 6.0));
+    cmb_assert_always(big.held == 0u);
+
+    /* Small got its unit when Big gave up */
+    cmb_assert_always((small.sig == CMB_PROCESS_SUCCESS) && (small.time == 6.0));
+    cmb_assert_always((small.held == 1u) && (small.in_use == 3u));
+
+    cmb_assert_always(cmb_resourcepool_in_use(pool) == 0u);
+
+    cmb_process_terminate(sp);
+    cmb_process_destroy(sp);
+
+    cmb_process_terminate(bp);
+    cmb_process_destroy(bp);
+
+    cmb_process_terminate(hp);
+    cmb_process_destroy(hp);
+
+    cmb_resourcepool_terminate(pool);
+    cmb_resourcepool_destroy(pool);
+    
+    cmb_event_queue_terminate();
+}
+
 int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
@@ -431,6 +540,7 @@ int main(const int argc, char *argv[])
     const clock_t start_time = clock();
 
     test_pool(seed, dur);
+    test_rollback();
 
      if (timing_enabled) {
         const clock_t end_time = clock();

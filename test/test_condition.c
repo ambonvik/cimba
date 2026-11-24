@@ -102,7 +102,7 @@ struct context {
 };
 
 /* A process that updates the weather once per hour */
-void *weather_proc(struct cmb_process *me, void *vctx)
+static void *weather_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     cmb_assert_always(vctx != NULL);
@@ -141,7 +141,7 @@ void *weather_proc(struct cmb_process *me, void *vctx)
 }
 
 /* A process that updates the water depth once per hour */
-void *tide_proc(struct cmb_process *me, void *vctx)
+static void *tide_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     cmb_assert_always(vctx != NULL);
@@ -186,7 +186,7 @@ void *tide_proc(struct cmb_process *me, void *vctx)
 }
 
 /* The demand predicate function for a ship wanting to dock */
-bool is_ready_to_dock(const struct cmb_condition *cvp,
+static bool is_ready_to_dock(const struct cmb_condition *cvp,
                       const struct cmb_process *pp,
                       const void *vctx) {
     cmb_unused(cvp);
@@ -233,7 +233,7 @@ bool is_ready_to_dock(const struct cmb_condition *cvp,
 }
 
 /* The ship process function */
-void *ship_proc(struct cmb_process *me, void *vctx)
+static void *ship_proc(struct cmb_process *me, void *vctx)
 {
     cmb_assert_always(me != NULL);
     cmb_assert_always(vctx != NULL);
@@ -322,7 +322,7 @@ void *ship_proc(struct cmb_process *me, void *vctx)
 }
 
 /* The arrival process generating new ships */
-void *arrival_proc(struct cmb_process *me, void *vctx)
+static void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     cmb_assert_always(vctx != NULL);
@@ -380,7 +380,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
 }
 
 /* The demand predicate function for ships leaving */
-bool is_departed(const struct cmb_condition *cvp,
+static bool is_departed(const struct cmb_condition *cvp,
                  const struct cmb_process *pp,
                  const void *vctx)
 {
@@ -397,7 +397,7 @@ bool is_departed(const struct cmb_condition *cvp,
 }
 
 /* The departure process */
-void *departure_proc(struct cmb_process *me, void *vctx)
+static void *departure_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     cmb_assert_always(vctx != NULL);
@@ -438,7 +438,7 @@ void *departure_proc(struct cmb_process *me, void *vctx)
 }
 
 /* An event to shut down the simulation */
-void end_sim_evt(void *subject, void *object)
+static void end_sim_evt(void *subject, void *object)
 {
     cmb_assert_always(subject != NULL);
     cmb_unused(object);
@@ -465,7 +465,7 @@ void end_sim_evt(void *subject, void *object)
 }
 
 /* For now, set params here instead of in an external experiment array */
-void set_test_parameters(struct trial *trl, double dur)
+static void set_test_parameters(struct trial *trl, double dur)
 {
     trl->arrival_rate = 0.5;
     trl->percent_large = 0.25;
@@ -479,7 +479,7 @@ void set_test_parameters(struct trial *trl, double dur)
 }
 
 /* The test function running the simulation */
-void test_condition(uint64_t seed, double dur)
+static void test_condition(uint64_t seed, double dur)
 {
     cmi_test_print_line("*");
     printf("***********************   Testing condition variables  *************************\n");
@@ -552,6 +552,7 @@ void test_condition(uint64_t seed, double dur)
     cmb_assert_always(cmb_process_status(sim.arrivals) == CMB_PROCESS_UNINITIALIZED);
     cmb_process_initialize(sim.arrivals, "Arrivals", arrival_proc, &ctx, 0);
     cmb_process_start(sim.arrivals);
+
     sim.departures = cmb_process_create();
     cmb_assert_always(sim.departures != NULL);
     cmb_assert_always(cmb_process_status(sim.departures) == CMB_PROCESS_UNINITIALIZED);
