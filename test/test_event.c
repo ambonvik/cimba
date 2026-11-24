@@ -5,6 +5,8 @@
  *
  * Uses random number generation from cmb_random as test data.
  *
+ * Partly coded by Anthropic Claude Opus 5.5
+ *
  * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +33,7 @@
 #include "cmb_event.h"
 #include "cmb_random.h"
 #include "cmb_logger.h"
+#include "cmb_process.h"
 
 #include "testutils.h"
 
@@ -86,7 +89,7 @@ static const char *event_formatter(cmb_event_func *a, const void *s, const void 
     return NULL;
 }
 
-void test_events(const uint64_t seed)
+static void test_events(const uint64_t seed)
 {
     printf("Using seed: 0x%" PRIx64 "\n", seed);
     cmb_random_initialize(seed);
@@ -210,6 +213,99 @@ void test_events(const uint64_t seed)
     cmi_test_print_line("*");
 }
 
+/*
+ * Wake order among processes waiting for the same event.
+ * Silent regression test unless an assert trips.
+ */
+struct evwait_ctx {
+    uint64_t handle;        /* the event to wait for */
+    double arrive;          /* delay before starting to wait */
+    int *counter;           /* shared running counter of wakeups */
+    int order;              /* counter value when woken, 0 if never */
+    double woken;           /* sim time when woken, -1.0 if never */
+    int64_t sig;            /* signal returned by the wait */
+};
+
+static void evwait_noop(void *subject, void *object)
+{
+    cmb_unused(subject);
+    cmb_unused(object);
+}
+
+static void *evwait_waiter(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+    struct evwait_ctx *c = vctx;
+
+    cmb_assert_always(cmb_process_hold(c->arrive) == CMB_PROCESS_SUCCESS);
+    c->sig = cmb_process_wait_event(c->handle);
+    c->order = ++(*c->counter);
+    c->woken = cmb_time();
+
+    return NULL;
+}
+
+static void *evwait_interrupter(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+
+    cmb_assert_always(cmb_process_hold(6.0) == CMB_PROCESS_SUCCESS);
+    cmb_process_interrupt((struct cmb_process *)vctx, CMB_PROCESS_INTERRUPTED, 0);
+
+    return NULL;
+}
+
+static void test_waiter_order(void)
+{
+    cmb_event_queue_initialize(0.0);
+    int counter = 0;
+
+    /* W1..W5 start waiting for an event at t=10 from t=1..5. W4 has higher
+     * priority than the others. W2 is interrupted at t=6 and leaves. When the
+     * event fires, W4 must be woken first, then W1, W3, W5 in arrival order. */
+    const uint64_t handle = cmb_event_schedule(evwait_noop, NULL, NULL, 10.0, 0);
+    cmb_assert_always(handle != 0u);
+
+    enum { NWAIT = 5 };
+    struct evwait_ctx w[NWAIT];
+    struct cmb_process *wp[NWAIT];
+    for (unsigned ui = 0u; ui < NWAIT; ui++) {
+        w[ui] = (struct evwait_ctx){ handle, (double)(ui + 1u), &counter, 0, -1.0, INT64_MIN };
+        char name[16];
+        snprintf(name, sizeof(name), "W%u", ui + 1u);
+        wp[ui] = cmb_process_create();
+        cmb_process_initialize(wp[ui], name, evwait_waiter, &w[ui], (ui == 3u) ? 5 : 0);
+        cmb_process_start(wp[ui]);
+    }
+
+    struct cmb_process *ip = cmb_process_create();
+    cmb_process_initialize(ip, "Interrupter", evwait_interrupter, wp[1], 0);
+    cmb_process_start(ip);
+
+    cmb_event_queue_execute();
+
+    cmb_assert_always((w[1].sig == CMB_PROCESS_INTERRUPTED) && (w[1].woken == 6.0));
+    cmb_assert_always(w[1].order == 1);
+    const unsigned expected[] = { 3u, 0u, 2u, 4u };
+    for (unsigned ui = 0u; ui < 4u; ui++) {
+        const struct evwait_ctx *c = &w[expected[ui]];
+        cmb_assert_always(c->sig == CMB_PROCESS_SUCCESS);
+        cmb_assert_always(c->woken == 10.0);
+        cmb_assert_always(c->order == (int)ui + 2);
+    }
+
+    cmb_process_terminate(ip);
+    cmb_process_destroy(ip);
+    for (unsigned ui = 0u; ui < NWAIT; ui++) {
+        cmb_process_terminate(wp[ui]);
+        cmb_process_destroy(wp[ui]);
+    }
+
+    cmb_event_queue_terminate();
+}
+
 int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
@@ -238,6 +334,7 @@ int main(const int argc, char *argv[])
     const clock_t start_time = clock();
 
     test_events(seed);
+    test_waiter_order();
 
     const clock_t end_time = clock();
     const double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;

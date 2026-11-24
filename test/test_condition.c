@@ -13,6 +13,8 @@
  * Somewhat inspired by
  *      https://dl.acm.org/doi/pdf/10.1145/1103225.1103226
  *
+ * Partly coded by Anthropic Claude Opus 5.5
+ *
  * Copyright (c) Asbjørn M. Bonvik 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
