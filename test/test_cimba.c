@@ -44,6 +44,9 @@
 #include "cmi_process.h"
 #include "testutils.h"
 
+/* Test support: high-water mark of this thread's observer tag pool */
+extern void cmi_resourceguard_tagpool_mark(uint64_t *chunks, uint32_t *rem);
+
 #define USERFLAG1 0x00000001
 #define USERFLAG2 0x00000002
 
@@ -351,9 +354,8 @@ struct abandon_trial {
     uint64_t id;
     bool abandon;           /* this trial shall fail */
     bool done;              /* reached the end of the trial function */
-    uint64_t chunks[3];     /* tag pool high-water marks at the end of the trial */
-    uint32_t rem[3];
-};
+    uint64_t chunks[4];     /* tag pool high-water marks at the end of the trial */
+    uint32_t rem[4];};
 
 struct abandon_sim {
     struct cmb_resource *res;
@@ -549,12 +551,9 @@ static void run_abandon_trial(void *vtrl)
     cmb_random_terminate();
 
     /* Record the tag pool high-water marks in this thread */
-    trl->chunks[0] = cmi_process_awaitabletags.chunk_list_cnt;
-    trl->chunks[1] = cmi_process_holdabletags.chunk_list_cnt;
-    trl->chunks[2] = cmi_process_waitertags.chunk_list_cnt;
-    trl->rem[0] = cmi_process_awaitabletags.virgin_rem;
-    trl->rem[1] = cmi_process_holdabletags.virgin_rem;
-    trl->rem[2] = cmi_process_waitertags.virgin_rem;
+    /* Record the tag pool high-water marks in this thread */
+    cmi_process_tagpool_marks(trl->chunks, trl->rem);
+    cmi_resourceguard_tagpool_mark(&(trl->chunks[3]), &(trl->rem[3]));
     trl->done = true;
 }
 
@@ -595,7 +594,7 @@ static void test_abandon(const uint32_t nthr)
      * high-water mark of each pool, after that it must not move. */
     const struct abandon_trial *first = &trials[2];
     const struct abandon_trial *last = &trials[NTRIALS - 2u];
-    for (unsigned ui = 0u; ui < 3u; ui++) {
+    for (unsigned ui = 0u; ui < 4u; ui++) {
         cmb_assert_always(last->chunks[ui] == first->chunks[ui]);
         cmb_assert_always(last->rem[ui] == first->rem[ui]);
     }

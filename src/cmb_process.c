@@ -40,6 +40,27 @@ CMB_THREAD_LOCAL struct cmi_mempool cmi_process_holdabletags
 CMB_THREAD_LOCAL struct cmi_mempool cmi_process_waitertags
     = CMI_MEMPOOL_STATIC_INIT(sizeof(struct cmi_process_waiter), 4u);
 
+/*
+ * cmi_process_tagpool_marks - Test support: the high-water mark of each of this
+ * thread's process tag pools (awaitable, holdable, waiter), given as the number
+ * of chunks and the number of untouched objects left in the current chunk.
+ * A function rather than direct access, since a thread-local variable cannot
+ * be imported across a Windows DLL boundary.
+ */
+void cmi_process_tagpool_marks(uint64_t chunks[3], uint32_t rem[3])
+{
+    cmb_assert_release(chunks != NULL);
+    cmb_assert_release(rem != NULL);
+
+    const struct cmi_mempool *pools[3] = { &cmi_process_awaitabletags,
+                                           &cmi_process_holdabletags,
+                                           &cmi_process_waitertags };
+    for (unsigned ui = 0u; ui < 3u; ui++) {
+        chunks[ui] = pools[ui]->chunk_list_cnt;
+        rem[ui] = pools[ui]->virgin_rem;
+    }
+}
+
 /* Thread local counter for assigning process handles. */
 static CMB_THREAD_LOCAL uint64_t handle_counter = 0u;
 

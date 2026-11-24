@@ -60,6 +60,19 @@ struct observer_tag {
 static CMB_THREAD_LOCAL struct cmi_mempool observer_tagpool
     = CMI_MEMPOOL_STATIC_INIT(sizeof(struct observer_tag), 16u);
 
+/*
+ * cmi_resourceguard_tagpool_mark - Test support: the high-water mark of this
+ * thread's observer tag pool, see cmi_process_tagpool_marks().
+ */
+void cmi_resourceguard_tagpool_mark(uint64_t *chunks, uint32_t *rem)
+{
+    cmb_assert_release(chunks != NULL);
+    cmb_assert_release(rem != NULL);
+
+    *chunks = observer_tagpool.chunk_list_cnt;
+    *rem = observer_tagpool.virgin_rem;
+}
+
 /* Counter for assigning hash map handles and ensuring FIFO order */
 static CMB_THREAD_LOCAL uint64_t enqueue_seq = 0u;
 

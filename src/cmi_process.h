@@ -117,4 +117,7 @@ extern bool cmi_process_remove_waiter(struct cmb_process *pp,
 #define CMI_PROCESS_TB_CLEARED  0u
 #define CMI_PROCESS_TB_ARMED    UINT64_MAX
 
+/* Test support: high-water marks of this thread's process tag pools */
+extern void cmi_process_tagpool_marks(uint64_t chunks[3], uint32_t rem[3]);
+
 #endif /* CIMBA_CMI_PROCESS_H */
