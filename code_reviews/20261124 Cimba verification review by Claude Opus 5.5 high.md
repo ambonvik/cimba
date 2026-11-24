@@ -1,7 +1,7 @@
 # Cimba Verification Review — Closing the 3.1.1 Review Cycle
 
 **Subject:** Cimba — multithreaded discrete event simulation library in C
-**Version reviewed:** 3.1.2, `main` at commit `37870e9` ("Updated changelog with release date for v 3.1.2")
+**Version reviewed:** 3.1.2, `main` at commit `3a2c6bb` ("Added accessor functions to avoid a Windows DLL error in test_cimba")
 **Reviewer:** Claude Opus 5.5 (Anthropic), AI-assisted verification review requested by the maintainer
 **Date:** 24 November 2026
 **Scope:** Closes the cycle opened by the 14 November code review of release 3.1.1 by Claude Fable 5.2 (findings F1–F15 and L1–L9).
@@ -93,7 +93,9 @@ The maintainer's policy is to add tests for regressions that are silent and coul
 | `test_abandon` | `test_cimba.c` | F1, F2, L6 | 3.1.1 (F2 assert; F1 segfault with the F2 part neutralized); `dd8c4f2` (L6) |
 | `#include "cimba.h"` in `testutils.c` | all tests | F3 | 3.1.1 (multiple definition at link) |
 
-`test_abandon` abandons every other trial with a process holding a resource, two processes queued at it, one waiting for an event, one waiting for another process, an observer registered, and four statistics objects in the trial function's frame. The other trials end with `cmb_event_queue_clear()` in the same state. It detects pool loss by comparing each tag pool's high-water mark between an early and a late trial. That catches the loss of a single tag, where the chunk count would not move for thousands of trials. The price is that the test reads two internal mempool fields.
+`test_abandon` abandons every other trial with a process holding a resource, two processes queued at it, one waiting for an event, one waiting for another process, an observer registered, and four statistics objects in the trial function's frame. The other trials end with `cmb_event_queue_clear()` in the same state. It detects pool loss by comparing each tag pool's high-water mark between an early and a late trial. That catches the loss of a single tag, where the chunk count would not move for thousands of trials. The marks are read through two small test-support functions in the library, `cmi_process_tagpool_marks()` and `cmi_resourceguard_tagpool_mark()`. Between them they cover all four tag pools, including the observer pool, which is `static` and could not otherwise be measured.
+
+The first form of this test read the thread-local pools directly. That linked on Linux but not in the Windows CI jobs: a thread-local variable cannot be imported across a Windows DLL boundary, and the MSYS2 toolchain uses native Windows TLS (the failing relocations were `IMAGE_REL_AMD64_SECREL`). Reading the pools through library functions avoids the import. A cross-compiled MinGW test confirmed that this approach links. The Windows CI run on `3a2c6bb` is the confirmation for the full build; it could not be observed from here.
 
 Of the four test gaps the 14 November review identified, the first two (abandonment with live entanglements; multi-unit linking) are now closed. The third and fourth (tied timestamps; teardown order) are covered at the points where a regression would be silent. The findings left untested, such as F7, F10, F11 and F12, fail loudly if they recur. The tied-timestamp soak test suggested on 14 November was not added, which is the maintainer's call.
 
@@ -129,4 +131,4 @@ One observation to carry forward. Most of this cycle's defects, both those repor
 
 ---
 
-*Verified at commit `37870e9` in GCC release, GCC debug, GCC debug + ASan/UBSan/LSan, Clang release and static-library configurations. Reproducers and negative regression runs were built against `v3.1.1`, `5da0d55` and `dd8c4f2`. The M/M/1 benchmark figure is the maintainer's own measurement.*
+*Verified at commit `37870e9` in GCC release, GCC debug, GCC debug + ASan/UBSan/LSan, Clang release and static-library configurations, and re-run at `3a2c6bb` (test-support accessors only) in GCC and Clang release, 27/27 with zero warnings. Reproducers and negative regression runs were built against `v3.1.1`, `5da0d55` and `dd8c4f2`. The M/M/1 benchmark figure is the maintainer's own measurement.*
