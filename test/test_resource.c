@@ -189,14 +189,18 @@ struct excl_ctx {
 
 static void *excl_worker(struct cmb_process *me, void *vctx)
 {
+    cmb_unused(me);
     cmb_assert_always(vctx != NULL);
-    struct excl_ctx *c = vctx;
+    const struct excl_ctx *c = vctx;
 
+    int64_t sig;
     if (c->arrive > 0.0) {
-        cmb_assert_always(cmb_process_hold(c->arrive) == CMB_PROCESS_SUCCESS);
+        sig = cmb_process_hold(c->arrive);
+        cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
     }
 
-    cmb_assert_always(cmb_resource_acquire(c->rp) == CMB_PROCESS_SUCCESS);
+    sig = cmb_resource_acquire(c->rp);
+    cmb_assert_always(sig == CMB_PROCESS_SUCCESS);
 
     /* The queued waiter must win the tied-timestamp race at t = 10.
      * THis also tests that in-flight grants land safely. */
@@ -221,20 +225,18 @@ static void *excl_worker(struct cmb_process *me, void *vctx)
 
     /* Can never be held by more than one process */
     cmb_assert_always(excl_inside == 1u);
-    cmb_logger_user(stdout, USERFLAG, "%s holds the resource at t=%.1f",
-                    me->name, cmb_time());
 
     (void)cmb_process_hold(c->hold);
 
     cmb_assert_always(excl_inside == 1u);
     excl_inside--;
     cmb_resource_release(c->rp);
+
     return NULL;
 }
 
 static void test_exclusion(void)
 {
-    printf("Mutual exclusion and grant order under a tied-timestamp wakeup\n");
     cmb_event_queue_initialize(0.0);
 
     struct cmb_resource *rp = cmb_resource_create();
@@ -254,9 +256,11 @@ static void test_exclusion(void)
     struct cmb_process *holder = cmb_process_create();
     struct cmb_process *waiter = cmb_process_create();
     struct cmb_process *sniper = cmb_process_create();
+
     cmb_process_initialize(holder, "Holder", excl_worker, &holder_ctx, 0);
     cmb_process_initialize(waiter, "Waiter", excl_worker, &waiter_ctx, 0);
     cmb_process_initialize(sniper, "Sniper", excl_worker, &sniper_ctx, 0);
+
     cmb_process_start(holder);
     cmb_process_start(waiter);
     cmb_process_start(sniper);
@@ -270,11 +274,14 @@ static void test_exclusion(void)
     cmb_process_terminate(holder);
     cmb_process_terminate(waiter);
     cmb_process_terminate(sniper);
+
     cmb_process_destroy(holder);
     cmb_process_destroy(waiter);
     cmb_process_destroy(sniper);
+
     cmb_resource_terminate(rp);
     cmb_resource_destroy(rp);
+
     cmb_event_queue_terminate();
 }
 

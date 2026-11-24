@@ -437,6 +437,93 @@ static void test_partials(void)
     cmb_assert_always((ctx[0].finish_time == 20.0) && (ctx[1].finish_time == 40.0));
 }
 
+/* For the in-flight grant test */
+struct inflight_ctx {
+    struct cmb_buffer *buf;
+    double arrive;          /* delay before trying to get */
+    double got_time;        /* when the get returned, -1.0 if never */
+};
+
+static void *inflight_putter(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+    struct cmb_buffer *bp = vctx;
+
+    cmb_assert_always(cmb_process_hold(10.0) == CMB_PROCESS_SUCCESS);
+    uint64_t n = 2u;
+    cmb_assert_always(cmb_buffer_put(bp, &n) == CMB_PROCESS_SUCCESS);
+    cmb_assert_always(n == 0u);
+
+    return NULL;
+}
+
+static void *inflight_getter(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+    struct inflight_ctx *ctx = vctx;
+
+    cmb_assert_always(cmb_process_hold(ctx->arrive) == CMB_PROCESS_SUCCESS);
+    uint64_t n = 2u;
+    cmb_assert_always(cmb_buffer_get(ctx->buf, &n) == CMB_PROCESS_SUCCESS);
+    cmb_assert_always(n == 2u);
+    ctx->got_time = cmb_time();
+
+    return NULL;
+}
+
+static void test_inflight(void)
+{
+    cmb_event_queue_initialize(0.0);
+
+    struct cmb_buffer *buf = cmb_buffer_create();
+    cmb_buffer_initialize(buf, "Buf", 10u);
+
+    /* Getter G1 waits for 2 from t=1. The putter puts 2 at t=10, granting
+     * them to G1. Sniper X arrives at exactly t=10, asking for 2 as well,
+     * before G1 has resumed. G1 must get them, X must keep waiting. */
+    struct inflight_ctx g1_ctx = { .buf = buf, .arrive = 1.0, .got_time = -1.0 };
+    struct inflight_ctx x_ctx = { .buf = buf, .arrive = 10.0, .got_time = -1.0 };
+
+    struct cmb_process *pp = cmb_process_create();
+    cmb_process_initialize(pp, "Putter", inflight_putter, buf, 5);
+    cmb_process_start(pp);
+
+    struct cmb_process *g1 = cmb_process_create();
+    cmb_process_initialize(g1, "G1", inflight_getter, &g1_ctx, 0);
+    cmb_process_start(g1);
+
+    struct cmb_process *x = cmb_process_create();
+    cmb_process_initialize(x, "X", inflight_getter, &x_ctx, 0);
+    cmb_process_start(x);
+
+    cmb_event_queue_execute();
+
+    /* The queued getter must win the tied-timestamp race at t=10 */
+    cmb_assert_always(g1_ctx.got_time == 10.0);
+    cmb_assert_always(x_ctx.got_time < 0.0);
+    cmb_assert_always(cmb_process_status(x) == CMB_PROCESS_RUNNING);
+    cmb_assert_always(cmb_buffer_level(buf) == 0u);
+
+    /* X is still waiting for its items, stop it before cleaning up */
+    cmb_assert_always(cmb_process_stop(x, NULL) == CMB_PROCESS_SUCCESS);
+
+    cmb_process_terminate(x);
+    cmb_process_destroy(x);
+
+    cmb_process_terminate(g1);
+    cmb_process_destroy(g1);
+
+    cmb_process_terminate(pp);
+    cmb_process_destroy(pp);
+
+    cmb_buffer_terminate(buf);
+    cmb_buffer_destroy(buf);
+
+    cmb_event_queue_terminate();
+}
+
 int main(const int argc, char *argv[])
 {
     bool timing_enabled = false;
@@ -475,6 +562,7 @@ int main(const int argc, char *argv[])
 
     test_buffer(dur, seed);
     test_partials();
+    test_inflight();
 
     if (timing_enabled) {
         const clock_t end_time = clock();
