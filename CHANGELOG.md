@@ -6,7 +6,7 @@ binaries. There is no promise of binary (linker) compatibility between releases.
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
-### 2026-xx-xx: 3.1.2 wip
+### 2026-11-24: 3.1.2
 Bug fixes for issues surfaced by AI code review, details in
   'code_reviews/20261114 Cimba code review by Claude Fable 5.2 high.md'.
 * Closed several loopholes / race conditions for resuming processes in wrong sequence, 
