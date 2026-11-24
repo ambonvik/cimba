@@ -7,18 +7,7 @@
  * guard's intended extension point: a cmi_resourcebase, an embedded guard, and
  * a demand predicate driven by the wait/signal protocol.
  *
- * The deterministic scenarios check the guard's contract:
- *   - a waiter blocks until its demand is met, then is resumed (basic),
- *   - waiters of equal priority are served in arrival order (FIFO),
- *   - higher priority is served first regardless of arrival order (priority),
- *   - a queued waiter can be reprioritized in place (reprioritize),
- *   - a queued waiter that times out frees its slot without stranding the
- *     waiter behind it (timeout-cancel),
- *   - a queued waiter that is stopped is removed without stranding the waiter
- *     behind it (stop),
- *   - signals are forwarded to registered observer guards (observers).
- * A final randomized soak then stresses the queue under mixed priorities with
- * interleaved reprioritizations and a terminal stop of every process.
+ * Code partly written by Antrhropic Claude Opus 5.5
  *
  * Copyright (c) Asbjørn M. Bonvik 2026.
  *
@@ -58,7 +47,6 @@
 
 /*
  * A minimal counting resource built directly on cmb_resourceguard.
- *
  * The cmi_resourcebase must be the first member so the guard can recover the
  * concrete type from the base pointer it passes to the demand function.
  */
@@ -111,7 +99,6 @@ static void token_pool_terminate(struct token_pool *tp)
 
 /*
  * token_acquire - Get some tokens, blocking until they are available.
- *
  * This is the canonical guard client: a recheck loop around the wait. On a
  * SUCCESS resume the demand may already have been consumed by another resumed
  * process, so availability is re-tested rather than trusted. A non-SUCCESS
@@ -262,7 +249,7 @@ static void reap(struct cmb_process *p)
 static void *sole_holder(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
-    struct waiter_ctx *c = vctx;
+    const struct waiter_ctx *c = vctx;
     cmb_assert_always(token_acquire(c->pool, c->need) == CMB_PROCESS_SUCCESS);
     (void)cmb_process_hold(c->hold_after);
     token_release(c->pool, c->need);
@@ -277,8 +264,14 @@ static void scenario_basic(void)
     struct token_pool pool;
     token_pool_initialize(&pool, "Pool", 1u);
 
-    struct waiter_ctx hctx = { &pool, 1u, 0.0, 10.0, 0.0, NULL, 0, -1.0, 0 };
-    struct waiter_ctx wctx = { &pool, 1u, 1.0, 0.0, 0.0, NULL, 0, -1.0, 0 };
+    struct waiter_ctx hctx = { .pool = &pool, .need = 1u, .arrive_after = 0.0,
+                               .hold_after = 10.0, .timeout_after = 0.0,
+                               .order_counter = NULL, .acquired_order = 0,
+                               .acquired_time = -1.0, .result = 0 };
+    struct waiter_ctx wctx = { .pool = &pool, .need = 1u, .arrive_after = 1.0,
+                               .hold_after = 0.0, .timeout_after = 0.0,
+                               .order_counter = NULL, .acquired_order = 0,
+                               .acquired_time = -1.0, .result = 0 };
     waiter_ctx_reset(&hctx);
     waiter_ctx_reset(&wctx);
 
@@ -323,7 +316,11 @@ static void scenario_fifo(void)
     cmb_assert_always(b.acquired_order == 2);
     cmb_assert_always(d.acquired_order == 3);
 
-    reap(h); reap(pa); reap(pb); reap(pd);
+    reap(h);
+    reap(pa);
+    reap(pb);
+    reap(pd);
+
     token_pool_terminate(&pool);
     cmb_event_queue_terminate();
 }
@@ -337,9 +334,18 @@ static void scenario_priority(void)
     token_pool_initialize(&pool, "Pool", 1u);
     int counter = 0;
 
-    struct waiter_ctx hctx = { &pool, 1u, 0.0, 10.0, 0.0, NULL, 0, -1.0, 0 };
-    struct waiter_ctx lo = { &pool, 1u, 1.0, 1.0, 0.0, &counter, 0, -1.0, 0 };
-    struct waiter_ctx hi = { &pool, 1u, 2.0, 1.0, 0.0, &counter, 0, -1.0, 0 };
+    struct waiter_ctx hctx = { .pool = &pool, .need = 1u, .arrive_after = 0.0,
+                               .hold_after = 10.0, .timeout_after = 0.0,
+                               .order_counter = NULL, .acquired_order = 0,
+                               .acquired_time = -1.0, .result = 0 };
+    struct waiter_ctx lo = { .pool = &pool, .need = 1u, .arrive_after = 1.0,
+                             .hold_after = 1.0, .timeout_after = 0.0,
+                             .order_counter = &counter, .acquired_order = 0,
+                             .acquired_time = -1.0, .result = 0 };
+    struct waiter_ctx hi = { .pool = &pool, .need = 1u, .arrive_after = 2.0,
+                             .hold_after = 1.0, .timeout_after = 0.0,
+                             .order_counter = &counter, .acquired_order = 0,
+                             .acquired_time = -1.0, .result = 0 };
 
     struct cmb_process *h  = spawn("Holder", sole_holder, &hctx, 0);
     struct cmb_process *pl = spawn("LowPri",  waiter, &lo, 0);   /* arrives first */
@@ -364,9 +370,18 @@ static void scenario_reprioritize(void)
     token_pool_initialize(&pool, "Pool", 1u);
     int counter = 0;
 
-    struct waiter_ctx hctx = { &pool, 1u, 0.0, 20.0, 0.0, NULL, 0, -1.0, 0 };
-    struct waiter_ctx a = { &pool, 1u, 1.0, 1.0, 0.0, &counter, 0, -1.0, 0 };
-    struct waiter_ctx b = { &pool, 1u, 2.0, 1.0, 0.0, &counter, 0, -1.0, 0 };
+    struct waiter_ctx hctx = { .pool = &pool, .need = 1u, .arrive_after = 0.0,
+                               .hold_after = 20.0, .timeout_after = 0.0,
+                               .order_counter = NULL, .acquired_order = 0,
+                               .acquired_time = -1.0, .result = 0 };
+    struct waiter_ctx a = { .pool = &pool, .need = 1u, .arrive_after = 1.0,
+                            .hold_after = 1.0, .timeout_after = 0.0,
+                            .order_counter = &counter, .acquired_order = 0,
+                            .acquired_time = -1.0, .result = 0 };
+    struct waiter_ctx b = { .pool = &pool, .need = 1u, .arrive_after = 2.0,
+                            .hold_after = 1.0, .timeout_after = 0.0,
+                            .order_counter = &counter, .acquired_order = 0,
+                            .acquired_time = -1.0, .result = 0 };
 
     struct cmb_process *h  = spawn("Holder", sole_holder, &hctx, 0);
     struct cmb_process *pa = spawn("Early",  waiter, &a, 0);  /* arrives first */
@@ -380,7 +395,10 @@ static void scenario_reprioritize(void)
     cmb_assert_always(b.acquired_order == 1);  /* promotion jumped the queue */
     cmb_assert_always(a.acquired_order == 2);
 
-    reap(h); reap(pa); reap(pb);
+    reap(h);
+    reap(pa);
+    reap(pb);
+
     token_pool_terminate(&pool);
     cmb_event_queue_terminate();
 }
@@ -393,10 +411,19 @@ static void scenario_timeout(void)
     struct token_pool pool;
     token_pool_initialize(&pool, "Pool", 1u);
 
-    struct waiter_ctx hctx = { &pool, 1u, 0.0, 10.0, 0.0, NULL, 0, -1.0, 0 };
+    struct waiter_ctx hctx = { .pool = &pool, .need = 1u, .arrive_after = 0.0,
+                                .hold_after = 10.0, .timeout_after = 0.0,
+                                .order_counter = NULL, .acquired_order = 0,
+                                .acquired_time = -1.0, .result = 0 };
     /* First waiter gives up at t=1+5=6; second keeps waiting. */
-    struct waiter_ctx a = { &pool, 1u, 1.0, 1.0, 5.0, NULL, 0, -1.0, 0 };
-    struct waiter_ctx b = { &pool, 1u, 2.0, 1.0, 0.0, NULL, 0, -1.0, 0 };
+    struct waiter_ctx a = { .pool = &pool, .need = 1u, .arrive_after = 1.0,
+                            .hold_after = 1.0, .timeout_after = 5.0,
+                            .order_counter = NULL, .acquired_order = 0,
+                            .acquired_time = -1.0, .result = 0 };
+    struct waiter_ctx b = { .pool = &pool, .need = 1u, .arrive_after = 2.0,
+                            .hold_after = 1.0, .timeout_after = 0.0,
+                            .order_counter = NULL, .acquired_order = 0,
+                            .acquired_time = -1.0, .result = 0 };
 
     struct cmb_process *h  = spawn("Holder",  sole_holder, &hctx, 0);
     struct cmb_process *pa = spawn("Impatient", waiter, &a, 0);
@@ -422,9 +449,18 @@ static void scenario_stop(void)
     struct token_pool pool;
     token_pool_initialize(&pool, "Pool", 1u);
 
-    struct waiter_ctx hctx = { &pool, 1u, 0.0, 10.0, 0.0, NULL, 0, -1.0, 0 };
-    struct waiter_ctx a = { &pool, 1u, 1.0, 1.0, 0.0, NULL, 0, -1.0, 0 };
-    struct waiter_ctx b = { &pool, 1u, 2.0, 1.0, 0.0, NULL, 0, -1.0, 0 };
+    struct waiter_ctx hctx = { .pool = &pool, .need = 1u, .arrive_after = 0.0,
+                                .hold_after = 10.0, .timeout_after = 0.0,
+                                .order_counter = NULL, .acquired_order = 0,
+                                .acquired_time = -1.0, .result = 0 };
+    struct waiter_ctx a = { .pool = &pool, .need = 1u, .arrive_after = 1.0,
+                            .hold_after = 1.0, .timeout_after = 0.0,
+                            .order_counter = NULL, .acquired_order = 0,
+                            .acquired_time = -1.0, .result = 0 };
+    struct waiter_ctx b = { .pool = &pool, .need = 1u, .arrive_after = 2.0,
+                            .hold_after = 1.0, .timeout_after = 0.0,
+                            .order_counter = NULL, .acquired_order = 0,
+                            .acquired_time = -1.0, .result = 0 };
     waiter_ctx_reset(&a);
 
     struct cmb_process *h  = spawn("Holder",  sole_holder, &hctx, 0);
@@ -442,7 +478,10 @@ static void scenario_stop(void)
     cmb_assert_always(pool.available == 1u);
 
     /* pa was stopped: it is FINISHED but never ran its release path. */
-    reap(h); reap(pa); reap(pb);
+    reap(h);
+    reap(pa);
+    reap(pb);
+
     token_pool_terminate(&pool);
     cmb_event_queue_terminate();
 }
@@ -506,7 +545,7 @@ static void scenario_observers(void)
 
 #define SOAK_PROCS 6u
 
-void *soak_worker(struct cmb_process *me, void *ctx)
+static void *soak_worker(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
     cmb_assert_always(ctx != NULL);
@@ -534,11 +573,11 @@ struct shuffler_ctx {
     uint64_t nprocs;
 };
 
-void *soak_shuffler(struct cmb_process *me, void *ctx)
+static void *soak_shuffler(struct cmb_process *me, void *ctx)
 {
     cmb_unused(me);
     cmb_assert_always(ctx != NULL);
-    struct shuffler_ctx *s = ctx;
+    const struct shuffler_ctx *s = ctx;
 
     for (;;) {
         const double dt = cmb_random_exponential(0.5);
@@ -581,30 +620,122 @@ static void scenario_soak(const double dur)
         procs[ui] = spawn(buf, soak_worker, &pool, pri);
     }
 
-    struct shuffler_ctx sctx = { procs, SOAK_PROCS };
+    struct shuffler_ctx sctx = { .procs = procs, .nprocs = SOAK_PROCS};
     procs[SOAK_PROCS] = spawn("Shuffler", soak_shuffler, &sctx, 0);
 
     (void)cmb_event_schedule(stop_all_evt, procs,
                              (void *)(uint64_t)(SOAK_PROCS + 1u), dur, 0);
 
-    cmi_test_print_line("-");
     cmb_event_queue_execute();
-    cmi_test_print_line("-");
 
-    /* A worker stopped mid-hold never runs its release, so some tokens may be
-     * stranded. The meaningful invariant is that the count stays sane and that
-     * tearing down the guard finds no stranded queue entries (which would trip
-     * an assert inside terminate if a stopped waiter had been left enqueued). */
     cmb_assert_always(pool.available <= pool.capacity);
-
     for (unsigned ui = 0; ui < SOAK_PROCS + 1u; ui++) {
         reap(procs[ui]);
     }
+
     token_pool_terminate(&pool);
     cmb_event_queue_terminate();
 }
 
-void test_resourceguard(const uint64_t seed, const double dur)
+/*
+ * A client that may come back for a second helping after a pause, check that it
+ * does not jump the queue ahead of already waiting processes.
+ */
+struct rewait_ctx {
+    struct token_pool *pool;
+    double arrive;          /* delay before the first acquire */
+    double hold;            /* time to hold the token the first time */
+    double pause;           /* delay before the second acquire */
+    double hold2;           /* time to hold the second time, 0 for no second acquire */
+    int *counter;           /* shared running counter of acquisitions */
+    int order1, order2;     /* counter value at each acquire, 0 if never */
+    double time1, time2;    /* sim time at each acquire, -1.0 if never */
+};
+
+static void *rewait_worker(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+    struct rewait_ctx *c = vctx;
+
+    if (c->arrive > 0.0) {
+        cmb_assert_always(cmb_process_hold(c->arrive) == CMB_PROCESS_SUCCESS);
+    }
+
+    cmb_assert_always(token_acquire(c->pool, 1u) == CMB_PROCESS_SUCCESS);
+    cmb_logger_user(stdout, USERFLAG, "Got token from %s", c->pool->base.name);
+    c->order1 = ++(*c->counter);
+    c->time1 = cmb_time();
+
+    cmb_assert_always(cmb_process_hold(c->hold) == CMB_PROCESS_SUCCESS);
+    token_release(c->pool, 1u);
+
+    if (c->hold2 > 0.0) {
+        cmb_assert_always(cmb_process_hold(c->pause) == CMB_PROCESS_SUCCESS);
+        cmb_assert_always(token_acquire(c->pool, 1u) == CMB_PROCESS_SUCCESS);
+        cmb_logger_user(stdout, USERFLAG, "Got token from %s", c->pool->base.name);
+        c->order2 = ++(*c->counter);
+        c->time2 = cmb_time();
+        cmb_assert_always(cmb_process_hold(c->hold2) == CMB_PROCESS_SUCCESS);
+        token_release(c->pool, 1u);
+    }
+
+    return NULL;
+}
+
+static void scenario_rewait(void)
+{
+    printf("Scenario 9: a waiter leaves and rejoins the waiting list\n");
+    cmb_event_queue_initialize(0.0);
+
+    struct token_pool pool;
+    token_pool_initialize(&pool, "Pool", 1u);
+    int counter = 0;
+
+    /* H holds the only token 0-5. P1 queues at 1, P2 at 2. P1 gets it at 5,
+     * releases at 8 and comes back for more at 8.5. P3 has been queued since 6,
+     * so P3 must be served at 12 before P1's second request at 13. */
+    struct rewait_ctx h  = { .pool = &pool, .arrive = 0.0, .hold = 5.0,
+                             .pause = 0.0, .hold2 = 0.0, .counter = &counter,
+                             .order1 = 0, .order2 = 0,
+                             .time1 = -1.0, .time2 = -1.0 };
+    struct rewait_ctx p1 = { .pool = &pool, .arrive = 1.0, .hold = 3.0,
+                             .pause = 0.5, .hold2 = 1.0, .counter = &counter,
+                             .order1 = 0, .order2 = 0,
+                             .time1 = -1.0, .time2 = -1.0 };
+    struct rewait_ctx p2 = { .pool = &pool, .arrive = 2.0, .hold = 4.0,
+                             .pause = 0.0, .hold2 = 0.0, .counter = &counter,
+                             .order1 = 0, .order2 = 0,
+                             .time1 = -1.0, .time2 = -1.0 };
+    struct rewait_ctx p3 = { .pool = &pool, .arrive = 6.0, .hold = 1.0,
+                             .pause = 0.0, .hold2 = 0.0, .counter = &counter,
+                             .order1 = 0, .order2 = 0,
+                             .time1 = -1.0, .time2 = -1.0 };
+
+    struct cmb_process *ph  = spawn("H",  rewait_worker, &h,  0);
+    struct cmb_process *pp1 = spawn("P1", rewait_worker, &p1, 0);
+    struct cmb_process *pp2 = spawn("P2", rewait_worker, &p2, 0);
+    struct cmb_process *pp3 = spawn("P3", rewait_worker, &p3, 0);
+
+    cmb_event_queue_execute();
+
+    cmb_assert_always((h.order1 == 1) && (h.time1 == 0.0));
+    cmb_assert_always((p1.order1 == 2) && (p1.time1 == 5.0));
+    cmb_assert_always((p2.order1 == 3) && (p2.time1 == 8.0));
+    cmb_assert_always((p3.order1 == 4) && (p3.time1 == 12.0));
+    cmb_assert_always((p1.order2 == 5) && (p1.time2 == 13.0));
+    cmb_assert_always(pool.available == 1u);
+
+    reap(ph);
+    reap(pp1);
+    reap(pp2);
+    reap(pp3);
+
+    token_pool_terminate(&pool);
+    cmb_event_queue_terminate();
+}
+
+static void test_resourceguard(const uint64_t seed, const double dur)
 {
     cmi_test_print_line("*");
     printf("**************************   Testing resourceguards   *************************\n");
@@ -622,6 +753,7 @@ void test_resourceguard(const uint64_t seed, const double dur)
     scenario_stop();
     scenario_observers();
     scenario_soak(dur);
+    scenario_rewait();
 
     printf("All resourceguard scenarios passed\n");
 

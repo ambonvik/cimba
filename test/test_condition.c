@@ -645,6 +645,118 @@ void test_condition(uint64_t seed, double dur)
     cmi_test_print_line("*");
 }
 
+/*
+ * Silent regression test for wake order among equal-priority waiters.
+ */
+struct order_ctx {
+    struct cmb_condition *cnd;
+    const bool *gate;       /* the condition predicate's state */
+    double arrive;          /* delay before starting to wait */
+    int *counter;           /* shared running counter of wakeups */
+    int order;              /* counter value when woken, 0 if never */
+    double woken;           /* sim time when woken, -1.0 if never */
+    int64_t sig;            /* signal returned by the wait */
+};
+
+static bool gate_open(const struct cmb_condition *cnd,
+                      const struct cmb_process *pp,
+                      const void *vctx)
+{
+    cmb_unused(cnd);
+    cmb_unused(pp);
+    cmb_assert_always(vctx != NULL);
+
+    return *(const bool *)vctx;
+}
+
+static void *order_waiter(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+    struct order_ctx *c = vctx;
+
+    cmb_assert_always(cmb_process_hold(c->arrive) == CMB_PROCESS_SUCCESS);
+    c->sig = cmb_condition_wait(c->cnd, gate_open, c->gate);
+    c->order = ++(*c->counter);
+    c->woken = cmb_time();
+
+    return NULL;
+}
+
+struct order_ctl {
+    struct cmb_condition *cnd;
+    bool *gate;
+    struct cmb_process *victim;
+};
+
+static void *order_controller(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+    struct order_ctl *c = vctx;
+
+    cmb_assert_always(cmb_process_hold(10.0) == CMB_PROCESS_SUCCESS);
+    cmb_assert_always(cmb_condition_cancel(c->cnd, c->victim));
+
+    cmb_assert_always(cmb_process_hold(10.0) == CMB_PROCESS_SUCCESS);
+    *(c->gate) = true;
+    (void)cmb_condition_signal(c->cnd);
+
+    return NULL;
+}
+
+static void test_wake_order(void)
+{
+    cmb_event_queue_initialize(0.0);
+
+    struct cmb_condition *cnd = cmb_condition_create();
+    cmb_condition_initialize(cnd, "Gate");
+    bool gate = false;
+    int counter = 0;
+
+    /* W1..W5 start waiting at t=1..5, all at the same priority. W2 has its
+     * wait cancelled at t=10. The gate opens at t=20, and the remaining four
+     * must then be woken in arrival order W1, W3, W4, W5. */
+    enum { NWAIT = 5 };
+    struct order_ctx w[NWAIT];
+    struct cmb_process *wp[NWAIT];
+    for (unsigned ui = 0u; ui < NWAIT; ui++) {
+        w[ui] = (struct order_ctx){ cnd, &gate, (double)(ui + 1u), &counter, 0, -1.0, INT64_MIN };
+        char name[16];
+        snprintf(name, sizeof(name), "W%u", ui + 1u);
+        wp[ui] = cmb_process_create();
+        cmb_process_initialize(wp[ui], name, order_waiter, &w[ui], 0);
+        cmb_process_start(wp[ui]);
+    }
+
+    struct order_ctl ctl = { cnd, &gate, wp[1] };
+    struct cmb_process *cp = cmb_process_create();
+    cmb_process_initialize(cp, "Ctl", order_controller, &ctl, 0);
+    cmb_process_start(cp);
+
+    cmb_event_queue_execute();
+
+    cmb_assert_always((w[1].sig == CMB_PROCESS_CANCELLED) && (w[1].woken == 10.0));
+    cmb_assert_always(w[1].order == 1);
+    const unsigned expected[] = { 0u, 2u, 3u, 4u };
+    for (unsigned ui = 0u; ui < 4u; ui++) {
+        const struct order_ctx *c = &w[expected[ui]];
+        cmb_assert_always(c->sig == CMB_PROCESS_SUCCESS);
+        cmb_assert_always(c->woken == 20.0);
+        cmb_assert_always(c->order == (int)ui + 2);
+    }
+
+    cmb_process_terminate(cp);
+    cmb_process_destroy(cp);
+    for (unsigned ui = 0u; ui < NWAIT; ui++) {
+        cmb_process_terminate(wp[ui]);
+        cmb_process_destroy(wp[ui]);
+    }
+
+    cmb_condition_terminate(cnd);
+    cmb_condition_destroy(cnd);
+    cmb_event_queue_terminate();
+}
 
 int main(const int argc, char *argv[])
 {
@@ -683,6 +795,7 @@ int main(const int argc, char *argv[])
     const clock_t start_time = clock();
 
     test_condition(seed, dur);
+    test_wake_order();
 
     if (timing_enabled) {
         const clock_t end_time = clock();

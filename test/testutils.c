@@ -24,8 +24,7 @@
 #include <math.h>
 #include <stdio.h>
 
-#include "cmb_assert.h"
-#include "cmb_dataset.h"
+#include "cimba.h"
 
 #include "testutils.h"
 

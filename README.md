@@ -109,7 +109,7 @@ It is powerful, fast, reliable, and free.
     here: https://github.com/ambonvik/cimba/actions
 
   * The code is routinely reviewed adversially by the latest and greatest AI tools as 
-    they become available, most recently Anthropic Claude Fable 5 (August 2026) and 
+    they become available, most recently Anthropic Claude Fable 5.2 (November 2026) and 
     OpenAI GPT 5.6 Sol (September 2026). Any bugs identified by these reviews are 
     fixed, and a follow-up verification review is done. The reviews can be found here:
     https://github.com/ambonvik/cimba/tree/main/code_reviews
