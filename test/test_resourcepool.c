@@ -499,7 +499,7 @@ static void test_rollback(void)
 
     cmb_resourcepool_terminate(pool);
     cmb_resourcepool_destroy(pool);
-    
+
     cmb_event_queue_terminate();
 }
 

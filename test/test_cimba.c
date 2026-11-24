@@ -14,6 +14,8 @@
  *  - Replication  A trial with the same parameters as another.
  *  - Experiment   A set of trials according to some experimental design.
  *
+ * Partly coded by Anthropic Claude Opus 5.5
+ *
  * Copyright (c) Asbjørn M. Bonvik 2025-26.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +41,7 @@
 #include <unistd.h>
 
 #include "cimba.h"
+#include "cmi_process.h"
 #include "testutils.h"
 
 #define USERFLAG1 0x00000001
@@ -136,7 +139,7 @@ static void stop_rec_evt(void *subject, void *object)
  * Define the simulated arrival process putting new items into the queue at
  * random intervals.
  */
-void *arrival_proc(struct cmb_process *me, void *vctx)
+static void *arrival_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     cmb_assert_always(vctx != NULL);
@@ -168,7 +171,7 @@ void *arrival_proc(struct cmb_process *me, void *vctx)
  * Define the simulated service process getting items from the queue and
  * servicing them for a random duration.
  */
-void *service_proc(struct cmb_process *me, void *vctx)
+static void *service_proc(struct cmb_process *me, void *vctx)
 {
     cmb_unused(me);
     cmb_assert_always(vctx != NULL);
@@ -220,7 +223,7 @@ void *service_proc(struct cmb_process *me, void *vctx)
 /*
  * Our very own cleanup for abandoned trials
  */
-void trial_cleanup(void *vctx)
+static void trial_cleanup(void *vctx)
 {
     cmb_assert_always(vctx != NULL);
 
@@ -233,7 +236,7 @@ void trial_cleanup(void *vctx)
 /*
  * Our trial function, setting up the simulation, obtaining trial parameters
  */
-void run_mg1_trial(void *vtrl)
+static void run_mg1_trial(void *vtrl)
 {
     cmb_assert_always(vtrl != NULL);
 
@@ -340,8 +343,266 @@ void run_mg1_trial(void *vtrl)
     cmb_random_terminate();
 }
 
+/*
+ * Regression test for abandoning trials with live entanglements.
+ * Silent unless an assert trips.
+ */
+struct abandon_trial {
+    uint64_t id;
+    bool abandon;           /* this trial shall fail */
+    bool done;              /* reached the end of the trial function */
+    uint64_t chunks[3];     /* tag pool high-water marks at the end of the trial */
+    uint32_t rem[3];
+};
+
+struct abandon_sim {
+    struct cmb_resource *res;
+    struct cmb_process *holder;
+    uint64_t evt;
+    struct cmb_datasummary *dsum;
+    struct cmb_dataset *dset;
+    struct cmb_wtdsummary *wsum;
+    struct cmb_timeseries *tser;
+};
+
+static void abandon_noop(void *subject, void *object)
+{
+    cmb_unused(subject);
+    cmb_unused(object);
+}
+
+static void abandon_end(void *subject, void *object)
+{
+    cmb_unused(subject);
+    cmb_unused(object);
+
+    cmb_event_queue_clear();
+}
+
+/* Holds the resource for longer than the trial lasts */
+static void *abandon_holder(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+    const struct abandon_sim *sim = vctx;
+
+    cmb_assert_always(cmb_resource_acquire(sim->res) == CMB_PROCESS_SUCCESS);
+    (void)cmb_process_hold(1000.0);
+    cmb_resource_release(sim->res);
+
+    return NULL;
+}
+
+/* Queues at the resource, still waiting when the trial ends */
+static void *abandon_queued(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+    const struct abandon_sim *sim = vctx;
+
+    cmb_assert_always(cmb_process_hold(1.0) == CMB_PROCESS_SUCCESS);
+    (void)cmb_resource_acquire(sim->res);
+
+    return NULL;
+}
+
+/* Waits for an event that never comes */
+static void *abandon_evwaiter(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+    const struct abandon_sim *sim = vctx;
+
+    (void)cmb_process_wait_event(sim->evt);
+
+    return NULL;
+}
+
+/* Waits for the holder to finish, which it does not */
+static void *abandon_pwaiter(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+    const struct abandon_sim *sim = vctx;
+
+    (void)cmb_process_wait_process(sim->holder);
+
+    return NULL;
+}
+
+/* Fills the trial function's local statistics objects with some data */
+static void *abandon_sampler(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_assert_always(vctx != NULL);
+    const struct abandon_sim *sim = vctx;
+
+    cmb_assert_always(cmb_process_hold(2.0) == CMB_PROCESS_SUCCESS);
+    for (unsigned ui = 0u; ui < 100u; ui++) {
+        const double x = (double)ui;
+        (void)cmb_datasummary_add(sim->dsum, x);
+        (void)cmb_dataset_add(sim->dset, x);
+        (void)cmb_wtdsummary_add(sim->wsum, x, 1.0);
+        (void)cmb_timeseries_add(sim->tser, x, cmb_time());
+    }
+
+    return NULL;
+}
+
+/* Abandons the trial */
+static void *abandon_saboteur(struct cmb_process *me, void *vctx)
+{
+    cmb_unused(me);
+    cmb_unused(vctx);
+
+    cmb_assert_always(cmb_process_hold(5.0) == CMB_PROCESS_SUCCESS);
+    cmb_logger_error(stdout, "Abandoning trial %" PRIu64, cimba_trial_index());
+
+    /* Not reached */
+    return NULL;
+}
+
+static void run_abandon_trial(void *vtrl)
+{
+    cmb_assert_always(vtrl != NULL);
+    struct abandon_trial *trl = vtrl;
+
+    cmb_event_queue_initialize(0.0);
+    cmb_random_initialize(trl->id);
+
+    /* F1: statistics objects in this stack frame, registered for cleanup */
+    struct cmb_datasummary dsum;
+    struct cmb_dataset dset;
+    struct cmb_wtdsummary wsum;
+    struct cmb_timeseries tser;
+    cmb_datasummary_initialize(&dsum);
+    cmb_dataset_initialize(&dset);
+    cmb_wtdsummary_initialize(&wsum);
+    cmb_timeseries_initialize(&tser);
+
+    struct abandon_sim sim = {.res = NULL, .holder = NULL, .evt = 0u,
+                                .dsum = &dsum, .dset = &dset,
+                                .wsum = &wsum, .tser = &tser };
+    sim.res = cmb_resource_create();
+    cmb_resource_initialize(sim.res, "Res");
+
+    /* L6: a guard observing the resource guard when the trial ends */
+    struct cmb_condition *cnd = cmb_condition_create();
+    cmb_condition_initialize(cnd, "Cnd");
+    cmb_resourceguard_register(&(sim.res->guard), &(cnd->guard));
+
+    sim.evt = cmb_event_schedule(abandon_noop, NULL, NULL, 1000.0, 0);
+
+    /* F2: two processes queued at the resource when the trial ends.
+     * L6: one process waiting for an event, one for another process. */
+    enum { NPROC = 6 };
+    static const char *names[NPROC] = { "Holder", "Queued1", "Queued2",
+                                        "EvWaiter", "PWaiter", "Sampler" };
+    cmb_process_func *funcs[NPROC] = { abandon_holder, abandon_queued, abandon_queued,
+                                       abandon_evwaiter, abandon_pwaiter, abandon_sampler };
+    struct cmb_process *procs[NPROC];
+    for (unsigned ui = 0u; ui < NPROC; ui++) {
+        procs[ui] = cmb_process_create();
+        cmb_process_initialize(procs[ui], names[ui], funcs[ui], &sim, 0);
+        cmb_process_start(procs[ui]);
+    }
+    sim.holder = procs[0];
+
+    struct cmb_process *saboteur = NULL;
+    if (trl->abandon) {
+        saboteur = cmb_process_create();
+        cmb_process_initialize(saboteur, "Saboteur", abandon_saboteur, NULL, 0);
+        cmb_process_start(saboteur);
+    }
+    else {
+        (void)cmb_event_schedule(abandon_end, NULL, NULL, 50.0, 0);
+    }
+
+    cmb_event_queue_execute();
+
+    /* Only the trials that were not abandoned get here */
+    cmb_assert_always(!trl->abandon);
+    cmb_assert_always(cmb_dataset_count(&dset) == 100u);
+
+    for (unsigned ui = 0u; ui < NPROC; ui++) {
+        if (cmb_process_status(procs[ui]) == CMB_PROCESS_RUNNING) {
+            cmb_assert_always(cmb_process_stop(procs[ui], NULL) == CMB_PROCESS_SUCCESS);
+        }
+    }
+    for (unsigned ui = NPROC; ui > 0u; ui--) {
+        cmb_process_terminate(procs[ui - 1u]);
+        cmb_process_destroy(procs[ui - 1u]);
+    }
+
+    cmb_resourceguard_unregister(&(sim.res->guard), &(cnd->guard));
+    cmb_condition_terminate(cnd);
+    cmb_condition_destroy(cnd);
+    cmb_resource_terminate(sim.res);
+    cmb_resource_destroy(sim.res);
+
+    cmb_timeseries_terminate(&tser);
+    cmb_wtdsummary_terminate(&wsum);
+    cmb_dataset_terminate(&dset);
+    cmb_datasummary_terminate(&dsum);
+
+    cmb_event_queue_terminate();
+    cmb_random_terminate();
+
+    /* Record the tag pool high-water marks in this thread */
+    trl->chunks[0] = cmi_process_awaitabletags.chunk_list_cnt;
+    trl->chunks[1] = cmi_process_holdabletags.chunk_list_cnt;
+    trl->chunks[2] = cmi_process_waitertags.chunk_list_cnt;
+    trl->rem[0] = cmi_process_awaitabletags.virgin_rem;
+    trl->rem[1] = cmi_process_holdabletags.virgin_rem;
+    trl->rem[2] = cmi_process_waitertags.virgin_rem;
+    trl->done = true;
+}
+
+static void *abandon_thread_init(const uint64_t tid, void *usrarg)
+{
+    cmb_unused(tid);
+    cmb_unused(usrarg);
+
+    /* The abandoned trials are expected, keep quiet about them */
+    cmb_logger_flags_off(CMB_LOGGER_INFO | CMB_LOGGER_WARNING | CMB_LOGGER_ERROR);
+
+    return NULL;
+}
+
+static void test_abandon(const uint32_t nthr)
+{
+    enum { NTRIALS = 40 };
+    struct abandon_trial trials[NTRIALS] = { 0 };
+    for (unsigned ui = 0u; ui < NTRIALS; ui++) {
+        trials[ui].id = ui;
+        trials[ui].abandon = ((ui % 2u) == 1u);
+    }
+
+    /* One thread, so that all trials use the same thread local tag pools */
+    cimba_threads_set(1u);
+    cimba_thread_hooks_set(abandon_thread_init, NULL, NULL);
+    const uint64_t nfail = cimba_run(trials, NTRIALS, sizeof(trials[0]), run_abandon_trial);
+    cimba_thread_hooks_set(NULL, NULL, NULL);
+    cimba_threads_set(nthr);
+
+    /* F1, F2: every abandoned trial failed cleanly, every other one completed */
+    cmb_assert_always(nfail == NTRIALS / 2u);
+    for (unsigned ui = 0u; ui < NTRIALS; ui++) {
+        cmb_assert_always(trials[ui].done == !trials[ui].abandon);
+    }
+
+    /* L6: no tags lost in the abandoned trials. The first trials set the
+     * high-water mark of each pool, after that it must not move. */
+    const struct abandon_trial *first = &trials[2];
+    const struct abandon_trial *last = &trials[NTRIALS - 2u];
+    for (unsigned ui = 0u; ui < 3u; ui++) {
+        cmb_assert_always(last->chunks[ui] == first->chunks[ui]);
+        cmb_assert_always(last->rem[ui] == first->rem[ui]);
+    }
+}
+
 /* Declare for later use, do not want to digress with that here */
-void write_gnuplot_commands(unsigned ncvs, const double *cvs);
+static void write_gnuplot_commands(unsigned ncvs, const double *cvs);
 
 /* Testing the cimba_set_init_func and _exit_func */
 struct thread_context {
@@ -350,7 +611,7 @@ struct thread_context {
     uint64_t tid;
 };
 
-void *thread_init_func(const uint64_t tid, void *usrarg)
+static void *thread_init_func(const uint64_t tid, void *usrarg)
 {
     /* Create a context object for the Cimba worker thread */
     struct thread_context *ctx = malloc(sizeof *ctx);
@@ -366,7 +627,7 @@ void *thread_init_func(const uint64_t tid, void *usrarg)
     return ctx;
 }
 
-void thread_exit_func(void *vctx)
+static void thread_exit_func(void *vctx)
 {
     cmb_assert_always(vctx != NULL);
 
@@ -575,6 +836,9 @@ int main(const int argc, char **argv)
 
     free(experiment);
 
+    /* Silent regression test */
+    test_abandon(nthr);
+
     struct timespec end_time;
     if (timing_enabled) {
         clock_gettime(CLOCK_MONOTONIC, &end_time);
@@ -595,7 +859,7 @@ int main(const int argc, char **argv)
     return 0;
 }
 
-void write_gnuplot_commands(const unsigned ncvs, const double *cvs)
+static void write_gnuplot_commands(const unsigned ncvs, const double *cvs)
 {
     cmb_assert_release(ncvs == 4u);
     cmb_assert_release(cvs != NULL);
