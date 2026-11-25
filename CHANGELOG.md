@@ -6,9 +6,11 @@ binaries. There is no promise of binary (linker) compatibility between releases.
 We will only summarize new features, changes, and bug fixes below. For complete details, 
 see the git commit history.
 
-### 2026-11-24: 3.1.2
+### 2026-11-25: 3.1.2
 Bug fixes for issues surfaced by AI code review, details in
-  'code_reviews/20261114 Cimba code review by Claude Fable 5.2 high.md'.
+  'code_reviews/20261114 Cimba code review by Claude Fable 5.2 high.md' with verification 
+  in 'code_reviews/20261124 Cimba verification review by Claude Opus 5.5 high.md'. In 
+  summary: 
 * Closed several loopholes / race conditions for resuming processes in wrong sequence, 
   possibly changing the bitwise result from earlier runs.
 * Detect spurious CMB_PROCESS_SUCCESS signals that do not belong to current wait. 
